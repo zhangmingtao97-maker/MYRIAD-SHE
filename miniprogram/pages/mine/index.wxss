@@ -1,33 +1,148 @@
 @import "../../app.wxss";
 
-/* 我的 —— 账户、记录与设置的统一版式：一张账户卡 + 四张模块卡 */
+/* 我的 —— 个人档案：深陶土色账户卡 + 米白档案卡，信息更少但层级更清楚 */
 .mine-page {
   min-height: 100vh;
   width: 100%;
-  padding: 0 36rpx;
-  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
-  background: #e7dfd1;
-  color: #3f352e;
+  padding: 0 30rpx;
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  background: #eae2d5;
+  color: #3d332c;
   box-sizing: border-box;
 }
 
-.account-card,
-.section-card,
-.settings-card {
-  margin-top: 24rpx;
-  padding: 30rpx;
-  border: 1rpx solid #ddcfbe;
-  border-radius: 24rpx;
-  background: #f9f4ea;
-  box-sizing: border-box;
+/* 顶栏 */
+.mine-topbar {
+  justify-content: space-between;
+  margin: 0 -30rpx;
+  padding-right: 30rpx;
+  padding-left: 30rpx;
+  border-bottom-color: rgba(92, 73, 60, .16);
+  background: #eae2d5;
+}
+.mine-topbar .brand-topbar-copy {
+  color: #663124;
+  font-size: 24rpx;
+  letter-spacing: 4rpx;
+}
+.mine-topbar-meta {
+  color: #8b6b58;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 18rpx;
+  letter-spacing: 2rpx;
+  line-height: 1;
 }
 
-.account-card { margin-top: 32rpx; }
-.account-card-alert { display: grid; gap: 12rpx; border-color: #d9c3b4; background: #faf1e9; }
-.account-eyebrow { color: #a5795f; font-family: Georgia, serif; font-size: 21rpx; letter-spacing: 2rpx; line-height: 1.5; }
+/* 账户卡 */
+.profile-card {
+  position: relative;
+  margin-top: 26rpx;
+  padding: 34rpx;
+  overflow: hidden;
+  border-radius: 32rpx;
+  background: linear-gradient(140deg, #6c3829 0%, #47231b 100%);
+  box-shadow: 0 24rpx 60rpx rgba(63, 33, 23, .20);
+  color: #fbf4ea;
+  box-sizing: border-box;
+}
+.profile-card::before {
+  content: "";
+  position: absolute;
+  top: -230rpx;
+  right: -170rpx;
+  width: 430rpx;
+  height: 430rpx;
+  border: 1rpx solid rgba(255, 255, 255, .10);
+  border-radius: 50%;
+}
+.profile-card::after {
+  content: "";
+  position: absolute;
+  top: -80rpx;
+  right: -30rpx;
+  width: 210rpx;
+  height: 210rpx;
+  border: 1rpx solid rgba(255, 255, 255, .08);
+  border-radius: 50%;
+}
+.profile-card-deleted { background: linear-gradient(140deg, #613029 0%, #3d1d18 100%); }
+.profile-card-guest { background: linear-gradient(140deg, #75412f 0%, #4c271e 100%); }
 
-/* 账户 */
-.account-main { display: grid; grid-template-columns: 120rpx minmax(0, 1fr) 52rpx; align-items: center; gap: 24rpx; }
+.profile-watermark {
+  position: absolute;
+  right: 12rpx;
+  bottom: -44rpx;
+  color: rgba(255, 255, 255, .05);
+  font-family: Georgia, serif;
+  font-size: 190rpx;
+  letter-spacing: 8rpx;
+  line-height: 1;
+}
+.profile-eyebrow {
+  position: relative;
+  z-index: 1;
+  color: rgba(251, 244, 234, .62);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 18rpx;
+  letter-spacing: 3rpx;
+  line-height: 1.5;
+}
+.profile-name {
+  position: relative;
+  z-index: 1;
+  overflow-wrap: anywhere;
+  color: #fbf4ea;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 40rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.profile-name-action { display: inline-block; }
+.profile-name-input {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 54rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fbf4ea;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 40rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+.profile-caption {
+  position: relative;
+  z-index: 1;
+  margin-top: 6rpx;
+  color: rgba(251, 244, 234, .72);
+  font-size: 21rpx;
+  line-height: 1.7;
+  letter-spacing: .4rpx;
+}
+.profile-error {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 12rpx;
+  color: #f2b8a8;
+  font-size: 21rpx;
+  line-height: 1.6;
+}
+
+.profile-main,
+.guest-main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 120rpx minmax(0, 1fr) 56rpx;
+  align-items: center;
+  gap: 22rpx;
+}
+.profile-identity { display: grid; gap: 5rpx; min-width: 0; }
 .account-avatar {
   display: flex;
   width: 120rpx;
@@ -37,123 +152,379 @@
   margin: 0;
   padding: 0;
   overflow: hidden;
-  border: 1rpx solid #d6c5b4;
+  border: 2rpx solid rgba(255, 255, 255, .28);
   border-radius: 50%;
-  background: #efe6d8;
-  color: #8b6b58;
+  background: rgba(255, 255, 255, .10);
+  color: #fbf4ea;
   line-height: 1;
+  box-sizing: border-box;
 }
 .account-avatar::after { border: 0; }
 .account-avatar[disabled] { opacity: .55; }
 .account-avatar-image { width: 100%; height: 100%; }
-.account-avatar-plus { color: #8b6b58; font-family: Georgia, serif; font-size: 40rpx; line-height: 1; }
-.guest-avatar text { font-family: Georgia, serif; font-size: 26rpx; letter-spacing: 2rpx; }
-
-.account-identity { display: grid; gap: 8rpx; min-width: 0; }
-.account-title { color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 36rpx; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-.account-title-input { width: 100%; min-height: 56rpx; margin: 0; padding: 0; border: 0; background: transparent; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 36rpx; font-weight: 600; line-height: 1.35; box-sizing: border-box; }
-.account-caption { color: #7d6f63; font-size: 22rpx; line-height: 1.65; letter-spacing: .4rpx; }
-.account-enter { display: flex; height: 120rpx; align-items: center; justify-content: center; color: #8b6b58; font-family: Georgia, serif; font-size: 40rpx; line-height: 1; }
-.account-error { color: #a53f32; font-size: 22rpx; line-height: 1.6; }
-
-.primary-button {
+.account-avatar-plus { color: #fbf4ea; font-family: Georgia, serif; font-size: 40rpx; line-height: 1; }
+.profile-enter {
   display: flex;
-  width: 100%;
-  min-height: 84rpx;
+  width: 56rpx;
+  height: 56rpx;
   align-items: center;
   justify-content: center;
-  margin: 16rpx 0 0;
-  padding: 0 24rpx;
-  border: 0;
-  border-radius: 12rpx;
-  background: #663124;
-  color: #fffaf4;
-  font-size: 26rpx;
-  line-height: 1.4;
-  letter-spacing: 1rpx;
+  border: 1rpx solid rgba(255, 255, 255, .16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .08);
+  color: #fbf4ea;
+  font-family: Georgia, serif;
+  font-size: 34rpx;
+  line-height: 1;
   box-sizing: border-box;
 }
-.primary-button::after { border: 0; }
-.primary-button[disabled] { opacity: .5; }
+.guest-monogram {
+  display: flex;
+  width: 120rpx;
+  height: 120rpx;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid rgba(255, 255, 255, .26);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .08);
+  color: #fbf4ea;
+  font-family: Georgia, serif;
+  font-size: 27rpx;
+  letter-spacing: 2rpx;
+  box-sizing: border-box;
+}
+.guest-note {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 28rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, .14);
+  color: rgba(251, 244, 234, .56);
+  font-size: 19rpx;
+  line-height: 1.5;
+}
 
-.account-stats {
+.profile-stats {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1rpx minmax(0, 1fr);
   align-items: center;
   gap: 24rpx;
   margin-top: 28rpx;
-  padding-top: 26rpx;
-  border-top: 1rpx solid #e4d7c7;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, .14);
 }
 .stat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16rpx; min-width: 0; }
-.stat-value { min-width: 62rpx; color: #663124; font-family: Georgia, serif; font-size: 44rpx; line-height: 1; text-align: center; }
+.stat-value {
+  min-width: 62rpx;
+  color: #fbf4ea;
+  font-family: Georgia, serif;
+  font-size: 44rpx;
+  line-height: 1;
+  text-align: center;
+}
 .stat-copy { display: grid; gap: 4rpx; min-width: 0; }
-.stat-label { color: #3f352e; font-size: 24rpx; line-height: 1.4; }
-.stat-note { color: #8b7c6e; font-size: 20rpx; line-height: 1.4; }
-.stat-rule { width: 1rpx; height: 56rpx; background: #e4d7c7; }
+.stat-label { color: rgba(251, 244, 234, .88); font-size: 23rpx; line-height: 1.4; }
+.stat-note { color: rgba(251, 244, 234, .56); font-size: 19rpx; line-height: 1.4; }
+.stat-rule { width: 1rpx; height: 52rpx; background: rgba(255, 255, 255, .14); }
 
-.inline-alert { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 16rpx; padding: 16rpx 20rpx; border-radius: 14rpx; background: #f6e9e2; }
-.inline-alert-copy { flex: 1; min-width: 0; color: #a53f32; font-size: 22rpx; line-height: 1.6; }
-.inline-alert-action { flex: 0 0 auto; color: #663124; font-size: 22rpx; }
+.profile-primary {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  min-height: 84rpx;
+  align-items: center;
+  justify-content: center;
+  margin-top: 22rpx;
+  padding: 0 24rpx;
+  border-radius: 18rpx;
+  background: #f4e7d8;
+  color: #663124;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 1rpx;
+  box-sizing: border-box;
+}
+.profile-primary[disabled] { opacity: .5; }
 
-/* 模块标题 */
-.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 20rpx; }
-.section-heading { display: flex; align-items: baseline; gap: 14rpx; min-width: 0; }
-.section-number { flex: 0 0 auto; color: #a5795f; font-family: Georgia, serif; font-size: 22rpx; line-height: 1.6; letter-spacing: 1rpx; }
-.section-title { display: block; min-width: 0; overflow: hidden; margin: 0; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 600; line-height: 1.5; white-space: nowrap; text-overflow: ellipsis; }
-.section-action { display: flex; flex: 0 0 auto; align-items: baseline; gap: 8rpx; min-height: 44rpx; color: #663124; font-size: 22rpx; line-height: 1.5; }
-.section-arrow { font-family: Georgia, serif; font-size: 26rpx; line-height: 1; }
+/* 账户错误 */
+.inline-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 16rpx;
+  padding: 18rpx 22rpx;
+  border: 1rpx solid rgba(165, 63, 50, .12);
+  border-radius: 18rpx;
+  background: #f7e9e2;
+}
+.inline-alert-copy { flex: 1; min-width: 0; color: #8f3d2e; font-size: 21rpx; line-height: 1.6; }
+.inline-alert-action {
+  flex: 0 0 auto;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: #8f3d2e;
+  color: #fffaf4;
+  font-size: 20rpx;
+  line-height: 1.5;
+}
 
-/* 模块内容 */
-.section-body { margin-top: 18rpx; }
-.section-empty { margin-top: 20rpx; }
-.section-empty-title { display: block; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 26rpx; font-weight: 600; line-height: 1.6; }
-.section-empty-copy { display: block; margin-top: 6rpx; color: #7d6f63; font-size: 23rpx; line-height: 1.75; }
-.section-link { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 72rpx; margin-top: 12rpx; color: #663124; font-size: 26rpx; font-weight: 500; line-height: 1.5; }
-.section-link-compact { margin-top: 4rpx; font-size: 24rpx; }
-.section-link-copy { display: inline-flex; min-width: 0; }
-.link-hover { opacity: .6; }
-.section-state { margin-top: 18rpx; color: #7d6f63; font-size: 23rpx; line-height: 1.7; }
-.section-state-error { color: #a53f32; }
+/* 模块卡 */
+.section-card,
+.settings-card {
+  margin-top: 22rpx;
+  padding: 30rpx;
+  border: 1rpx solid rgba(92, 73, 60, .12);
+  border-radius: 28rpx;
+  background: #fbf7ef;
+  box-shadow: 0 10rpx 30rpx rgba(74, 48, 34, .05);
+  box-sizing: border-box;
+}
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14rpx;
+}
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  min-width: 0;
+}
+.section-heading-copy { display: grid; gap: 4rpx; min-width: 0; }
+.section-number {
+  display: flex;
+  width: 48rpx;
+  height: 48rpx;
+  flex: 0 0 48rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid rgba(102, 49, 36, .22);
+  border-radius: 50%;
+  background: #f6eee3;
+  color: #8b5a45;
+  font-family: Georgia, serif;
+  font-size: 19rpx;
+  line-height: 1;
+  box-sizing: border-box;
+}
+.section-kicker {
+  color: #8f7b6b;
+  font-size: 18rpx;
+  letter-spacing: 3rpx;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+.section-title {
+  display: block;
+  overflow: hidden;
+  color: #3d332c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 34rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.section-action {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(102, 49, 36, .06);
+  color: #663124;
+  font-size: 20rpx;
+  line-height: 1.3;
+}
+.section-arrow { color: #8b5a45; font-family: Georgia, serif; font-size: 22rpx; line-height: 1; }
+.section-count { display: block; color: #8b6b58; font-family: "MYRIAD Song", Georgia, "Songti SC", serif; font-size: 21rpx; line-height: 1.5; }
+.section-count-tail { flex: 0 0 auto; align-self: center; }
+.section-note { max-width: 58%; color: #8f7d6e; font-size: 18rpx; line-height: 1.5; text-align: right; }
+
+.section-body { margin-top: 22rpx; }
 .section-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; }
-.section-count { color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 21rpx; line-height: 1.6; letter-spacing: .5rpx; }
-.section-count-tail { flex: 0 0 auto; }
-.section-note { color: #8b7c6e; font-size: 20rpx; line-height: 1.6; }
-.section-footnote { display: block; margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid #e9ddcd; color: #8b7c6e; font-size: 20rpx; line-height: 1.7; }
+.section-state,
+.section-state-error {
+  margin-top: 20rpx;
+  color: #7c6e62;
+  font-size: 22rpx;
+  line-height: 1.7;
+}
+.section-state-error { color: #9b4033; }
+.section-state-error .section-link { margin-top: 8rpx; }
+
+.section-empty {
+  margin-top: 22rpx;
+  padding: 26rpx;
+  border-radius: 20rpx;
+  background: #f6eee3;
+}
+.section-empty-title {
+  display: block;
+  color: #3d332c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.section-empty-copy {
+  display: block;
+  margin-top: 8rpx;
+  color: #7c6e62;
+  font-size: 22rpx;
+  line-height: 1.75;
+}
+.section-link {
+  display: flex;
+  min-height: 72rpx;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(92, 73, 60, .12);
+  color: #663124;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+.section-empty .section-link { min-height: 60rpx; margin-top: 6rpx; padding-top: 10rpx; border-top: 0; }
+.section-link-compact { min-height: 52rpx; padding-top: 6rpx; border-top: 0; }
+.section-link-copy { color: #663124; font-size: 24rpx; line-height: 1.5; }
+.section-footnote {
+  display: block;
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(92, 73, 60, .10);
+  color: #8f7d6e;
+  font-size: 19rpx;
+  line-height: 1.7;
+}
 
 /* 观察记录 */
-.record-row { margin-top: 20rpx; }
-.record-row + .record-row { padding-top: 20rpx; border-top: 1rpx solid #e9ddcd; }
-.record-row:focus-visible { outline: 2rpx solid #663124; outline-offset: 4rpx; }
-.record-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; }
-.record-method { color: #8b6b58; font-size: 21rpx; line-height: 1.5; letter-spacing: 1rpx; }
-.record-date { color: #8b7c6e; font-size: 21rpx; line-height: 1.5; }
-.record-preview { margin-top: 8rpx; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
-.record-foot { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 10rpx; color: #8b7c6e; font-size: 21rpx; line-height: 1.5; }
+.record-list { display: grid; gap: 14rpx; margin-top: 22rpx; }
+.record-row {
+  position: relative;
+  padding: 22rpx 22rpx 20rpx;
+  overflow: hidden;
+  border: 1rpx solid rgba(92, 73, 60, .10);
+  border-radius: 20rpx;
+  background: #fffdf8;
+}
+.record-row::before {
+  content: "";
+  position: absolute;
+  top: 22rpx;
+  bottom: 22rpx;
+  left: 0;
+  width: 4rpx;
+  border-radius: 0 4rpx 4rpx 0;
+  background: #c9a58c;
+}
+.record-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; padding-left: 6rpx; }
+.record-method { color: #8b5a45; font-size: 19rpx; letter-spacing: 1rpx; line-height: 1.5; }
+.record-date { color: #a08c7b; font-size: 19rpx; line-height: 1.5; }
+.record-preview {
+  margin-top: 10rpx;
+  padding-left: 6rpx;
+  color: #3d332c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 29rpx;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.record-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 12rpx;
+  padding-left: 6rpx;
+  color: #9c8b7d;
+  font-size: 19rpx;
+  line-height: 1.5;
+}
+.record-status { padding: 2rpx 12rpx; border-radius: 999rpx; background: #f1e8dc; color: #8b6b58; }
+.record-status.is-draft { background: #f6e9d8; color: #8a5a2b; }
 
 /* 已保存经历 */
-.contribution { margin-top: 20rpx; padding: 22rpx; border: 1rpx solid #e6d9c9; border-radius: 16rpx; background: #fdfaf4; }
-.contribution-meta { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.contribution-issue { color: #8b6b58; font-size: 21rpx; line-height: 1.5; }
-.status-pill { flex: 0 0 auto; padding: 2rpx 14rpx; border-radius: 999rpx; font-size: 19rpx; line-height: 1.7; }
-.status-pending { background: #f2e2d0; color: #8a5a2b; }
-.status-handled { background: #e5ecdd; color: #4c6b3a; }
-.status-dismissed { background: #ebe9e3; color: #7a736b; }
-.contribution-body { margin-top: 10rpx; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 25rpx; line-height: 1.7; overflow-wrap: anywhere; }
-.contribution-actions { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 12rpx; }
-.contribution-note { color: #8b7c6e; font-size: 20rpx; line-height: 1.5; }
-.contribution-continue { display: flex; align-items: center; gap: 8rpx; min-height: 52rpx; color: #663124; font-size: 22rpx; }
-.contribution-continue text { font-family: Georgia, serif; font-size: 26rpx; }
-.contribution-delete { display: flex; min-height: 52rpx; align-items: center; padding-left: 20rpx; color: #8b7c6e; font-size: 21rpx; }
-.legacy-group { margin-top: 28rpx; padding-top: 18rpx; border-top: 1rpx solid #e9ddcd; }
-.legacy-label { color: #a5795f; font-size: 20rpx; line-height: 1.6; letter-spacing: 1rpx; }
+.contribution {
+  margin-top: 16rpx;
+  padding: 22rpx;
+  border: 1rpx solid rgba(92, 73, 60, .10);
+  border-radius: 20rpx;
+  background: #fffdf8;
+}
+.contribution-meta { display: flex; align-items: center; justify-content: space-between; gap: 14rpx; }
+.contribution-issue { color: #8b5a45; font-family: Georgia, "Songti SC", serif; font-size: 20rpx; line-height: 1.5; }
+.status-pill {
+  flex: 0 0 auto;
+  padding: 3rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  line-height: 1.5;
+}
+.status-pending { background: #f7ead6; color: #8a5a2b; }
+.status-handled { background: #eaf2ec; color: #3f6b4f; }
+.status-dismissed { background: #f1e8dc; color: #8b6b58; }
+.contribution-body {
+  margin-top: 12rpx;
+  color: #4a3d34;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 24rpx;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+.contribution-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 14rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid rgba(92, 73, 60, .08);
+}
+.contribution-note { color: #9c8b7d; font-size: 18rpx; line-height: 1.5; }
+.contribution-delete,
+.contribution-continue { color: #663124; font-size: 19rpx; line-height: 1.5; }
+.contribution-delete { opacity: .72; }
+.contribution-continue text { margin-left: 6rpx; }
+.legacy-group { margin-top: 26rpx; padding-top: 18rpx; border-top: 1rpx solid rgba(92, 73, 60, .10); }
+.legacy-label { color: #a08c7b; font-size: 18rpx; letter-spacing: 1rpx; line-height: 1.6; }
 
-/* 设置与页脚 */
-.settings-card { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
-.settings-action { display: flex; flex: 0 0 auto; align-items: center; gap: 10rpx; color: #663124; }
-.settings-value { color: #663124; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.5; }
-.mine-footer { margin-top: 64rpx; text-align: center; }
-.mine-footer-mark { color: #a5795f; font-family: Georgia, serif; font-size: 20rpx; line-height: 1.6; letter-spacing: 4rpx; }
-.mine-footer-copy { margin-top: 6rpx; color: #8b7c6e; font-size: 20rpx; line-height: 1.6; letter-spacing: 2rpx; }
+/* 设置 */
+.settings-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+.settings-main { display: flex; align-items: center; gap: 16rpx; min-width: 0; }
+.settings-copy { display: grid; gap: 4rpx; min-width: 0; }
+.settings-title {
+  display: block;
+  color: #3d332c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.settings-value { display: block; color: #8b6b58; font-size: 21rpx; line-height: 1.5; }
+.settings-arrow { flex: 0 0 auto; color: #663124; font-family: Georgia, serif; font-size: 32rpx; line-height: 1; }
 
-.mine-page [role="button"]:active { opacity: .7; }
+/* 页脚 */
+.mine-footer { margin-top: 56rpx; padding-bottom: 18rpx; text-align: center; }
+.mine-footer-mark { color: #a08c7b; font-family: Georgia, serif; font-size: 18rpx; line-height: 1.6; letter-spacing: 6rpx; }
+.mine-footer-copy { margin-top: 6rpx; color: #b0a092; font-size: 19rpx; line-height: 1.6; letter-spacing: 3rpx; }
+
+.mine-page [role="button"]:active { opacity: .72; }

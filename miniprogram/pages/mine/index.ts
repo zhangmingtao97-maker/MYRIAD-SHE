@@ -55,6 +55,38 @@ function singleLineRichText(value: string) {
     .replace(/<\/?(?:p|div)\b[^>]*>/gi, '');
 }
 
+function normalizeRichTextSizing(value: string) {
+  return value.replace(/\sstyle=(["'])(.*?)\1/gi, (_match, quote: string, declarations: string) => {
+    const kept = declarations
+      .split(';')
+      .map((item) => item.trim())
+      .filter((item) => item && !/^(?:font-size|line-height)\s*:/i.test(item));
+    return kept.length ? ` style=${quote}${kept.join('; ')}${quote}` : '';
+  });
+}
+
+function normalizeMinePageContent(content: MinePageContent): MinePageContent {
+  return {
+    ...content,
+    title: normalizeRichTextSizing(content.title),
+    intro: normalizeRichTextSizing(content.intro),
+    observationHeading: singleLineRichText(normalizeRichTextSizing(content.observationHeading)),
+    emptyTitle: normalizeRichTextSizing(content.emptyTitle),
+    emptyIntro: normalizeRichTextSizing(content.emptyIntro),
+    startButton: normalizeRichTextSizing(content.startButton),
+    discussionHeading: normalizeRichTextSizing(content.discussionHeading),
+    discussionCount: normalizeRichTextSizing(content.discussionCount),
+    discussionEmptyAction: normalizeRichTextSizing(content.discussionEmptyAction),
+    discussionIntro: normalizeRichTextSizing(content.discussionIntro),
+    practiceHeading: normalizeRichTextSizing(content.practiceHeading),
+    practiceCount: normalizeRichTextSizing(content.practiceCount),
+    practiceEmptyTitle: normalizeRichTextSizing(content.practiceEmptyTitle),
+    practiceIntro: normalizeRichTextSizing(content.practiceIntro),
+    privacyHeading: normalizeRichTextSizing(content.privacyHeading),
+    privacyAction: normalizeRichTextSizing(content.privacyAction),
+  };
+}
+
 function observationDateLabel(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '观察记录' : `${date.getMonth() + 1}月${date.getDate()}日`;
@@ -254,7 +286,8 @@ Page({
     try {
       const content = await request<MinePageContent>('/content/mine', { header: { 'Cache-Control': 'no-cache' } });
       if (generation !== this.minePageRequestGeneration || !isMinePageContent(content)) return;
-      this.setData({ minePage: { ...content, observationHeading: singleLineRichText(content.observationHeading), discussionCount: `${this.data.cloudContributionCount} 条已保存经历` }, minePageAccessibility: { startButton: richTextAccessibilityLabel(content.startButton), privacyAction: richTextAccessibilityLabel(content.privacyAction) } });
+      const minePage = normalizeMinePageContent(content);
+      this.setData({ minePage: { ...minePage, discussionCount: `${this.data.cloudContributionCount} 条已保存经历` }, minePageAccessibility: { startButton: richTextAccessibilityLabel(minePage.startButton), privacyAction: richTextAccessibilityLabel(minePage.privacyAction) } });
     } catch {
       if (generation !== this.minePageRequestGeneration) return;
       // Keep the readable built-in copy when public content is temporarily unavailable.
