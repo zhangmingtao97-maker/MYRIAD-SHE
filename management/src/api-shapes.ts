@@ -97,6 +97,13 @@ export interface ManagedIssue {
   publishedLabel: string | null;
   publishedMonth: string | null;
   publishedCode: string | null;
+  publishedMicroVoiceTitle: string | null;
+  publishedMicroVoiceDuration: string | null;
+  publishedHomeMetaRichText: string | null;
+  publishedHomeMetaFontSize: number | null;
+  publishedHomeMetaColor: string | null;
+  publishedHomeCoverCaptionLeft: string | null;
+  publishedHomeCoverCaptionRight: string | null;
 }
 
 export interface IssueLifecycle {
@@ -295,6 +302,13 @@ export function isManagedIssue(value: unknown): value is ManagedIssue {
     && (value.publishedLabel === null || isBoundedText(value.publishedLabel, 80, 2))
     && (value.publishedMonth === null || isBoundedText(value.publishedMonth, 40, 2))
     && (value.publishedCode === null || isBoundedText(value.publishedCode, 64, 2))
+    && (value.publishedMicroVoiceTitle === null || isBoundedText(value.publishedMicroVoiceTitle, 120))
+    && (value.publishedMicroVoiceDuration === null || isBoundedText(value.publishedMicroVoiceDuration, 20))
+    && (value.publishedHomeMetaRichText === null || isBoundedText(value.publishedHomeMetaRichText, 2000))
+    && (value.publishedHomeMetaFontSize === null || (isPositiveInteger(value.publishedHomeMetaFontSize) && value.publishedHomeMetaFontSize >= 12 && value.publishedHomeMetaFontSize <= 48))
+    && (value.publishedHomeMetaColor === null || (typeof value.publishedHomeMetaColor === 'string' && /^#[0-9a-f]{6}$/i.test(value.publishedHomeMetaColor)))
+    && (value.publishedHomeCoverCaptionLeft === null || (isBoundedText(value.publishedHomeCoverCaptionLeft, 80) && !/[\r\n]/.test(value.publishedHomeCoverCaptionLeft)))
+    && (value.publishedHomeCoverCaptionRight === null || (isBoundedText(value.publishedHomeCoverCaptionRight, 80) && !/[\r\n]/.test(value.publishedHomeCoverCaptionRight)))
     && isRecord(value.draftContent) && Array.isArray(value.draftContent.sections) && value.draftContent.sections.length <= 40
     && value.draftContent.sections.every(isManagedIssueModule) && isDiscussionContent(value.draftContent.discussion);
 }
@@ -400,15 +414,15 @@ export function isIssueDashboardConsistent(summary: unknown, issuesValue: unknow
     && (publicIssue?.month ?? null) === (publishedIssue?.publishedMonth ?? null)
     && (publicIssue?.theme ?? null) === (publishedIssue?.publishedTheme ?? null)
     && (publicIssue?.question ?? null) === (publishedIssue?.question ?? null)
-    && (publicIssue?.microVoiceTitle ?? null) === (publishedIssue?.microVoiceTitle ?? null)
-    && (publicIssue?.microVoiceDuration ?? null) === (publishedIssue?.microVoiceDuration ?? null)
-    && (publicIssue?.homeMetaRichText ?? null) === (publishedIssue?.homeMetaRichText ?? null)
-    && (publicIssue?.homeMetaFontSize ?? null) === (publishedIssue?.homeMetaFontSize ?? null)
-    && (publicIssue?.homeMetaColor ?? null) === (publishedIssue?.homeMetaColor ?? null)
-    && (publicIssue?.homeCoverCaptionLeft ?? null) === (publishedIssue?.homeCoverCaptionLeft ?? null)
-    && (publicIssue?.homeCoverCaptionRight ?? null) === (publishedIssue?.homeCoverCaptionRight ?? null)
-    && homeValue.microVoice.title === (publishedIssue?.microVoiceTitle ?? '')
-    && homeValue.microVoice.duration === (publishedIssue?.microVoiceDuration ?? '')
+    && (publicIssue?.microVoiceTitle ?? null) === (publishedIssue?.publishedMicroVoiceTitle ?? null)
+    && (publicIssue?.microVoiceDuration ?? null) === (publishedIssue?.publishedMicroVoiceDuration ?? null)
+    && (publicIssue?.homeMetaRichText ?? '') === (publishedIssue?.publishedHomeMetaRichText ?? '')
+    && (publicIssue?.homeMetaFontSize ?? 16) === (publishedIssue?.publishedHomeMetaFontSize ?? 16)
+    && (publicIssue?.homeMetaColor ?? '') === (publishedIssue?.publishedHomeMetaColor ?? '')
+    && (publicIssue?.homeCoverCaptionLeft ?? '') === (publishedIssue?.publishedHomeCoverCaptionLeft ?? '')
+    && (publicIssue?.homeCoverCaptionRight ?? '') === (publishedIssue?.publishedHomeCoverCaptionRight ?? '')
+    && homeValue.microVoice.title === (publishedIssue?.publishedMicroVoiceTitle ?? '')
+    && homeValue.microVoice.duration === (publishedIssue?.publishedMicroVoiceDuration ?? '')
     // Media URLs are signed independently and may be temporarily unavailable
     // even when a published snapshot references an object. That must not make
     // otherwise-consistent issue metadata fail the whole dashboard refresh.

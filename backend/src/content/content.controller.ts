@@ -1414,7 +1414,15 @@ export class ContentController {
       issue.home_cover_caption_right as "homeCoverCaptionRight", issue.draft_content as "draftContent", issue.published_version as "publishedVersion",
       publication.snapshot->'issue'->>'label' as "publishedLabel", publication.snapshot->'issue'->>'month' as "publishedMonth",
       publication.snapshot->'issue'->>'code' as "publishedCode", publication.snapshot->'issue'->>'theme' as "publishedTheme",
-      publication.snapshot->'issue'->>'question' as "publishedQuestion", issue.updated_at as "updatedAt"
+      publication.snapshot->'issue'->>'question' as "publishedQuestion",
+      publication.snapshot->'issue'->>'microVoiceTitle' as "publishedMicroVoiceTitle",
+      publication.snapshot->'issue'->>'microVoiceDuration' as "publishedMicroVoiceDuration",
+      publication.snapshot->'issue'->>'homeMetaRichText' as "publishedHomeMetaRichText",
+      (publication.snapshot->'issue'->>'homeMetaFontSize')::int as "publishedHomeMetaFontSize",
+      publication.snapshot->'issue'->>'homeMetaColor' as "publishedHomeMetaColor",
+      publication.snapshot->'issue'->>'homeCoverCaptionLeft' as "publishedHomeCoverCaptionLeft",
+      publication.snapshot->'issue'->>'homeCoverCaptionRight' as "publishedHomeCoverCaptionRight",
+      issue.updated_at as "updatedAt"
       from content_issues issue left join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version
       order by issue.updated_at desc`);
     return result.rows.map((issue) => ({ ...issue, draftContent: { ...issue.draftContent, discussion: issue.draftContent?.discussion ? validateDiscussionContent(issue.draftContent.discussion) : defaultDiscussionContent() } }));
