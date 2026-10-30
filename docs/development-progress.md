@@ -1,5 +1,13 @@
 # MYRIAD SHE 开发进度
 
+## 2026-10-30 修复个人资料页双重状态栏
+
+- 现象：`pages/profile/index` 顶部同时出现微信原生导航栏和页面自绘的「个人资料」顶栏。
+- 原因：页面 WXML 已有 `.profile-topbar` 并自行处理 `statusBarHeight`，但 `pages/profile/index.json` 未关闭原生导航栏。
+- 修复：在 `profile/index.json` 增加 `"navigationStyle": "custom"`，只保留自绘顶栏。同步排查所有带自绘顶栏的页面，发现 `about`、`privacy`、`privacy-policy` 也缺少该配置，已一并补齐（`about`、`privacy-policy` 新增页面级 JSON）。
+- 验证：微信开发者工具编译通过；自动化进入个人资料页，`.profile-topbar` 位于 `top: 0`、高度 95px（47px 状态栏 + 48px 顶栏），页面只有一个顶栏；截图见 `docs/screenshots/profile-single-topbar.png`。
+- 仅修改本地小程序页面配置，未发布体验版或正式版。
+
 ## 2026-10-30 小程序「我的」页视觉重构
 
 - 将「我的」从平铺的米色卡片改为「深陶土账户卡 + 米白档案卡」结构：自定义顶栏增加 `MINE / 我的` 标识；账户卡集中头像/昵称/个人资料入口与观察/经历双指标；下方三条档案模块用 01–04 编号、英文小标与衬线标题建立层级，隐私入口独立为横向设置卡。
