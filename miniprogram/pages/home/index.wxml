@@ -34,14 +34,15 @@
         <view wx:elif="{{item.type === 'quote'}}" class="module-quote">“{{item.text}}”<view class="section-copy">{{item.attribution}}</view></view>
         <view wx:elif="{{item.type === 'audio'}}" class="module-audio">
           <view class="audio-kicker"><text class="audio-number">02</text><text class="audio-label">{{item.displayTitle || item.title || '微声音'}}</text><text wx:if="{{activeAudioId != item.primaryTrack.playbackId}}" class="audio-duration">{{item.primaryTrack.duration || item.duration}}</text></view>
+          <view class="audio-feature">
+            <view class="audio-play" role="button" tabindex="0" aria-label="{{playingAudioId === item.primaryTrack.playbackId ? '暂停' : '播放'}}{{item.primaryTrack.title}}" data-module-id="{{item.id}}" data-track-id="{{item.primaryTrack.id}}" bindtap="toggleAudio">{{playingAudioId === item.primaryTrack.playbackId ? 'Ⅱ' : '▶'}}</view>
+            <view class="audio-copy"><view wx:if="{{item.primaryTrack.quote}}" class="audio-quote">{{item.primaryTrack.quote}}</view><view wx:if="{{item.primaryTrack.subtitle}}" class="audio-subtitle">{{item.primaryTrack.subtitle}}</view></view>
+          </view>
           <view wx:if="{{activeAudioId === item.primaryTrack.playbackId}}" class="audio-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{audioProgressPercent}}" aria-valuetext="{{audioCurrentTimeLabel}} / {{audioDurationLabel}}">
             <view class="audio-progress-track"><view class="audio-progress-fill" style="width: {{audioProgressPercent}}%"></view></view>
             <view class="audio-progress-times"><text>{{audioCurrentTimeLabel}}</text><text>{{audioDurationLabel}}</text></view>
           </view>
-          <view class="{{activeAudioId === item.primaryTrack.playbackId ? 'audio-feature audio-feature-with-progress' : 'audio-feature'}}">
-            <view class="audio-play" role="button" tabindex="0" aria-label="{{playingAudioId === item.primaryTrack.playbackId ? '暂停' : '播放'}}{{item.primaryTrack.title}}" data-module-id="{{item.id}}" data-track-id="{{item.primaryTrack.id}}" bindtap="toggleAudio">{{playingAudioId === item.primaryTrack.playbackId ? 'Ⅱ' : '▶'}}</view>
-            <view class="audio-copy"><view wx:if="{{item.primaryTrack.quote}}" class="audio-quote">{{item.primaryTrack.quote}}</view><view wx:if="{{item.primaryTrack.subtitle}}" class="audio-subtitle">{{item.primaryTrack.subtitle}}</view><view wx:if="{{item.primaryTrack.transcript}}" class="audio-transcript">{{item.primaryTrack.transcript}}</view></view>
-          </view>
+          <view wx:if="{{item.primaryTrack.transcript}}" class="audio-transcript">{{item.primaryTrack.transcript}}</view>
           <view wx:if="{{item.tracks.length > 1}}" class="audio-more-control">
             <view class="audio-more-toggle" role="button" tabindex="0" aria-expanded="{{expandedAudio[item.id] ? 'true' : 'false'}}" aria-label="{{expandedAudio[item.id] ? '收起更多声音' : item.moreLabel}}" data-module-id="{{item.id}}" bindtap="toggleAudioMore">
               <text>{{expandedAudio[item.id] ? '收起更多声音' : item.moreLabel}}</text>
