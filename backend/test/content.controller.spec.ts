@@ -1109,6 +1109,33 @@ test('audio modules support up to three validated tracks and keep first-track le
   assert.throws(() => validate([{ id: 'audio', type: 'audio', order: 0, enabled: true, tracks: [{ ...tracks[0], audioObjectKey: 'content/image/not-audio.webp' }] }]), BadRequestException);
 });
 
+test('publishing audio keeps any uploaded subset and drops unfinished drafts', () => {
+  const { controller } = issueEditHarness(1);
+  const normalize = (sections: unknown[]) => (controller as unknown as { normalizePublishAudioTracks: (value: unknown[]) => void }).normalizePublishAudioTracks(sections);
+  const audio = {
+    id: 'audio', type: 'audio', order: 0, enabled: true, title: '草稿标题', duration: '00:01',
+    audioObjectKey: 'content/audio/voice-01.mp3', quote: '草稿引言', subtitle: '', transcript: '',
+    tracks: [
+      { id: 'voice-01', title: '草稿一', duration: '00:01', audioObjectKey: '', quote: '待补', subtitle: '', transcript: '' },
+      { id: 'voice-02', title: '微声音 02', duration: '00:28', audioObjectKey: 'content/audio/voice-02.mp3', quote: '第二段引言', subtitle: '说明', transcript: '文字稿' },
+      { id: 'voice-03', title: '草稿三', duration: '00:01', audioObjectKey: '   ', quote: '待补', subtitle: '', transcript: '' },
+    ],
+  };
+  normalize([audio]);
+  assert.equal(audio.tracks.length, 1);
+  assert.equal(audio.tracks[0].audioObjectKey, 'content/audio/voice-02.mp3');
+  assert.equal(audio.audioObjectKey, 'content/audio/voice-02.mp3');
+  assert.equal(audio.title, '微声音 02');
+
+  const single = {
+    id: 'audio', type: 'audio', order: 0, enabled: true, title: '微声音 01', duration: '00:28', audioObjectKey: 'content/audio/voice-01.mp3',
+    quote: '', subtitle: '', transcript: '',
+    tracks: [{ id: 'voice-01', title: '微声音 01', duration: '00:28', audioObjectKey: 'content/audio/voice-01.mp3', quote: '', subtitle: '', transcript: '' }],
+  };
+  normalize([single]);
+  assert.equal(single.tracks.length, 1);
+});
+
 test('home signs every published audio track and strips storage object keys', async () => {
   const cached = {
     issue: null,

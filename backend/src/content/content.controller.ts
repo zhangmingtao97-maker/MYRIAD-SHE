@@ -1510,6 +1510,23 @@ export class ContentController {
     }
   }
 
+  /** 草稿可以保留未上传音频的条目；发布时只保留有音频的条目，1–3 段均可。 */
+  private normalizePublishAudioTracks(sections: IssueModule[]) {
+    for (const module of sections) {
+      if (module.type !== 'audio' || !Array.isArray(module.tracks) || module.tracks.length === 0) continue;
+      const playableTracks = module.tracks.filter((track) => typeof track.audioObjectKey === 'string' && track.audioObjectKey.trim().length > 0);
+      if (playableTracks.length === 0) continue;
+      module.tracks = playableTracks;
+      const first = playableTracks[0];
+      module.audioObjectKey = first.audioObjectKey;
+      module.title = first.title;
+      module.duration = first.duration;
+      module.quote = first.quote;
+      module.subtitle = first.subtitle;
+      module.transcript = first.transcript;
+    }
+  }
+
   @Post('issues/:id/publish')
   @UseGuards(AdminAuthGuard)
   @Header('Cache-Control', 'no-store')
@@ -1529,6 +1546,7 @@ export class ContentController {
         if (!issue) throw new NotFoundException('期刊不存在');
         if (issue.editVersion !== body.editVersion) throw new ConflictException({ code: 'content_issue_changed', message: '草稿已被其他管理员修改，请载入最新版本后核对' });
         const draft = this.validateIssueDraft(issue.draftContent);
+        this.normalizePublishAudioTracks(draft.sections);
         const enabled = draft.sections.filter((item) => item.enabled);
         for (const type of ['issueMeta', 'question', 'observationAction', 'sharedPracticeAction'] as const) {
           if (!enabled.some((item) => item.type === type)) throw new BadRequestException(`发布内容缺少必需栏目：${type}`);
@@ -1547,7 +1565,7 @@ export class ContentController {
           if (module.type === 'story' && module.imageObjectKey && (!module.altText || typeof module.altText !== 'string')) throw new BadRequestException('人物图文栏目上传图片后必须填写替代文本');
       if (module.type === 'audio') {
         const tracks = module.tracks?.length ? module.tracks : [module as IssueModule & Partial<IssueAudioTrack>];
-        if (!tracks.length || tracks.some((track) => typeof track.audioObjectKey !== 'string' || !track.audioObjectKey)) throw new BadRequestException('启用的每段微声音都必须上传音频');
+        if (!tracks.some((track) => typeof track.audioObjectKey === 'string' && track.audioObjectKey.trim().length > 0)) throw new BadRequestException('启用的微声音至少需要上传 1 段音频');
       }
         }
         for (const module of draft.sections) {

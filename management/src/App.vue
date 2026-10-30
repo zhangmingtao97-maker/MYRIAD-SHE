@@ -900,6 +900,32 @@ const audioLibraryLoading = ref(false);
 const audioLibraryPreviewLoading = ref('');
 const audioLibraryPreviewUrls = ref<Record<string, string>>({});
 const audioLibraryError = ref('');
+const adminErrorDialog = ref('');
+const adminErrorButton = ref<HTMLButtonElement | null>(null);
+function presentAdminError(message: string) {
+  const text = String(message || '').trim();
+  adminErrorDialog.value = text || '操作未完成，请稍后重试。';
+}
+function closeAdminError() {
+  adminErrorDialog.value = '';
+}
+const adminErrorSources = [
+  error, privacyPageError, dailyObjectsError, practiceContentError, minePageContentError,
+  practiceCopyError, selectedObservationError, observationMoreError, discussionContributionMoreError,
+  discussionContributionError, selectedDiscussionContributionError, privacyMoreError, privacyActionError,
+  auditMoreError, memberError, lifeCardsError, lifeCardViewsError, settingsError, employeeError,
+  passwordRotationError, passwordError, mediaPreviewError, orphanMediaError, audioLibraryError,
+];
+for (const source of adminErrorSources) {
+  watch(source, (message) => {
+    if (!message) return;
+    presentAdminError(message);
+    source.value = '';
+  }, { flush: 'sync' });
+}
+watch(adminErrorDialog, (message) => {
+  if (message) void nextTick(() => adminErrorButton.value?.focus());
+});
 function readPendingCleanupKeys(): string[] {
   try {
     const value: unknown = JSON.parse(sessionStorage.getItem('myriad_she_pending_media_cleanup') || '[]');
@@ -953,7 +979,7 @@ const journalSectionDescription = computed(() => {
   switch (activeContentSection.value) {
     case 'journal-home': return '刊期信息、封面主题、首页栏目顺序与整期手机预览。';
     case 'journal-story': return '人物纪实摘要与人物故事详情页；保存后同时更新首页对应栏目。';
-    case 'journal-audio': return '本期最多三段微声音；没有上传音频的栏目不会在首页显示播放器。';
+    case 'journal-audio': return '本期可放 1–3 段微声音；至少 1 段有音频即可，未上传音频的条目发布时会忽略。';
     case 'journal-discussion': return '讨论页固定文案、示例经历与写作页预览，随本期整体发布。';
     case 'journal-archive': return '首页「策展档案」入口文案，以及已发布/已归档期次列表。';
     case 'journal-list': return '期号创建、线上状态、整期发布与发布记录。';
@@ -3545,7 +3571,6 @@ onBeforeUnmount(() => {
         <label>密码<input v-model="password" type="password" autocomplete="current-password" required /></label>
         <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录后台' }}</button>
       </form>
-      <p v-if="error" class="error">{{ error }}</p>
     </section>
 
     <template v-else>
@@ -3647,7 +3672,6 @@ onBeforeUnmount(() => {
         </div>
 </Teleport>
           <button v-if="showBackToTop" type="button" class="to-top" aria-label="回到顶部" title="回到顶部" @click="scrollToTop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
-          <p v-if="error" class="error" role="alert">{{ error }}</p>
           <p v-if="dashboardLoading" class="loading-note" role="status" aria-live="polite">正在同步云端数据…</p>
       <section v-if="activeSection === 'overview'" id="overview-panel" class="grid">
         <article class="panel health-panel"><p class="eyebrow">API STATUS</p><strong>{{ health?.status === 'ok' ? '运行正常' : health?.status === 'degraded' ? '依赖异常' : '检查中' }}</strong><div class="health-dependencies"><span :class="health?.dependencies?.database === 'ok' ? 'healthy' : 'unhealthy'">数据库 {{ health?.dependencies?.database === 'ok' ? '正常' : health?.dependencies?.database === 'error' ? '异常' : '待检查' }}</span><span :class="health?.dependencies?.objectStorage === 'ok' ? 'healthy' : 'unhealthy'">对象存储 {{ health?.dependencies?.objectStorage === 'ok' ? '正常' : health?.dependencies?.objectStorage === 'error' ? '异常' : '待检查' }}</span><span :class="health?.dependencies?.redis === 'ok' ? 'healthy' : 'unhealthy'">缓存 {{ health?.dependencies?.redis === 'ok' ? '正常' : health?.dependencies?.redis === 'error' ? '异常' : '待检查' }}</span></div><small>{{ health?.timestamp }}</small></article>
@@ -3834,7 +3858,7 @@ onBeforeUnmount(() => {
               <div v-if="module.type === 'coverStory'" class="form-grid cover-story-typography"><label>主题标题字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.titleFontSize || 72)" @input="setIssueModuleText(module, 'titleFontSize', $event)" /></label><label>主题标题颜色<input type="color" :value="String(module.titleColor || '#59483d')" @input="setIssueModuleText(module, 'titleColor', $event)" /></label><label>主题说明字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.bodyFontSize || 30)" @input="setIssueModuleText(module, 'bodyFontSize', $event)" /></label><label>主题说明颜色<input type="color" :value="String(module.bodyColor || '#40362f')" @input="setIssueModuleText(module, 'bodyColor', $event)" /></label></div>
               <div v-if="module.type === 'coverStory'" class="form-grid"><label>封面左侧说明<input :value="String(module.captionLeft || '')" @input="setIssueModuleText(module, 'captionLeft', $event)" /></label><label>封面右侧说明<input :value="String(module.captionRight || '')" @input="setIssueModuleText(module, 'captionRight', $event)" /></label><label>策展署名<input :value="String(module.byline || '')" @input="setIssueModuleText(module, 'byline', $event)" /></label></div>
               <section v-if="module.type === 'audio'" class="issue-audio-editor">
-                <p class="field-help">最多 3 段；每段可单独替换音频并编辑对应文案。只有发布后，小程序才会显示更新。</p>
+                <p class="field-help">可添加 1–3 段；至少 1 段有音频即可。发布时会忽略未上传音频的条目，只有发布后小程序才会显示更新。</p>
                 <article v-for="(track, trackIndex) in issueAudioTracks(module)" :key="track.id" class="issue-audio-track">
                   <header><strong>{{ trackIndex === 0 ? '主声音' : `更多声音 ${String(trackIndex + 1).padStart(2, '0')}` }}</strong><button v-if="trackIndex > 0" type="button" class="quiet danger" :disabled="uploading" @click="removeIssueAudioTrack(module, trackIndex)">移除</button></header>
                   <div class="form-grid"><label>声音标题<input :value="track.title" maxlength="120" @input="setIssueAudioTrackText(track, 'title', $event)" /></label><label>时长文字<input :value="track.duration" maxlength="20" placeholder="01:12" @input="setIssueAudioTrackText(track, 'duration', $event)" /></label><label>上传 / 替换音频<input type="file" accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a" :disabled="uploading" @change="selectIssueAudioTrackFile(module, track, $event)" /></label><label>音频对象路径<input :value="String(track.audioObjectKey || '')" placeholder="content/audio/..." @input="setIssueAudioTrackText(track, 'audioObjectKey', $event)" /></label></div>
@@ -4388,6 +4412,18 @@ onBeforeUnmount(() => {
       </div>
     </template>
     </main>
+    <Teleport to="body">
+      <div v-if="adminErrorDialog" class="admin-error-backdrop" @click.self="closeAdminError">
+        <section class="admin-error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-error-title" @keydown.esc="closeAdminError">
+          <p class="eyebrow">操作提示</p>
+          <h3 id="admin-error-title">操作未完成</h3>
+          <p class="admin-error-copy">{{ adminErrorDialog }}</p>
+          <div class="admin-error-actions">
+            <button ref="adminErrorButton" type="button" @click="closeAdminError">知道了</button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
     <footer v-if="!loggedIn" class="filing-footer" aria-label="网站备案信息">
       <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026044906号-1</a>
     </footer>

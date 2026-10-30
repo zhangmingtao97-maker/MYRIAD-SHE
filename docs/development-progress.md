@@ -1,5 +1,13 @@
 # MYRIAD SHE 开发进度
 
+## 2026-10-30 后台统一错误弹窗与微声音「有音频即可」
+
+- 后台所有操作错误不再显示在页面顶部：错误状态统一进入居中弹窗，标题固定为「操作未完成」，展示后端返回的简短原因，提供「知道了」关闭，支持点击遮罩或 `Esc` 关闭，并自动聚焦按钮。
+- 登录、期刊、实践、页面、观察、会员、系统设置、员工、媒体等模块的错误状态均接入统一弹窗；原有字段级错误会即时清空，避免弹窗与行内提示重复。
+- 微声音不再要求固定 2–3 段：草稿可保留 1–3 段，发布时只保留已上传音频的条目，至少 1 段有音频即可；未上传音频的草稿条目发布时忽略，不再阻塞整期发布。
+- 后台文案更新为「可添加 1–3 段；至少 1 段有音频即可」，小程序首页仍按实际可用段数显示主声音和「更多声音」。
+- 验证：后台 `npm run build` 通过；Playwright 使用系统 Chrome 验证登录失败和期刊保存失败均只出现弹窗、顶部错误数为 0，保存 payload 的微声音字段仅含后端登记字段；后端定向测试「publishing audio keeps any uploaded subset and drops unfinished drafts」通过。截图见 `docs/screenshots/admin-error-modal.png`、`admin-error-modal-save.png`、`admin-audio-editor.png`。
+
 ## 2026-10-30 修复微声音草稿保存「未登记字段」
 
 - 后台保存期刊草稿时，微声音条目对象带有前端预览用的 `audioUrl` 字段；后端只登记 `id / title / duration / audioObjectKey / quote / subtitle / transcript`，因此返回「微声音条目包含未登记字段」。
