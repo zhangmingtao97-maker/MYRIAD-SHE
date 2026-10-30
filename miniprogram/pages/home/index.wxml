@@ -42,8 +42,13 @@
             <view class="audio-play" role="button" tabindex="0" aria-label="{{playingAudioId === item.primaryTrack.playbackId ? '暂停' : '播放'}}{{item.primaryTrack.title}}" data-module-id="{{item.id}}" data-track-id="{{item.primaryTrack.id}}" bindtap="toggleAudio">{{playingAudioId === item.primaryTrack.playbackId ? 'Ⅱ' : '▶'}}</view>
             <view class="audio-copy"><view wx:if="{{item.primaryTrack.quote}}" class="audio-quote">{{item.primaryTrack.quote}}</view><view wx:if="{{item.primaryTrack.subtitle}}" class="audio-subtitle">{{item.primaryTrack.subtitle}}</view><view wx:if="{{item.primaryTrack.transcript}}" class="audio-transcript">{{item.primaryTrack.transcript}}</view></view>
           </view>
-          <view wx:if="{{item.tracks.length > 1}}" class="audio-more">
-            <view class="audio-more-heading">更多声音</view>
+          <view wx:if="{{item.tracks.length > 1}}" class="audio-more-control">
+            <view class="audio-more-toggle" role="button" tabindex="0" aria-expanded="{{expandedAudio[item.id] ? 'true' : 'false'}}" aria-label="{{expandedAudio[item.id] ? '收起更多声音' : item.moreLabel}}" data-module-id="{{item.id}}" bindtap="toggleAudioMore">
+              <text>{{expandedAudio[item.id] ? '收起更多声音' : item.moreLabel}}</text>
+              <text class="audio-more-toggle-icon" aria-hidden="true">{{expandedAudio[item.id] ? '−' : '+'}}</text>
+            </view>
+          </view>
+          <view wx:if="{{item.tracks.length > 1 && expandedAudio[item.id]}}" class="audio-more">
             <view wx:for="{{item.tracks}}" wx:for-item="track" wx:for-index="trackIndex" wx:key="id">
               <view wx:if="{{trackIndex > 0}}" class="audio-more-item">
                 <view class="audio-more-row">
