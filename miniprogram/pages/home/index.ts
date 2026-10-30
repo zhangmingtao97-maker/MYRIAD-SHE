@@ -95,10 +95,16 @@ function buildContentsEntries(modules: PublicHomeModule[], issue: HomeIssue): Ho
 }
 
 Page({
-  data: { loading: true, statusBarHeight: 0, issue: emptyIssue, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', expandedAudio: {} as Record<string, boolean>, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
+  data: { loading: true, statusBarHeight: 0, issue: emptyIssue, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', expandedAudio: {} as Record<string, boolean>, audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
   requestGeneration: 0,
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   audioContextModuleId: '',
+  audioSeekRect: null as { left: number; width: number } | null,
+  audioSeekTrackId: '',
+  audioSeekPlaybackId: '',
+  audioSeekResume: false,
+  audioSeekPendingX: null as number | null,
+  audioSeekEnded: false,
   onLoad() {
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadContent();
@@ -118,7 +124,7 @@ Page({
   },
   async loadContent() {
     const generation = ++this.requestGeneration;
-    this.setData({ loading: true, error: '', issue: emptyIssue, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, expandedAudio: {} });
+    this.setData({ loading: true, error: '', issue: emptyIssue, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, expandedAudio: {}, audioSeeking: false });
     try {
       const data = await request<PublicHomeContent>('/content/home');
       if (generation !== this.requestGeneration) return;
@@ -166,6 +172,84 @@ Page({
       return;
     }
     this.setData({ expandedAudio: { ...this.data.expandedAudio, [moduleId]: !expanded } });
+  },
+  startAudioSeek(event: WechatMiniprogram.TouchEvent) {
+    const moduleId = String(event.currentTarget.dataset.moduleId || '');
+    const trackId = String(event.currentTarget.dataset.trackId || '');
+    const audio = this.data.modules.find((module) => module.id === moduleId && module.type === 'audio');
+    const tracks = Array.isArray(audio?.tracks) ? audio.tracks as Array<Record<string, unknown>> : [];
+    const track = tracks.find((item) => item.id === trackId);
+    const playbackId = String(track?.playbackId || '');
+    if (!playbackId || this.data.activeAudioId !== playbackId || !this.audioContext || this.audioContextModuleId !== playbackId) return;
+    const touch = event.touches?.[0];
+    const clientX = Number(touch?.clientX || 0);
+    this.audioSeekTrackId = trackId;
+    this.audioSeekPlaybackId = playbackId;
+    this.audioSeekResume = this.data.playingAudioId === playbackId;
+    this.audioSeekPendingX = clientX;
+    this.audioSeekEnded = false;
+    if (this.audioSeekResume && this.audioContext) {
+      this.audioContext.pause();
+      this.setData({ playingAudioId: '' });
+    }
+    this.setData({ audioSeeking: true });
+    this.createSelectorQuery().select(`#audio-seek-${moduleId}-${trackId}`).boundingClientRect((rect) => {
+      if (this.audioSeekTrackId !== trackId) return;
+      if (!rect || !rect.width) {
+        this.finishAudioSeek();
+        return;
+      }
+      this.audioSeekRect = { left: rect.left, width: rect.width };
+      if (this.audioSeekPendingX !== null) this.seekAudioAt(this.audioSeekPendingX);
+      if (this.audioSeekEnded) this.finishAudioSeek();
+    }).exec();
+  },
+  moveAudioSeek(event: WechatMiniprogram.TouchEvent) {
+    if (!this.audioSeekTrackId) return;
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    this.audioSeekPendingX = Number(touch.clientX || 0);
+    if (this.audioSeekRect) this.seekAudioAt(this.audioSeekPendingX);
+  },
+  endAudioSeek(event: WechatMiniprogram.TouchEvent) {
+    if (!this.audioSeekTrackId) return;
+    const touch = event.changedTouches?.[0] || event.touches?.[0];
+    if (touch) {
+      this.audioSeekPendingX = Number(touch.clientX || 0);
+      if (this.audioSeekRect) this.seekAudioAt(this.audioSeekPendingX);
+    }
+    if (this.audioSeekRect) this.finishAudioSeek();
+    else this.audioSeekEnded = true;
+  },
+  seekAudioAt(clientX: number) {
+    if (!this.audioSeekRect || !this.audioContext || this.audioContextModuleId !== this.audioSeekPlaybackId) return;
+    const duration = Math.max(0, Number(this.audioContext.duration) || this.data.audioDuration);
+    if (!duration) return;
+    const ratio = Math.max(0, Math.min(1, (clientX - this.audioSeekRect.left) / this.audioSeekRect.width));
+    const currentTime = duration * ratio;
+    this.audioContext.seek(currentTime);
+    this.setData({
+      audioCurrentTime: currentTime,
+      audioDuration: duration,
+      audioCurrentTimeLabel: formatAudioTime(currentTime),
+      audioDurationLabel: formatAudioTime(duration),
+      audioProgressPercent: ratio * 100,
+    });
+  },
+  finishAudioSeek() {
+    const playbackId = this.audioSeekPlaybackId;
+    const resume = this.audioSeekResume && Boolean(playbackId) && Boolean(this.audioContext) && this.audioContextModuleId === playbackId;
+    this.audioSeekTrackId = '';
+    this.audioSeekRect = null;
+    this.audioSeekPlaybackId = '';
+    this.audioSeekResume = false;
+    this.audioSeekPendingX = null;
+    this.audioSeekEnded = false;
+    this.setData({ audioSeeking: false });
+    if (resume && this.audioContext) {
+      this.audioContext.play();
+      this.setData({ playingAudioId: playbackId });
+    }
   },
   toggleAudio(event: WechatMiniprogram.CustomEvent) {
     const moduleId = String(event.currentTarget.dataset.moduleId || '');
@@ -221,7 +305,7 @@ Page({
     context.play();
   },
   syncAudioProgress(context: WechatMiniprogram.InnerAudioContext, force = false) {
-    if (this.audioContext !== context) return;
+    if (this.audioContext !== context || this.audioSeekTrackId) return;
     const currentTime = Math.max(0, Number(context.currentTime) || 0);
     const duration = Math.max(0, Number(context.duration) || 0);
     if (!force && Math.floor(currentTime * 2) === Math.floor(this.data.audioCurrentTime * 2) && Math.floor(duration) === Math.floor(this.data.audioDuration)) return;
@@ -234,13 +318,19 @@ Page({
     });
   },
   stopAudioPlayback(resetUi = true) {
+    this.audioSeekTrackId = '';
+    this.audioSeekRect = null;
+    this.audioSeekPlaybackId = '';
+    this.audioSeekResume = false;
+    this.audioSeekPendingX = null;
+    this.audioSeekEnded = false;
     if (this.audioContext) {
       this.audioContext.stop();
       this.audioContext.destroy();
       this.audioContext = null;
     }
     this.audioContextModuleId = '';
-    if (resetUi) this.setData({ playingAudioId: '', activeAudioId: '', audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 });
+    if (resetUi) this.setData({ playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 });
   },
   openStoryAction(event: WechatMiniprogram.CustomEvent) {
     const targetId = String(event.currentTarget.dataset.targetId || 'story');
