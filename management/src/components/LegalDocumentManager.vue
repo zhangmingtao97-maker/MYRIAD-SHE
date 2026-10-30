@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import RichTextEditor from './RichTextEditor.vue';
 import { readLegalContent, readLegalState, safeLegalHtml } from '../legal-document';
 import type { LegalContent, LegalKey } from '../legal-document';
@@ -19,12 +19,20 @@ const imported = ref<{ html: string; warnings: string[]; fileName: string } | nu
 const history = ref<Array<{ version: number; publishedAt: string; publishedBy: string; content: LegalContent }>>([]);
 const historyLoading = ref(false); const historyError = ref('');
 const historyPreview = ref<LegalContent | null>(null);
+const effectiveDateInput = ref<HTMLInputElement | null>(null);
+const missingEffectiveDate = computed(() => Boolean(content.value && !content.value.effectiveDate.trim()));
 const preview = computed(() => content.value ? safeLegalHtml(content.value.body.richText) : '');
 const disabled = computed(() => Boolean(busy.value) || conflict.value);
 let alive = true;
 const base = computed(() => `${props.apiBase}/content/legal-documents/${props.documentKey}`);
 
 function markDirty() { dirty.value = true; message.value = ''; error.value = ''; }
+async function requireEffectiveDate(message: string) {
+  error.value = message;
+  await nextTick();
+  effectiveDateInput.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  effectiveDateInput.value?.focus();
+}
 async function call(url: string, init: RequestInit = {}, timeout?: number) {
   const response = await props.request(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${props.token}` } }, timeout);
   if (!alive) throw new Error('页面已关闭');
@@ -71,13 +79,23 @@ function acceptImport() {
 }
 async function save() {
   if (!content.value || disabled.value || imported.value) return;
+  content.value.effectiveDate = content.value.effectiveDate.trim();
   busy.value = '保存中…'; error.value = ''; message.value = '';
-  try { apply(await call(`${base.value}/manage`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(content.value) })); message.value = '草稿已保存，发布后才会更新小程序。'; }
+  try {
+    apply(await call(`${base.value}/manage`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(content.value) }));
+    message.value = content.value.effectiveDate
+      ? '草稿已保存，发布后才会更新小程序。'
+      : '草稿已保存，但生效日期为空，发布前请填写并再次保存。';
+  }
   catch (caught) { if (alive) error.value = caught instanceof Error ? caught.message : '保存失败'; }
   finally { if (alive) busy.value = ''; }
 }
 async function publish() {
   if (!content.value || disabled.value || dirty.value || imported.value || !props.canPublish || !hasDraft.value) return;
+  if (!content.value.effectiveDate.trim()) {
+    await requireEffectiveDate('请先填写生效日期并保存草稿，再发布。');
+    return;
+  }
   if (!window.confirm(`确认发布${label.value}？小程序将在下次打开文档时显示新版，请先核对正文及生效日期。`)) return;
   busy.value = '发布中…'; error.value = ''; message.value = '';
   try {
@@ -119,12 +137,13 @@ defineExpose({ reload });
     <p v-if="busy" role="status">{{ busy }}</p>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <p v-if="message" class="status-message" role="status">{{ message }}</p>
+    <p v-if="missingEffectiveDate && !error" class="error" role="status">生效日期为空，发布前请填写。</p>
     <p v-if="conflict" class="error" role="alert">云端文档已更新，本地内容已保留。请先复制需要保留的文字，再重新载入最新草稿。</p>
     <form v-if="content" class="practice-form" @submit.prevent="save">
       <fieldset class="legal-fields" :disabled="disabled">
         <section class="observation-copy-group legal-upload"><h3>从 Word 导入正文</h3><label>选择 Word 文件<input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" @change="upload" /></label><small>支持 .docx，最大 5 MB。保留标题、段落、加粗、下划线和列表；正文最多 200,000 字符。复杂排版请在导入后核对。</small></section>
         <section v-if="imported" class="observation-copy-group"><h3>导入预览 · {{ imported.fileName }}</h3><p v-for="warning in imported.warnings" :key="warning" class="muted">{{ warning }}</p><div class="legal-preview" v-html="imported.html" /><div class="form-actions"><button type="button" @click="acceptImport">用此正文替换本地草稿</button><button type="button" class="quiet" @click="imported = null">取消导入</button></div><small>替换仅更新本地正文，标题、导语和生效日期请在下方单独填写。</small></section>
-        <div class="observation-copy-groups"><section class="observation-copy-group"><h3>文档信息</h3><label>文档标题<input v-model="content.title.richText" maxlength="160" required @input="markDirty" /></label><label>导语（选填）<textarea v-model="content.intro.richText" maxlength="1000" rows="3" @input="markDirty" /></label><label>更新日期（选填）<input v-model="content.updatedDate" maxlength="80" placeholder="例如 2026-10-23" @input="markDirty" /></label><label>生效日期<input v-model="content.effectiveDate" maxlength="80" placeholder="例如 2026-11-01" @input="markDirty" /></label><label>版本号<input v-model="content.version" maxlength="16" pattern="[0-9]{1,4}(\.[0-9]{1,4}){0,2}" required placeholder="例如 1.0 或 1.1.2" @input="markDirty" /></label><label>本次更新说明（选填）<textarea v-model="content.updateNotes" maxlength="1000" rows="3" @input="markDirty" /></label></section>
+        <div class="observation-copy-groups"><section class="observation-copy-group"><h3>文档信息</h3><label>文档标题<input v-model="content.title.richText" maxlength="160" required @input="markDirty" /></label><label>导语（选填）<textarea v-model="content.intro.richText" maxlength="1000" rows="3" @input="markDirty" /></label><label>更新日期（选填）<input v-model="content.updatedDate" maxlength="80" placeholder="例如 2026-10-23" @input="markDirty" /></label><label>生效日期（发布必填）<input ref="effectiveDateInput" v-model="content.effectiveDate" maxlength="80" aria-required="true" placeholder="例如 2026-11-01" @input="markDirty" /></label><label>版本号<input v-model="content.version" maxlength="16" pattern="[0-9]{1,4}(\.[0-9]{1,4}){0,2}" required placeholder="例如 1.0 或 1.1.2" @input="markDirty" /></label><label>本次更新说明（选填）<textarea v-model="content.updateNotes" maxlength="1000" rows="3" @input="markDirty" /></label></section>
           <section class="observation-copy-group"><h3>正文编辑</h3><RichTextEditor v-model="content.body.richText" label="完整正文" basic :disabled="disabled" @change="markDirty" /><small>字号与颜色由小程序统一排版。{{ content.body.richText.length.toLocaleString() }} / 200,000 字符（含格式标记）。</small></section></div>
       </fieldset>
       <details class="revision-list"><summary>预览当前草稿</summary><article class="legal-preview"><h3 v-html="safeLegalHtml(content.title.richText)" /><div v-html="safeLegalHtml(content.intro.richText)" /><p v-if="content.updatedDate">更新日期：{{ content.updatedDate }}</p><p>生效日期：{{ content.effectiveDate || '待填写' }} · 版本：{{ content.version }}</p><p v-if="content.updateNotes">本次更新：{{ content.updateNotes }}</p><div v-html="preview" /></article></details>

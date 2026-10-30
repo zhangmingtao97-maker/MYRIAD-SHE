@@ -67,6 +67,15 @@ try {
   assert.equal(await manager.getByRole('button', { name: '保存草稿', exact: true }).isDisabled(), true);
   await manager.getByRole('button', { name: '重新载入', exact: true }).click();
   await manager.getByLabel('文档标题', { exact: true }).waitFor();
+  const effectiveDate = manager.getByLabel('生效日期（发布必填）');
+  await effectiveDate.fill('');
+  await manager.getByRole('button', { name: '保存草稿', exact: true }).click();
+  await manager.getByText('草稿已保存，但生效日期为空，发布前请填写并再次保存。', { exact: true }).waitFor();
+  await manager.getByRole('button', { name: '发布到小程序' }).click();
+  await manager.getByText('请先填写生效日期并保存草稿，再发布。', { exact: true }).waitFor();
+  await effectiveDate.fill('2026-11-01');
+  await manager.getByRole('button', { name: '保存草稿', exact: true }).click();
+  await manager.getByText('草稿已保存，发布后才会更新小程序。', { exact: true }).waitFor();
   await manager.getByText('预览当前草稿', { exact: true }).click();
   const output = resolve(root, '.test-artifacts'); await mkdir(output, { recursive: true });
   await page.evaluate(async () => { window.scrollTo(0, 0); await document.fonts.ready; });

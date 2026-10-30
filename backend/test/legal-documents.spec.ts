@@ -58,7 +58,8 @@ test('legal drafts support long documents and optional introductions; publicatio
   assert.ok(long.body.richText.length > 6000); assert.equal(long.intro.richText, '');
   assert.doesNotThrow(() => sanitizeLegalDocument({ ...document(''), effectiveDate: '' }));
   assert.throws(() => sanitizeLegalDocument(document(''), true), BadRequestException);
-  assert.throws(() => sanitizeLegalDocument({ ...document(), effectiveDate: '' }, true), BadRequestException);
+  assert.throws(() => sanitizeLegalDocument({ ...document(), effectiveDate: '' }, true), /生效日期不能为空/);
+  assert.throws(() => sanitizeLegalDocument({ ...document(), effectiveDate: 'x'.repeat(81) }, true), /生效日期内容无效或超出长度限制/);
   assert.throws(() => sanitizeLegalDocument(document('x'.repeat(200_001))), BadRequestException);
   assert.throws(() => sanitizeLegalDocument({ ...document(), version: 'tomorrow' }), BadRequestException);
 });
