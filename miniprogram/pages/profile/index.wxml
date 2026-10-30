@@ -1,24 +1,96 @@
 <view class="profile-page">
   <view class="profile-topbar" style="padding-top: {{statusBarHeight}}px">
-    <view class="profile-topbar-row"><view class="profile-icon-button" aria-label="返回" bindtap="handleBack" role="button" tabindex="0">‹</view><text class="profile-topbar-title">个人资料</text><view class="profile-topbar-spacer"></view></view>
-  </view>
-  <view wx:if="{{loading}}" class="profile-state">正在读取个人资料…</view>
-  <view wx:elif="{{loadError}}" class="profile-state profile-error"><text>{{loadError}}</text><view class="profile-retry" bindtap="loadProfile" role="button" tabindex="0">重新加载</view></view>
-  <block wx:else>
-    <view class="profile-card">
-      <view class="profile-row profile-avatar-row"><text class="profile-row-label">头像</text><button class="profile-avatar-button" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" disabled="{{saving}}"><image wx:if="{{profile.avatarUrl}}" class="profile-avatar" src="{{profile.avatarUrl}}" mode="aspectFill"></image><view wx:else class="profile-avatar-placeholder">+</view></button><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="editNickname"><text class="profile-row-label">用户名</text><text class="profile-row-value">{{profile.nickname || '设置昵称'}}</text><text class="profile-row-arrow">›</text></view>
-      <view wx:if="{{editingNickname}}" class="profile-nickname-editor"><input type="nickname" value="{{profile.nickname}}" maxlength="32" focus="{{editingNickname}}" placeholder="请输入昵称" bindinput="onNicknameInput" bindblur="saveNickname" disabled="{{saving}}" /></view>
-      <view class="profile-row profile-action-row" bindtap="showUnavailable"><text class="profile-row-label">性别</text><text class="profile-row-value profile-muted">未设置</text><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="showUnavailable"><text class="profile-row-label">我的幸运日</text><text class="profile-row-value profile-link">完善信息</text><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="showPhone"><text class="profile-row-label">关联手机</text><text class="profile-row-value">{{profile.phoneNumber || '未绑定'}}</text><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="showUnavailable"><text class="profile-row-label">收货地址</text><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="showUnavailable"><text class="profile-row-label">账号管理</text><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="showUnavailable"><text class="profile-row-label">免密支付</text><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="openPrivacy"><text class="profile-row-label">通用设置</text><text class="profile-row-arrow">›</text></view>
-      <view class="profile-row profile-action-row" bindtap="openAgreement"><text class="profile-row-label">协议与说明</text><text class="profile-row-arrow">›</text></view>
+    <view class="profile-topbar-row">
+      <view class="profile-icon-button" aria-label="返回" bindtap="handleBack" role="button" tabindex="0">‹</view>
+      <text class="profile-topbar-title">个人资料</text>
+      <view class="profile-topbar-spacer" aria-hidden="true"></view>
     </view>
-    <view class="logout-button" bindtap="logout" role="button" tabindex="0">退出登录</view>
-    <view class="profile-footer-links"><text bindtap="openPrivacyPolicy">个人信息收集清单</text><text bindtap="openPrivacyPolicy">第三方共享清单</text></view>
+  </view>
+
+  <view wx:if="{{loading}}" class="profile-state" role="status" aria-live="polite">正在读取个人资料…</view>
+  <view wx:elif="{{loadError}}" class="profile-state profile-error" role="alert">
+    <text>{{loadError}}</text>
+    <view class="profile-retry" bindtap="loadProfile" role="button" tabindex="0">重新加载</view>
+  </view>
+  <block wx:else>
+    <view class="profile-content">
+      <view class="profile-hero">
+        <view class="hero-eyebrow">ACCOUNT / 账户</view>
+        <view class="hero-main">
+          <button class="profile-avatar-button" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" aria-label="选择或更换头像" disabled="{{saving}}">
+            <image wx:if="{{profile.avatarUrl}}" class="profile-avatar" src="{{profile.avatarUrl}}" mode="aspectFill"></image>
+            <view wx:else class="profile-avatar-placeholder" aria-hidden="true">+</view>
+          </button>
+          <view class="hero-copy">
+            <view class="hero-name">{{profile.nickname || '还没有昵称'}}</view>
+            <view class="hero-meta">{{profile.phoneNumber || '未绑定手机号'}} · 云端账户</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="profile-group">
+        <view class="group-title">账户</view>
+        <view class="group-card">
+          <view wx:if="{{editingNickname}}" class="profile-nickname-editor">
+            <input type="nickname" value="{{profile.nickname}}" maxlength="32" focus="{{editingNickname}}" placeholder="请输入昵称" placeholder-style="color: #a08c7b" bindinput="onNicknameInput" bindblur="saveNickname" disabled="{{saving}}" />
+          </view>
+          <view wx:else class="profile-row profile-action-row" bindtap="editNickname" role="button" tabindex="0">
+            <text class="profile-row-label">用户名</text>
+            <text class="profile-row-value">{{profile.nickname || '设置昵称'}}</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+          <view class="profile-row profile-action-row" bindtap="showPhone" role="button" tabindex="0">
+            <text class="profile-row-label">关联手机</text>
+            <text class="profile-row-value">{{profile.phoneNumber || '未绑定'}}</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+          <view class="profile-row profile-action-row" bindtap="showUnavailable" role="button" tabindex="0">
+            <text class="profile-row-label">账号管理</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="profile-group">
+        <view class="group-title">资料</view>
+        <view class="group-card">
+          <view class="profile-row profile-action-row" bindtap="showUnavailable" role="button" tabindex="0">
+            <text class="profile-row-label">性别</text>
+            <text class="profile-row-value profile-muted">未设置</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+          <view class="profile-row profile-action-row" bindtap="showUnavailable" role="button" tabindex="0">
+            <text class="profile-row-label">我的幸运日</text>
+            <text class="profile-row-value profile-link">完善信息</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+          <view class="profile-row profile-action-row" bindtap="showUnavailable" role="button" tabindex="0">
+            <text class="profile-row-label">收货地址</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="profile-group">
+        <view class="group-title">设置</view>
+        <view class="group-card">
+          <view class="profile-row profile-action-row" bindtap="showUnavailable" role="button" tabindex="0">
+            <text class="profile-row-label">免密支付</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+          <view class="profile-row profile-action-row" bindtap="openPrivacy" role="button" tabindex="0">
+            <text class="profile-row-label">通用设置</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+          <view class="profile-row profile-action-row" bindtap="openAgreement" role="button" tabindex="0">
+            <text class="profile-row-label">协议与说明</text>
+            <text class="profile-row-arrow" aria-hidden="true">›</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="logout-action" bindtap="logout" role="button" aria-label="退出登录" tabindex="0">退出登录</view>
+      <view class="profile-footer-links"><text bindtap="openPrivacyPolicy">个人信息收集清单</text><text bindtap="openPrivacyPolicy">第三方共享清单</text></view>
+    </view>
   </block>
 </view>
