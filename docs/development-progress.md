@@ -1,5 +1,11 @@
 # MYRIAD SHE 开发进度
 
+## 2026-10-30 修复微声音草稿保存「未登记字段」
+
+- 后台保存期刊草稿时，微声音条目对象带有前端预览用的 `audioUrl` 字段；后端只登记 `id / title / duration / audioObjectKey / quote / subtitle / transcript`，因此返回「微声音条目包含未登记字段」。
+- 保存前新增 microvoice payload 归一化，只提交后端登记字段；同时从 `ManagedAudioTrack` 移除不再使用的 `audioUrl`、`playbackId` 展示字段。
+- 已重新构建后台；后台开发服务会热更新，重试保存前刷新页面即可。
+
 ## 2026-10-30 首页微声音「更多声音」入口与可拖拽进度
 
 - 后台微声音原本已支持最多 3 段（「添加声音」），本次只调整小程序首页的展示方式。

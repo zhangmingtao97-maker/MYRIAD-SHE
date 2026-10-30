@@ -30,11 +30,9 @@ export interface ManagedAudioTrack {
   title: string;
   duration: string;
   audioObjectKey?: string;
-  audioUrl?: string;
   quote: string;
   subtitle: string;
   transcript: string;
-  playbackId?: string;
 }
 
 export interface MediaOrphan {

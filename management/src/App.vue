@@ -150,7 +150,6 @@ function createIssueAudioTrack(number: number, source: Partial<ManagedAudioTrack
     title: source.title || `微声音 ${String(number).padStart(2, '0')}`,
     duration: source.duration || '',
     audioObjectKey: source.audioObjectKey || '',
-    audioUrl: source.audioUrl || '',
     quote: source.quote || '',
     subtitle: source.subtitle || '',
     transcript: source.transcript || '',
@@ -165,6 +164,25 @@ function normalizeIssueAudioModule(module: ManagedIssueModule): ManagedIssueModu
       subtitle: String(module.subtitle || ''), transcript: String(module.transcript || ''),
     })];
   return { ...module, tracks };
+}
+function issueAudioTrackPayload(track: ManagedAudioTrack) {
+  return {
+    id: track.id,
+    title: track.title || '',
+    duration: track.duration || '',
+    audioObjectKey: track.audioObjectKey || '',
+    quote: track.quote || '',
+    subtitle: track.subtitle || '',
+    transcript: track.transcript || '',
+  };
+}
+function issueDraftContentPayload(content: ManagedIssue['draftContent']): ManagedIssue['draftContent'] {
+  return {
+    ...content,
+    sections: content.sections.map((module) => module.type === 'audio' && module.tracks
+      ? { ...module, tracks: module.tracks.map(issueAudioTrackPayload) }
+      : module),
+  };
 }
 function combineCoverAndOpener(modules: ManagedIssueModule[]) {
   const coverIndex = modules.findIndex((module) => module.type === 'cover' || module.type === 'coverStory');
@@ -3220,7 +3238,7 @@ async function saveIssue() {
       payload.microVoiceObjectKey = objectKey;
     }
     syncIssueFieldsToModules();
-    payload.draftContent = issueForm.value.draftContent;
+    payload.draftContent = issueDraftContentPayload(issueForm.value.draftContent);
     const url = editingIssueId.value ? `${apiBase}/content/issues/${editingIssueId.value}` : `${apiBase}/content/issues`;
     const response = await apiFetch(url, { method: editingIssueId.value ? 'PATCH' : 'POST', headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` }, body: JSON.stringify(payload) });
     if (handleAdminUnauthorized(response, session)) throw new Error('后台登录已过期，请重新登录。');
