@@ -1,0 +1,28 @@
+@import "../../app.wxss";
+
+.practice-page { padding-top: 0; background: #e7dfd1; }
+.practice-page [role="button"]:active { opacity: .72; }
+.practice-meta, .directory-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; }
+.practice-meta { min-height: 82rpx; padding: 42rpx 0 20rpx; color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; letter-spacing: 1rpx; }
+.practice-meta-label { text-align: right; }
+.practice-meta-copy { display: block; max-width: 48%; line-height: 1.5; overflow-wrap: anywhere; }
+.practice-kicker { margin-top: 48rpx; color: #8b6b58; font-size: 23rpx; letter-spacing: 2rpx; }
+.practice-page .title { max-width: 660rpx; margin-top: 20rpx; color: #40362f; font-family: Georgia, serif; font-size: 64rpx; line-height: 1.28; }
+.practice-intro { max-width: 660rpx; margin-top: 42rpx; color: #40362f; font-family: Georgia, serif; font-size: 28rpx; font-weight: 600; line-height: 1.75; }
+.loading-state, .error-state { padding: 70rpx 0; }
+.error-state { display: grid; gap: 18rpx; }
+.error-text { color: #8f352d; font-size: 25rpx; line-height: 1.6; }
+.practice-directory { margin-top: 150rpx; border-top: 1rpx solid #cdbbae; }
+.directory-heading { align-items: center; padding: 34rpx 0 18rpx; }
+.directory-heading .eyebrow { margin: 0; color: #8b6b58; font-size: 23rpx; letter-spacing: 2rpx; }
+.page-code { color: #663124; font-family: Georgia, serif; font-size: 22rpx; letter-spacing: 2rpx; }
+.practice-entry { display: grid; grid-template-columns: 68rpx minmax(0, 1fr) 44rpx; align-items: start; gap: 14rpx; width: 100%; min-height: 204rpx; margin: 0; padding: 22rpx 0 26rpx; border: 0; border-bottom: 1rpx solid #cdbbae; border-radius: 0; background: transparent; color: #40362f; text-align: left; line-height: 1.4; box-sizing: border-box; }
+.entry-number { padding-top: 7rpx; color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; }
+.entry-copy { display: grid; gap: 7rpx; min-width: 0; }
+.entry-context { color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; line-height: 1.45; }
+.entry-title { color: #40362f; font-family: Georgia, serif; font-size: 31rpx; font-weight: 600; }
+.entry-desc { color: #40362f; font-family: Georgia, serif; font-size: 25rpx; line-height: 1.6; }
+.entry-arrow { align-self: center; padding-top: 12rpx; color: #663124; font-size: 34rpx; text-align: right; }
+.disabled-entry .entry-title, .disabled-entry .entry-arrow { color: #88786b; }
+.practice-page .error-state .button { justify-self: start; }
+.page-signature { margin-top: 70rpx; padding: 40rpx 0 28rpx; border-top: 1rpx solid #cdbbae; color: #40362f; font-family: Georgia, serif; font-size: 29rpx; line-height: 1.6; }

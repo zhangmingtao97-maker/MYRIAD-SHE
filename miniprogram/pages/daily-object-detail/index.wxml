@@ -1,0 +1,41 @@
+<view class="shop-frame">
+  <view class="shop-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="shop-topbar-action shop-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回日常之物" tabindex="0" bindtap="handleBack">‹</view>
+    <view class="shop-topbar-title">日常之物</view>
+    <view class="shop-topbar-action shop-more" style="top: {{statusBarHeight}}px" role="button" aria-label="更多" tabindex="0" bindtap="handleMore">···</view>
+  </view>
+
+  <view wx:if="{{!accessAvailable}}" class="shop-access-state">{{loading ? '正在确认预览状态…' : (error || '日常之物暂未开放')}}</view>
+
+  <scroll-view wx:else class="shop-scroll" scroll-y enable-flex>
+    <view wx:if="{{product}}" class="detail-page-content">
+      <view class="detail-brand">{{brandName}} · {{brandSubtitle}}</view>
+      <view class="detail-title">{{product.name}}</view>
+      <view class="detail-description">{{product.description}}</view>
+      <view class="detail-price-row"><text class="detail-price">{{product.price}}</text><text class="detail-price-label">{{product.priceLabel}}</text></view>
+      <view class="detail-accordions">
+        <view class="detail-accordion" role="button" tabindex="0" aria-expanded="{{openSection === 'option'}}" bindtap="toggleSection" data-section="option"><view>选择规格与数量</view><text>{{openSection === 'option' ? '−' : '+'}}</text></view>
+        <view wx:if="{{openSection === 'option'}}" class="detail-accordion-copy">{{product.optionDetails || '规格与数量信息待补充。'}}</view>
+        <view class="detail-accordion" role="button" tabindex="0" aria-expanded="{{openSection === 'daily'}}" bindtap="toggleSection" data-section="daily"><view>使用与日常</view><text>{{openSection === 'daily' ? '−' : '+'}}</text></view>
+        <view wx:if="{{openSection === 'daily'}}" class="detail-accordion-copy">{{product.dailyUseDetails || '使用与日常信息待补充。'}}</view>
+        <view class="detail-accordion" role="button" tabindex="0" aria-expanded="{{openSection === 'delivery'}}" bindtap="toggleSection" data-section="delivery"><view>交付与售后说明</view><text>{{openSection === 'delivery' ? '−' : '+'}}</text></view>
+        <view wx:if="{{openSection === 'delivery'}}" class="detail-accordion-copy">{{product.deliveryDetails || '交付与售后信息待补充。'}}</view>
+      </view>
+      <view class="detail-actions"><view class="detail-button detail-button-secondary" role="button" tabindex="0" bindtap="addToBag">加入购物袋</view><view class="detail-button detail-button-primary" role="button" tabindex="0" bindtap="buyProduct">购买<text>→</text></view></view>
+      <view class="detail-support" role="button" aria-label="关于{{product.name}}，{{supportLabel}}" tabindex="0" bindtap="handleSupport">关于{{product.name}}，{{supportLabel}} →</view>
+      <view class="detail-note">商店样式预览 · 商品资料与金额均为示意</view>
+    </view>
+  </scroll-view>
+
+  <view class="shop-tabbar" role="tablist" aria-label="小程序底部导航">
+    <view class="shop-tab" role="tab" aria-label="首页" aria-selected="false" tabindex="0" bindtap="switchTab" data-index="0">
+      <view class="shop-tab-icon shop-home-icon"><view></view></view><text>首页</text>
+    </view>
+    <view class="shop-tab selected" role="tab" aria-label="实践" aria-selected="true" tabindex="0" bindtap="switchTab" data-index="1">
+      <view class="shop-tab-icon shop-practice-icon"><view></view><view></view></view><text>实践</text>
+    </view>
+    <view class="shop-tab" role="tab" aria-label="我的" aria-selected="false" tabindex="0" bindtap="switchTab" data-index="2">
+      <view class="shop-tab-icon shop-mine-icon"><view class="shop-mine-head"></view><view class="shop-mine-body"></view></view><text>我的</text>
+    </view>
+  </view>
+</view>

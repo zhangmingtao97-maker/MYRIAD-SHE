@@ -1,0 +1,26 @@
+<view class="login-page">
+  <view class="login-panel">
+    <view class="login-brand">
+      <image class="brand-mark login-brand-mark" src="/assets/shop/brand-mark.svg" mode="aspectFit" aria-label="MYRIAD SHE 品牌标志"></image>
+      <text class="login-brand-name">MYRIAD SHE</text>
+    </view>
+    <view class="login-copy">
+      <view class="login-eyebrow">账户登录</view>
+      <view class="login-title">把正在经历的，<br />留在自己这里。</view>
+      <view class="login-description">首次使用将自动注册。登录后可同步观察与参与记录。</view>
+    </view>
+    <view class="login-rule" aria-hidden="true"></view>
+    <view class="login-actions">
+      <button class="login-button one-click-login-button" open-type="getPhoneNumber" bindgetphonenumber="onLoginWithPhone" disabled="{{loggingIn || !consentAgreed}}">{{loggingIn ? '正在登录…' : '一键登录'}}</button>
+    </view>
+    <view wx:if="{{error}}" class="login-error" role="alert">{{error}}</view>
+  </view>
+  <view class="login-consent">
+    <checkbox-group class="consent-checkbox" bindchange="onConsentChange">
+      <label class="consent-label"><checkbox value="agreed" color="#663124" /><text>我已阅读并同意</text></label>
+    </checkbox-group>
+    <text class="consent-policy-link" catchtap="openUserAgreement">《用户协议》</text><text>和</text>
+    <text class="consent-policy-link" catchtap="openPrivacyPolicy">《隐私政策》</text>
+    <text wx:if="{{!consentAgreed}}" class="consent-hint">请先勾选</text>
+  </view>
+</view>

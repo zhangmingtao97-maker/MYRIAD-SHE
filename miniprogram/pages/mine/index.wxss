@@ -1,0 +1,159 @@
+@import "../../app.wxss";
+
+/* 我的 —— 账户、记录与设置的统一版式：一张账户卡 + 四张模块卡 */
+.mine-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 0 36rpx;
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+  background: #e7dfd1;
+  color: #3f352e;
+  box-sizing: border-box;
+}
+
+.account-card,
+.section-card,
+.settings-card {
+  margin-top: 24rpx;
+  padding: 30rpx;
+  border: 1rpx solid #ddcfbe;
+  border-radius: 24rpx;
+  background: #f9f4ea;
+  box-sizing: border-box;
+}
+
+.account-card { margin-top: 32rpx; }
+.account-card-alert { display: grid; gap: 12rpx; border-color: #d9c3b4; background: #faf1e9; }
+.account-eyebrow { color: #a5795f; font-family: Georgia, serif; font-size: 21rpx; letter-spacing: 2rpx; line-height: 1.5; }
+
+/* 账户 */
+.account-main { display: grid; grid-template-columns: 120rpx minmax(0, 1fr) 52rpx; align-items: center; gap: 24rpx; }
+.account-avatar {
+  display: flex;
+  width: 120rpx;
+  height: 120rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1rpx solid #d6c5b4;
+  border-radius: 50%;
+  background: #efe6d8;
+  color: #8b6b58;
+  line-height: 1;
+}
+.account-avatar::after { border: 0; }
+.account-avatar[disabled] { opacity: .55; }
+.account-avatar-image { width: 100%; height: 100%; }
+.account-avatar-plus { color: #8b6b58; font-family: Georgia, serif; font-size: 40rpx; line-height: 1; }
+.guest-avatar text { font-family: Georgia, serif; font-size: 26rpx; letter-spacing: 2rpx; }
+
+.account-identity { display: grid; gap: 8rpx; min-width: 0; }
+.account-title { color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 36rpx; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.account-title-input { width: 100%; min-height: 56rpx; margin: 0; padding: 0; border: 0; background: transparent; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 36rpx; font-weight: 600; line-height: 1.35; box-sizing: border-box; }
+.account-caption { color: #7d6f63; font-size: 22rpx; line-height: 1.65; letter-spacing: .4rpx; }
+.account-enter { display: flex; height: 120rpx; align-items: center; justify-content: center; color: #8b6b58; font-family: Georgia, serif; font-size: 40rpx; line-height: 1; }
+.account-error { color: #a53f32; font-size: 22rpx; line-height: 1.6; }
+
+.primary-button {
+  display: flex;
+  width: 100%;
+  min-height: 84rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 16rpx 0 0;
+  padding: 0 24rpx;
+  border: 0;
+  border-radius: 12rpx;
+  background: #663124;
+  color: #fffaf4;
+  font-size: 26rpx;
+  line-height: 1.4;
+  letter-spacing: 1rpx;
+  box-sizing: border-box;
+}
+.primary-button::after { border: 0; }
+.primary-button[disabled] { opacity: .5; }
+
+.account-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1rpx minmax(0, 1fr);
+  align-items: center;
+  gap: 24rpx;
+  margin-top: 28rpx;
+  padding-top: 26rpx;
+  border-top: 1rpx solid #e4d7c7;
+}
+.stat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16rpx; min-width: 0; }
+.stat-value { min-width: 62rpx; color: #663124; font-family: Georgia, serif; font-size: 44rpx; line-height: 1; text-align: center; }
+.stat-copy { display: grid; gap: 4rpx; min-width: 0; }
+.stat-label { color: #3f352e; font-size: 24rpx; line-height: 1.4; }
+.stat-note { color: #8b7c6e; font-size: 20rpx; line-height: 1.4; }
+.stat-rule { width: 1rpx; height: 56rpx; background: #e4d7c7; }
+
+.inline-alert { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 16rpx; padding: 16rpx 20rpx; border-radius: 14rpx; background: #f6e9e2; }
+.inline-alert-copy { flex: 1; min-width: 0; color: #a53f32; font-size: 22rpx; line-height: 1.6; }
+.inline-alert-action { flex: 0 0 auto; color: #663124; font-size: 22rpx; }
+
+/* 模块标题 */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 20rpx; }
+.section-heading { display: flex; align-items: baseline; gap: 14rpx; min-width: 0; }
+.section-number { flex: 0 0 auto; color: #a5795f; font-family: Georgia, serif; font-size: 22rpx; line-height: 1.6; letter-spacing: 1rpx; }
+.section-title { display: block; min-width: 0; overflow: hidden; margin: 0; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 600; line-height: 1.5; white-space: nowrap; text-overflow: ellipsis; }
+.section-action { display: flex; flex: 0 0 auto; align-items: baseline; gap: 8rpx; min-height: 44rpx; color: #663124; font-size: 22rpx; line-height: 1.5; }
+.section-arrow { font-family: Georgia, serif; font-size: 26rpx; line-height: 1; }
+
+/* 模块内容 */
+.section-body { margin-top: 18rpx; }
+.section-empty { margin-top: 20rpx; }
+.section-empty-title { display: block; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 26rpx; font-weight: 600; line-height: 1.6; }
+.section-empty-copy { display: block; margin-top: 6rpx; color: #7d6f63; font-size: 23rpx; line-height: 1.75; }
+.section-link { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 72rpx; margin-top: 12rpx; color: #663124; font-size: 26rpx; font-weight: 500; line-height: 1.5; }
+.section-link-compact { margin-top: 4rpx; font-size: 24rpx; }
+.section-link-copy { display: inline-flex; min-width: 0; }
+.link-hover { opacity: .6; }
+.section-state { margin-top: 18rpx; color: #7d6f63; font-size: 23rpx; line-height: 1.7; }
+.section-state-error { color: #a53f32; }
+.section-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; }
+.section-count { color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 21rpx; line-height: 1.6; letter-spacing: .5rpx; }
+.section-count-tail { flex: 0 0 auto; }
+.section-note { color: #8b7c6e; font-size: 20rpx; line-height: 1.6; }
+.section-footnote { display: block; margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid #e9ddcd; color: #8b7c6e; font-size: 20rpx; line-height: 1.7; }
+
+/* 观察记录 */
+.record-row { margin-top: 20rpx; }
+.record-row + .record-row { padding-top: 20rpx; border-top: 1rpx solid #e9ddcd; }
+.record-row:focus-visible { outline: 2rpx solid #663124; outline-offset: 4rpx; }
+.record-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; }
+.record-method { color: #8b6b58; font-size: 21rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.record-date { color: #8b7c6e; font-size: 21rpx; line-height: 1.5; }
+.record-preview { margin-top: 8rpx; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+.record-foot { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 10rpx; color: #8b7c6e; font-size: 21rpx; line-height: 1.5; }
+
+/* 已保存经历 */
+.contribution { margin-top: 20rpx; padding: 22rpx; border: 1rpx solid #e6d9c9; border-radius: 16rpx; background: #fdfaf4; }
+.contribution-meta { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.contribution-issue { color: #8b6b58; font-size: 21rpx; line-height: 1.5; }
+.status-pill { flex: 0 0 auto; padding: 2rpx 14rpx; border-radius: 999rpx; font-size: 19rpx; line-height: 1.7; }
+.status-pending { background: #f2e2d0; color: #8a5a2b; }
+.status-handled { background: #e5ecdd; color: #4c6b3a; }
+.status-dismissed { background: #ebe9e3; color: #7a736b; }
+.contribution-body { margin-top: 10rpx; color: #3f352e; font-family: Georgia, "Songti SC", serif; font-size: 25rpx; line-height: 1.7; overflow-wrap: anywhere; }
+.contribution-actions { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 12rpx; }
+.contribution-note { color: #8b7c6e; font-size: 20rpx; line-height: 1.5; }
+.contribution-continue { display: flex; align-items: center; gap: 8rpx; min-height: 52rpx; color: #663124; font-size: 22rpx; }
+.contribution-continue text { font-family: Georgia, serif; font-size: 26rpx; }
+.contribution-delete { display: flex; min-height: 52rpx; align-items: center; padding-left: 20rpx; color: #8b7c6e; font-size: 21rpx; }
+.legacy-group { margin-top: 28rpx; padding-top: 18rpx; border-top: 1rpx solid #e9ddcd; }
+.legacy-label { color: #a5795f; font-size: 20rpx; line-height: 1.6; letter-spacing: 1rpx; }
+
+/* 设置与页脚 */
+.settings-card { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.settings-action { display: flex; flex: 0 0 auto; align-items: center; gap: 10rpx; color: #663124; }
+.settings-value { color: #663124; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.5; }
+.mine-footer { margin-top: 64rpx; text-align: center; }
+.mine-footer-mark { color: #a5795f; font-family: Georgia, serif; font-size: 20rpx; line-height: 1.6; letter-spacing: 4rpx; }
+.mine-footer-copy { margin-top: 6rpx; color: #8b7c6e; font-size: 20rpx; line-height: 1.6; letter-spacing: 2rpx; }
+
+.mine-page [role="button"]:active { opacity: .7; }

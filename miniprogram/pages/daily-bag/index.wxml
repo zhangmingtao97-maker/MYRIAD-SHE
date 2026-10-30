@@ -1,0 +1,31 @@
+<view class="bag-frame">
+  <view class="bag-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="bag-topbar-action bag-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回日常之物" tabindex="0" bindtap="handleBack">‹</view>
+    <rich-text class="bag-topbar-title" nodes="{{copy.bagTopbarTitle.richText}}" style="font-size: {{copy.bagTopbarTitle.fontSize}}px; color: {{copy.bagTopbarTitle.color}}"></rich-text>
+    <view class="bag-topbar-action bag-more" style="top: {{statusBarHeight}}px" aria-hidden="true">···</view>
+  </view>
+
+  <view wx:if="{{!accessAvailable}}" class="bag-access-state">{{loading ? '正在确认预览状态…' : (error || '购物袋暂不可用')}}</view>
+  <scroll-view wx:else class="bag-scroll" scroll-y enable-flex>
+    <view class="bag-content">
+      <rich-text class="bag-eyebrow" nodes="{{copy.bagEyebrow.richText}}" style="font-size: {{copy.bagEyebrow.fontSize}}px; color: {{copy.bagEyebrow.color}}"></rich-text>
+      <rich-text class="bag-title" nodes="{{copy.bagTitle.richText}}" style="font-size: {{copy.bagTitle.fontSize}}px; color: {{copy.bagTitle.color}}"></rich-text>
+      <rich-text class="bag-intro" nodes="{{copy.bagIntro.richText}}" style="font-size: {{copy.bagIntro.fontSize}}px; color: {{copy.bagIntro.color}}"></rich-text>
+
+      <view class="bag-empty">
+        <view class="bag-rule" aria-hidden="true"></view>
+        <rich-text class="bag-empty-title" nodes="{{copy.bagEmptyTitle.richText}}" style="font-size: {{copy.bagEmptyTitle.fontSize}}px; color: {{copy.bagEmptyTitle.color}}"></rich-text>
+        <rich-text class="bag-empty-copy" nodes="{{copy.bagEmptyCopy.richText}}" style="font-size: {{copy.bagEmptyCopy.fontSize}}px; color: {{copy.bagEmptyCopy.color}}"></rich-text>
+        <view class="bag-action" role="button" aria-label="{{copy.bagAction.richText}}" tabindex="0" bindtap="browseObjects"><rich-text nodes="{{copy.bagAction.richText}}" style="font-size: {{copy.bagAction.fontSize}}px; color: {{copy.bagAction.color}}"></rich-text><text>→</text></view>
+      </view>
+
+      <view class="bag-footer"><rich-text nodes="{{copy.bagPreviewNote.richText}}" style="font-size: {{copy.bagPreviewNote.fontSize}}px; color: {{copy.bagPreviewNote.color}}"></rich-text></view>
+    </view>
+  </scroll-view>
+
+  <view class="bag-tabbar" role="tablist" aria-label="小程序底部导航">
+    <view class="bag-tab" role="tab" aria-label="首页" aria-selected="false" tabindex="0" bindtap="switchTab" data-index="0"><view class="bag-tab-icon bag-home-icon"><view></view></view><text>首页</text></view>
+    <view class="bag-tab selected" role="tab" aria-label="实践" aria-selected="true" tabindex="0" bindtap="switchTab" data-index="1"><view class="bag-tab-icon bag-practice-icon"><view></view><view></view></view><text>实践</text></view>
+    <view class="bag-tab" role="tab" aria-label="我的" aria-selected="false" tabindex="0" bindtap="switchTab" data-index="2"><view class="bag-tab-icon bag-mine-icon"><view class="bag-mine-head"></view><view class="bag-mine-body"></view></view><text>我的</text></view>
+  </view>
+</view>

@@ -1,0 +1,10 @@
+<view class="tab-bar {{selected === 2 ? 'mine-tab-bar' : ''}}" role="tablist" aria-label="主导航">
+  <view wx:for="{{list}}" wx:key="pagePath" class="tab-item {{selected === index ? 'selected' : ''}}" role="tab" aria-label="{{item.text}}" aria-selected="{{selected === index}}" bindtap="switchTab" data-index="{{index}}">
+    <view class="tab-icon icon-{{item.key}}" aria-hidden="true">
+      <view wx:if="{{item.key === 'home'}}" class="home-mark"></view>
+      <view wx:elif="{{item.key === 'practice'}}" class="practice-mark"><view></view><view></view></view>
+      <view wx:else class="mine-mark"><view class="mine-head"></view><view class="mine-shoulders"></view></view>
+    </view>
+    <text class="tab-label">{{item.text}}</text>
+  </view>
+</view>

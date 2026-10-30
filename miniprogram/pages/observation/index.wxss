@@ -1,0 +1,466 @@
+@import "../../app.wxss";
+page { background: #e7dfd1; }
+.page { background: #e7dfd1; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; }
+.observation-page { padding: 0 36rpx 160rpx; }
+.observation-topbar { position: sticky; z-index: 10; top: 0; margin: 0 -36rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; box-sizing: content-box; }
+.observation-nav-row { position: relative; display: flex; height: 56px; align-items: center; justify-content: center; }
+.observation-nav-title { color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 31rpx; font-weight: 600; letter-spacing: 1rpx; }
+.observation-back { position: absolute; top: 0; left: 20rpx; display: flex; width: 76rpx; height: 56px; align-items: center; justify-content: center; padding-bottom: 6rpx; color: #5c493c; font-family: Georgia, serif; font-size: 56rpx; line-height: 1; }
+.observation-back:active { opacity: .58; transform: scale(.97); }
+.observation-content { padding-top: 40rpx; }
+.choice-meta { display: flex; justify-content: space-between; gap: 20rpx; padding: 30rpx 0 0; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.choice-meta view:last-child { color: #663124; font-size: 20rpx; letter-spacing: 2rpx; }
+.choice-intro { margin: 112rpx 0 132rpx; }
+.choice-intro .title { max-width: 660rpx; margin: 0 0 34rpx; color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 54rpx; font-weight: 600; line-height: 1.38; }
+.choice-intro .muted { max-width: 520rpx; color: #40362f; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 26rpx; font-weight: 600; line-height: 1.8; }
+.method-section { border-top: 1rpx solid #cdbbae; padding: 36rpx 0 50rpx; box-sizing: border-box; }
+.method-reality { min-height: 580rpx; }
+.method-season { min-height: 650rpx; }
+.method-index { display: grid; grid-template-columns: 68rpx minmax(0, 1fr); gap: 14rpx; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; line-height: 1.5; }
+.method-index text { white-space: nowrap; }
+.method-index .method-context { white-space: nowrap; }
+.method-copy { margin-left: 82rpx; }
+.method-title { margin-top: 84rpx; color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 40rpx; font-weight: 600; line-height: 1.4; }
+.method-description { max-width: 480rpx; margin-top: 28rpx; color: #40362f; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 27rpx; font-weight: 600; line-height: 1.8; }
+.method-action { display: flex; align-items: center; gap: 22rpx; width: fit-content; min-height: 88rpx; margin: 54rpx 0 0 82rpx; padding: 0 20rpx 0 0; color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 27rpx; font-weight: 600; }
+.method-action[aria-disabled="true"] { opacity: .48; }
+.method-action text { font-family: sans-serif; font-size: 30rpx; font-weight: 400; }
+.guide-action { display: inline-flex; flex-wrap: nowrap; align-items: center; width: auto; margin-top: 48rpx; padding: 0 0 22rpx; border-bottom: 1rpx solid #cdbbae; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 23rpx; line-height: 1.5; white-space: nowrap; }
+.guide-action rich-text, .guide-action text { display: inline-block; flex: 0 0 auto; white-space: nowrap; }
+.guide-action text { margin-left: 8rpx; }
+.method-season .method-action { margin-top: 52rpx; }
+.privacy-note { display: grid; grid-template-columns: 150rpx minmax(0, 1fr); gap: 20rpx; padding: 38rpx 0 26rpx; border-top: 1rpx solid #cdbbae; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
+.privacy-label { color: #663124; font-size: 23rpx; }
+.privacy-copy { color: #76695f; font-size: 22rpx; line-height: 1.7; }
+.text-action { display: inline-flex; align-items: center; min-height: 80rpx; margin-top: 16rpx; color: #663124; }
+.issue-load-error { margin: 0 0 34rpx; }
+.issue-load-error .error-text { margin-top: 0; }
+.reality-stepper { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14rpx; margin: 22rpx 0 0; }
+.reality-stepper-item { display: flex; min-width: 0; min-height: 80rpx; flex-direction: column; gap: 10rpx; padding-top: 16rpx; border-top: 2rpx solid #cdbbae; box-sizing: border-box; color: #9a897b; font-family: Georgia, serif; }
+.reality-stepper-item.active, .reality-stepper-item.passed { border-top-color: #663124; color: #663124; }
+.reality-stepper-number { font-size: 20rpx; line-height: 1; letter-spacing: 1rpx; }
+.reality-stepper-label { font-size: 23rpx; line-height: 1.35; }
+.progress { margin: 48rpx 0 30rpx; color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.reality-step .title { margin: 0 0 22rpx; color: #663124; font-size: 54rpx; font-weight: 600; line-height: 1.42; }
+.reality-step .muted { color: #40362f; font-family: Georgia, serif; font-size: 27rpx; font-weight: 600; line-height: 1.8; }
+.answer-label { margin-top: 76rpx; color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; line-height: 1.5; }
+.reality-answer { display: block; width: 100%; height: 390rpx; min-height: 390rpx; margin-top: 18rpx; padding: 22rpx 0; border: 0; border-top: 1rpx solid #cdbbae; border-bottom: 1rpx solid #cdbbae; background: transparent; box-sizing: border-box; color: #40362f; font-family: Georgia, serif; font-size: 28rpx; line-height: 1.7; }
+.reality-answer::placeholder { color: #a18e7f; }
+.choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28rpx; margin-top: 66rpx; }
+.choice-option { display: flex; min-width: 0; min-height: 88rpx; align-items: center; padding: 12rpx 0; border-bottom: 1rpx solid #cdbbae; box-sizing: border-box; color: #40362f; font-family: Georgia, serif; font-size: 26rpx; font-weight: 600; line-height: 1.5; transition: color .18s ease, border-color .18s ease; }
+.choice-option.selected { border-bottom: 2rpx solid #663124; color: #663124; }
+.choice-option[aria-disabled="true"] { opacity: .55; }
+.reality-step .choice-grid + .answer-label { margin-top: 58rpx; }
+.validation-error { margin-top: 20rpx; color: #8f3b2d; font-family: Georgia, serif; font-size: 23rpx; line-height: 1.5; }
+.actions
+.actions
+.reality-step + .sync-status { margin-top: 24rpx; }
+.reality-step ~ .draft-note { margin-top: 24rpx; color: #76695f; font-family: Georgia, serif; font-size: 22rpx; line-height: 1.65; }
+@media (max-width: 360px) {
+  .reality-step .title { font-size: 50rpx; }
+  .choice-grid { column-gap: 20rpx; }
+  .choice-option { font-size: 24rpx; }
+}
+@media (prefers-reduced-motion: reduce) { .choice-option { transition: none; } }
+.method { display: block; width: 100%; margin: 0; padding: 28rpx 0; border: 0; border-bottom: 1rpx solid #e4dbd1; border-radius: 0; background: transparent; color: inherit; text-align: left; line-height: normal; }
+.method::after { border: 0; }
+.method:last-child { border-bottom: 0; }
+.method.selected { color: #663124; }
+.method[disabled] { opacity: 1; }
+.progress { margin: 10rpx 0 34rpx; color: #8b6b58; font-size: 24rpx; }
+.step .title { margin-bottom: 16rpx; font-size: 44rpx; }
+textarea, input { width: 100%; margin-top: 34rpx; padding: 24rpx; border: 1rpx solid #cdbbae; background: #fffdf9; box-sizing: border-box; font-size: 30rpx; line-height: 1.7; }
+textarea { min-height: 230rpx; }
+.actions { display: flex; gap: 18rpx; margin-top: 34rpx; }
+.actions
+.retry-actions { margin-top: 18rpx; }
+.disabled-button { opacity: .45; }
+.error-text { margin-top: 22rpx; color: #a53f32; font-size: 24rpx; }
+.sync-status { margin-top: 28rpx; color: #88786b; font-size: 23rpx; }
+.sync-status.saved { color: #57705e; }
+.sync-status.pending, .sync-status.error { color: #a05e42; }
+.draft-note { margin-top: 26rpx; color: #88786b; font-size: 22rpx; }
+.complete { padding-top: 25vh; }
+.loading-state { padding-top: 18vh; }
+.button-busy { opacity: .5; }
+.prompt-context { margin-top: 28rpx; padding: 26rpx 0; border-top: 1rpx solid #cdbbae; border-bottom: 1rpx solid #cdbbae; }
+.prompt-question { margin-top: 10rpx; color: #40362f; font-family: Georgia, serif; font-size: 34rpx; line-height: 1.55; }
+.prompt-note { margin-top: 12rpx; color: #76695f; font-size: 23rpx; line-height: 1.55; }
+.issue-load-error { margin-top: 22rpx; }
+.issue-load-error
+.account-deleted { display: grid; gap: 18rpx; }
+
+/* ----- 四时气韵说明弹层 ----- */
+.guide-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; background: rgba(48, 38, 31, .45); animation: guide-fade .16s ease both; }
+.guide-sheet { width: 100%; padding: 44rpx 40rpx calc(36rpx + env(safe-area-inset-bottom)); border-radius: 24rpx 24rpx 0 0; background: #efe6d9; box-sizing: border-box; box-shadow: 0 -12rpx 44rpx rgba(64, 54, 47, .18); animation: guide-rise .22s cubic-bezier(.2, .75, .25, 1) both; }
+.guide-mark { display: block; width: 56rpx; height: 56rpx; margin-bottom: 26rpx; }
+.guide-eyebrow { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; letter-spacing: 2rpx; line-height: 1.5; }
+.guide-title { margin-top: 22rpx; color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 44rpx; font-weight: 600; line-height: 1.4; }
+.guide-copy { margin-top: 26rpx; color: #4a3f38; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 26rpx; line-height: 1.9; }
+.guide-actions { display: grid; gap: 20rpx; margin-top: 46rpx; }
+@keyframes guide-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes guide-rise { from { transform: translateY(24rpx); opacity: .6; } to { transform: translateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .guide-backdrop, .guide-sheet { animation: none; } }
+
+/* ----- 四时气韵 · 底色（生命牌） ----- */
+.card-step { display: block; margin-top: 34rpx; }
+.card-meta { color: #8b6b58; font-size: 22rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.card-row { display: flex; align-items: center; gap: 22rpx; margin-top: 18rpx; }
+.card-face { display: flex; align-items: baseline; gap: 6rpx; color: #4a3f38; }
+.card-rank { font-family: "MYRIAD Garamond", Georgia, serif; font-size: 62rpx; font-weight: 600; line-height: 1; }
+.card-suit { font-family: Georgia, serif; font-size: 44rpx; line-height: 1; }
+.card-when { display: grid; gap: 8rpx; min-width: 0; }
+.card-date { color: #4a3f38; font-size: 24rpx; line-height: 1.4; }
+.card-edit {
+  width: max-content;
+  padding-bottom: 2rpx;
+  border-bottom: 1rpx solid rgba(102, 49, 36, .5);
+  color: #663124;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+.card-rule { height: 1rpx; margin: 34rpx 0 0; background: rgba(92, 73, 60, .22); }
+.card-eyebrow { margin-top: 34rpx; color: #8b6b58; font-size: 21rpx; letter-spacing: 2rpx; line-height: 1.5; }
+.card-title { margin-top: 22rpx; color: #4a3f38; font-size: 54rpx; font-weight: 600; line-height: 1.42; letter-spacing: .5rpx; }
+.card-summary { margin-top: 26rpx; color: #4a3f38; font-size: 26rpx; font-weight: 400; line-height: 1.95; }
+.card-label { margin-top: 36rpx; color: #7b5a45; font-size: 23rpx; letter-spacing: 1rpx; line-height: 1.5; }
+.card-prompt { margin-top: 16rpx; color: #4a3f38; font-size: 30rpx; font-weight: 600; line-height: 1.75; }
+.card-footnote { margin-top: 30rpx; color: #8b6b58; font-size: 22rpx; line-height: 1.7; }
+
+.card-empty { display: grid; gap: 18rpx; margin-top: 24rpx; }
+.card-edit-standalone { margin-top: 4rpx; }
+
+.card-rule-bottom { margin-top: 34rpx; }
+.card-note-label { margin-top: 34rpx; color: #7b5a45; font-size: 22rpx; letter-spacing: 1rpx; line-height: 1.5; }
+.card-note { margin-top: 16rpx; color: #4a3f38; font-size: 24rpx; line-height: 1.9; }
+.card-source-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-height: 84rpx;
+  margin-top: 24rpx;
+  color: #4a3f38;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+.card-source { display: grid; gap: 16rpx; margin-top: 4rpx; color: #5b4c42; font-size: 22rpx; line-height: 1.85; }
+.card-source-toggle:active { opacity: .68; }
+
+/* ---------- 四时气韵 · 02 此刻 ---------- */
+.season-step { display: block; }
+.step-index {
+  margin-top: 30rpx;
+  color: #8b6b58;
+  font-size: 21rpx;
+  letter-spacing: 2rpx;
+  line-height: 1.5;
+}
+.season-headline {
+  margin-top: 22rpx;
+  color: #3f352e;
+  font-size: 62rpx;
+  font-weight: 600;
+  line-height: 1.34;
+  letter-spacing: .5rpx;
+}
+.season-headline-line { display: block; }
+.season-lead {
+  margin-top: 26rpx;
+  color: #4a3f38;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 1.85;
+}
+.season-field { margin-top: 62rpx; }
+.season-label {
+  color: #4a3f38;
+  font-size: 25rpx;
+  font-weight: 600;
+  line-height: 1.7;
+}
+.season-optional { margin-left: 12rpx; color: #8b6b58; font-size: 21rpx; font-weight: 400; }
+.season-input {
+  width: 100%;
+  min-height: 236rpx;
+  margin-top: 10rpx;
+  padding: 18rpx 0 22rpx;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1rpx solid #cdbbae;
+  background: transparent;
+  color: #3f352e;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-size: 26rpx;
+  line-height: 1.9;
+}
+.season-input::placeholder { color: #a4937f; }
+.season-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 40rpx;
+  row-gap: 6rpx;
+  margin-top: 34rpx;
+}
+.season-choice {
+  display: flex;
+  min-height: 96rpx;
+  align-items: center;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #cdbbae;
+  box-sizing: border-box;
+  color: #40362f;
+  font-size: 25rpx;
+  font-weight: 600;
+  line-height: 1.5;
+  transition: color .18s ease, border-color .18s ease;
+}
+.season-choice.selected { border-bottom: 2rpx solid #663124; color: #663124; }
+.season-choice:active { opacity: .7; }
+.season-footnote {
+  margin-top: 48rpx;
+  color: #5c493c;
+  font-size: 23rpx;
+  line-height: 1.8;
+}
+
+/* ---------- 四时气韵 · 此刻的变化 ---------- */
+
+/* 选中后加深：季字、标题、提示统一转为深陶土色，并加重字重 */
+
+/* ---------- 四时气韵 · 04 行动 ---------- */
+.rest-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 104rpx;
+  margin-top: 54rpx;
+  padding: 22rpx 0;
+  border-top: 1rpx solid #cdbbae;
+  border-bottom: 1rpx solid #cdbbae;
+  box-sizing: border-box;
+  color: #916162;
+  font-size: 25rpx;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.rest-toggle.active { color: #663124; }
+.rest-toggle-mark {
+  flex: 0 0 auto;
+  width: 36rpx;
+  color: #663124;
+  font-size: 28rpx;
+  text-align: right;
+}
+.rest-toggle:active { opacity: .72; }
+
+.season-preview { margin-top: 44rpx; }
+.season-preview-label { color: #8b6b58; font-size: 21rpx; line-height: 1.6; }
+.season-preview-value {
+  margin-top: 12rpx;
+  color: #3f352e;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 1.8;
+}
+.season-preview-value.muted { color: #a4937f; font-weight: 400; }
+
+/* ---------- 可见文字框（输入区） ---------- */
+/* 输入区：保持原有的下划线样式（无边框、无底色） */
+.season-input-box {
+  width: 100%;
+  min-height: 208rpx;
+  margin-top: 16rpx;
+  padding: 14rpx 0 22rpx;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1rpx solid #cdbbae;
+  background: transparent;
+  color: #3f352e;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-size: 26rpx;
+  line-height: 1.9;
+}
+.season-input-box-compact { min-height: 128rpx; margin-top: 20rpx; }
+.season-input-box::placeholder { color: #a4937f; }
+
+/* 「暂时说不清」行：单行文字，垂直居中，行高更紧凑（参考设计图） */
+
+/* 「对这件事，你还看见了什么？」：字号更小、颜色更浅（与设计图一致） */
+.season-label--soft {
+  padding-bottom: 14rpx;
+  border-bottom: 1rpx solid #cdbbae;
+  color: #8b6b58;
+  font-size: 22rpx;
+  font-weight: 400;
+  line-height: 1.7;
+}
+.season-label--soft .season-optional {
+  color: #8b6b58;
+  font-size: 20rpx;
+  font-weight: 400;
+}
+
+/* 引导段按语义断行，避免把词切开（如「理/解」） */
+.season-lead-line { display: block; }
+
+/* 「暂时说不清」行保持紧凑，并去掉分割线左右内缩带来的错位 */
+
+/* 「暂时说不清」行同步放大，但保持单行紧凑 */
+
+/* ============================================================
+   四季状态列表（唯一定义处，请勿在别处重复）
+   ============================================================ */
+.season-state-list { position: relative; margin-top: 44rpx; }
+.season-state-list::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 6rpx;
+  right: 6rpx;
+  height: 1rpx;
+  background: #cdbbae;
+}
+
+.season-state { position: relative; }
+.season-state::after {
+  content: '';
+  position: absolute;
+  left: 6rpx;
+  right: 6rpx;
+  bottom: 0;
+  height: 1rpx;
+  background: #cdbbae;
+}
+
+.season-state-head {
+  display: flex;
+  align-items: flex-start;
+  min-height: 176rpx;
+  padding: 36rpx 4rpx 34rpx;
+  box-sizing: border-box;
+}
+
+.season-state-key {
+  flex: 0 0 auto;
+  min-width: 52rpx;
+  margin-right: 26rpx;
+  color: #5c2417;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-size: 52rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.season-state-main { flex: 1 1 auto; min-width: 0; }
+
+.season-state-label {
+  color: #5c2417;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.season-state-hint {
+  margin-top: 14rpx;
+  color: #7a4a37;
+  font-size: 23rpx;
+  line-height: 1.8;
+}
+
+.season-state-mark {
+  flex: 0 0 auto;
+  width: 40rpx;
+  color: #8b6b58;
+  font-family: Georgia, serif;
+  font-size: 36rpx;
+  line-height: 1.1;
+  text-align: right;
+}
+
+.season-state.open .season-state-key { color: #5c2417; }
+.season-state.open .season-state-label { color: #5c2417; font-weight: 700; }
+.season-state.open .season-state-hint { color: #7a4a37; }
+.season-state.open .season-state-mark { color: #5c2417; font-weight: 700; }
+
+.season-state--note .season-state-head {
+  min-height: 120rpx;
+  align-items: center;
+  padding: 30rpx 4rpx;
+}
+.season-state--note .season-state-key {
+  min-width: 0;
+  margin-right: 0;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.season-state--note .season-state-main { display: none; }
+.season-state--note .season-state-mark { margin-left: auto; }
+
+.season-state:active .season-state-head { opacity: .72; }
+
+/* 标签下划线（03 选择页） */
+.season-label--line {
+  padding-bottom: 14rpx;
+  border-bottom: 1rpx solid #cdbbae;
+  color: #916162;
+}
+/* 「选填」字号加大，并与左侧标签文字基线对齐 */
+.season-label--line .season-optional {
+  margin-left: 14rpx;
+  color: #916162;
+  font-size: 24rpx;
+  font-weight: 400;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
+/* ============================================================
+   操作按钮（唯一定义处，请勿在别处重复）
+   ============================================================ */
+.button {
+  display: flex;
+  width: 100%;
+  min-height: 92rpx;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 16rpx 20rpx;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 4rpx;
+  background: #73362a;
+  color: #fffaf4;
+  font-family: Georgia, serif;
+  font-size: 27rpx;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 1rpx;
+  text-align: center;
+}
+
+.button.secondary {
+  background: transparent;
+  color: #4a3a30;
+  border: 1rpx solid #7c6552;
+}
+
+.button.destructive {
+  background: #a53f32;
+  color: #fffaf4;
+}
+
+.button[aria-disabled="true"] { opacity: .5; }
+
+.button::after { border: 0; }
+
+/* 标签着色（04 行动：我愿意做的一个最小行动） */
+
+/* 标签着色 + 下划线（04 行动：我愿意做的一个最小行动） */
+.season-label--tint {
+  padding-bottom: 14rpx;
+  border-bottom: 1rpx solid #cdbbae;
+  color: #916162;
+}

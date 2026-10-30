@@ -1,0 +1,10 @@
+.env.local
+.env.production
+.migration-backups/
+node_modules/
+dist/
+.test-dist/
+.test-artifacts/
+*.tsbuildinfo
+management/src/**/*.js
+miniprogram/**/*.js

@@ -1,0 +1,58 @@
+<view class="page season-page">
+  <view class="season-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="season-nav-row">
+      <view class="season-back" role="button" aria-label="返回上一级" tabindex="0" bindtap="handleBack">‹</view>
+      <view class="season-nav-title">四时气韵</view>
+      <view class="season-more" role="button" aria-label="展开说明" tabindex="0" bindtap="toggleGuide">···</view>
+    </view>
+  </view>
+
+  <view class="season-meta"><text>四时气韵</text><text>从生命牌开始</text></view>
+
+  <view class="season-hero">
+    <view class="season-headline"><text class="season-headline-line">从一个生日，</text><text class="season-headline-line">开启一次观察。</text></view>
+    <view class="season-lead">按生日找到对应的生命牌，借它的主题回看一件真实的事，再辨认其中的变化与自己的选择。</view>
+  </view>
+
+  <view class="season-form">
+    <view class="season-label">你的公历生日</view>
+    <view class="birth-row">
+      <picker class="birth-field" mode="selector" range="{{monthOptions}}" value="{{monthIndex}}" bindchange="onMonthChange">
+        <view class="birth-caption">月</view>
+        <view class="birth-value {{birthMonth ? '' : 'is-placeholder'}}">{{birthMonth ? birthMonth + ' 月' : '选择月份'}}</view>
+      </picker>
+      <picker class="birth-field" mode="selector" range="{{dayOptions}}" value="{{dayIndex}}" bindchange="onDayChange">
+        <view class="birth-caption">日</view>
+        <view class="birth-value {{birthDay ? '' : 'is-placeholder'}}">{{birthDay ? birthDay + ' 日' : '选择日期'}}</view>
+      </picker>
+    </view>
+    <view class="birth-note">只需月与日。同一天生日对应同一张生命牌。</view>
+  </view>
+
+  <view class="remember-row" role="button" aria-role="button" aria-pressed="{{remember}}" tabindex="0" bindtap="toggleRemember">
+    <view class="remember-box {{remember ? 'is-checked' : ''}}" aria-hidden="true"></view>
+    <view class="remember-copy">
+      <view class="remember-title">在这台设备记住生日</view>
+      <view class="remember-note">下次可直接继续观察；随时可以清除。</view>
+    </view>
+  </view>
+
+  <view class="season-primary" role="button" aria-label="查看我的生命牌" tabindex="0" bindtap="openLifeCard">查看我的生命牌</view>
+
+  <view class="season-divider" aria-hidden="true"></view>
+
+  <view class="season-guide-toggle" role="button" aria-expanded="{{guideOpen}}" tabindex="0" bindtap="toggleGuide">
+    <text class="guide-caret" aria-hidden="true">{{guideOpen ? '▾' : '▸'}}</text>
+    <text>生命牌与四时气韵是什么？</text>
+  </view>
+  <view wx:if="{{guideOpen}}" class="season-guide-body">
+    <view class="season-guide-paragraph">生命牌来自一种以生日对应纸牌的传统符号体系。在这里，MYRIAD SHE 把其中的主题转成观察问题，再借“生、长、收、藏”辨认一件具体的事正在怎样变化。</view>
+    <view class="season-guide-paragraph">生日只用于查表。牌义不决定你是谁，也不能替你判断此刻的状态。你可以保留不同的经验与解释。</view>
+    <view class="season-guide-steps">底色 → 此刻 → 选择 → 行动</view>
+  </view>
+
+  <view class="season-secondary" role="button" aria-label="从现实处境开始" tabindex="0" bindtap="openReality">从现实处境开始</view>
+  <view class="season-skip" role="button" aria-label="暂不使用四时气韵" tabindex="0" bindtap="handleBack">暂不使用四时气韵</view>
+
+  <app-tab-bar />
+</view>

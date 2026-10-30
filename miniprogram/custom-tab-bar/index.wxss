@@ -1,0 +1,37 @@
+.tab-bar {
+  position: fixed;
+  z-index: 30;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: calc(120rpx + env(safe-area-inset-bottom));
+  padding: 0 24rpx env(safe-area-inset-bottom);
+  border-top: 1rpx solid #cdbbae;
+  background: #e7dfd1;
+  box-sizing: border-box;
+}
+.mine-tab-bar { border-top-color: #c6bbad; background: #e7dfd1; }
+.tab-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-width: 0;
+  min-height: 112rpx;
+  color: #928276;
+  transition: color .18s ease;
+}
+.tab-item.selected { color: #8e493c; }
+.tab-icon { position: relative; display: flex; width: 40rpx; height: 40rpx; align-items: center; justify-content: center; color: inherit; }
+.icon-home { border: 2rpx solid currentColor; border-radius: 50%; }
+.home-mark { width: 8rpx; height: 8rpx; border-radius: 50%; background: currentColor; }
+.practice-mark { display: flex; width: 30rpx; height: 28rpx; flex-direction: column; justify-content: space-around; align-items: center; }
+.practice-mark view { width: 26rpx; height: 7rpx; border: 2rpx solid currentColor; border-right: 0; border-left: 0; border-radius: 50%; }
+.mine-mark { position: relative; width: 36rpx; height: 36rpx; border: 2rpx solid currentColor; border-radius: 50%; overflow: hidden; }
+.mine-head { position: absolute; top: 6rpx; left: 12rpx; width: 9rpx; height: 9rpx; border: 2rpx solid currentColor; border-radius: 50%; }
+.mine-shoulders { position: absolute; bottom: -7rpx; left: 6rpx; width: 21rpx; height: 16rpx; border: 2rpx solid currentColor; border-radius: 50% 50% 0 0; }
+.tab-label { color: inherit; font-size: 22rpx; line-height: 1.2; }
+@media (prefers-reduced-motion: reduce) { .tab-item { transition: none; } }

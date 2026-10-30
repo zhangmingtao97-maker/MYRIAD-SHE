@@ -1,0 +1,38 @@
+<view class="page shared-practice-page">
+  <view class="shared-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="shared-topbar-action shared-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">‹</view>
+    <rich-text class="shared-topbar-title" nodes="{{copy.topbarTitle.richText}}" style="font-size: {{copy.topbarTitle.fontSize}}px; color: {{copy.topbarTitle.color}}"></rich-text>
+    <view class="shared-topbar-action shared-more" style="top: {{statusBarHeight}}px" role="button" aria-label="更多" tabindex="0" bindtap="handleMore">···</view>
+  </view>
+  <view wx:if="{{loading}}" class="loading-state" role="status" aria-live="polite">正在读取云端实践内容…</view>
+  <view wx:elif="{{error}}" class="error-state" role="alert"><view class="error-text">{{error}}</view><view class="button secondary" role="button" aria-label="重新读取实践内容" tabindex="0" bindtap="load">重新读取</view></view>
+  <block wx:else>
+    <view class="shared-practice-meta"><rich-text class="eyebrow shared-meta-left" nodes="{{copy.metaLeft.richText}}" style="font-size: {{copy.metaLeft.fontSize}}px; color: {{copy.metaLeft.color}}"></rich-text><rich-text class="shared-meta-right" nodes="{{copy.metaRight.richText}}" style="font-size: {{copy.metaRight.fontSize}}px; color: {{copy.metaRight.color}}"></rich-text></view>
+    <view class="shared-hero">
+      <rich-text class="shared-hero-title" nodes="{{copy.heroTitle.richText}}" style="font-size: {{copy.heroTitle.fontSize}}px; color: {{copy.heroTitle.color}}"></rich-text>
+      <rich-text class="shared-hero-intro" nodes="{{copy.heroIntro.richText}}" style="font-size: {{copy.heroIntro.fontSize}}px; color: {{copy.heroIntro.color}}"></rich-text>
+    </view>
+    <view class="shared-section online-section">
+      <view class="shared-section-meta"><rich-text nodes="{{copy.onlineNumber.richText}}" style="font-size: {{copy.onlineNumber.fontSize}}px; color: {{copy.onlineNumber.color}}"></rich-text><rich-text nodes="{{copy.onlineContext.richText}}" style="font-size: {{copy.onlineContext.fontSize}}px; color: {{copy.onlineContext.color}}"></rich-text></view>
+      <view class="shared-issue-meta"><rich-text nodes="{{copy.onlineIssueLabel.richText}}" style="font-size: {{copy.onlineIssueLabel.fontSize}}px; color: {{copy.onlineIssueLabel.color}}"></rich-text><text class="shared-issue-divider">·</text><rich-text nodes="{{copy.onlineIssueTheme.richText}}" style="font-size: {{copy.onlineIssueTheme.fontSize}}px; color: {{copy.onlineIssueTheme.color}}"></rich-text></view>
+      <rich-text class="shared-section-title" nodes="{{copy.onlineQuestion.richText}}" style="font-size: {{copy.onlineQuestion.fontSize}}px; color: {{copy.onlineQuestion.color}}"></rich-text>
+      <rich-text wx:for="{{paragraphs}}" wx:key="index" class="shared-section-copy" nodes="{{item.richText}}" style="font-size: {{item.fontSize}}px; color: {{item.color}}"></rich-text>
+      <view class="text-button shared-action" role="button" aria-label="{{copy.onlineAction.richText}}" tabindex="0" bindtap="handleObservation"><rich-text nodes="{{copy.onlineAction.richText}}" style="font-size: {{copy.onlineAction.fontSize}}px; color: {{copy.onlineAction.color}}"></rich-text><text>→</text></view>
+    </view>
+    <view class="shared-section offline-section">
+      <view class="shared-section-meta"><rich-text nodes="{{copy.offlineNumber.richText}}" style="font-size: {{copy.offlineNumber.fontSize}}px; color: {{copy.offlineNumber.color}}"></rich-text><rich-text nodes="{{copy.offlineContext.richText}}" style="font-size: {{copy.offlineContext.fontSize}}px; color: {{copy.offlineContext.color}}"></rich-text></view>
+      <rich-text class="shared-section-title" nodes="{{copy.offlineTitle.richText}}" style="font-size: {{copy.offlineTitle.fontSize}}px; color: {{copy.offlineTitle.color}}"></rich-text>
+      <rich-text class="shared-section-copy" nodes="{{copy.offlineCopy.richText}}" style="font-size: {{copy.offlineCopy.fontSize}}px; color: {{copy.offlineCopy.color}}"></rich-text>
+      <view class="shared-notice"><rich-text nodes="{{copy.noticeLabel.richText}}" style="font-size: {{copy.noticeLabel.fontSize}}px; color: {{copy.noticeLabel.color}}"></rich-text><rich-text nodes="{{copy.noticeCode.richText}}" style="font-size: {{copy.noticeCode.fontSize}}px; color: {{copy.noticeCode.color}}"></rich-text></view>
+      <view class="activity-list" aria-label="线下活动说明">
+        <view wx:for="{{rules}}" wx:key="index" class="activity-row"><rich-text class="activity-number" nodes="{{item.number.richText}}" style="font-size: {{item.number.fontSize}}px; color: {{item.number.color}}"></rich-text><rich-text class="activity-title" nodes="{{item.title.richText}}" style="font-size: {{item.title.fontSize}}px; color: {{item.title.color}}"></rich-text><rich-text class="activity-copy" nodes="{{item.description.richText}}" style="font-size: {{item.description.fontSize}}px; color: {{item.description.color}}"></rich-text></view>
+      </view>
+      <view class="next-meet"><rich-text nodes="{{copy.nextAction.richText}}" style="font-size: {{copy.nextAction.fontSize}}px; color: {{copy.nextAction.color}}"></rich-text><text>→</text></view>
+    </view>
+  </block>
+  <view class="shared-tabbar" role="tablist" aria-label="小程序底部导航">
+    <view class="shared-tab {{fromMine ? 'selected' : ''}}" role="tab" aria-label="首页" aria-selected="{{fromMine}}" tabindex="0" bindtap="switchTab" data-index="0"><view class="shared-tab-icon shared-home-icon"><view></view></view><text>首页</text></view>
+    <view class="shared-tab {{fromMine ? '' : 'selected'}}" role="tab" aria-label="实践" aria-selected="{{!fromMine}}" tabindex="0" bindtap="switchTab" data-index="1"><view class="shared-tab-icon shared-practice-icon"><view></view><view></view></view><text>实践</text></view>
+    <view class="shared-tab" role="tab" aria-label="我的" aria-selected="false" tabindex="0" bindtap="switchTab" data-index="2"><view class="shared-tab-icon shared-mine-icon"><view class="shared-mine-head"></view><view class="shared-mine-body"></view></view><text>我的</text></view>
+  </view>
+</view>

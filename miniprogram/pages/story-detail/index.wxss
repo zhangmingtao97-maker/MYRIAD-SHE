@@ -1,0 +1,37 @@
+@import "../../app.wxss";
+
+page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
+.story-detail-page { min-height: 100vh; padding-bottom: 170rpx; background: #e7dfd1; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; }
+.story-topbar { position: sticky; z-index: 10; top: 0; border-bottom: 1rpx solid rgba(92, 73, 60, .22); background: #e7dfd1; box-sizing: border-box; }
+.story-topbar-row { position: relative; display: flex; height: 88rpx; align-items: center; justify-content: center; padding: 0 120rpx; box-sizing: border-box; }
+.topbar-title { color: #5c493c; font-size: 30rpx; font-weight: 600; line-height: 1.4; }
+.topbar-control { position: absolute; top: 0; display: flex; width: 72rpx; height: 88rpx; align-items: center; justify-content: center; color: #5c493c; }
+.back-control { left: 22rpx; font-family: Georgia, serif; font-size: 56rpx; line-height: 1; }
+.more-control { right: 82rpx; font-family: Georgia, serif; font-size: 34rpx; letter-spacing: 3rpx; }
+.story-topbar [role="button"]:active, .story-article [role="button"]:active { opacity: .65; }
+.story-state { padding: 80rpx 40rpx; color: #8a6755; font-size: 26rpx; line-height: 1.8; }
+.story-error { color: #8c4035; }
+.retry-control { display: inline-block; margin-top: 30rpx; padding: 18rpx 0; color: #663124; border-bottom: 1rpx solid rgba(92, 73, 60, .28); }
+.story-hero-meta { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin: 0 40rpx; padding-top: 48rpx; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 23rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.story-hero-meta text:last-child { color: #663124; white-space: nowrap; }
+.story-hero-copy { min-height: 480rpx; padding: 98rpx 40rpx 72rpx; box-sizing: border-box; }
+.story-title { display: block; color: #5c493c; font-size: 64rpx; font-weight: 600; line-height: 1.22; white-space: pre-wrap; }
+.story-intro { display: block; width: 92%; max-width: 620rpx; margin: 38rpx auto 0; color: #40362f; font-size: 30rpx; font-weight: 400; line-height: 1.8; white-space: pre-wrap; }
+.story-detail-image, .story-image-empty { display: block; width: 100%; height: 600rpx; }
+.story-detail-image { background: #d9d0c4; }
+.story-image-empty { display: flex; align-items: center; justify-content: center; background: #dfd5c8; color: #8a6755; font-size: 26rpx; }
+.story-image-caption { display: flex; min-height: 60rpx; align-items: flex-start; justify-content: space-between; gap: 24rpx; padding: 18rpx 40rpx 0; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 22rpx; line-height: 1.55; }
+.story-image-caption text:first-child { min-width: 0; }
+.story-image-caption text:last-child { flex: 0 0 auto; text-align: right; }
+.story-article { padding: 130rpx 40rpx 70rpx; }
+.story-source { display: block; width: 90%; max-width: 610rpx; margin: 0 auto; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 23rpx; line-height: 1.6; }
+.story-rule { margin-top: 34rpx; border-top: 1rpx solid rgba(92, 73, 60, .24); }
+.story-paragraph { display: block; width: 90%; max-width: 610rpx; margin: 42rpx auto 0; color: #5c493c; font-size: 32rpx; font-weight: 400; line-height: 1.85; white-space: pre-wrap; }
+.second-paragraph { margin-top: 48rpx; }
+.story-quote { display: block; width: 84%; max-width: 570rpx; margin: 132rpx auto 0; color: #5c493c; font-size: 40rpx; font-weight: 600; line-height: 1.55; white-space: pre-wrap; }
+.story-closing { display: block; width: 90%; max-width: 610rpx; margin: 122rpx auto 0; color: #5c493c; font-size: 28rpx; font-weight: 400; line-height: 1.85; white-space: pre-wrap; }
+.story-actions { margin-top: 86rpx; border-top: 1rpx solid rgba(92, 73, 60, .24); border-bottom: 1rpx solid rgba(92, 73, 60, .24); }
+.article-action { display: flex; min-height: 88rpx; align-items: center; justify-content: space-between; gap: 18rpx; color: #5c493c; font-size: 28rpx; line-height: 1.5; }
+.external-arrow { flex: 0 0 auto; color: #663124; font-family: Garamond, Georgia, serif; font-size: 34rpx; }
+.back-to-issue { display: flex; min-height: 96rpx; align-items: center; gap: 24rpx; margin-top: 48rpx; color: #5c493c; font-size: 28rpx; font-weight: 600; }
+.back-to-issue text:last-child { color: #663124; font-family: Garamond, Georgia, serif; font-size: 34rpx; }

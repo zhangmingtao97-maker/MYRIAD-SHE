@@ -1,0 +1,80 @@
+<view class="shop-frame">
+  <view class="shop-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="shop-topbar-action shop-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回上一页" tabindex="0" bindtap="handleBack">‹</view>
+    <view class="shop-topbar-title">日常之物</view>
+    <view class="shop-topbar-action shop-more" style="top: {{statusBarHeight}}px" role="button" aria-label="更多" tabindex="0" bindtap="handleMore">···</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="shop-access-state">正在读取日常之物…</view>
+  <view wx:elif="{{error}}" class="shop-access-state">{{error}}</view>
+
+  <scroll-view wx:elif="{{accessAvailable}}" class="shop-scroll" scroll-y enable-flex>
+    <view wx:if="{{!shopOpen}}" class="daily-landing">
+      <view class="landing-brand">
+        <image class="landing-logo" src="/assets/shop/daily-objects-logo.png" mode="aspectFit" aria-label="Daily Objects 标志" />
+      </view>
+      <view class="landing-meta">{{content.brandSubtitle}} · {{content.title}}</view>
+      <view class="landing-title">物不是答案。<br />它只在日常里，<br />支持一个动作发生。</view>
+      <view class="landing-intro">这些物从具体的使用场景出发，帮助一个动作变得更容易，而不是替生活提供答案。</view>
+      <view class="landing-status">正在研究 · 尚未开放</view>
+      <view class="landing-principles">
+        <view class="principles-heading"><text>我们先确认三件事</text><text>PRINCIPLES</text></view>
+        <view class="principle-row"><text class="principle-number">01</text><view><text class="principle-title">它是否真的被需要</text><text class="principle-copy">不是为填满货架而出现。</text></view></view>
+        <view class="principle-row"><text class="principle-number">02</text><view><text class="principle-title">它如何进入生活</text><text class="principle-copy">讲清楚使用动作，而不是调用幻想。</text></view></view>
+        <view class="principle-row"><text class="principle-number">03</text><view><text class="principle-title">它能否经得起长期使用</text><text class="principle-copy">不因一次测试或一张牌被推荐。</text></view></view>
+        <view class="landing-note">商品、价格、购物车与订单会在真实内容准备好后一起开放。</view>
+      </view>
+    </view>
+
+    <view wx:elif="{{shopOpen}}" class="shop-content">
+      <view class="shop-brand">
+        <image class="brand-mark shop-brand-mark" src="/assets/shop/brand-mark.svg" mode="aspectFit" aria-label="MYRIAD SHE 品牌标志" />
+        <view class="shop-brand-name">{{content.brandName}}<text>{{content.brandSubtitle}}</text></view>
+        <view class="shop-text shop-bag" role="button" aria-label="购物袋，0件，仅供预览" tabindex="0" bindtap="handleBag">购物袋 <text>00</text></view>
+      </view>
+
+      <view class="shop-header">
+        <view class="shop-folio">{{content.eyebrow}}</view>
+        <view class="shop-title">{{content.title}}</view>
+        <view class="shop-intro">{{content.intro}}</view>
+      </view>
+
+      <view class="shop-preview-note">{{content.previewNote}}</view>
+
+      <view class="shop-catalog" aria-label="日常之物商品目录">
+        <block wx:for="{{products}}" wx:key="id">
+          <view class="shop-object">
+            <view class="shop-object-image" role="button" aria-label="查看{{item.name}}" tabindex="0" bindtap="openProduct" data-id="{{item.id}}">
+              <image src="{{item.image}}" mode="aspectFill" style="height: {{coverImageHeight}}px" aria-label="{{item.name}}，抽象物件示意图" />
+              <text>{{item.id}}</text>
+            </view>
+            <view class="shop-object-caption">
+              <view class="shop-object-name">
+                <text class="shop-object-english">{{item.english}}</text>
+                <view class="shop-object-title" role="button" aria-label="查看{{item.name}}" tabindex="0" bindtap="openProduct" data-id="{{item.id}}">{{item.name}}<text>↗</text></view>
+              </view>
+              <view class="shop-price">{{item.price}}<text>{{item.priceLabel}}</text></view>
+            </view>
+          </view>
+        </block>
+      </view>
+
+      <view class="shop-footer">
+        <view></view>
+        <view class="shop-text shop-support" role="button" aria-label="{{content.supportLabel}}" tabindex="0" bindtap="handleSupport">{{content.supportLabel}} →</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="shop-tabbar" role="tablist" aria-label="小程序底部导航">
+    <view class="shop-tab" role="tab" aria-label="首页" aria-selected="false" tabindex="0" bindtap="switchTab" data-index="0">
+      <view class="shop-tab-icon shop-home-icon"><view></view></view><text>首页</text>
+    </view>
+    <view class="shop-tab selected" role="tab" aria-label="实践" aria-selected="true" tabindex="0" bindtap="switchTab" data-index="1">
+      <view class="shop-tab-icon shop-practice-icon"><view></view><view></view></view><text>实践</text>
+    </view>
+    <view class="shop-tab" role="tab" aria-label="我的" aria-selected="false" tabindex="0" bindtap="switchTab" data-index="2">
+      <view class="shop-tab-icon shop-mine-icon"><view class="shop-mine-head"></view><view class="shop-mine-body"></view></view><text>我的</text>
+    </view>
+  </view>
+</view>

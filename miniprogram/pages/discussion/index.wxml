@@ -1,0 +1,54 @@
+<view class="discussion-page">
+  <view class="discussion-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="discussion-control discussion-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">‹</view>
+    <text class="discussion-nav-title">本期讨论</text>
+    <view class="discussion-control discussion-more" style="top: {{statusBarHeight}}px" role="button" aria-label="更多讨论选项" tabindex="0" bindtap="handleMore">···</view>
+  </view>
+  <view wx:if="{{loading}}" class="discussion-state" role="status" aria-live="polite">正在读取本期讨论…</view>
+  <view wx:elif="{{error}}" class="discussion-state discussion-error" role="alert"><text>{{error}}</text><view class="discussion-retry" role="button" aria-label="重新读取本期讨论" tabindex="0" bindtap="load">重新读取</view></view>
+  <block wx:elif="{{content}}">
+    <view class="discussion-intro">
+      <view class="discussion-meta"><text class="discussion-number">{{content.copy.number}}</text><text class="discussion-kicker">{{content.copy.kicker}}</text></view>
+      <view class="discussion-issue-line">{{content.copy.issueLine}}</view>
+      <view class="discussion-title">{{content.copy.title}}</view>
+      <view class="discussion-lead">{{content.copy.intro}}</view>
+      <view class="discussion-description">{{content.copy.paragraph1}}</view>
+      <view class="discussion-description">{{content.copy.paragraph2}}</view>
+      <view class="discussion-description">{{content.copy.paragraph3}}</view>
+      <view class="discussion-write" role="button" aria-label="{{content.copy.writeAction}}" tabindex="0" bindtap="writeExperience"><text>{{content.copy.writeAction}}</text><text class="discussion-external" aria-hidden="true">↗</text></view>
+    </view>
+    <view class="discussion-voices">
+      <view class="discussion-section-heading"><text>{{content.copy.voicesTitle}}</text><text class="discussion-example-badge">{{content.copy.exampleBadge}}</text></view>
+      <view class="discussion-example-note">{{content.copy.exampleNotice}}</view>
+      <view wx:for="{{threads}}" wx:key="id" class="discussion-thread">
+        <view class="discussion-thread-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">示例</text></view>
+        <view class="discussion-thread-body">{{item.body}}</view>
+        <view class="discussion-thread-actions"><view class="discussion-reply-action" role="button" aria-label="回复{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="replyToThread">回复{{item.author}} <text>↗</text></view><view class="discussion-report" role="button" aria-label="{{item.reported ? '已在本机标记' : '举报'}}{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="reportThread">{{item.reported ? '已标记' : '举报'}}</view></view>
+        <view wx:if="{{item.expanded}}" class="discussion-replies">
+          <view wx:for="{{item.replies}}" wx:for-item="reply" wx:key="id" class="discussion-reply">
+            <view class="discussion-reply-meta">{{reply.author}} · 示例</view><view class="discussion-reply-body">{{reply.body}}</view>
+          </view>
+          <view wx:for="{{item.localReplies}}" wx:for-item="reply" wx:key="id" class="discussion-reply local-reply">
+            <view class="discussion-reply-meta">你 · 本机演示</view><view class="discussion-reply-body">{{reply.body}}</view>
+          </view>
+        </view>
+        <view wx:if="{{item.replies.length + item.localReplies.length}}" class="discussion-expand" role="button" aria-expanded="{{item.expanded}}" aria-label="{{item.expanded ? '收起这段对话' : '展开这段对话'}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="toggleConversation">{{item.expanded ? '收起这段对话' : '展开这段对话'}}<text>→</text></view>
+      </view>
+    </view>
+    <view class="discussion-my-posts" wx:if="{{myPosts.length}}">
+      <view class="discussion-section-heading"><text>我的本机发言</text><text class="discussion-example-badge">{{myPosts.length}} 条</text></view>
+      <view wx:for="{{myPosts}}" wx:key="id" class="discussion-my-post"><view class="discussion-reply-meta">你 · 本机演示</view><view class="discussion-reply-body">{{item.body}}</view></view>
+    </view>
+    <view class="discussion-private">
+      <view class="discussion-private-eyebrow">{{content.copy.selfEyebrow}}</view>
+      <view class="discussion-private-title">{{content.copy.selfTitle}}</view>
+      <view class="discussion-private-body">{{content.copy.selfBody}}</view>
+      <view class="discussion-private-action" role="button" aria-label="{{content.copy.selfAction}}" tabindex="0" bindtap="openPrivateObservation">{{content.copy.selfAction}}<text>→</text></view>
+    </view>
+  </block>
+  <view class="discussion-tabbar" role="tablist" aria-label="小程序底部导航">
+    <view class="discussion-tab selected" role="tab" aria-label="首页" aria-selected="true" tabindex="0" data-index="0" bindtap="switchTab"><view class="discussion-tab-icon discussion-home-icon"><view></view></view><text>首页</text></view>
+    <view class="discussion-tab" role="tab" aria-label="实践" aria-selected="false" tabindex="0" data-index="1" bindtap="switchTab"><view class="discussion-tab-icon discussion-practice-icon"><view></view><view></view></view><text>实践</text></view>
+    <view class="discussion-tab" role="tab" aria-label="我的" aria-selected="false" tabindex="0" data-index="2" bindtap="switchTab"><view class="discussion-tab-icon discussion-mine-icon"><view class="discussion-mine-head"></view><view class="discussion-mine-body"></view></view><text>我的</text></view>
+  </view>
+</view>

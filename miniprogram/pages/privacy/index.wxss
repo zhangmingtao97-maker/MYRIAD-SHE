@@ -1,0 +1,42 @@
+page { background: #e7dfd1; color: #5c493c; }
+.privacy-page { min-height: 100vh; padding-bottom: 150rpx; box-sizing: border-box; background: #e7dfd1; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+.privacy-topbar { border-bottom: 1rpx solid rgba(92,73,60,.22); }
+.topbar-row { height: 90rpx; display: flex; align-items: center; justify-content: space-between; padding: 0 28rpx; }
+.icon-button { width: 64rpx; height: 64rpx; margin: 0; padding: 0; border: 0; background: transparent; color: #5c493c; font-family: Georgia, serif; font-size: 56rpx; line-height: 58rpx; }
+.icon-button::after { border: 0; }
+.topbar-title { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 32rpx; font-weight: 600; }
+.privacy-content { padding: 54rpx 48rpx 60rpx; }
+.privacy-meta, .section-index, .privacy-row, .privacy-action { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; }
+.privacy-meta { color: #8b6b58; font-family: Georgia, serif; font-size: 24rpx; letter-spacing: 2rpx; }
+.privacy-hero { margin: 94rpx 0 118rpx; }
+.privacy-hero-title { display: block; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 58rpx; font-weight: 600; line-height: 1.38; }
+.privacy-hero-intro { display: block; margin-top: 46rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; font-weight: 600; line-height: 1.7; }
+.privacy-section { margin-top: 72rpx; padding-top: 34rpx; border-top: 1rpx solid rgba(92,73,60,.26); }
+.first-section { margin-top: 0; }
+.section-index { justify-content: flex-start; color: #8b6b58; font-family: Georgia, serif; font-size: 24rpx; letter-spacing: 1rpx; }
+.section-index rich-text:last-child { margin-left: 34rpx; }
+.privacy-row { min-height: 130rpx; border-bottom: 1rpx solid rgba(92,73,60,.2); }
+.privacy-row:last-child { border-bottom: 0; }
+.row-copy { flex: 1; min-width: 0; }
+.row-title, .row-desc, .local-title, .local-copy, .privacy-footer { display: block; }
+.row-title { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 32rpx; font-weight: 600; line-height: 1.45; }
+.row-desc { margin-top: 12rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.55; }
+.row-status, .row-arrow { flex: 0 0 auto; color: #8e493c; font-family: Georgia, serif; font-size: 24rpx; }
+.row-arrow { font-size: 28rpx; }
+.method-row switch { transform: scale(.84); transform-origin: right center; }
+.local-section { margin-top: 86rpx; padding-bottom: 28rpx; }
+.local-title { margin-top: 54rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 600; line-height: 1.6; }
+.local-copy { margin-top: 18rpx; }
+.privacy-action { min-height: 94rpx; margin-top: 42rpx; border-top: 1rpx solid rgba(142,73,60,.42); border-bottom: 1rpx solid rgba(142,73,60,.42); color: #8e493c; font-family: Georgia, "Songti SC", serif; font-size: 29rpx; }
+.privacy-footer { margin-top: 74rpx; padding-top: 30rpx; border-top: 1rpx solid rgba(92,73,60,.2); color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; font-weight: 600; line-height: 1.7; }
+.privacy-actions { display: grid; gap: 8rpx; margin-top: 56rpx; padding-top: 24rpx; border-top: 1rpx solid rgba(92,73,60,.2); }
+.text-button { min-height: 68rpx; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #8e493c; font-family: Georgia, "Songti SC", serif; font-size: 25rpx; line-height: 1.5; text-align: left; }
+.text-button::after { border: 0; }
+.danger-text { color: #8f352d; }
+.privacy-state { padding: 120rpx 48rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; line-height: 1.7; }
+.error-state { display: grid; gap: 28rpx; }
+.privacy-message, .privacy-error { margin: 0 48rpx 20rpx; font-size: 24rpx; line-height: 1.6; }
+.privacy-message { color: #663124; }.privacy-error { color: #8f352d; }
+.privacy-tabbar { position: fixed; right: 0; bottom: 0; left: 0; z-index: 20; display: flex; height: 116rpx; padding-bottom: env(safe-area-inset-bottom); border-top: 1rpx solid rgba(92,73,60,.22); background: rgba(231,223,209,.98); }
+.tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; color: #9a8c80; font-family: Georgia, "Songti SC", serif; font-size: 22rpx; }
+.tab-item.selected { color: #663124; font-weight: 600; }.tab-icon { font-size: 34rpx; line-height: 1; }

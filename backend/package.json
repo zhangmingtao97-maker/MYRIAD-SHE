@@ -1,0 +1,41 @@
+{
+  "name": "myriad-she-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "lint": "tsc --noEmit",
+    "test:unit": "tsc -p test/tsconfig.json && node --test .test-dist/test/observation.controller.spec.js .test-dist/test/discussion-contribution.spec.js .test-dist/test/content.controller.spec.js .test-dist/test/privacy.service.spec.js .test-dist/test/admin-filters.spec.js .test-dist/test/admin-auth.guard.spec.js .test-dist/test/health.controller.spec.js .test-dist/test/request-id.spec.js .test-dist/test/auth.service.spec.js .test-dist/test/auth.guard.spec.js .test-dist/test/database.service.spec.js .test-dist/test/environment.spec.js .test-dist/test/storage.service.spec.js .test-dist/test/legal-documents.spec.js .test-dist/test/legal-mini-page.spec.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/s3-request-presigner": "^3.750.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "mammoth": "^1.13.0",
+    "multer": "^2.5.0",
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "sanitize-html": "^2.18.1",
+    "yauzl": "^3.4.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/sanitize-html": "^2.16.2",
+    "@types/yauzl": "^3.4.0",
+    "jszip": "^3.10.2",
+    "typescript": "^5.7.2"
+  }
+}

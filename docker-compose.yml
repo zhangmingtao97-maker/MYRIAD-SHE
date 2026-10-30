@@ -1,0 +1,122 @@
+name: ${COMPOSE_PROJECT_NAME}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE}
+    container_name: ${POSTGRES_CONTAINER_NAME}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_HOST_PORT}:${POSTGRES_CONTAINER_PORT}"
+    volumes:
+      - ${POSTGRES_VOLUME}:/var/lib/postgresql/data
+    networks: [myriad_she_net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: ${REDIS_IMAGE}
+    container_name: ${REDIS_CONTAINER_NAME}
+    restart: unless-stopped
+    ports:
+      - "${REDIS_HOST_PORT}:${REDIS_CONTAINER_PORT}"
+    volumes:
+      - ${REDIS_VOLUME}:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks: [myriad_she_net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: ${MINIO_IMAGE}
+    container_name: ${MINIO_CONTAINER_NAME}
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      MINIO_API_CORS_ALLOW_ORIGIN: ${CORS_ORIGIN}
+    ports:
+      - "${MINIO_HOST_PORT}:${MINIO_CONTAINER_PORT}"
+      - "${MINIO_CONSOLE_HOST_PORT}:${MINIO_CONSOLE_CONTAINER_PORT}"
+    volumes:
+      - ${MINIO_VOLUME}:/data
+    command: ["server", "/data", "--console-address", ":9001"]
+    networks: [myriad_she_net]
+
+  api:
+    build:
+      context: ./backend
+      target: development
+    container_name: ${API_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file: [.env.local]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DATABASE_URL: ""
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
+    ports:
+      - "${PORT}:${PORT}"
+    volumes:
+      - ./backend:/app
+      - myriad_she_api_node_modules:/app/node_modules
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [myriad_she_net]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:${PORT}/${API_PREFIX}/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  admin:
+    build:
+      context: .
+      dockerfile: management/Dockerfile
+      target: development
+    container_name: ${ADMIN_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file: [.env.local]
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_API_REQUEST_TIMEOUT_MS: ${VITE_API_REQUEST_TIMEOUT_MS}
+      VITE_MEDIA_UPLOAD_TIMEOUT_MS: ${VITE_MEDIA_UPLOAD_TIMEOUT_MS}
+    ports:
+      - "${ADMIN_PORT}:${ADMIN_PORT}"
+    volumes:
+      - ./management:/app
+      - myriad_she_admin_node_modules:/app/node_modules
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [myriad_she_net]
+
+networks:
+  myriad_she_net:
+    name: ${DOCKER_NETWORK}
+
+volumes:
+  myriad_she_postgres_data:
+    name: ${POSTGRES_VOLUME}
+  myriad_she_redis_data:
+    name: ${REDIS_VOLUME}
+  myriad_she_minio_data:
+    name: ${MINIO_VOLUME}
+  myriad_she_api_node_modules:
+    name: myriad_she_api_node_modules
+  myriad_she_admin_node_modules:
+    name: myriad_she_admin_node_modules

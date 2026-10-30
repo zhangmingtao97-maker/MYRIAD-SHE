@@ -1,0 +1,23 @@
+<view class="page observation-list-page">
+  <view class="observation-list-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="observation-list-nav">
+      <view class="observation-list-back" role="button" aria-role="button" aria-label="返回我的页面" tabindex="0" bindtap="goBack">‹</view>
+      <view class="observation-list-title">我的观察</view>
+      <view class="observation-list-count">{{total}} 条</view>
+    </view>
+  </view>
+  <view class="observation-list-content">
+    <view class="observation-list-intro">每一条记录都仅自己可见。</view>
+    <view wx:if="{{loading}}" class="loading-state" role="status" aria-live="polite">正在读取云端记录…</view>
+    <view wx:elif="{{error}}" class="error-state" role="alert"><text class="error-text">{{error}}</text><view class="list-retry-button" role="button" aria-role="button" tabindex="0" bindtap="loadObservations">重新加载</view></view>
+    <view wx:elif="{{!observations.length}}" class="observation-list-empty">还没有观察记录。</view>
+    <block wx:else>
+      <view wx:for="{{observations}}" wx:key="id" class="record-item" data-id="{{item.id}}" data-status="{{item.status}}" aria-role="button" tabindex="0" bindtap="openRecord" aria-label="{{item.method === 'reality' ? '现实处境' : '四时气韵'}}，{{item.preview || (item.status === 'draft' ? '继续填写观察' : '查看观察记录')}}，{{item.updatedAtLabel}}，仅自己可见">
+        <text class="record-method">{{item.method === 'reality' ? '现实处境' : '四时气韵'}}</text>
+        <text class="record-preview">{{item.preview || (item.status === 'draft' ? '继续完成这次观察' : '这次观察暂未填写内容')}}</text>
+        <view class="record-footer"><text>{{item.updatedAtLabel}} · {{item.status === 'draft' ? '草稿' : '仅自己可见'}}</text><text class="record-arrow" aria-hidden="true">→</text></view>
+      </view>
+      <view wx:if="{{hasMore || moreError}}" class="observation-list-more"><view class="list-retry-button" role="button" aria-role="button" aria-disabled="{{loadingMore}}" tabindex="0" bindtap="loadMore">{{loadingMore ? '正在加载…' : moreError || '加载更多记录'}}</view></view>
+    </block>
+  </view>
+</view>

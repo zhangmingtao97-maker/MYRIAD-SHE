@@ -1,0 +1,202 @@
+<view class="page observation-page">
+  <view class="observation-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="observation-nav-row">
+      <view class="observation-back" role="button" aria-label="返回上一级" tabindex="0" bindtap="handleBack">‹</view>
+      <view class="observation-nav-title">{{navTitle}}</view>
+    </view>
+  </view>
+  <view class="observation-content">
+  <view wx:if="{{accountDeleted}}" class="panel account-deleted"><view class="eyebrow">云端账户</view><view class="title">账户已删除</view><view class="muted">此微信身份对应的云端账户已删除，当前观察不会继续保存。请回到“我的”页面确认是否创建新账户。</view><view wx:if="{{error}}" class="error-text" role="alert">{{error}}</view></view>
+  <view wx:elif="{{phase === 'choose' && !saving && !error}}">
+    <view class="choice-meta"><view><rich-text nodes="{{observationCopy.metaLeft.richText}}"></rich-text></view><view><rich-text nodes="{{observationCopy.metaRight.richText}}"></rich-text></view></view>
+    <view class="choice-intro">
+      <view class="title"><rich-text nodes="{{observationCopy.introTitle.richText}}"></rich-text></view>
+      <view class="muted"><rich-text nodes="{{observationCopy.introDescription.richText}}"></rich-text></view>
+    </view>
+    <view wx:if="{{issueLoading}}" class="prompt-context"><view class="muted">正在读取关联问题…</view></view>
+    <view wx:elif="{{issueQuestion}}" class="prompt-context"><view class="eyebrow">{{issueLabel || '观察来源'}}</view><view class="prompt-question">{{issueQuestion}}</view><view class="prompt-note">它会作为本次观察的起点，不会自动写入你的回答。</view></view>
+    <view wx:if="{{issueError}}" class="issue-load-error"><view class="error-text" role="alert">{{issueError}}</view><view class="text-action" role="button" aria-label="重新读取关联问题" tabindex="0" bindtap="retryIssueContext">重新读取</view></view>
+
+    <view class="method-section method-reality">
+      <view class="method-index"><text>01</text><view class="method-context"><rich-text nodes="{{observationCopy.realityContext.richText}}"></rich-text></view></view>
+      <view class="method-copy">
+        <view class="method-title"><rich-text nodes="{{observationCopy.realityTitle.richText}}"></rich-text></view>
+        <view class="method-description"><rich-text nodes="{{observationCopy.realityDescription.richText}}"></rich-text></view>
+      </view>
+      <view class="method-action" role="button" aria-label="从现实处境开始观察" aria-disabled="{{issueLoading}}" tabindex="0" bindtap="beginMethod" data-method="reality"><rich-text nodes="{{observationCopy.realityAction.richText}}"></rich-text> <text>→</text></view>
+    </view>
+
+    <view class="method-section method-season">
+      <view class="method-index"><text>02</text><view class="method-context"><rich-text nodes="{{observationCopy.seasonContext.richText}}"></rich-text></view></view>
+      <view class="method-copy">
+        <view class="method-title"><rich-text nodes="{{observationCopy.seasonTitle.richText}}"></rich-text></view>
+        <view class="method-description"><rich-text nodes="{{observationCopy.seasonDescription.richText}}"></rich-text></view>
+        <view class="guide-action" role="button" aria-label="了解四时气韵是什么" tabindex="0" bindtap="openSeasonGuide"><rich-text nodes="{{observationCopy.seasonGuide.richText}}"></rich-text><text>↗</text></view>
+      </view>
+      <view class="method-action" role="button" aria-label="从四时气韵开始观察" aria-disabled="{{issueLoading}}" tabindex="0" bindtap="beginMethod" data-method="season"><rich-text nodes="{{observationCopy.seasonAction.richText}}"></rich-text> <text>→</text></view>
+    </view>
+
+    <view class="privacy-note"><view class="privacy-label"><rich-text nodes="{{observationCopy.privacyLabel.richText}}"></rich-text></view><view class="privacy-copy"><rich-text nodes="{{observationCopy.privacyCopy.richText}}"></rich-text></view></view>
+  </view>
+  <view wx:elif="{{saving && !selected}}" class="loading-state"><view class="eyebrow">云端草稿</view><view class="title">正在恢复草稿</view><view class="muted">读取完成后会回到上次尚未填写的步骤。</view></view>
+  <view wx:elif="{{error && !selected && !saving}}" class="loading-state"><view class="eyebrow">云端草稿</view><view class="title">草稿未能打开</view><view class="error-text">{{error}}</view><view class="button" role="button" aria-label="重新读取草稿" tabindex="0" bindtap="retryRestore">重新读取</view><view class="button secondary" role="button" aria-label="返回选择观察方式" tabindex="0" bindtap="restart">返回选择观察方式</view></view>
+  <view wx:elif="{{phase === 'form'}}">
+    <view class="reality-stepper" aria-label="观察进度">
+      <view wx:for="{{selected === 'reality' ? realitySteps : seasonSteps}}" wx:key="key" class="reality-stepper-item {{step === index ? 'active' : (step > index ? 'passed' : '')}}" aria-current="{{step === index ? 'step' : 'false'}}">
+        <text class="reality-stepper-number">0{{index + 1}}</text><text class="reality-stepper-label">{{item.label}}</text>
+      </view>
+    </view>
+    <view wx:if="{{selected === 'reality'}}" class="progress">0{{step + 1}} / 04 · <text wx:if="{{step === 0}}">底色</text><text wx:elif="{{step === 1}}">此刻</text><text wx:elif="{{step === 2}}">选择</text><text wx:else>行动</text></view>
+    <view wx:if="{{issueQuestion}}" class="prompt-context"><view class="eyebrow">{{issueLabel || '观察来源'}}</view><view class="prompt-question">{{issueQuestion}}</view><view class="prompt-note">云端草稿保留创建时的问题；后续期刊更新不会改写这次观察的起点。</view></view>
+    <block wx:if="{{selected === 'reality'}}">
+      <view wx:if="{{step === 0}}" class="step reality-step"><view class="title">此刻，真实发生了什么？</view><view class="muted">只写事实也可以，不急着解释。</view><view class="answer-label">写下这一刻</view><textarea class="reality-answer" disabled="{{saving || advancing}}" maxlength="1000" data-field="situation" value="{{answers.situation}}" bindinput="handleInput" placeholder="例如：这周我反复答应了原本不想接下的事……" aria-label="写下此刻真实发生的事" /></view>
+      <view wx:elif="{{step === 1}}" class="step reality-step"><view class="title">你现在最明显的感受是什么？</view><view class="muted">可以是一种情绪、身体感受，或“暂时说不清”。</view><view class="choice-grid" aria-label="选择此刻的感受"><view wx:for="{{feelingOptions}}" wx:key="*this" class="choice-option {{answers.body === item ? 'selected' : ''}}" role="button" aria-pressed="{{answers.body === item}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-field="body" data-value="{{item}}" bindtap="selectOption">{{item}}</view></view><view class="answer-label">或者，用自己的话写下</view><textarea class="reality-answer" disabled="{{saving || advancing}}" maxlength="1000" data-field="body" value="{{answers.body}}" bindinput="handleInput" placeholder="把最接近此刻的感受写下来……" aria-label="用自己的话写下此刻的感受" /></view>
+      <view wx:elif="{{step === 2}}" class="step reality-step"><view class="title">此刻，你愿意把选择权放在哪里？</view><view class="muted">不是解决全部，只是辨认一个现在可以选择的方向。</view><view class="choice-grid" aria-label="选择一个现在可以选择的方向"><view wx:for="{{choiceOptions}}" wx:key="*this" class="choice-option {{answers.need === item ? 'selected' : ''}}" role="button" aria-pressed="{{answers.need === item}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-field="need" data-value="{{item}}" bindtap="selectOption">{{item}}</view></view><view class="answer-label">或者，用自己的话写下</view><textarea class="reality-answer" disabled="{{saving || advancing}}" maxlength="1000" data-field="need" value="{{answers.need}}" bindinput="handleInput" placeholder="例如：今天先不回复，明早再决定……" aria-label="用自己的话写下一个现在可以选择的方向" /></view>
+      <view wx:else class="step reality-step"><view class="title">接下来七天，你愿意做哪一件小事？</view><view class="muted">让它小到真的可以发生。</view><view class="answer-label">写下这一件小事</view><textarea class="reality-answer" disabled="{{saving || advancing}}" maxlength="1000" data-field="nextAction" value="{{answers.nextAction}}" bindinput="handleInput" placeholder="例如：把那句话写下来，先不发送……" aria-label="写下接下来七天愿意做的一件小事" /></view>
+    </block>
+    <block wx:else>
+      <view wx:if="{{step === 0}}" class="step card-step">
+        <view class="card-meta">按生日对应的生命牌</view>
+        <view wx:if="{{lifeCardLoading}}" class="muted">正在读取这一天的文案…</view>
+        <view wx:elif="{{lifeCardError}}" class="error-text" role="alert">{{lifeCardError}}</view>
+        <view wx:elif="{{!lifeCard}}" class="card-empty">
+          <view class="muted">还没有选择生日。</view>
+          <view class="card-edit card-edit-standalone" role="button" aria-label="选择生日" tabindex="0" bindtap="changeBirthday">选择生日</view>
+        </view>
+        <block wx:elif="{{lifeCard}}">
+          <view class="card-row">
+            <view class="card-face"><text class="card-rank">{{lifeCard.rank}}</text><text class="card-suit">{{lifeCard.suitSymbol}}</text></view>
+            <view class="card-when">
+              <view class="card-date">{{lifeCard.month}} 月 {{lifeCard.day}} 日</view>
+              <view class="card-edit" role="button" aria-label="修改生日" tabindex="0" bindtap="changeBirthday">修改生日</view>
+            </view>
+          </view>
+          <view class="card-rule" aria-hidden="true"></view>
+          <view class="card-eyebrow">MYRIAD SHE · 底色观察</view>
+          <view class="card-title">{{lifeCard.title}}</view>
+          <view class="card-summary">{{lifeCard.summary}}</view>
+          <view class="card-label">可以留意 · {{lifeCard.theme}}</view>
+          <view class="card-prompt">{{lifeCard.prompt}}</view>
+          <view class="card-footnote">这是一个观察角度。哪些与你有关，由你的经验决定。</view>
+          <view class="card-rule card-rule-bottom" aria-hidden="true"></view>
+          <view class="card-note-label">传统线索 · 注</view>
+          <view class="card-note">{{lifeCard.note}}</view>
+          <view class="card-source-toggle" role="button" aria-expanded="{{cardSourceOpen}}" tabindex="0" bindtap="toggleCardSource">
+            <text class="guide-caret" aria-hidden="true">{{cardSourceOpen ? '▾' : '▸'}}</text>
+            <text>释义来源与使用说明</text>
+          </view>
+          <view wx:if="{{cardSourceOpen}}" class="card-source">
+            <view wx:for="{{lifeCard.sourceParagraphs}}" wx:key="*this">{{item}}</view>
+          </view>
+        </block>
+      </view>
+      <view wx:elif="{{step === 1 && seasonStage === 0}}" class="step season-step">
+        <view class="step-index">02 / 04 · 此刻</view>
+        <view class="season-headline"><text class="season-headline-line">最近，</text><text class="season-headline-line">发生了什么？</text></view>
+        <view class="season-lead">先从一件具体的事开始。它可以呼应前面的线索，也可以与你读到的完全不同。</view>
+
+        <view class="season-field">
+          <view class="season-label">这件事是怎样发生的？</view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="experience" value="{{answers.experience}}" bindinput="handleInput" placeholder="最近，在……的时候，发生了……" />
+        </view>
+
+        <view class="season-field">
+          <view class="season-label">前面的底色，与你的经验有关吗？</view>
+          <view class="season-choices" aria-label="选择与底色的关系">
+            <view wx:for="{{seasonLinkOptions}}" wx:key="*this" class="season-choice {{answers.season === item ? 'selected' : ''}}" role="button" aria-pressed="{{answers.season === item}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-value="{{item}}" bindtap="selectSeasonLink">{{item}}</view>
+          </view>
+        </view>
+
+        <view class="season-field">
+          <view class="season-label">哪些有关，哪些不同？<text class="season-optional">选填</text></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="seasonNote" value="{{answers.seasonNote}}" bindinput="handleInput" placeholder="用自己的话补充，也可以留空。" />
+        </view>
+
+      </view>
+      <view wx:elif="{{step === 1 && seasonStage === 1}}" class="step season-step">
+        <view class="step-index">02 / 04 · 此刻的变化</view>
+        <view class="season-headline"><text class="season-headline-line">这件事，</text><text class="season-headline-line">正在怎样变化？</text></view>
+        <view class="season-lead">借四时的变化，回看刚才的事。几种状态可以同时存在，也可以暂时说不清。</view>
+
+        <view class="season-state-list">
+          <view wx:for="{{seasonStateView}}" wx:key="key" class="season-state {{item.selected ? 'open' : ''}} {{item.isNote ? 'season-state--note' : ''}}">
+            <view class="season-state-head" role="checkbox" aria-checked="{{item.selected}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-key="{{item.key}}" bindtap="toggleSeasonState">
+              <text class="season-state-key">{{item.key}}</text>
+              <view class="season-state-main">
+                <view class="season-state-label">{{item.label}}</view>
+                <view wx:if="{{item.hint}}" class="season-state-hint">{{item.hint}}</view>
+              </view>
+              <text class="season-state-mark" aria-hidden="true">{{item.selected ? '✓' : '+'}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="season-field">
+          <view class="season-label season-label--soft">对这件事，你还看见了什么？<text class="season-optional">选填</text></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="seasonInsight" value="{{answers.seasonInsight}}" bindinput="handleInput" placeholder="例如：项目刚开始，但我已经需要给自己留出休息。" />
+        </view>
+
+        <view class="season-footnote">这里辨认的是一件事中的变化，不是为你确定一个季节身份。</view>
+      </view>
+      <view wx:elif="{{step === 1}}" class="step season-step">
+        <view class="season-field"><view class="season-label">（正在载入）</view></view>
+      </view>
+      <view wx:elif="{{step === 2}}" class="step season-step">
+        <view class="step-index">03 / 04 · 选择</view>
+        <view class="season-headline"><text class="season-headline-line">哪些解释，</text><text class="season-headline-line">你愿意留下？</text></view>
+        <view class="season-lead"><text class="season-lead-line">可以保留一个问题，拒绝一种解释，</text><text class="season-lead-line">也可以用自己的方式重新理解这件事。</text></view>
+
+        <view class="season-field">
+          <view class="season-label season-label--line">我想保留的</view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="keepUnderstanding" value="{{answers.keepUnderstanding}}" bindinput="handleInput" placeholder="这次观察里，对我有用的是……" />
+        </view>
+
+        <view class="season-field">
+          <view class="season-label season-label--line">我不接受的，或另一种理解<text class="season-optional">· 选填</text></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="rejectUnderstanding" value="{{answers.rejectUnderstanding}}" bindinput="handleInput" placeholder="我不认同……；对我来说，也可能是……" />
+        </view>
+      </view>
+      <view wx:else class="step season-step">
+        <view class="step-index">04 / 04 · 行动</view>
+        <view class="season-headline"><text class="season-headline-line">接下来七天，</text><text class="season-headline-line">你愿意做什么？</text></view>
+        <view class="season-lead"><text class="season-lead-line">选一个小到能够发生的行动。休息、等待、</text><text class="season-lead-line">继续观察，也可以是此刻的选择。</text></view>
+
+        <view class="season-field">
+          <view class="season-label season-label--tint">我愿意做的一个最小行动</view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing || restFirst}}" maxlength="1000" data-field="sevenDayAction" value="{{answers.sevenDayAction}}" bindinput="handleInput" placeholder="例如：本周找一个安静的晚上，把这事件重新读一次。" />
+        </view>
+
+        <view class="rest-toggle {{restFirst ? 'active' : ''}}" role="checkbox" aria-checked="{{restFirst}}" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="toggleRestFirst">
+          <text>先留一点时间，不安排新行动</text>
+          <text class="rest-toggle-mark" aria-hidden="true">{{restFirst ? '✓' : ''}}</text>
+        </view>
+
+        <view wx:if="{{!answers.sevenDayAction}}" class="season-preview">
+          <view class="season-preview-label">这次留下的</view>
+          <view class="season-preview-value muted">还没有写下具体的事</view>
+        </view>
+
+        <view class="season-footnote">保存的是你写下的经验与判断，不会生成性格结论；以后可以修改或删除。</view>
+      </view>
+    </block>
+    <view wx:if="{{syncState === 'pending'}}" class="sync-status pending" role="status" aria-live="polite">有未同步的改动</view><view wx:elif="{{syncState === 'saving'}}" class="sync-status" role="status" aria-live="polite">正在保存到云端…</view><view wx:elif="{{syncState === 'conflict'}}" class="sync-status error" role="alert">云端草稿已在其他位置更新</view><view wx:elif="{{syncState === 'error'}}" class="sync-status error" role="alert">{{error || '云端保存失败，请重试'}}</view>
+    <view wx:if="{{validationError}}" class="validation-error" role="alert">{{validationError}}</view>
+    <view class="actions"><view wx:if="{{step > 0}}" class="button secondary" role="button" aria-label="{{selected === 'season' ? (step === 3 ? '回看选择' : (step === 2 ? '回看变化' : (step === 1 ? (seasonStage === 1 ? '回到这件事' : '回看底色') : '上一步'))) : '上一步'}}" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="previous">{{selected === 'season' ? (step === 3 ? '回看选择' : (step === 2 ? '回看变化' : (step === 1 ? (seasonStage === 1 ? '回到这件事' : '回看底色') : '上一步'))) : '上一步'}}</view><view class="button" role="button" aria-label="{{saving || advancing ? '同步中' : (editingSaved && step === 3 ? '保存修改' : (selected === 'reality' ? (step === 3 ? '私密保存这次观察' : '继续') : (step === 0 ? '回到一件真实的事' : (step === 1 ? (seasonStage === 1 ? '带着自己的理解继续' : '看看这件事的变化') : (step === 2 ? '想想接下来的行动' : (step === 3 ? '保存这次观察' : '下一步')))))) }}" aria-disabled="{{saving || advancing || issueLoading || conflict}}" tabindex="0" bindtap="next">{{saving || advancing ? '同步中…' : (editingSaved && step === 3 ? '保存修改' : (selected === 'reality' ? (step === 3 ? '私密保存这次观察' : '继续') : (step === 0 ? '回到一件真实的事' : (step === 1 ? (seasonStage === 1 ? '带着自己的理解继续' : '看看这件事的变化') : (step === 2 ? '想想接下来的行动' : (step === 3 ? '保存这次观察' : '下一步'))))))}}</view></view><view wx:if="{{syncState === 'error'}}" class="actions retry-actions"><view class="button secondary" role="button" aria-label="重试保存" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="retrySave">重试保存</view></view><view wx:if="{{syncState === 'conflict'}}" class="actions conflict-actions"><view class="button secondary" role="button" aria-label="载入云端" aria-disabled="{{saving}}" tabindex="0" bindtap="loadCloudVersion">载入云端</view><view class="button destructive" role="button" aria-label="确认用本机覆盖" aria-disabled="{{saving}}" tabindex="0" bindtap="keepLocalVersion">{{saving ? '核对中…' : '确认用本机覆盖'}}</view></view><view wx:if="{{error}}" class="error-text" role="alert">{{error}}</view><view class="draft-note">{{editingSaved ? '修改会保存到这条观察记录。' : (selected === 'reality' ? '草稿仅自己可见；完成后仍可修改或删除。' : '可以暂时说不清，也可以留空继续。')}}</view>
+  </view>
+  <view wx:else class="complete"><view class="eyebrow">观察已保存</view><view class="title">给自己留了一处可以回来的地方。</view><view class="muted">这次观察已经保存到你的云端记录，仅自己可见。</view><view class="button" role="button" aria-label="查看本次记录" tabindex="0" bindtap="viewSavedRecord">查看本次记录</view><view class="button secondary" role="button" aria-label="再观察一次" tabindex="0" bindtap="restart">再观察一次</view></view>
+  </view>
+  <view wx:if="{{seasonGuideOpen}}" class="guide-backdrop" role="button" aria-label="关闭四时气韵说明" bindtap="closeSeasonGuide" catchtouchmove="noop">
+    <view class="guide-sheet" role="dialog" aria-modal="true" aria-label="四时气韵说明" catchtap="noop">
+      <image class="guide-mark" src="/assets/brand/flower-mark.svg" mode="aspectFit" aria-hidden="true" />
+      <view class="guide-eyebrow">MYRIAD SHE · 一种观察方法</view>
+      <view class="guide-title">四时气韵是什么？</view>
+      <view class="guide-copy">它从生日对应的生命牌提供一个观察线索，再回到真实经历。借生、长、收、藏的变化，辨认一件事中什么正在开始、值得培育、需要收束或应当休息。</view>
+      <view class="guide-copy">它不是测试，也不定义你。你可以采纳、保留，或完全不同意。</view>
+      <view class="guide-actions">
+        <view class="button" role="button" aria-label="进一步了解四时气韵" tabindex="0" bindtap="openSeasonIntro">进一步了解</view>
+        <view class="button secondary" role="button" aria-label="先从现实处境开始" tabindex="0" bindtap="startRealityFromGuide">先从现实处境开始</view>
+      </view>
+    </view>
+  </view>
+  <app-tab-bar />
+</view>

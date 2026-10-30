@@ -1,0 +1,22 @@
+@import "../daily-objects/index.wxss";
+.detail-page-content { padding: 76rpx 52rpx 80rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; }
+.detail-brand { color: #663124; font-family: Georgia, "Times New Roman", serif; font-size: 18rpx; letter-spacing: .1em; line-height: 1.5; }
+.detail-title { margin-top: 32rpx; color: #5c493c; font-size: 52rpx; font-weight: 600; line-height: 1.25; }
+.detail-description { margin-top: 32rpx; color: #5c493c; font-size: 25rpx; font-weight: 500; line-height: 1.85; white-space: pre-line; }
+.detail-price-row { display: flex; align-items: baseline; gap: 20rpx; margin-top: 38rpx; }
+.detail-price { color: #5c493c; font-family: Georgia, "Times New Roman", serif; font-size: 38rpx; }
+.detail-price-label { color: #5c493c; font-size: 18rpx; }
+.detail-accordions { margin-top: 58rpx; border-top: 1rpx solid rgba(92, 73, 60, .28); }
+.detail-accordion { display: flex; min-height: 86rpx; align-items: center; justify-content: space-between; border-bottom: 1rpx solid rgba(92, 73, 60, .28); color: #5c493c; font-size: 24rpx; }
+.detail-accordion text { color: #663124; font-family: Georgia, serif; font-size: 30rpx; }
+.detail-accordion-copy { padding: 24rpx 8rpx 28rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .28); color: #5c493c; font-size: 23rpx; line-height: 1.8; white-space: pre-line; }
+.detail-actions { display: flex; gap: 18rpx; margin-top: 50rpx; }
+.detail-button { display: flex; height: 88rpx; flex: 1; align-items: center; justify-content: center; box-sizing: border-box; font-size: 24rpx; }
+.detail-button-secondary { border: 1rpx solid rgba(92, 73, 60, .35); color: #5c493c; }
+.detail-button-primary { background: #663124; color: #f5f0e8; }
+.detail-button-primary text { margin-left: auto; margin-right: 26rpx; font-family: Georgia, serif; font-size: 28rpx; }
+.detail-support { display: inline-flex; min-height: 76rpx; align-items: center; margin-top: 30rpx; color: #663124; font-size: 23rpx; }
+.detail-note { margin-top: 16rpx; padding-top: 24rpx; border-top: 1rpx solid rgba(92, 73, 60, .28); color: #5c493c; font-size: 19rpx; line-height: 1.8; }
+@media (max-width: 360px) {
+  .detail-page-content { padding-right: 44rpx; padding-left: 44rpx; }
+}

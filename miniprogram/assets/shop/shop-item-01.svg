@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1125" viewBox="0 0 900 1125" role="img" aria-label="折叠材质的抽象图片占位">
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7dfd1"/><stop offset=".56" stop-color="#e5ddd0"/><stop offset="1" stop-color="#d7d3ce"/></linearGradient>
+    <radialGradient id="light" cx=".2" cy=".2" r=".8"><stop stop-color="#f7f2e8" stop-opacity=".72"/><stop offset="1" stop-color="#f7f2e8" stop-opacity="0"/></radialGradient>
+    <linearGradient id="underfold" x1=".2" y1="0" x2=".8" y2="1"><stop stop-color="#c6bcad"/><stop offset=".4" stop-color="#ded5c5"/><stop offset="1" stop-color="#b4a897"/></linearGradient>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6f0e6"/><stop offset=".4" stop-color="#e7dfd1"/><stop offset=".68" stop-color="#d9cfbf"/><stop offset="1" stop-color="#f1e9dc"/></linearGradient>
+    <linearGradient id="turnededge" x1="0" y1="0" x2="1" y2=".35"><stop stop-color="#a49786"/><stop offset=".3" stop-color="#ded4c3"/><stop offset=".56" stop-color="#f8f2e8"/><stop offset="1" stop-color="#e7dfd1"/></linearGradient>
+    <linearGradient id="crease" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#5c493c" stop-opacity=".18"/><stop offset=".34" stop-color="#5c493c" stop-opacity=".035"/><stop offset="1" stop-color="#5c493c" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-40%" y="-60%" width="180%" height="220%"><feGaussianBlur stdDeviation="30"/></filter>
+    <filter id="foldshadow" x="-25%" y="-25%" width="160%" height="180%"><feDropShadow dx="4" dy="22" stdDeviation="15" flood-color="#5c493c" flood-opacity=".13"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".67" numOctaves="3" seed="18" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .032"/></feComponentTransfer></filter>
+  </defs>
+  <path fill="url(#ground)" d="M0 0H900V1125H0z"/><path fill="url(#light)" d="M0 0H900V1125H0z"/>
+  <path d="M169 858C314 821 540 831 721 900C600 958 339 952 169 900Z" fill="#5c493c" opacity=".16" filter="url(#shadow)"/>
+  <g filter="url(#foldshadow)">
+    <path d="M193 786C241 698 290 596 301 523C405 561 601 657 710 751L639 886C472 869 308 831 193 786Z" fill="url(#underfold)"/>
+    <path d="M190 782C252 675 324 634 417 644C514 654 585 736 704 746L656 878C531 868 473 791 386 768C304 747 252 756 190 782Z" fill="url(#surface)"/>
+    <path d="M276 312C322 321 369 356 413 401C515 505 609 648 704 746C585 739 516 657 417 644C373 638 335 645 302 665C333 553 312 425 276 312Z" fill="url(#surface)"/>
+    <path d="M276 312C239 442 245 571 302 665C315 615 319 563 316 514C312 432 292 367 276 312Z" fill="url(#turnededge)"/>
+    <path d="M276 312C299 400 320 511 316 573C314 607 309 639 302 665" fill="none" stroke="#f7f1e6" stroke-opacity=".65" stroke-width="2"/>
+    <path d="M303 665C336 644 374 639 417 645C493 654 555 706 619 730C527 726 446 677 371 678C343 678 321 682 301 695Z" fill="url(#crease)"/>
+    <path d="M191 784C247 759 306 748 386 769C474 793 533 871 655 879" fill="none" stroke="#f5ede0" stroke-opacity=".54" stroke-width="2"/>
+  </g>
+  <path d="M0 0H900V1125H0z" filter="url(#grain)" opacity=".75"/>
+</svg>

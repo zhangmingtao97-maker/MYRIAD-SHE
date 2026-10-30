@@ -1,0 +1,72 @@
+<view class="page detail-page">
+  <view class="detail-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="detail-nav-row">
+      <view class="detail-back" role="button" aria-label="返回上一级" tabindex="0" bindtap="handleBack">‹</view>
+      <view class="detail-nav-title">观察记录</view>
+      <view class="detail-nav-spacer" aria-hidden="true"></view>
+    </view>
+  </view>
+  <view wx:if="{{accountDeleted}}" class="panel account-deleted"><view class="eyebrow">云端账户</view><view class="title">账户已删除</view><view class="muted">此微信身份对应的云端账户已删除，请回到“我的”页面确认是否创建新账户。</view></view>
+  <view wx:elif="{{loading}}" class="loading-copy" role="status" aria-live="polite">正在读取云端记录…</view>
+  <view wx:elif="{{record}}" class="record-content">
+    <view class="record-meta">
+      <text class="record-method">{{record.method === 'reality' ? '现实处境' : '四时气韵'}}</text>
+      <text class="record-date">{{recordDate}} · {{record.status === 'draft' ? '草稿' : '此设备保存'}}</text>
+    </view>
+
+    <view class="stage">
+      <view class="stage-label">{{cardLine}}</view>
+      <view wx:if="{{cardTitle}}" class="stage-title">{{cardTitle}}</view>
+      <view wx:if="{{cardSubtitle}}" class="stage-subtitle">{{cardSubtitle}}</view>
+    </view>
+
+    <view class="stage">
+      <view class="stage-label">02 · 此刻</view>
+      <view class="stage-block">
+        <view class="stage-key">我写下的经验</view>
+        <view class="stage-value {{experienceText ? '' : 'stage-empty'}}">{{experienceText || '未填写'}}</view>
+      </view>
+      <view class="stage-block">
+        <view class="stage-key">我辨认的变化</view>
+        <view class="stage-value {{changeStates ? '' : 'stage-empty'}}">{{changeStates || '未填写'}}</view>
+      </view>
+    </view>
+
+    <view class="stage">
+      <view class="stage-label">03 · 选择</view>
+      <view class="stage-block">
+        <view class="stage-key">我想保留的</view>
+        <view class="stage-value {{keepText ? '' : 'stage-empty'}}">{{keepText || '未填写'}}</view>
+      </view>
+      <view wx:if="{{rejectText}}" class="stage-block">
+        <view class="stage-key">我不接受的，或另一种理解</view>
+        <view class="stage-value">{{rejectText}}</view>
+      </view>
+    </view>
+
+    <view class="stage">
+      <view class="stage-label">04 · 行动<text wx:if="{{record.method === 'season'}}" class="stage-label-tail">· 接下来七天</text></view>
+      <view class="stage-action {{actionText ? '' : 'stage-empty'}}">{{actionText || '未填写'}}</view>
+    </view>
+
+    <view wx:if="{{record.issueQuestion}}" class="issue-context"><view class="eyebrow">{{record.issueLabel || '观察来源'}}</view><view class="issue-question">{{record.issueQuestion}}</view></view>
+
+    <view class="perspective">
+      <view class="stage-key">你对此线索引的判断</view>
+      <view class="stage-value perspective-value">{{perspective}}</view>
+      <view class="perspective-note">这份判断可以随时修改；你的经验始终拥有解释权。</view>
+    </view>
+
+    <view wx:if="{{error}}" class="error-text" role="alert">{{error}}</view>
+
+    <view class="record-actions">
+      <view class="edit-button {{deleting ? 'disabled' : ''}}" role="button" aria-label="修改这次观察" aria-disabled="{{deleting}}" tabindex="0" bindtap="editRecord">修改这次观察</view>
+      <view class="secondary-actions">
+        <view class="again-button {{deleting ? 'disabled' : ''}}" role="button" aria-label="再次观察" aria-disabled="{{deleting}}" tabindex="0" bindtap="startAgain">再次观察</view>
+        <view class="delete-button {{deleting ? 'disabled' : ''}}" role="button" aria-label="删除记录" aria-disabled="{{deleting}}" tabindex="0" bindtap="deleteRecord">{{deleting ? '正在删除…' : '删除记录'}}</view>
+      </view>
+    </view>
+  </view>
+  <view wx:elif="{{error}}" class="error-state"><view class="muted">{{error}}</view><view class="retry-button" role="button" aria-label="重新读取" tabindex="0" bindtap="loadRecord">重新读取</view></view>
+  <view wx:else class="muted">这条记录暂时无法读取。</view>
+</view>

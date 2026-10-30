@@ -1,0 +1,15 @@
+<view class="about-page">
+  <view class="about-topbar" style="padding-top: {{statusBarHeight}}px"><view class="topbar-row"><view class="icon-button" aria-label="返回" bindtap="handleBack" role="button" tabindex="0">‹</view><text class="topbar-title">关于 MYRIAD SHE</text><view class="icon-button" aria-label="更多" role="button" tabindex="0">···</view></view></view>
+  <view wx:if="{{loading}}" class="about-state">正在读取品牌介绍…</view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="about-fallback-note">{{error}}</view>
+    <view class="about-content">
+      <view class="about-meta"><text>MYRIAD SHE</text><text>ABOUT US</text></view>
+      <text class="about-title">关于 MYRIAD SHE</text>
+      <view class="about-section"><text class="about-label">品牌介绍</text><text class="about-copy">{{content.brandIntro}}</text></view>
+      <view class="about-section"><text class="about-label">内容来源</text><text class="about-copy">{{content.contentSources}}</text></view>
+      <view class="about-section"><text class="about-label">联系方式</text><text class="about-copy">{{content.contactInfo}}</text></view>
+    </view>
+  </block>
+  <view class="about-tabbar"><view class="tab-item" data-index="0" bindtap="switchTab"><text class="tab-icon">○</text><text>首页</text></view><view class="tab-item" data-index="1" bindtap="switchTab"><text class="tab-icon">≡</text><text>实践</text></view><view class="tab-item selected" data-index="2" bindtap="switchTab"><text class="tab-icon">◎</text><text>我的</text></view></view>
+</view>

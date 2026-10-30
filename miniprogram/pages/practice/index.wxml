@@ -1,0 +1,27 @@
+<view class="page practice-page">
+  <view class="brand-topbar" style="padding-top: {{statusBarHeight}}px"><view class="brand-topbar-copy" aria-label="MYRIAD SHE">MYRIAD SHE</view></view>
+  <view class="practice-meta"><rich-text class="eyebrow practice-meta-copy" nodes="{{metaLeftRichText}}" style="font-size: {{metaLeftFontSize}}px; color: {{metaLeftColor}};" /><rich-text class="practice-meta-label practice-meta-copy" nodes="{{metaRightRichText}}" style="font-size: {{metaRightFontSize}}px; color: {{metaRightColor}};" /></view>
+  <rich-text class="practice-kicker" nodes="{{titleRichText}}" style="font-size: {{titleFontSize}}px; color: {{titleColor}};" />
+  <rich-text class="title" nodes="{{introRichText}}" style="font-size: {{introFontSize}}px; color: {{introColor}};" />
+  <view class="practice-intro">不是要求自己平静，而是看清正在发生什么，然后再选择下一步。</view>
+
+  <view wx:if="{{loading}}" class="loading-state" role="status" aria-live="polite">正在读取云端实践内容…</view>
+  <view wx:elif="{{error}}" class="error-state" role="alert"><view class="error-text">{{error}}</view><view class="button secondary" role="button" aria-label="重新读取实践内容" tabindex="0" bindtap="load">重新读取</view></view>
+  <view wx:else class="practice-directory" aria-label="实践目录">
+    <view class="directory-heading"><view class="eyebrow">实践目录</view><view class="page-code">PRACTICE</view></view>
+    <block wx:for="{{entries}}" wx:key="key">
+      <view class="practice-entry {{item.enabled ? 'active-entry' : 'disabled-entry'}}" role="button" aria-label="{{item.title}}，{{item.enabled ? item.description : '暂未开放'}}" aria-disabled="{{!item.enabled}}" tabindex="0" bindtap="handleEntryTap" data-key="{{item.key}}">
+        <text class="entry-number">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}}</text>
+        <view class="entry-copy">
+          <rich-text class="entry-context" nodes="{{item.contextRichText}}" style="font-size: {{item.contextFontSize}}px; color: {{item.contextColor}};" />
+          <rich-text class="entry-title" nodes="{{item.titleRichText}}" style="font-size: {{item.titleFontSize}}px; color: {{item.titleColor}};" />
+          <rich-text class="entry-desc" nodes="{{item.descriptionRichText}}" style="font-size: {{item.descriptionFontSize}}px; color: {{item.descriptionColor}};" />
+        </view>
+        <text class="entry-arrow">→</text>
+      </view>
+    </block>
+  </view>
+
+  <view class="page-signature"><view class="eyebrow">MYRIAD SHE</view><view>看见真实经验，此刻归安，让一件小事发生。</view></view>
+
+</view>

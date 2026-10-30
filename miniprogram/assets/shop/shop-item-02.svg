@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1125" viewBox="0 0 900 1125" role="img" aria-label="透明圆弧与光影的抽象图片占位">
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7dfd1"/><stop offset=".5" stop-color="#ddd7cb"/><stop offset="1" stop-color="#d7d3ce"/></linearGradient>
+    <radialGradient id="light" cx=".12" cy=".15" r=".9"><stop stop-color="#f6f2e9" stop-opacity=".83"/><stop offset="1" stop-color="#f6f2e9" stop-opacity="0"/></radialGradient>
+    <linearGradient id="glass" x1="0" y1=".15" x2="1" y2=".8"><stop stop-color="#f5f1e9" stop-opacity=".58"/><stop offset=".33" stop-color="#d7d3ce" stop-opacity=".09"/><stop offset=".7" stop-color="#5c493c" stop-opacity=".045"/><stop offset="1" stop-color="#f5f1e9" stop-opacity=".22"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbf8f0" stop-opacity=".92"/><stop offset=".36" stop-color="#f4eee4" stop-opacity=".5"/><stop offset=".61" stop-color="#5c493c" stop-opacity=".14"/><stop offset="1" stop-color="#f9f5ed" stop-opacity=".9"/></linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="1" y2=".2"><stop stop-color="#c9c0b3" stop-opacity=".24"/><stop offset=".62" stop-color="#f8f4ec" stop-opacity=".75"/><stop offset="1" stop-color="#5c493c" stop-opacity=".1"/></linearGradient>
+    <filter id="soft" x="-30%" y="-50%" width="180%" height="200%"><feGaussianBlur stdDeviation="22"/></filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="3" seed="27" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .027"/></feComponentTransfer></filter>
+  </defs>
+  <path fill="url(#ground)" d="M0 0H900V1125H0z"/><path fill="url(#light)" d="M0 0H900V1125H0z"/>
+  <path d="M441 465C629 590 818 748 950 919L775 964C649 777 479 641 297 534Z" fill="#5c493c" opacity=".07" filter="url(#soft)"/>
+  <path d="M198 838C349 803 554 812 723 860C630 916 315 921 183 879Z" fill="#5c493c" opacity=".095" filter="url(#soft)"/>
+  <path d="M472 292C652 309 754 458 702 629C662 760 504 857 332 852L314 825C484 829 633 737 674 607C721 450 629 314 467 298Z" fill="url(#side)"/>
+  <path d="M466 292C630 308 722 449 674 607C633 737 484 829 314 825L254 725C386 714 476 641 497 546C519 450 480 373 411 343Z" fill="url(#glass)"/>
+  <path d="M466 292C630 308 722 449 674 607C633 737 484 829 314 825" fill="none" stroke="url(#rim)" stroke-width="9"/>
+  <path d="M471 297C635 314 729 461 682 618C640 750 484 844 325 844" fill="none" stroke="#5c493c" stroke-opacity=".1" stroke-width="2"/>
+  <path d="M411 343C480 373 519 450 497 546C476 641 386 714 254 725" fill="none" stroke="url(#rim)" stroke-width="5"/>
+  <path d="M464 311C596 323 674 439 655 558" fill="none" stroke="#fcf9f1" stroke-opacity=".42" stroke-width="15" filter="url(#glow)"/>
+  <path d="M608 715C534 790 427 833 315 833" fill="none" stroke="#f9f6ed" stroke-opacity=".64" stroke-width="3"/>
+  <path d="M252 726L314 825L331 851L274 744Z" fill="url(#side)"/>
+  <path d="M189 885C290 933 542 930 652 869" fill="none" stroke="#f9f6ed" stroke-opacity=".64" stroke-width="8" filter="url(#glow)"/>
+  <path d="M0 0H900V1125H0z" filter="url(#grain)" opacity=".65"/>
+</svg>

@@ -1,0 +1,9 @@
+**
+!management/
+!management/**
+management/node_modules
+management/dist
+management/.env*
+!miniprogram/
+!miniprogram/AppleGaramond.ttf
+!miniprogram/SourceHanSerifCN-Regular.otf

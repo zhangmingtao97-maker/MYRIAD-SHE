@@ -1,0 +1,15 @@
+<view class="policy-page">
+  <view class="policy-topbar" style="padding-top: {{statusBarHeight}}px"><view class="topbar-row"><view class="icon-button" aria-label="返回" bindtap="handleBack" role="button" tabindex="0">‹</view><text class="topbar-title">{{label}}</text><view class="icon-button" aria-label="更多" bindtap="handleMore" role="button" tabindex="0">···</view></view></view>
+  <view wx:if="{{loading}}" class="policy-state">正在读取{{label}}…</view>
+  <view wx:elif="{{error}}" class="policy-state error-state"><text>{{error}}</text><view class="text-button" bindtap="load" role="button" tabindex="0">重新读取</view></view>
+  <view wx:elif="{{content}}" class="policy-content">
+    <view class="policy-meta"><text>我的</text><text>{{documentKey === 'user-agreement' ? 'TERMS OF USE' : 'PRIVACY &amp; CHOICES'}}</text></view>
+    <rich-text class="policy-title" nodes="{{content.title.richText}}"></rich-text>
+    <rich-text wx:if="{{content.intro.richText}}" class="policy-intro" nodes="{{content.intro.richText}}"></rich-text>
+    <text wx:if="{{content.updatedDate}}" class="policy-update-notes">更新日期：{{content.updatedDate}}</text>
+    <text class="policy-date">生效日期：{{content.effectiveDate}} · 版本 {{content.version}}</text>
+    <text wx:if="{{content.updateNotes}}" class="policy-update-notes">本次更新：{{content.updateNotes}}</text>
+    <view class="policy-body"><rich-text nodes="{{bodyNodes}}"></rich-text></view>
+  </view>
+  <view class="policy-tabbar"><view class="tab-item" data-index="0" bindtap="switchTab"><text class="tab-icon">○</text><text>首页</text></view><view class="tab-item" data-index="1" bindtap="switchTab"><text class="tab-icon">≡</text><text>实践</text></view><view class="tab-item selected" data-index="2" bindtap="switchTab"><text class="tab-icon">◎</text><text>我的</text></view></view>
+</view>

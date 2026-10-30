@@ -1,0 +1,62 @@
+@import "../../app.wxss";
+
+.shared-practice-page { padding-top: 0; padding-bottom: 180rpx; background: #e7dfd1; color: #5c493c; font-family: Georgia, "Songti SC", serif; }
+.shared-topbar { position: sticky; z-index: 10; top: 0; display: flex; align-items: center; justify-content: center; height: 56px; margin: 0 -36rpx; padding: 0 36rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; box-sizing: content-box; }
+.shared-topbar-title { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 31rpx; font-weight: 600; letter-spacing: 1rpx; }
+.shared-topbar-action { position: absolute; top: 0; display: flex; width: 76rpx; height: 56px; align-items: center; justify-content: center; color: #5c493c; font-family: Georgia, serif; font-size: 56rpx; line-height: 1; }
+.shared-topbar-action:active, .shared-practice-page [role="button"]:active { opacity: .58; transform: scale(.97); }
+.shared-back { left: 20rpx; padding-bottom: 6rpx; }
+.shared-more { right: 20rpx; padding-bottom: 18rpx; font-size: 31rpx; letter-spacing: 2rpx; }
+.shared-practice-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 24rpx; padding: 52rpx 0 18rpx; }
+.shared-meta-left, .shared-meta-right { display: block; max-width: 48%; color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; line-height: 1.5; letter-spacing: 2rpx; }
+.shared-meta-right { color: #663124; text-align: right; }
+.shared-hero { padding: 72rpx 0 84rpx; }
+.shared-hero-title { display: block; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 56rpx; font-weight: 600; line-height: 1.4; }
+.shared-hero-title text { display: block; }
+.shared-hero-intro { display: block; max-width: 660rpx; margin-top: 48rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 32rpx; font-weight: 600; line-height: 1.8; }
+.shared-section { border-top: 1rpx solid rgba(92, 73, 60, .23); }
+.online-section { margin-top: 88rpx; padding: 38rpx 0 70rpx; }
+.offline-section { padding: 38rpx 0 0; }
+.shared-section-meta { display: flex; align-items: center; gap: 34rpx; color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.shared-section-preview { display: block; margin-top: 2rpx; color: #8b6b58; font-family: Georgia, serif; line-height: 1.5; }
+.shared-issue-meta { display: flex; align-items: center; gap: 12rpx; margin-top: 52rpx; color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 22rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.shared-issue-meta rich-text { display: block; }
+.shared-issue-divider { color: #8b6b58; }
+.shared-section-title { display: block; max-width: 670rpx; margin-top: 32rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 38rpx; font-weight: 600; line-height: 1.52; }
+.shared-section-copy { display: block; max-width: 670rpx; margin-top: 36rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; font-weight: 600; line-height: 1.8; }
+.shared-action { display: inline-flex; align-items: center; gap: 22rpx; min-height: 76rpx; margin-top: 44rpx; padding: 0; color: #663124; font-family: Georgia, serif; font-size: 27rpx; }
+.shared-action text { font-size: 36rpx; }
+.shared-notice { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 48rpx; padding: 24rpx 0; border-top: 1rpx solid rgba(92, 73, 60, .23); color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 22rpx; line-height: 1.5; }
+.shared-notice text:last-child { color: #663124; letter-spacing: 2rpx; }
+.activity-list { margin-top: 2rpx; }
+.activity-row { display: grid; grid-template-columns: 64rpx 188rpx minmax(0, 1fr); align-items: center; gap: 12rpx; min-height: 156rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .23); color: #5c493c; font-family: Georgia, "Songti SC", serif; }
+.activity-number { align-self: start; padding-top: 34rpx; color: #8b6b58; font-size: 22rpx; }
+.activity-title { font-size: 31rpx; font-weight: 600; }
+.activity-copy { font-size: 25rpx; line-height: 1.5; }
+.next-meet { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; min-height: 132rpx; margin-top: 72rpx; border-top: 1rpx solid rgba(92, 73, 60, .23); border-bottom: 1rpx solid rgba(92, 73, 60, .23); color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 29rpx; font-weight: 600; }
+.next-meet text:last-child { color: #663124; font-size: 36rpx; }
+.loading-state, .error-state { padding: 70rpx 0; }
+.error-state { display: grid; gap: 18rpx; }
+.error-text { color: #8f352d; font-size: 25rpx; line-height: 1.6; }
+.shared-practice-page .error-state .button { justify-self: start; }
+.shared-tabbar { position: fixed; z-index: 30; right: 0; bottom: 0; left: 0; display: flex; height: calc(120rpx + env(safe-area-inset-bottom)); padding: 0 24rpx env(safe-area-inset-bottom); border-top: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; box-sizing: border-box; }
+.shared-tab { display: flex; flex: 1; min-width: 0; min-height: 112rpx; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; color: #928276; }
+.shared-tab.selected { color: #663124; }
+.shared-tab-icon { position: relative; display: flex; width: 40rpx; height: 40rpx; align-items: center; justify-content: center; color: inherit; }
+.shared-home-icon { border: 2rpx solid currentColor; border-radius: 50%; }
+.shared-home-icon view { width: 8rpx; height: 8rpx; border-radius: 50%; background: currentColor; }
+.shared-practice-icon { flex-direction: column; justify-content: space-around; }
+.shared-practice-icon view { width: 26rpx; height: 7rpx; border: 2rpx solid currentColor; border-right: 0; border-left: 0; border-radius: 50%; }
+.shared-mine-icon { overflow: hidden; border: 2rpx solid currentColor; border-radius: 50%; }
+.shared-mine-head { position: absolute; top: 6rpx; left: 12rpx; width: 9rpx; height: 9rpx; border: 2rpx solid currentColor; border-radius: 50%; }
+.shared-mine-body { position: absolute; bottom: -7rpx; left: 6rpx; width: 21rpx; height: 16rpx; border: 2rpx solid currentColor; border-radius: 50% 50% 0 0; }
+.shared-tab text { color: inherit; font-size: 22rpx; line-height: 1.2; }
+@media (prefers-reduced-motion: reduce) { .shared-tab { transition: none; } }
+@media (max-width: 360px) {
+  .activity-row { grid-template-columns: 52rpx 156rpx minmax(0, 1fr); gap: 8rpx; }
+  .activity-title { font-size: 27rpx; }
+  .activity-copy { font-size: 22rpx; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shared-topbar-action, .shared-practice-page [role="button"] { transition: none; transform: none; }
+}

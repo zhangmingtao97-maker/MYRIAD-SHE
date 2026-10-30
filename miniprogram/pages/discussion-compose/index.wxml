@@ -1,0 +1,30 @@
+<view class="compose-page">
+  <view class="compose-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="compose-control compose-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回本期讨论" tabindex="0" bindtap="handleBack">‹</view>
+    <text class="compose-nav-title">{{title}}</text>
+    <view class="compose-control compose-more" style="top: {{statusBarHeight}}px" role="button" aria-label="草稿说明" tabindex="0" bindtap="handleMore">···</view>
+  </view>
+  <view class="compose-content">
+    <view class="compose-meta"><text class="compose-number">{{copy.number}}</text><text>{{copy.composeTitle}}</text></view>
+    <view class="compose-heading">{{copy.composeHeading}}</view>
+    <view class="compose-intro">{{copy.intro}}</view>
+    <view class="compose-field-label">{{fieldLabel}}</view>
+    <textarea class="compose-input" maxlength="2000" value="{{body}}" placeholder="{{copy.composePlaceholder}}" placeholder-class="compose-placeholder" bindinput="onInput" aria-label="{{fieldLabel}}" />
+    <view class="compose-count">{{body.length}} / 2000</view>
+    <view class="compose-preview" role="button" aria-expanded="{{previewOpen}}" aria-label="{{copy.composePreviewAction}}" tabindex="0" bindtap="togglePreview"><text>{{copy.composePreviewAction}}</text><text class="compose-arrow">{{previewOpen ? '↓' : '→'}}</text></view>
+    <view wx:if="{{previewOpen}}" class="compose-preview-panel">
+      <view class="compose-preview-label">{{fieldLabel}}</view>
+      <view class="compose-preview-body">{{body || '写下一段内容后，这里会显示预览。'}}</view>
+    </view>
+    <view class="compose-actions">
+      <view class="compose-save" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving}}" tabindex="0" bindtap="saveDraft">{{saving ? '保存中…' : copy.composeSaveAction}}</view>
+      <view class="compose-discard" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft">{{copy.composeDiscardAction}}</view>
+    </view>
+    <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
+  </view>
+  <view class="compose-tabbar" role="tablist" aria-label="小程序底部导航">
+    <view class="compose-tab selected" role="tab" aria-label="首页" aria-selected="true" tabindex="0" data-index="0" bindtap="switchTab"><view class="compose-tab-icon compose-home-icon"><view></view></view><text>首页</text></view>
+    <view class="compose-tab" role="tab" aria-label="实践" aria-selected="false" tabindex="0" data-index="1" bindtap="switchTab"><view class="compose-tab-icon compose-practice-icon"><view></view><view></view></view><text>实践</text></view>
+    <view class="compose-tab" role="tab" aria-label="我的" aria-selected="false" tabindex="0" data-index="2" bindtap="switchTab"><view class="compose-tab-icon compose-mine-icon"><view class="compose-mine-head"></view><view class="compose-mine-body"></view></view><text>我的</text></view>
+  </view>
+</view>

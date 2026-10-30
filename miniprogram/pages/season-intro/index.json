@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "四时气韵",
+  "navigationBarBackgroundColor": "#e7dfd1",
+  "usingComponents": {
+    "app-tab-bar": "/components/app-tab-bar/index"
+  }
+}

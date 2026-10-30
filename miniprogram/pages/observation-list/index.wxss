@@ -1,0 +1,18 @@
+@import "../../app.wxss";
+.observation-list-page { min-height: 100vh; padding: 0 44rpx 80rpx; background: #e7dfd1; box-sizing: border-box; }
+.observation-list-topbar { position: sticky; z-index: 10; top: 0; margin: 0 -44rpx; padding-right: 44rpx; padding-left: 44rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; box-sizing: content-box; }
+.observation-list-nav { position: relative; display: flex; height: 56px; align-items: center; justify-content: center; }
+.observation-list-title { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 31rpx; font-weight: 600; letter-spacing: 1rpx; }
+.observation-list-back { position: absolute; top: 0; left: -24rpx; display: flex; width: 76rpx; height: 56px; align-items: center; justify-content: center; padding-bottom: 6rpx; color: #5c493c; font-family: Georgia, serif; font-size: 56rpx; line-height: 1; }
+.observation-list-back:active { opacity: .58; transform: scale(.97); }
+.observation-list-count { position: absolute; right: 0; color: #8e493c; font-family: Georgia, serif; font-size: 23rpx; }
+.observation-list-content { padding-top: 30rpx; }
+.observation-list-intro { margin: 0 0 26rpx; color: #76695f; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.7; }
+.observation-list-page .record-item { min-height: 190rpx; }
+.observation-list-empty { padding: 80rpx 0; color: #76695f; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; }
+.observation-list-more { padding: 24rpx 0; }
+.list-retry-button { display: flex; width: 100%; min-height: 80rpx; align-items: center; justify-content: center; padding: 16rpx 24rpx; border: 1rpx solid #cdbbae; border-radius: 999rpx; background: rgba(255, 250, 244, .55); color: #663124; font-size: 26rpx; box-sizing: border-box; text-align: center; }
+.list-retry-button:active { opacity: .68; }
+.list-retry-button[aria-disabled="true"] { opacity: .55; }
+.observation-list-page .error-state { display: grid; gap: 20rpx; }
+@media (prefers-reduced-motion: reduce) { .observation-list-back { transition: none; transform: none; } }

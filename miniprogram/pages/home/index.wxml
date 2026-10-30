@@ -1,0 +1,122 @@
+<view class="page home-page">
+  <view class="brand-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="brand-topbar-copy" aria-label="MYRIAD SHE">MYRIAD SHE</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-state" role="status" aria-live="polite">正在读取内容…</view>
+  <view wx:elif="{{error}}" class="error-state" role="alert"><view class="error-text">{{error}}</view><view class="button secondary" role="button" aria-label="重新读取首页内容" tabindex="0" bindtap="loadContent">重新读取</view></view>
+  <block wx:else>
+    <block wx:if="{{hasModules}}">
+      <view wx:for="{{modules}}" wx:key="id" id="home-module-{{item.id}}" class="editorial-section module-{{item.type}}">
+        <view wx:if="{{item.type === 'issueMeta'}}" class="issue-meta"><view><view class="eyebrow">{{item.eyebrow}}</view><view class="issue-month">{{item.month}}</view></view><view class="issue-code">{{issue.code}}</view></view>
+        <block wx:elif="{{item.type === 'cover' || item.type === 'image'}}">
+          <image wx:if="{{item.imageUrl}}" class="issue-cover" src="{{item.imageUrl}}" mode="aspectFill" lazy-load="true" aria-label="{{item.altText}}" data-index="{{index}}" binderror="onModuleImageError" />
+          <view wx:else class="cover-empty">图片暂不可用</view>
+          <view wx:if="{{item.captionLeft || item.captionRight || item.caption}}" class="cover-caption"><text>{{item.captionLeft || item.caption}}</text><text>{{item.captionRight}}</text></view>
+        </block>
+        <block wx:elif="{{item.type === 'coverStory'}}">
+          <view wx:if="{{item.imageUrl}}" class="cover-story-image-wrap"><image class="issue-cover" src="{{item.imageUrl}}" mode="aspectFill" lazy-load="true" aria-label="{{item.altText}}" data-index="{{index}}" binderror="onModuleImageError" /></view>
+          <view wx:if="{{item.imageUrl && (item.captionLeft || item.captionRight)}}" class="cover-story-caption"><text>{{item.captionLeft}}</text><text>{{item.captionRight}}</text></view>
+          <view class="cover-story-copy"><view class="eyebrow">{{item.eyebrow || '本期主题'}}</view><view class="cover-story-title" style="font-size: {{item.titleFontSize || 72}}rpx; color: {{item.titleColor || '#59483d'}}">{{item.title}}</view><view wx:if="{{item.body}}" class="cover-story-description" style="font-size: {{item.bodyFontSize || 30}}rpx; color: {{item.bodyColor || '#40362f'}}">{{item.body}}</view><view wx:if="{{item.byline}}" class="cover-story-byline">{{item.byline}}</view></view>
+        </block>
+        <block wx:elif="{{item.type === 'story'}}">
+          <view class="story-kicker"><text class="section-number">01</text><text class="eyebrow">{{item.eyebrow}}</text></view>
+          <view class="story-quote">{{item.title}}</view>
+          <view class="story-body">{{item.body}}</view>
+          <view wx:if="{{item.storyActionTitle}}" class="story-text-link" role="button" tabindex="0" aria-label="{{item.storyActionTitle}}" data-target-id="{{item.id}}" bindtap="openStoryAction"><text>{{item.storyActionTitle}}</text><text class="story-link-arrow">→</text></view>
+          <view wx:if="{{item.imageUrl}}" id="home-story-image-{{item.id}}" class="story-image-wrap"><image class="story-image" src="{{item.imageUrl}}" mode="aspectFill" lazy-load="true" aria-label="{{item.altText}}" data-index="{{index}}" binderror="onModuleImageError" /></view>
+          <view wx:if="{{item.imageUrl && (item.captionLeft || item.captionRight)}}" class="story-caption"><text>{{item.captionLeft}}</text><text>{{item.captionRight}}</text></view>
+        </block>
+        <block wx:elif="{{item.type === 'storyAction'}}"><view class="story-action" role="button" aria-label="{{item.title}}" tabindex="0" data-target-id="{{item.targetId || 'story'}}" bindtap="openStoryAction"><view class="section-title">{{item.title}}</view><text class="story-action-arrow">→</text><view wx:if="{{item.body}}" class="section-copy">{{item.body}}</view></view></block>
+        <block wx:elif="{{item.type === 'opener'}}">
+          <view class="eyebrow">{{item.eyebrow}}</view><view class="section-title">{{item.title}}</view><view class="section-copy module-body">{{item.body}}</view>
+        </block>
+        <view wx:elif="{{item.type === 'quote'}}" class="module-quote">“{{item.text}}”<view class="section-copy">{{item.attribution}}</view></view>
+        <view wx:elif="{{item.type === 'audio'}}" class="module-audio">
+          <view class="audio-kicker"><text class="audio-number">02</text><text class="audio-label">{{item.displayTitle || item.title || '微声音'}}</text><text wx:if="{{activeAudioId != item.primaryTrack.playbackId}}" class="audio-duration">{{item.primaryTrack.duration || item.duration}}</text></view>
+          <view wx:if="{{activeAudioId === item.primaryTrack.playbackId}}" class="audio-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{audioProgressPercent}}" aria-valuetext="{{audioCurrentTimeLabel}} / {{audioDurationLabel}}">
+            <view class="audio-progress-track"><view class="audio-progress-fill" style="width: {{audioProgressPercent}}%"></view></view>
+            <view class="audio-progress-times"><text>{{audioCurrentTimeLabel}}</text><text>{{audioDurationLabel}}</text></view>
+          </view>
+          <view class="{{activeAudioId === item.primaryTrack.playbackId ? 'audio-feature audio-feature-with-progress' : 'audio-feature'}}">
+            <view class="audio-play" role="button" tabindex="0" aria-label="{{playingAudioId === item.primaryTrack.playbackId ? '暂停' : '播放'}}{{item.primaryTrack.title}}" data-module-id="{{item.id}}" data-track-id="{{item.primaryTrack.id}}" bindtap="toggleAudio">{{playingAudioId === item.primaryTrack.playbackId ? 'Ⅱ' : '▶'}}</view>
+            <view class="audio-copy"><view wx:if="{{item.primaryTrack.quote}}" class="audio-quote">{{item.primaryTrack.quote}}</view><view wx:if="{{item.primaryTrack.subtitle}}" class="audio-subtitle">{{item.primaryTrack.subtitle}}</view><view wx:if="{{item.primaryTrack.transcript}}" class="audio-transcript">{{item.primaryTrack.transcript}}</view></view>
+          </view>
+          <view wx:if="{{item.tracks.length > 1}}" class="audio-more">
+            <view class="audio-more-heading">更多声音</view>
+            <view wx:for="{{item.tracks}}" wx:for-item="track" wx:for-index="trackIndex" wx:key="id">
+              <view wx:if="{{trackIndex > 0}}" class="audio-more-item">
+                <view class="audio-more-row">
+                  <view class="audio-more-play" role="button" tabindex="0" aria-label="{{playingAudioId === track.playbackId ? '暂停' : '播放'}}{{track.title}}" data-module-id="{{item.id}}" data-track-id="{{track.id}}" bindtap="toggleAudio">{{playingAudioId === track.playbackId ? 'Ⅱ' : '▶'}}</view>
+                  <view class="audio-more-copy"><view class="audio-more-title">{{track.title}}</view><view wx:if="{{track.subtitle}}" class="audio-more-subtitle">{{track.subtitle}}</view></view>
+                  <text class="audio-more-duration">{{activeAudioId === track.playbackId ? audioDurationLabel : track.duration}}</text>
+                </view>
+                <view wx:if="{{activeAudioId === track.playbackId}}" class="audio-progress audio-more-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{audioProgressPercent}}" aria-valuetext="{{audioCurrentTimeLabel}} / {{audioDurationLabel}}">
+                  <view class="audio-progress-track"><view class="audio-progress-fill" style="width: {{audioProgressPercent}}%"></view></view>
+                  <view class="audio-progress-times"><text>{{audioCurrentTimeLabel}}</text><text>{{audioDurationLabel}}</text></view>
+                </view>
+                <view wx:if="{{track.quote}}" class="audio-more-quote">{{track.quote}}</view>
+                <view wx:if="{{track.transcript}}" class="audio-more-transcript">{{track.transcript}}</view>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view wx:elif="{{item.type === 'question'}}" class="module-question">
+          <view class="question-kicker"><text class="question-number">03</text><text class="question-label">本期问题</text></view>
+          <view class="question-intro">{{item.eyebrow}}</view>
+          <view class="question-title">{{item.title || issue.question}}</view>
+          <view wx:if="{{item.body}}" class="question-body">{{item.body}}</view>
+          <view wx:if="{{item.questionActions.length}}" class="question-actions">
+            <view wx:for="{{item.questionActions}}" wx:for-item="action" wx:key="id" class="question-action" role="button" tabindex="0" aria-label="{{action.title}}" data-action="{{action.type === 'observationAction' ? 'observation' : 'discussion'}}" bindtap="openModuleAction">
+              <view class="question-action-main"><view class="question-action-title">{{action.title}}</view><view wx:if="{{action.body}}" class="question-action-copy">{{action.body}}</view></view><text class="question-action-arrow">→</text>
+            </view>
+          </view>
+        </view>
+        <view wx:elif="{{item.type === 'observationAction'}}" class="module-action" role="button" aria-label="{{item.title}}" tabindex="0" data-action="observation" bindtap="openModuleAction"><view class="section-title">{{item.title}}</view><view class="section-copy">{{item.body}}</view><view class="text-button">开始观察 →</view></view>
+        <view wx:elif="{{item.type === 'sharedPracticeAction'}}" class="module-action" role="button" aria-label="{{item.title}}" tabindex="0" data-action="discussion" bindtap="openModuleAction"><view class="section-title">{{item.title}}</view><view class="section-copy">{{item.body}}</view><view class="text-button">一起谈谈 →</view></view>
+        <view wx:elif="{{item.type === 'contents'}}" class="contents-content">
+          <view class="contents-heading"><text class="contents-title">{{item.title || '本期目录'}}</text><text class="contents-english">CONTENTS</text></view>
+          <view wx:for="{{contentsEntries}}" wx:for-item="entry" wx:key="id" class="contents-row" role="button" tabindex="0" aria-label="{{entry.number}} {{entry.label}} {{entry.summary}}" data-destination="{{entry.destination}}" bindtap="openContentsEntry">
+            <text class="contents-number">{{entry.number}}</text><text class="contents-label">{{entry.label}}</text><text class="contents-summary">{{entry.summary}}</text>
+          </view>
+        </view>
+        <view wx:elif="{{item.type === 'archive'}}" class="archive-content" role="button" aria-label="打开策展档案" tabindex="0" bindtap="openArchive">
+          <view class="archive-heading">{{item.title || '策展档案'}}</view>
+          <view class="archive-entry"><view class="archive-entry-label">{{item.entryLabel || 'ISSUE 01 · 往期精彩示意'}}</view><view class="archive-entry-title">{{item.entryTitle || '留住没有答案的时刻'}}<text aria-hidden="true">→</text></view></view>
+        </view>
+        <view wx:elif="{{item.type === 'brandFooter'}}" class="footer-signature">
+          <view class="footer-brand">MYRIAD SHE</view>
+          <view class="footer-title">{{item.title}}</view>
+          <view class="footer-copy">{{item.body}}</view>
+          <view class="footer-flower" aria-hidden="true"><view></view><view></view><view></view><view></view></view>
+        </view>
+      </view>
+    </block>
+    <block wx:else>
+    <view class="hero-copy">
+      <view class="eyebrow">此刻归安</view>
+      <view class="hero-title">看见真实经验，从此刻开始</view>
+      <view class="muted">把注意力带回正在发生的事，再选择一件可以发生的小事。</view>
+    </view>
+
+    <view id="home-section-0" class="editorial-section observation-section">
+      <view class="section-number">01</view>
+      <view class="eyebrow">此刻观察</view>
+      <view class="section-title">从真实处境开始</view>
+      <view class="section-copy">不急着给出正确答案，先把正在发生的事看清楚。</view>
+      <view class="button" role="button" aria-label="开始此刻观察" tabindex="0" bindtap="startObservation">开始观察 <text>→</text></view>
+    </view>
+
+    <view id="home-section-1" class="editorial-section practice-section">
+      <view class="section-number">02</view>
+      <view class="eyebrow">实践</view>
+      <view class="section-title">让一件小事发生</view>
+      <view class="section-copy">回到日常实践，从一个可以承接的动作开始。</view>
+      <view class="text-button" role="button" aria-label="进入实践页面" tabindex="0" bindtap="startPractice">进入实践 <text>→</text></view>
+    </view>
+    </block>
+  </block>
+
+  <view wx:if="{{!hasModules}}" class="editorial-section module-brandFooter"><view class="footer-signature"><view class="footer-brand">MYRIAD SHE</view><view class="footer-title">我有我的时节</view><view class="footer-copy">记录真实的女性经验，也为看见之后的生活留下一条可行的路。</view><view class="footer-flower" aria-hidden="true"><view></view><view></view><view></view><view></view></view></view></view>
+
+</view>

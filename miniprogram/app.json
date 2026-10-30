@@ -1,0 +1,43 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/archive/index",
+    "pages/story-detail/index",
+    "pages/practice/index",
+    "pages/season-intro/index",
+    "pages/daily-objects/index",
+    "pages/daily-bag/index",
+    "pages/daily-object-detail/index",
+    "pages/contact-support/index",
+    "pages/shared-practice/index",
+    "pages/discussion/index",
+    "pages/discussion-compose/index",
+    "pages/mine/index",
+    "pages/profile/index",
+    "pages/login/index",
+    "pages/observation-list/index",
+    "pages/observation/index",
+    "pages/observation-detail/index",
+    "pages/privacy/index",
+    "pages/privacy-policy/index",
+    "pages/about/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "MYRIAD SHE",
+    "navigationBarBackgroundColor": "#f5f0e8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f0e8"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#88786b",
+    "selectedColor": "#663124",
+    "backgroundColor": "#fffdf9",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/practice/index", "text": "实践" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  }
+}

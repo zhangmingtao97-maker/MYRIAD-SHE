@@ -1,0 +1,137 @@
+@import "../../app.wxss";
+.home-page { padding-top: 0; background: #e7dfd1; }
+.home-page [role="button"]:active { opacity: .72; }
+.home-page [role="button"]:focus { opacity: .7; }
+.issue-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; padding: 42rpx 0 28rpx; font-size: 33rpx; }
+.issue-meta .eyebrow, .issue-month, .issue-code { color: inherit; font-family: Georgia, serif; font-size: 1em; letter-spacing: 2rpx; text-transform: uppercase; }
+.issue-meta-rich-text { display: block; width: 100%; color: inherit; line-height: 1.5; }
+.issue-month { margin-top: 12rpx; }
+.issue-code { margin-top: 0; white-space: nowrap; }
+.loading-state, .error-state { padding: 70rpx 0; }
+.error-state { color: #a53f32; }
+.error-text { line-height: 1.7; }
+.issue-cover { display: block; width: 100%; height: 960rpx; object-fit: cover; }
+.detail-image { display: block; width: 100%; height: 720rpx; object-fit: cover; }
+.cover-empty { display: flex; align-items: center; justify-content: center; height: 960rpx; background: #e9e0d5; color: #88786b; font-family: Georgia, serif; font-size: 34rpx; }
+.cover-caption { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 58rpx; margin: 0 8rpx; padding: 12rpx 20rpx; box-sizing: border-box; background: #ebe2d6; color: #806854; font-family: Georgia, serif; font-size: 24rpx; line-height: 1.35; }
+.cover-caption-left, .cover-caption-right { min-width: 0; overflow-wrap: anywhere; }
+.cover-caption-right { text-align: right; }
+.hero-copy { padding: 52rpx 0 62rpx; }
+.hero-title { margin: 20rpx 0 32rpx; font-family: Georgia, serif; color: #40362f; font-size: 64rpx; line-height: 1.25; }
+.editorial-section { padding: 56rpx 0; border-top: 1rpx solid #cdbbae; }
+.section-number { color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; letter-spacing: 2rpx; }
+.section-title { margin: 20rpx 0 24rpx; color: #40362f; font-family: Georgia, serif; font-size: 44rpx; line-height: 1.35; }
+.section-copy { color: #75675d; font-size: 27rpx; line-height: 1.8; }
+.text-button { display: inline-flex; align-items: center; gap: 14rpx; min-height: 76rpx; margin-top: 26rpx; padding: 0; border: 0; background: transparent; color: #663124; font-size: 27rpx; text-align: left; }
+.text-button text { font-size: 34rpx; }
+.detail-image-wrap { margin: 0 -36rpx; }
+.voice-player { width: 100%; margin: 18rpx 0 12rpx; }
+.observation-section .button { margin-top: 34rpx; }
+.contents-section { padding: 42rpx 0 20rpx; border-top: 1rpx solid #cdbbae; }
+.contents-row { display: grid; grid-template-columns: 72rpx 1fr 48rpx; align-items: center; width: 100%; min-height: 96rpx; padding: 18rpx 0; border: 0; border-bottom: 1rpx solid #e4dbd1; background: transparent; color: #40362f; text-align: left; }
+.contents-number { color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; }
+.contents-label { font-family: Georgia, serif; font-size: 31rpx; }
+.contents-arrow { color: #663124; font-size: 34rpx; text-align: right; }
+.module-issueMeta { padding: 24rpx 0 18rpx; border-top: 0; }
+.module-cover, .module-image { margin-right: -36rpx; margin-left: -36rpx; padding-top: 0; border-top: 0; }
+.module-cover .issue-cover, .module-image .issue-cover, .module-cover .cover-empty, .module-image .cover-empty { height: 960rpx; }
+.module-coverStory { margin: 0 -36rpx; padding: 0; border-top: 0; }
+.cover-story-image-wrap .issue-cover, .cover-story-image-wrap .cover-empty { height: 960rpx; }
+.cover-story-caption { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 58rpx; padding: 12rpx 40rpx; background: #e9e0d2; color: #8a6755; font-family: Georgia, serif; font-size: 23rpx; line-height: 1.4; }
+.cover-story-caption text { min-width: 0; }
+.cover-story-caption text:last-child { text-align: right; }
+.cover-story-copy { padding: 76rpx 44rpx 84rpx; background: #e9e0d2; }
+.cover-story-copy .eyebrow { color: #976e59; font-family: Georgia, serif; font-size: 25rpx; letter-spacing: 2rpx; }
+.cover-story-title { margin-top: 40rpx; color: #59483d; font-family: Georgia, "Songti SC", serif; font-size: 72rpx; font-weight: 600; line-height: 1.17; white-space: pre-wrap; }
+.cover-story-description { margin-top: 40rpx; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 600; line-height: 1.75; white-space: pre-wrap; }
+.cover-story-byline { margin-top: 46rpx; color: #8a6755; font-family: Georgia, serif; font-size: 23rpx; letter-spacing: 1rpx; }
+.module-opener, .module-quote, .module-action, .module-contents, .module-archive { padding-top: 56rpx; }
+.module-body { margin-top: 22rpx; white-space: pre-wrap; }
+.module-story { margin: 0 8rpx; padding: 40rpx 0 162rpx; border-top-color: #c3b4a4; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; letter-spacing: .01em; }
+.story-kicker { display: grid; grid-template-columns: 88rpx 1fr; align-items: baseline; }
+.story-kicker .section-number, .story-kicker .eyebrow { margin: 0; color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; font-weight: 400; line-height: 1.4; letter-spacing: .12em; }
+.story-quote { margin: 112rpx 0 58rpx 64rpx; color: #5c493c; font-size: 60rpx; font-weight: 400; line-height: 1.48; white-space: pre-wrap; }
+.story-body { color: #5c493c; font-size: 32rpx; font-weight: 400; line-height: 1.78; white-space: pre-wrap; }
+.story-text-link { display: inline-flex; align-items: center; gap: 36rpx; min-height: 88rpx; margin-top: 62rpx; color: #5c493c; font-size: 32rpx; font-weight: 400; line-height: 1.5; }
+.story-link-arrow { font-family: Garamond, "Times New Roman", serif; }
+.story-image-wrap { margin-top: 132rpx; }
+.story-image { display: block; width: 100%; height: 462rpx; object-fit: cover; object-position: 78% 74%; filter: saturate(.64) contrast(1.02); }
+.story-caption { display: grid; grid-template-columns: 224rpx 1fr; align-items: start; gap: 36rpx; margin-top: 28rpx; color: #5c493c; font-size: 26rpx; line-height: 1.7; }
+.story-caption text { min-width: 0; }
+.story-caption text:first-child { color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.55; }
+.story-caption text:last-child { text-align: left; }
+.story-action { position: relative; min-height: 92rpx; padding: 30rpx 72rpx 30rpx 0; border-top: 1rpx solid #cdbbae; border-bottom: 1rpx solid #cdbbae; color: #66564c; }
+.story-action .section-title { margin: 0; color: #66564c; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 400; }
+.story-action .section-copy { margin-top: 12rpx; }
+.story-action-arrow { position: absolute; top: 28rpx; right: 4rpx; color: #8c604b; font-family: Georgia, serif; font-size: 36rpx; }
+.module-quote { color: #663124; font-family: Georgia, serif; font-size: 44rpx; line-height: 1.55; text-align: center; }
+.module-quote .section-copy { margin-top: 20rpx; text-align: right; }
+.module-audio { margin: 0 8rpx; padding: 40rpx 0 78rpx; border-top-color: rgba(92, 73, 60, .24); color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; }
+.audio-kicker { display: grid; grid-template-columns: 88rpx 1fr auto; align-items: baseline; color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.4; letter-spacing: .12em; }
+.audio-number, .audio-label, .audio-duration { min-width: 0; }
+.audio-duration { text-align: right; letter-spacing: .04em; }
+.audio-progress { min-width: 0; margin: 24rpx 0 0 88rpx; }
+.audio-progress-track { height: 4rpx; overflow: hidden; border-radius: 4rpx; background: rgba(92, 73, 60, .2); }
+.audio-progress-fill { height: 100%; background: #663124; transition: width 200ms linear; }
+.audio-progress-times { display: flex; justify-content: space-between; margin-top: 10rpx; color: #8a6755; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 22rpx; line-height: 1.3; letter-spacing: .04em; }
+.audio-feature { display: grid; grid-template-columns: 88rpx 1fr; align-items: start; margin-top: 76rpx; }
+.audio-feature-with-progress { margin-top: 38rpx; }
+.audio-play { display: flex; width: 88rpx; height: 88rpx; align-items: flex-start; justify-content: flex-start; padding-top: 8rpx; color: #5c493c; font-family: Garamond, "Times New Roman", serif; font-size: 26rpx; line-height: 1.5; box-sizing: border-box; }
+.audio-play:active { opacity: .62; }
+.audio-quote { color: #5c493c; font-size: 48rpx; font-weight: 600; line-height: 1.5; white-space: pre-wrap; }
+.audio-subtitle { margin-top: 24rpx; color: #5c493c; font-size: 28rpx; font-weight: 500; line-height: 1.65; }
+.audio-transcript { margin-top: 36rpx; color: #5c493c; font-size: 28rpx; line-height: 1.8; white-space: pre-wrap; }
+.audio-more { margin: 48rpx 0 0 88rpx; border-top: 1rpx solid rgba(92, 73, 60, .24); }
+.audio-more-heading { padding: 22rpx 0 12rpx; color: #8a6755; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.4; }
+.audio-more-item { padding: 18rpx 0 24rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .2); }
+.audio-more-row { display: grid; grid-template-columns: 88rpx minmax(0, 1fr) auto; align-items: start; gap: 12rpx; }
+.audio-more-play { display: flex; width: 88rpx; height: 88rpx; align-items: flex-start; justify-content: flex-start; padding-top: 6rpx; color: #5c493c; font-family: Garamond, "Times New Roman", serif; font-size: 26rpx; line-height: 1.5; box-sizing: border-box; }
+.audio-more-play:active { opacity: .62; }
+.audio-more-copy { min-width: 0; padding-top: 4rpx; }
+.audio-more-title { color: #5c493c; font-size: 30rpx; line-height: 1.5; }
+.audio-more-subtitle { margin-top: 8rpx; color: #5c493c; font-size: 24rpx; line-height: 1.65; }
+.audio-more-duration { min-width: 60rpx; padding-top: 8rpx; color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 22rpx; line-height: 1.4; text-align: right; }
+.audio-more-progress { margin: 12rpx 0 0 88rpx; }
+.audio-more-quote { margin: 12rpx 0 0 88rpx; color: #5c493c; font-size: 32rpx; font-weight: 500; line-height: 1.55; white-space: pre-wrap; }
+.audio-more-transcript { margin: 12rpx 0 0 88rpx; color: #5c493c; font-size: 26rpx; line-height: 1.75; white-space: pre-wrap; }
+.module-question { margin: 0 8rpx; padding: 40rpx 0 72rpx; border-top-color: rgba(92, 73, 60, .24); color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; letter-spacing: .01em; }
+.question-kicker { display: grid; grid-template-columns: 88rpx 1fr; align-items: baseline; color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.4; letter-spacing: .12em; }
+.question-intro { margin-top: 112rpx; color: #8a6755; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.5; text-align: center; }
+.question-title { margin-top: 50rpx; color: #5c493c; font-size: 60rpx; font-weight: 600; line-height: 1.48; text-align: center; white-space: pre-wrap; }
+.question-body { margin-top: 58rpx; color: #5c493c; font-size: 32rpx; font-weight: 400; line-height: 1.78; white-space: pre-wrap; }
+.question-actions { margin: 58rpx 16rpx 0; border-top: 1rpx solid rgba(92, 73, 60, .24); }
+.question-action { display: flex; min-height: 88rpx; align-items: center; justify-content: space-between; gap: 24rpx; padding: 32rpx 0; border-bottom: 1rpx solid rgba(92, 73, 60, .24); color: #5c493c; box-sizing: border-box; }
+.question-action-main { min-width: 0; }
+.question-action-title { color: #5c493c; font-size: 32rpx; line-height: 1.5; }
+.question-action-copy { margin-top: 8rpx; color: #5c493c; font-size: 24rpx; line-height: 1.6; }
+.question-action-arrow { flex: 0 0 auto; color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 34rpx; line-height: 1; }
+.question-action:active { opacity: .68; }
+.module-action { border-bottom: 1rpx solid #cdbbae; }
+.module-action .section-title { font-size: 38rpx; }
+.module-contents { padding: 28rpx 0 168rpx; }
+.contents-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 20rpx; margin-bottom: 12rpx; color: #8a6755; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.5; }
+.contents-title { color: #8a6755; }
+.contents-english { color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 22rpx; letter-spacing: .08em; }
+.contents-row { display: grid; grid-template-columns: 72rpx 164rpx minmax(0, 1fr); align-items: center; min-height: 128rpx; gap: 8rpx; padding: 18rpx 0; border-bottom: 1rpx solid rgba(92, 73, 60, .24); box-sizing: border-box; }
+.contents-number { color: #8a6755; font-family: Garamond, "Times New Roman", serif; font-size: 22rpx; letter-spacing: .04em; }
+.contents-label { min-width: 0; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 500; line-height: 1.5; }
+.contents-summary { min-width: 0; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.55; }
+.contents-row:active { opacity: .68; }
+.module-archive { min-height: 0; margin: 0 8rpx; padding: 40rpx 0 160rpx; color: #5c493c; }
+.archive-heading { color: #8a6755; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.5; }
+.archive-entry { display: grid; gap: 16rpx; margin-top: 60rpx; padding-bottom: 28rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .24); }
+.archive-entry-label { color: #8a6755; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 22rpx; line-height: 1.5; letter-spacing: .04em; }
+.archive-entry-title { display: flex; align-items: baseline; justify-content: space-between; gap: 20rpx; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 30rpx; font-weight: 600; line-height: 1.5; }
+.archive-entry-title text { flex: 0 0 auto; color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 34rpx; line-height: 1; }
+.module-brandFooter { margin: 0 -36rpx; padding: 0; border-top: 0; }
+.footer-signature { position: relative; min-height: 670rpx; margin: 0; padding: 120rpx 36rpx 24rpx; overflow: hidden; border-top: 1rpx solid #cdbbae; box-sizing: border-box; }
+.footer-brand { color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 42rpx; font-weight: 400; line-height: 1.35; }
+.footer-title { margin-top: 150rpx; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 56rpx; font-weight: 600; line-height: 1.4; }
+.footer-copy { position: relative; z-index: 1; max-width: 620rpx; margin-top: 42rpx; color: #40362f; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 28rpx; font-weight: 500; line-height: 1.7; }
+.footer-flower { position: absolute; right: 8rpx; bottom: 0; width: 150rpx; height: 150rpx; opacity: .36; }
+.footer-flower view { position: absolute; width: 58rpx; height: 76rpx; background: #a99181; border-radius: 58% 42% 62% 38%; }
+.footer-flower view:nth-child(1) { top: 0; left: 46rpx; }
+.footer-flower view:nth-child(2) { top: 37rpx; left: 83rpx; transform: rotate(90deg); }
+.footer-flower view:nth-child(3) { top: 74rpx; left: 46rpx; transform: rotate(180deg); }
+.footer-flower view:nth-child(4) { top: 37rpx; left: 9rpx; transform: rotate(270deg); }
+.text-button::after, .contents-row::after { border: 0; }

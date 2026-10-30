@@ -1,0 +1,36 @@
+<view class="archive-page">
+  <view class="archive-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="archive-topbar-row">
+      <view class="archive-control archive-back" role="button" aria-label="返回上一级" tabindex="0" bindtap="handleBack">‹</view>
+      <text class="archive-topbar-title">往期策展</text>
+      <view class="archive-control archive-more" role="button" aria-label="分享策展档案" tabindex="0" bindtap="openMore">···</view>
+    </view>
+  </view>
+
+  <view class="archive-content">
+    <view class="archive-meta"><text>策展档案</text><text>ARCHIVE</text></view>
+    <view class="archive-hero-title">回到一个曾经<br />认真看过的问题</view>
+    <view class="archive-intro">这里保存每一期的策展路径，而不是复制另一套文章目录。</view>
+
+    <view class="archive-issues">
+      <view class="archive-issues-heading"><text>全部期次</text><text>ISSUES</text></view>
+      <view wx:if="{{loading}}" class="archive-state" role="status">正在读取已发布期次…</view>
+      <view wx:elif="{{error}}" class="archive-state archive-error" role="alert">
+        <text>{{error}}</text>
+        <view class="archive-retry" role="button" aria-label="重新读取策展档案" tabindex="0" bindtap="loadArchive">重新读取</view>
+      </view>
+      <view wx:elif="{{!issues.length}}" class="archive-state archive-empty">目前还没有已发布的策展期次。</view>
+      <block wx:else>
+        <view wx:for="{{issues}}" wx:key="code" class="archive-issue {{item.interactive ? 'is-interactive' : 'is-current'}}" data-code="{{item.code}}" role="{{item.interactive ? 'button' : 'text'}}" aria-label="{{item.number}}，{{item.statusLabel}}，{{item.theme}}，{{item.subline}}" aria-disabled="{{!item.interactive}}" tabindex="{{item.interactive ? 0 : -1}}" bindtap="openIssue">
+          <text class="archive-issue-number">{{item.number}}</text>
+          <view class="archive-issue-main">
+            <text class="archive-issue-status">{{item.statusLabel}}</text>
+            <view class="archive-issue-title"><text>{{item.theme}}</text><text class="archive-issue-arrow" aria-hidden="true">{{item.interactive ? '↗' : '—'}}</text></view>
+            <text class="archive-issue-subline">{{item.subline}}</text>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+  <app-tab-bar />
+</view>

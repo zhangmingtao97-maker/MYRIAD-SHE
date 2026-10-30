@@ -1,0 +1,130 @@
+<view class="page mine-page">
+  <view class="brand-topbar" style="padding-top: {{statusBarHeight}}px"><view class="brand-topbar-copy" aria-label="MYRIAD SHE">MYRIAD SHE</view></view>
+
+  <view wx:if="{{accountDeleted}}" class="account-card account-card-alert" role="alert">
+    <view class="account-eyebrow">云端账户</view>
+    <view class="account-title">账户已删除</view>
+    <view class="account-caption">此微信身份对应的账户已从云端删除，原观察记录无法恢复。不会自动创建新账户。</view>
+    <text wx:if="{{newAccountError}}" class="account-error">{{newAccountError}}</text>
+    <view class="primary-button" disabled="{{creatingNewAccount}}" bindtap="createNewAccount" role="button" tabindex="0">{{creatingNewAccount ? '正在创建…' : '创建新的空账户'}}</view>
+  </view>
+
+  <view wx:elif="{{!isLoggedIn}}" class="account-card account-card-guest" role="button" aria-role="button" aria-label="登录或注册" tabindex="0" bindtap="openLogin">
+    <view class="account-main">
+      <view class="account-avatar guest-avatar" aria-hidden="true"><text>MY</text></view>
+      <view class="account-identity">
+        <view class="account-title">登录 / 注册</view>
+        <view class="account-caption">登录后查看云端观察记录与已保存的经历</view>
+      </view>
+      <text class="account-enter" aria-hidden="true">→</text>
+    </view>
+  </view>
+
+  <view wx:else class="account-card">
+    <view class="account-main">
+      <button class="account-avatar" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" aria-label="选择或更换头像" disabled="{{!accountProfileReady || profileSaving}}">
+        <image wx:if="{{accountProfile.avatarUrl}}" class="account-avatar-image" src="{{accountProfile.avatarUrl}}" mode="aspectFill"></image>
+        <text wx:else class="account-avatar-plus" aria-hidden="true">+</text>
+      </button>
+      <view class="account-identity">
+        <view wx:if="{{!editingNickname}}" class="account-title account-title-action" role="button" aria-role="button" aria-label="{{accountProfile.nickname ? '修改账号昵称' : '设置账号昵称'}}" bindtap="editNickname">{{accountProfile.nickname || '设置昵称'}}</view>
+        <input wx:else class="account-title-input" type="nickname" value="{{accountProfile.nickname}}" maxlength="32" placeholder="请输入账号昵称" focus="{{editingNickname}}" bindinput="onNicknameInput" bindblur="onNicknameChange" disabled="{{profileSaving}}" />
+        <view class="account-caption">云端账户 · 个人观察仅自己可见</view>
+      </view>
+      <view class="account-enter" role="button" aria-role="button" aria-label="打开个人资料" bindtap="openProfile">›</view>
+    </view>
+    <view class="account-stats" role="group" aria-label="记录概览">
+      <view class="stat">
+        <text class="stat-value">{{loading ? '…' : observationCount}}</text>
+        <view class="stat-copy"><text class="stat-label">观察记录</text><text class="stat-note">仅自己可见</text></view>
+      </view>
+      <view class="stat-rule" aria-hidden="true"></view>
+      <view class="stat">
+        <text class="stat-value">{{cloudContributionsLoading ? '…' : cloudContributionCount}}</text>
+        <view class="stat-copy"><text class="stat-label">已保存经历</text><text class="stat-note">审核后可见</text></view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{isLoggedIn && profileError}}" class="inline-alert" role="alert"><text class="inline-alert-copy">{{profileError}}</text><view class="inline-alert-action" role="button" aria-role="button" tabindex="0" bindtap="onRetryProfile">重试</view></view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-heading"><text class="section-number">01</text><rich-text class="section-title" nodes="{{minePage.observationHeading}}"></rich-text></view>
+      <view wx:if="{{isLoggedIn && observationCount > 2}}" class="section-action" role="button" aria-role="button" aria-label="查看全部观察记录" tabindex="0" bindtap="openAllObservations"><text>查看全部</text><text class="section-arrow" aria-hidden="true">→</text></view>
+    </view>
+    <view wx:if="{{!isLoggedIn}}" class="section-empty">
+      <view class="section-empty-copy">{{accountDeleted ? '原账户记录无法恢复。' : '登录后可在这里查看云端观察记录。'}}</view>
+      <view wx:if="{{!accountDeleted}}" class="section-link" role="button" aria-role="button" tabindex="0" bindtap="openLogin"><text>登录 / 注册</text><text class="section-arrow" aria-hidden="true">→</text></view>
+    </view>
+    <view wx:elif="{{loading}}" class="section-state" role="status" aria-live="polite">正在读取云端记录…</view>
+    <view wx:elif="{{error}}" class="section-state section-state-error" role="alert"><text>{{error}}</text><view class="section-link section-link-compact" role="button" aria-role="button" tabindex="0" bindtap="loadObservations"><text>重新加载</text><text class="section-arrow" aria-hidden="true">→</text></view></view>
+    <view wx:elif="{{!observations.length}}" class="section-empty">
+      <rich-text class="section-empty-title" nodes="{{minePage.emptyTitle}}"></rich-text>
+      <rich-text class="section-empty-copy" nodes="{{minePage.emptyIntro}}"></rich-text>
+      <view class="section-link" role="button" aria-role="button" aria-label="{{minePageAccessibility.startButton}}" hover-class="link-hover" bindtap="startObservation"><rich-text class="section-link-copy" nodes="{{minePage.startButton}}"></rich-text><text class="section-arrow" aria-hidden="true">→</text></view>
+    </view>
+    <block wx:else>
+      <view wx:for="{{observations}}" wx:for-index="index" wx:key="id" wx:if="{{index < 2}}" class="record-row" data-id="{{item.id}}" data-status="{{item.status}}" aria-role="button" tabindex="0" bindtap="openRecord" aria-label="{{item.method === 'reality' ? '现实处境' : '四时气韵'}}，{{item.preview || (item.status === 'draft' ? '继续填写观察' : '查看观察记录')}}，{{item.updatedAtLabel}}，仅自己可见">
+        <view class="record-top"><text class="record-method">{{item.method === 'reality' ? '现实处境' : '四时气韵'}}</text><text class="record-date">{{item.updatedAtLabel}}</text></view>
+        <view class="record-preview">{{item.preview || (item.status === 'draft' ? '继续完成这次观察' : '这次观察暂未填写内容')}}</view>
+        <view class="record-foot"><text>{{item.status === 'draft' ? '草稿 · 可继续填写' : '仅自己可见'}}</text><text class="section-arrow" aria-hidden="true">→</text></view>
+      </view>
+    </block>
+  </view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-heading"><text class="section-number">02</text><rich-text class="section-title" nodes="{{minePage.discussionHeading}}"></rich-text></view>
+      <view wx:if="{{isLoggedIn}}" class="section-action" role="button" aria-role="button" aria-expanded="{{discussionExpanded}}" aria-label="{{discussionExpanded ? '收起我保存的经历' : '展开我保存的经历'}}" tabindex="0" bindtap="toggleDiscussionIntro"><text>{{discussionExpanded ? '收起' : '展开'}}</text><text class="section-arrow" aria-hidden="true">{{discussionExpanded ? '↑' : '↓'}}</text></view>
+    </view>
+    <view wx:if="{{!isLoggedIn}}" class="section-empty">
+      <view class="section-empty-copy">{{accountDeleted ? '原账户经历无法恢复。' : '登录后可查看你自己保存的讨论经历。'}}</view>
+      <view wx:if="{{!accountDeleted}}" class="section-link" role="button" aria-role="button" tabindex="0" bindtap="openLogin"><text>登录后查看</text><text class="section-arrow" aria-hidden="true">→</text></view>
+    </view>
+    <block wx:elif="{{discussionExpanded}}">
+      <view class="section-body" aria-live="polite">
+        <view class="section-meta"><rich-text class="section-count" nodes="{{minePage.discussionCount}}"></rich-text><text class="section-note">保存后进入运营审核，不会自动公开</text></view>
+        <view wx:if="{{cloudContributionsLoading}}" class="section-state" role="status">正在读取已保存经历…</view>
+        <view wx:if="{{cloudContributionsError}}" class="section-state section-state-error" role="alert">{{cloudContributionsError}}</view>
+        <view wx:if="{{!cloudContributionsLoading && !cloudContributions.length && !cloudContributionsError}}" class="section-empty">
+          <rich-text class="section-empty-title" nodes="{{minePage.discussionEmptyAction}}"></rich-text>
+          <view class="section-empty-copy">先读一读别人的经验，也可以等想好以后再说。</view>
+        </view>
+        <view wx:for="{{cloudContributions}}" wx:key="id" class="contribution">
+          <view class="contribution-meta"><text class="contribution-issue">{{item.issueLabel || item.issueCode}}</text><text class="status-pill status-{{item.status}}">{{item.status === 'pending' ? '待处理' : item.status === 'handled' ? '已处理' : '不采纳'}}</text></view>
+          <view class="contribution-body">{{item.body}}</view>
+          <view class="contribution-actions"><text wx:if="{{item.threadAuthor}}" class="contribution-note">回复 {{item.threadAuthor}}</text><text wx:else class="contribution-note">已保存经历</text><view class="contribution-delete" role="button" aria-label="删除这段已保存经历" tabindex="0" data-id="{{item.id}}" catchtap="deleteCloudContribution">删除</view></view>
+        </view>
+        <view wx:if="{{localContributions.length}}" class="legacy-group">
+          <view class="legacy-label">这台设备中的旧版记录</view>
+          <view wx:for="{{localContributions}}" wx:key="id" class="contribution">
+            <view class="contribution-meta"><text class="contribution-issue">{{item.issueCode}}</text><text class="contribution-note">{{item.threadId ? '回复 · 本机保存' : '本机记录'}}</text></view>
+            <view class="contribution-body">{{item.body}}</view>
+            <view class="contribution-actions"><view class="contribution-continue" role="button" aria-role="button" aria-label="继续本期讨论{{item.issueCode}}" tabindex="0" data-issue-code="{{item.issueCode}}" bindtap="openLocalDiscussion">继续本期讨论 <text aria-hidden="true">→</text></view><view class="contribution-delete" role="button" aria-label="删除这段本机发言" tabindex="0" data-id="{{item.id}}" catchtap="deleteLocalDiscussion">删除</view></view>
+          </view>
+        </view>
+        <view class="section-link" role="button" aria-role="button" aria-label="看看本期讨论" tabindex="0" bindtap="openCurrentDiscussion"><text>看看本期讨论</text><text class="section-arrow" aria-hidden="true">→</text></view>
+        <rich-text class="section-footnote" nodes="{{minePage.discussionIntro}}"></rich-text>
+      </view>
+    </block>
+  </view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-heading"><text class="section-number">03</text><rich-text class="section-title" nodes="{{minePage.practiceHeading}}"></rich-text></view>
+      <rich-text class="section-count section-count-tail" nodes="{{minePage.practiceCount}}"></rich-text>
+    </view>
+    <view class="section-empty">
+      <rich-text class="section-empty-title" nodes="{{minePage.practiceEmptyTitle}}"></rich-text>
+      <rich-text class="section-empty-copy" nodes="{{minePage.practiceIntro}}"></rich-text>
+    </view>
+  </view>
+
+  <view class="settings-card" role="button" aria-role="button" aria-label="{{minePageAccessibility.privacyAction}}" tabindex="0" bindtap="openPrivacy">
+    <view class="section-heading"><text class="section-number">04</text><rich-text class="section-title" nodes="{{minePage.privacyHeading}}"></rich-text></view>
+    <view class="settings-action"><rich-text class="settings-value" nodes="{{minePage.privacyAction}}"></rich-text><text class="section-arrow" aria-hidden="true">→</text></view>
+  </view>
+
+  <view class="mine-footer" aria-hidden="true"><view class="mine-footer-mark">MYRIAD SHE</view><view class="mine-footer-copy">我有我的时节</view></view>
+</view>

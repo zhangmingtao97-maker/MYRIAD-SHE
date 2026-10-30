@@ -1,0 +1,38 @@
+<view class="story-detail-page">
+  <view class="story-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="story-topbar-row">
+      <view class="topbar-control back-control" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">‹</view>
+      <text class="topbar-title">人物故事</text>
+      <view class="topbar-control more-control" role="button" aria-label="分享人物故事" tabindex="0" bindtap="openMore">···</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="story-state" role="status">正在读取人物故事…</view>
+  <view wx:elif="{{error}}" class="story-state story-error" role="alert">
+    <text>{{error}}</text>
+    <view class="retry-control" role="button" aria-label="重新读取人物故事" tabindex="0" bindtap="retry">重新读取</view>
+  </view>
+  <block wx:else>
+    <view class="story-hero-meta"><text>01 · 人物纪实</text><text>{{issueCode}}</text></view>
+    <view class="story-hero-copy">
+      <text class="story-title">{{title}}</text>
+      <text class="story-intro">{{intro}}</text>
+    </view>
+    <image wx:if="{{imageUrl}}" class="story-detail-image" src="{{imageUrl}}" mode="aspectFill" aria-label="{{altText}}" binderror="onImageError" />
+    <view wx:else class="story-image-empty">人物图片暂不可用</view>
+    <view class="story-image-caption"><text>{{captionLeft}}</text><text>{{captionRight}}</text></view>
+
+    <view class="story-article">
+      <text wx:if="{{source}}" class="story-source">{{source}}</text>
+      <view class="story-rule"></view>
+      <text wx:if="{{paragraph1}}" class="story-paragraph">{{paragraph1}}</text>
+      <text wx:if="{{paragraph2}}" class="story-paragraph second-paragraph">{{paragraph2}}</text>
+      <text wx:if="{{quote}}" class="story-quote">{{quote}}</text>
+      <text class="story-closing">这篇故事的完整版仍由公众号正式发布与保存。小程序留下的，是与当期主题有关的阅读线索、声音与接下来的实践。</text>
+      <view class="story-actions">
+        <view class="article-action" role="button" aria-label="前往公众号阅读完整文章" tabindex="0" bindtap="openOfficialArticle"><text>前往公众号阅读完整文章</text><text class="external-arrow">↗</text></view>
+      </view>
+      <view class="back-to-issue" role="button" aria-label="回到当期策展" tabindex="0" bindtap="backToIssue"><text>回到当期策展</text><text>←</text></view>
+    </view>
+  </block>
+</view>

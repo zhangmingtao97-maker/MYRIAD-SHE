@@ -1,0 +1,157 @@
+@import "../../app.wxss";
+
+.detail-page { padding: 0 44rpx calc(180rpx + env(safe-area-inset-bottom)); }
+.record-content { width: 100%; padding-top: 26rpx; }
+
+/* 顶部元信息 */
+.record-meta { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; min-height: 44rpx; color: #8b6b58; font-size: 21rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.record-method { color: #8f4938; }
+.record-date { color: #8b6b58; text-align: right; }
+
+/* 四段 */
+.stage { padding: 34rpx 0 28rpx; border-top: 1rpx solid #cdbbae; }
+.stage:first-of-type { margin-top: 28rpx; }
+.stage-label { color: #8f4938; font-size: 21rpx; font-weight: 500; line-height: 1.5; letter-spacing: 1rpx; }
+.stage-label-tail { color: #8f4938; }
+
+.stage-title {
+  margin-top: 12rpx;
+  color: #3f352e;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.8;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.stage-subtitle { margin-top: 18rpx; color: #5c493c; font-size: 24rpx; line-height: 1.7; }
+
+.stage-block { margin-top: 28rpx; }
+.stage-block:first-of-type { margin-top: 26rpx; }
+.stage-key { color: #8f4938; font-size: 21rpx; line-height: 1.6; letter-spacing: 1rpx; }
+.stage-value {
+  margin-top: 12rpx;
+  color: #3f352e;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.stage-empty { color: #a89a8c; font-weight: 400; }
+
+.stage-action {
+  margin-top: 16rpx;
+  color: #3f352e;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.stage-action.stage-empty { color: #a89a8c; font-weight: 400; }
+
+/* 判断：与四段保持一致（标签在上、内容在下） */
+.perspective { margin-top: 0; padding: 34rpx 0 28rpx; border-top: 1rpx solid #cdbbae; }
+.perspective .stage-key { margin-bottom: 0; }
+.perspective-value { margin-top: 12rpx; }
+.perspective-note {
+  margin-top: 14rpx;
+  color: #8b6b58;
+  font-size: 21rpx;
+  line-height: 1.7;
+}
+
+/* 问题来源 */
+.issue-context { margin: 26rpx 0 0; padding: 22rpx 0; border-top: 1rpx solid #cdbbae; }
+.issue-question { margin-top: 10rpx; color: #40362f; font-size: 27rpx; line-height: 1.65; }
+
+/* 操作 */
+.record-actions { margin-top: 24rpx; }
+.edit-button {
+  display: flex;
+  width: 100%;
+  min-height: 92rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx;
+  box-sizing: border-box;
+  background: #73362a;
+  color: #fffaf4;
+  font-size: 27rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  line-height: 1.5;
+  text-align: center;
+}
+.secondary-actions { display: flex; gap: 20rpx; margin-top: 22rpx; }
+.again-button,
+.delete-button {
+  display: flex;
+  flex: 1;
+  min-height: 92rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 20rpx;
+  box-sizing: border-box;
+  border: 0;
+  background: #73362a;
+  color: #fffaf4;
+  font-size: 27rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.disabled { opacity: .5; }
+.loading-copy { padding-top: 60rpx; color: #88786b; font-size: 26rpx; }
+.error-state { margin-top: 28rpx; }
+.retry-button { display: flex; min-height: 88rpx; align-items: center; justify-content: center; margin-top: 26rpx; border: 1rpx solid #cdbbae; color: #663124; font-size: 27rpx; }
+.error-text { margin-top: 22rpx; color: #a53f32; font-size: 24rpx; line-height: 1.6; }
+.account-deleted { display: grid; gap: 18rpx; }
+
+@media (max-width: 360px) {
+  .detail-page { padding-right: 36rpx; padding-left: 36rpx; }
+  .stage-title { font-size: 42rpx; }
+  .stage-action { font-size: 31rpx; }
+}
+
+/* 自定义导航栏（与 observation / season-intro 保持一致） */
+.detail-topbar {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  margin: 0 -44rpx;
+  border-bottom: 1rpx solid rgba(92, 73, 60, .23);
+  background: #e7dfd1;
+  box-sizing: content-box;
+}
+.detail-nav-row { position: relative; display: flex; height: 56px; align-items: center; justify-content: center; }
+.detail-nav-title {
+  color: #5c493c;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif;
+  font-size: 31rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+.detail-back {
+  position: absolute;
+  top: 0;
+  left: 20rpx;
+  display: flex;
+  width: 76rpx;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 6rpx;
+  color: #5c493c;
+  font-family: Georgia, serif;
+  font-size: 56rpx;
+  line-height: 1;
+}
+.detail-back:active { opacity: .58; transform: scale(.97); }
+.detail-nav-spacer { position: absolute; top: 0; right: 20rpx; width: 76rpx; height: 56px; }
