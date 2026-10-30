@@ -1,0 +1,649 @@
+/* =========================================================================
+   期刊工作台 · 视觉统一层
+   接在 admin-theme.css / admin-fixes.css 之后加载。
+   目标：把期刊工作台从独立的“米色纸张”风格收回到后台设计系统内，
+   统一使用中性面、陶土强调色、无衬线层级与同一套圆角/阴影。
+   ========================================================================= */
+
+/* ---------- 侧栏分组标签 ---------- */
+.dashboard-nav-label {
+  margin: 16px 10px 4px;
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.dashboard-nav-label:first-child { margin-top: 2px; }
+.nav-collapsed .dashboard-nav-label { display: none; }
+
+/* ---------- 页面上下文条 ---------- */
+.journal-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0 0 20px;
+  padding: 15px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.journal-page-head-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  max-width: 880px;
+}
+.journal-page-head .eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+}
+.journal-page-head small {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+.journal-page-head > button { flex: 0 0 auto; }
+
+/* ---------- 列表页：左侧期次 + 右侧工作副本 ---------- */
+.journal-list-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.journal-list-main {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+.journal-create-form { align-self: start; }
+
+.journal-list-layout > .issue-list-panel {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  gap: 6px;
+  max-height: calc(100vh - 120px);
+  padding: 14px;
+  overflow-y: auto;
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.issue-list-panel .section-heading {
+  align-items: center;
+  margin: 0 0 6px;
+  padding: 4px 6px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.issue-list-panel .section-heading h3 {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.issue-list-panel .section-heading small {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.issue-list-panel .issue-list-item {
+  padding: 11px 12px;
+  border-color: transparent;
+  border-radius: 10px;
+  background: transparent;
+}
+.issue-list-panel .issue-list-item:hover {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+.issue-list-panel .issue-list-item.active {
+  border-color: transparent;
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+}
+.issue-list-panel .issue-list-item strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.issue-list-panel .issue-list-item small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.issue-list-panel .issue-live-home {
+  margin-top: 6px;
+  padding: 12px 6px 2px;
+  border-top-color: var(--line);
+  color: var(--ink-2);
+}
+.issue-list-panel .issue-live-home > summary {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+.issue-list-panel .issue-live-home > summary span {
+  color: var(--faint);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+}
+.issue-list-panel .issue-live-home-body > strong { font-size: 12.5px; }
+.issue-list-panel .issue-live-home-body > small { color: var(--muted); }
+.issue-list-panel .issue-live-home-body li { border-top-color: var(--line); }
+.issue-list-panel .issue-live-home-body li > span {
+  color: var(--faint);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+}
+.issue-list-panel .issue-live-home-body li small { color: var(--muted); }
+
+/* ---------- 当前期概览 ---------- */
+.journal-overview {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  overflow: hidden;
+  border-color: var(--accent-line);
+  background:
+    radial-gradient(120% 130% at 100% 0%, rgba(138, 65, 48, .09), transparent 46%),
+    var(--surface);
+}
+.journal-overview::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), #c58a6f 58%, transparent);
+}
+.journal-overview .section-heading {
+  align-items: flex-start;
+  margin: 0;
+}
+.journal-overview .section-heading h3 {
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+.journal-overview .section-heading .eyebrow { color: var(--faint); }
+
+.journal-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.journal-status-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.journal-status-pill.is-published {
+  border-color: #cfe0d4;
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.journal-status-pill.is-archived {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+  color: var(--muted);
+}
+.journal-status-pill.is-draft {
+  border-color: #ead6b8;
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.journal-overview-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.journal-overview-meta > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.journal-overview-meta small {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  line-height: 1.5;
+}
+.journal-overview-meta strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.journal-overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.journal-overview-actions button {
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+}
+.journal-overview-release {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.journal-overview-release small {
+  flex: 1 1 280px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+/* ---------- 模块工作区 ---------- */
+.journal-module-form {
+  align-self: start;
+  gap: 18px;
+  padding: 20px;
+}
+.journal-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 2px 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.journal-context-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.journal-context-copy .eyebrow { margin: 0; color: var(--faint); }
+.journal-context-copy strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  line-height: 1.35;
+}
+.journal-context-month {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.journal-context-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+}
+.journal-context-meta small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.journal-context-select {
+  flex: 0 0 280px;
+  max-width: 280px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.journal-context-select select {
+  min-height: 40px;
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.journal-meta-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.journal-meta-panel .section-heading {
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.journal-meta-panel .section-heading h3 { font-size: 14px; }
+.journal-meta-panel .section-heading small { color: var(--muted); }
+
+.journal-derived-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.journal-derived-grid > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.journal-derived-grid small {
+  color: var(--faint);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.journal-derived-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.journal-derived-grid button {
+  justify-self: start;
+  min-height: 30px;
+  margin-top: 2px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+/* 栏目选择区 */
+.journal-module-toolbar-wrap {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.journal-module-toolbar-wrap .issue-module-toolbar { margin: 0; }
+.journal-module-toolbar-wrap .issue-module-toolbar h3 {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.journal-module-toolbar-wrap .field-help { margin: 0; }
+
+.issue-module-picker {
+  display: grid;
+  max-height: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  overflow: visible;
+  padding: 0;
+}
+.issue-module-picker button {
+  display: grid;
+  min-width: 0;
+  min-height: 42px;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-2);
+  text-align: left;
+  transition: border-color var(--t), background-color var(--t), box-shadow var(--t);
+}
+.issue-module-picker button:hover {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transform: none;
+}
+.issue-module-picker button.active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.issue-module-picker button > small {
+  color: var(--faint);
+  font-family: var(--font-ui);
+  font-size: 10px;
+}
+.issue-module-picker button > span {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.issue-module-picker button > em {
+  color: var(--ok);
+  font-size: 10px;
+  font-style: normal;
+}
+.issue-module-picker button > em.is-hidden { color: var(--faint); }
+
+/* 当前栏目编辑卡 */
+.journal-module-form .issue-module-card {
+  gap: 14px;
+  padding: 16px;
+  border-color: var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.journal-module-form .issue-module-card > header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.journal-module-form .issue-module-card > header > span {
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 空状态 */
+.journal-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 28px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.journal-empty-state strong {
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 600;
+}
+.journal-empty-state p {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ---------- 往期 / 归档 ---------- */
+.journal-past-panel {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.journal-past-panel .section-heading { margin: 0; }
+.journal-past-list { display: grid; gap: 8px; }
+.journal-past-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  transition: border-color var(--t), background-color var(--t);
+}
+.journal-past-list article:hover {
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+.journal-past-list article > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.journal-past-list article small {
+  color: var(--faint);
+  font-size: 10.5px;
+  letter-spacing: .04em;
+}
+.journal-past-list article strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.journal-past-list article span { color: var(--muted); font-size: 11px; }
+.journal-past-list article button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* ---------- 整期保存条 ---------- */
+.journal-savebar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 12px 36px rgba(23, 24, 26, .14);
+  backdrop-filter: blur(10px);
+}
+.journal-savebar-copy { display: grid; gap: 3px; min-width: 0; }
+.journal-savebar-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.journal-savebar-copy strong::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+.journal-savebar.is-dirty .journal-savebar-copy strong::before {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px var(--warn-soft);
+}
+.journal-savebar-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.journal-savebar .form-actions { flex: 0 0 auto; margin: 0; }
+.journal-savebar .form-actions button {
+  min-height: 38px;
+  padding: 8px 13px;
+  font-size: 12.5px;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1180px) {
+  .journal-list-layout { grid-template-columns: 290px minmax(0, 1fr); }
+}
+@media (max-width: 1100px) {
+  .journal-list-layout { grid-template-columns: minmax(0, 1fr); }
+  .journal-list-layout > .issue-list-panel {
+    position: static;
+    max-height: none;
+  }
+  .journal-overview-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .journal-context {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .journal-context-select {
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: none;
+  }
+}
+@media (max-width: 900px) {
+  /* 窄屏侧栏变为横向导航，分组标签不再占位 */
+  .dashboard-nav-label { display: none; }
+}
+@media (max-width: 720px) {
+  .issue-module-picker { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .journal-page-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+  .journal-overview-meta { grid-template-columns: minmax(0, 1fr); }
+  .journal-derived-grid { grid-template-columns: minmax(0, 1fr); }
+  .journal-savebar {
+    position: static;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .journal-savebar .form-actions { flex-wrap: wrap; }
+  .journal-past-list article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

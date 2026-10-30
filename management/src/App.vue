@@ -3550,7 +3550,9 @@ onBeforeUnmount(() => {
           </div>
           <nav class="dashboard-nav" aria-label="后台分区">
             <div class="dashboard-nav-tabs">
+              <p v-if="isSuperAdmin" class="dashboard-nav-label">总览</p>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'overview' }" :aria-label="sidebarCollapsed ? '健康与迁移' : undefined" :title="sidebarCollapsed ? '健康与迁移' : undefined" :aria-current="activeSection === 'overview' ? 'page' : undefined" aria-controls="overview-panel" @click="activeSection = 'overview'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.8 13.2a8.2 8.2 0 1 1 16.4 0v5.1H3.8zM12 12l3.5-3.2M7.2 16.5h.1m4.7 0h.1m4.7 0h.1" /></svg><span>健康与迁移</span></button>
+              <p v-if="adminRole !== 'support_readonly'" class="dashboard-nav-label">内容</p>
               <div v-if="adminRole !== 'support_readonly'" class="dashboard-nav-group practice-nav-group" :class="{ expanded: activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'practice' }" :aria-label="sidebarCollapsed ? '实践' : undefined" :title="sidebarCollapsed ? '实践' : undefined" :aria-current="activeSection === 'practice' ? 'page' : undefined" :aria-expanded="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" aria-controls="practice-navigation" @click.stop="openPracticeNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 4.5c-7.7.2-12.8 2.3-13.8 7.1-.8 3.4 1.8 6.3 5 6.3 5.1 0 7.8-5.5 8.8-13.4ZM5 20c2.4-4.4 5.2-7.1 9.2-9.6" /></svg><span>实践</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav"><nav v-if="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" id="practice-navigation" class="dashboard-subnav" aria-label="实践子菜单">
@@ -3581,10 +3583,12 @@ onBeforeUnmount(() => {
                   <button v-if="adminRole !== 'support_readonly'" class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-policy' }" :aria-current="activeContentSection === 'privacy-policy' ? 'page' : undefined" @click="activeContentSection = 'privacy-policy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>隐私政策</span></button>
                 </nav></Transition>
               </div>
+              <p v-if="isSuperAdmin || adminRole === 'content_editor'" class="dashboard-nav-label">运营</p>
               <button v-if="isSuperAdmin || adminRole === 'content_editor'" type="button" class="dashboard-tab" :class="{ active: activeSection === 'contributions' }" :aria-label="sidebarCollapsed ? '用户经历审核' : undefined" :title="sidebarCollapsed ? '用户经历审核' : undefined" :aria-current="activeSection === 'contributions' ? 'page' : undefined" aria-controls="discussion-contributions" @click="activeSection = 'contributions'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>用户经历审核</span></button>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'observations' }" :aria-label="sidebarCollapsed ? '观察记录管理' : undefined" :title="sidebarCollapsed ? '观察记录管理' : undefined" :aria-current="activeSection === 'observations' ? 'page' : undefined" aria-controls="observations" @click="activeSection = 'observations'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'privacy' }" :aria-label="sidebarCollapsed ? '隐私申请' : undefined" :title="sidebarCollapsed ? '隐私申请' : undefined" :aria-current="activeSection === 'privacy' ? 'page' : undefined" aria-controls="privacy-requests" @click="activeSection = 'privacy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'audit' }" :aria-label="sidebarCollapsed ? '审计日志' : undefined" :title="sidebarCollapsed ? '审计日志' : undefined" :aria-current="activeSection === 'audit' ? 'page' : undefined" aria-controls="audit-logs" @click="activeSection = 'audit'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
+              <p v-if="isSuperAdmin || adminRole === 'support_readonly'" class="dashboard-nav-label">系统</p>
               <button v-if="isSuperAdmin || adminRole === 'support_readonly'" type="button" class="dashboard-tab" :class="{ active: activeSection === 'members' }" :aria-current="activeSection === 'members' ? 'page' : undefined" aria-controls="member-directory" @click="activeSection = 'members'; refreshMembers()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
               <button v-if="isSuperAdmin || adminRole === 'support_readonly'" type="button" class="dashboard-tab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" aria-controls="system-settings" @click="activeSection = 'settings'; loadSystemSettings()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button><button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" aria-controls="life-card-copy" @click="activeSection = 'life-cards'; loadLifeCards()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button><button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" aria-controls="life-card-views" @click="activeSection = 'life-card-views'; loadLifeCardViews()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'employees' }" :aria-current="activeSection === 'employees' ? 'page' : undefined" aria-controls="employee-access" @click="activeSection = 'employees'; loadEmployees()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>员工与权限</span></button>
@@ -3632,7 +3636,10 @@ onBeforeUnmount(() => {
         <article class="panel"><p class="eyebrow">SCHEMA STATUS</p><strong>{{ migrationStatus?.consistent ? '迁移账本一致' : '需要核对迁移' }}</strong><small>已应用 {{ migrationStatus?.appliedCount ?? 0 }} / 可用 {{ migrationStatus?.availableCount ?? 0 }}</small><small v-if="migrationStatus?.pending.length">待执行：{{ migrationStatus.pending.join('、') }}</small><small v-else-if="migrationStatus?.missing.length || migrationStatus?.modified.length">发现缺失或被修改的迁移文件</small><small v-else-if="migrationStatus?.latestApplied">最新：{{ migrationStatus.latestApplied.name }} · {{ displayDate(migrationStatus.latestApplied.appliedAt) }}</small></article>
       </section>
       <section v-if="activeSection === 'content' && activeContentSection === 'journal-list'" id="journal-list" class="content-area">
-        <div class="journal-page-head"><small>{{ journalSectionDescription }}</small><button type="button" @click="startNewIssue">＋ 新建期刊</button></div>
+        <div class="journal-page-head">
+          <div class="journal-page-head-copy"><p class="eyebrow">JOURNAL WORKSPACE</p><small>{{ journalSectionDescription }}</small></div>
+          <button type="button" @click="startNewIssue">＋ 新建期刊</button>
+        </div>
         <div class="journal-list-layout">
           <aside class="panel issue-list-panel">
             <div class="section-heading"><h3>全部期次</h3><small>{{ issues.length }} 期</small></div>
@@ -3685,11 +3692,23 @@ onBeforeUnmount(() => {
         </div>
       </section>
       <section v-if="activeSection === 'content' && ['journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'].includes(activeContentSection)" id="journal-module-workspace" class="content-area">
-        <div class="journal-page-head"><small>{{ journalSectionDescription }}</small><button type="button" class="quiet" @click="goToJournalSection('journal-list')">返回期刊列表</button></div>
+        <div class="journal-page-head">
+          <div class="journal-page-head-copy"><p class="eyebrow">{{ currentView.eyebrow }}</p><small>{{ journalSectionDescription }}</small></div>
+          <button type="button" class="quiet" @click="goToJournalSection('journal-list')">返回期刊列表</button>
+        </div>
         <form class="panel issue-editor-form journal-module-form" @submit.prevent="saveIssue">
           <div class="journal-context">
-            <div class="journal-context-copy"><p class="eyebrow">EDITING ISSUE</p><strong>{{ issueForm.label || '未选择期刊' }}<template v-if="issueForm.month"> · {{ issueForm.month }}</template></strong><small>{{ journalSectionDescription }}</small></div>
-            <label class="journal-context-select">当前期刊<select :value="editingIssueId" @change="selectJournalIssue"><option value="" disabled>请选择期刊</option><option v-for="item in issues" :key="item.id" :value="item.id">{{ item.label }} · {{ item.month }} · {{ journalIssueStatusLabel(item.status) }}</option></select></label>
+            <div class="journal-context-copy">
+              <p class="eyebrow">CURRENT ISSUE</p>
+              <strong>{{ issueForm.label || '未选择期刊' }}<span v-if="issueForm.month" class="journal-context-month">{{ issueForm.month }}</span></strong>
+              <div class="journal-context-meta">
+                <span class="journal-status-pill" :class="'is-' + issueForm.status">{{ journalIssueStatusLabel(issueForm.status) }}</span>
+                <small>{{ issueForm.code || '未设置期号' }}</small>
+                <small>·</small>
+                <small>草稿 v{{ editingIssueEditVersion || 1 }}</small>
+              </div>
+            </div>
+            <label class="journal-context-select">切换期刊<select :value="editingIssueId" @change="selectJournalIssue"><option value="" disabled>请选择期刊</option><option v-for="item in issues" :key="item.id" :value="item.id">{{ item.label }} · {{ item.month }} · {{ journalIssueStatusLabel(item.status) }}</option></select></label>
           </div>
           <div v-if="!editingIssueId" class="journal-empty-state"><strong>还没有选择期刊</strong><p>从上方选择一份期刊，或先到「期刊列表」新建草稿，再回来编辑这个模块。</p><button type="button" @click="goToJournalSection('journal-list')">去期刊列表</button></div>
           <template v-else>
@@ -3705,7 +3724,7 @@ onBeforeUnmount(() => {
             <div v-if="activeContentSection !== 'journal-discussion'" class="journal-module-toolbar-wrap">
               <div class="issue-module-toolbar"><h3>{{ journalModuleWorkspaceTitle }}</h3><select v-if="journalAddableModuleTypes.length" aria-label="新增栏目类型" @change="(event) => { const target = event.target as HTMLSelectElement; if (target.value) { addIssueModule(target.value as ManagedIssueModule['type']); target.value = ''; } }"><option value="">＋ 新增栏目</option><option v-for="type in journalAddableModuleTypes" :key="type" :value="type">{{ issueModuleTypeLabel(type) }}</option></select></div>
               <p class="field-help">选择一个栏目进行编辑；启用、排序与删除只改这份草稿。保存会写入整期，发布也会整期一起生效。</p>
-              <nav class="issue-module-picker" aria-label="选择要编辑的栏目"><button v-for="(module, index) in issueForm.draftContent.sections" v-show="isIssueModuleVisibleInJournalSection(module)" :key="module.id" type="button" :class="{ active: selectedIssueModuleId === module.id }" :aria-pressed="selectedIssueModuleId === module.id" @click="selectedIssueModuleId = module.id"><small>{{ String(index + 1).padStart(2, '0') }}</small><span>{{ issueModuleLabel(module) }}</span><em>{{ module.enabled ? '显示' : '隐藏' }}</em></button></nav>
+              <nav class="issue-module-picker" aria-label="选择要编辑的栏目"><button v-for="(module, index) in issueForm.draftContent.sections" v-show="isIssueModuleVisibleInJournalSection(module)" :key="module.id" type="button" :class="{ active: selectedIssueModuleId === module.id }" :aria-pressed="selectedIssueModuleId === module.id" @click="selectedIssueModuleId = module.id"><small>{{ String(index + 1).padStart(2, '0') }}</small><span>{{ issueModuleLabel(module) }}</span><em :class="{ 'is-hidden': !module.enabled }">{{ module.enabled ? '显示' : '隐藏' }}</em></button></nav>
               <p v-if="!issueForm.draftContent.sections.some(isIssueModuleVisibleInJournalSection)" class="field-help">这个模块还没有栏目。到「首页策展」新增对应栏目后再回来编辑。</p>
             </div>
             <details v-if="activeContentSection === 'journal-discussion'" class="issue-module-details discussion-editor-details" open>
@@ -3872,7 +3891,7 @@ onBeforeUnmount(() => {
             </section>
             <p v-if="issueConflict" class="error" role="alert">草稿已被其他管理员修改；本地内容已保留，请载入最新版本后核对。 <button type="button" class="quiet" :disabled="uploading" @click="rebaseIssueEdits">载入最新版本</button></p>
             <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p>
-            <footer class="journal-savebar">
+            <footer class="journal-savebar" :class="{ 'is-dirty': issueDraftDirty }">
               <div class="journal-savebar-copy"><strong>{{ issueDraftDirty ? '有未保存的修改' : '已与云端同步' }}</strong><small>整份期刊草稿 · 保存会同时写入期号、首页、人物、声音、讨论与往期入口</small></div>
               <div class="form-actions"><button type="submit" :disabled="uploading || issueConflict">{{ uploading ? '保存中…' : '保存整份草稿' }}</button><button type="button" class="quiet" :disabled="uploading || issueConflict || issueDraftDirty" @click="publishIssue">确认发布整期</button></div>
             </footer>
@@ -3880,7 +3899,9 @@ onBeforeUnmount(() => {
         </form>
       </section>
       <section v-if="activeSection === 'content' && activeContentSection === 'media'" id="content-media" class="content-area">
-        <div class="journal-page-head"><small>全局媒体资源，独立于期刊草稿；上传后的封面、人物图与音频可在这里复核、试听和回收，保存期刊时不会改动这里。</small></div>
+        <div class="journal-page-head">
+          <div class="journal-page-head-copy"><p class="eyebrow">EDITORIAL / MEDIA</p><small>全局媒体资源，独立于期刊草稿；上传后的封面、人物图与音频可在这里复核、试听和回收，保存期刊时不会改动这里。</small></div>
+        </div>
         <div class="media-maintenance audio-library">
           <div class="section-heading"><div><p class="eyebrow">AUDIO ARCHIVE</p><h3>已上传音频 <span>{{ audioLibraryScanned ? `· ${audioLibrary.length} 段已载入` : '' }}</span></h3></div><button class="quiet" :disabled="audioLibraryLoading || Boolean(audioLibraryPreviewLoading)" @click="loadAudioLibrary(true)">{{ audioLibraryLoading ? '读取中…' : audioLibraryScanned ? '刷新音频库' : '读取音频库' }}</button></div>
           <p class="muted">这里保留并展示所有已上传音频，包括未发布和已从栏目移除的文件；音频不参与自动或手动回收。</p>

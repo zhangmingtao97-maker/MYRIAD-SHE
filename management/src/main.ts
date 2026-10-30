@@ -6,6 +6,7 @@ import './style.css';
 // 设计系统 v3：在 legacy 组件样式之后加载，覆盖旧主题。
 import './admin-theme.css';
 import './admin-fixes.css';
+import './admin-journal.css';
 
 const brandFonts = document.createElement('style');
 brandFonts.textContent = `
