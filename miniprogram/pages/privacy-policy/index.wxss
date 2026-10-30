@@ -1,9 +1,146 @@
-page { background: #e7dfd1; color: #5c493c; }
-.policy-page { min-height: 100vh; padding-bottom: 150rpx; box-sizing: border-box; background: #e7dfd1; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
-.policy-topbar { border-bottom: 1rpx solid rgba(92,73,60,.22); }.topbar-row { height: 90rpx; display: flex; align-items: center; justify-content: space-between; padding: 0 28rpx; }
-.icon-button { width: 64rpx; height: 64rpx; margin: 0; padding: 0; border: 0; background: transparent; color: #5c493c; font-family: Georgia, serif; font-size: 56rpx; line-height: 58rpx; }.icon-button::after { border: 0; }
-.topbar-title { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 32rpx; font-weight: 600; }.policy-content { padding: 54rpx 48rpx 70rpx; }
-.policy-meta { display: flex; justify-content: space-between; color: #8b6b58; font-family: Georgia, serif; font-size: 24rpx; letter-spacing: 2rpx; }.policy-title { display: block; margin-top: 94rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 58rpx; font-weight: 600; line-height: 1.38; }.policy-intro { display: block; margin-top: 48rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 600; line-height: 1.7; }.policy-date { display: block; margin-top: 58rpx; padding-top: 28rpx; border-top: 1rpx solid rgba(92,73,60,.24); color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; }.policy-body { margin-top: 48rpx; padding-top: 36rpx; border-top: 1rpx solid rgba(92,73,60,.24); color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; line-height: 2; }.policy-body rich-text { display: block; }
-.policy-update-notes { display: block; margin-top: 18rpx; color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 23rpx; line-height: 1.7; }.policy-fallback-note { margin: 20rpx 48rpx 0; color: #8b6b58; font-size: 22rpx; }
-.policy-state { padding: 120rpx 48rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 28rpx; line-height: 1.7; }.error-state { display: grid; gap: 28rpx; }.text-button { min-height: 68rpx; margin: 0; padding: 0; border: 0; background: transparent; color: #8e493c; font-size: 25rpx; text-align: left; }.text-button::after { border: 0; }
-.policy-tabbar { position: fixed; right: 0; bottom: 0; left: 0; z-index: 20; display: flex; height: 116rpx; padding-bottom: env(safe-area-inset-bottom); border-top: 1rpx solid rgba(92,73,60,.22); background: rgba(231,223,209,.98); }.tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; color: #9a8c80; font-family: Georgia, "Songti SC", serif; font-size: 22rpx; }.tab-item.selected { color: #663124; font-weight: 600; }.tab-icon { font-size: 34rpx; line-height: 1; }
+page {
+  background: #e9e1d4;
+  color: #4b3f36;
+}
+
+.policy-page {
+  min-height: 100vh;
+  padding: 0 24rpx calc(56rpx + env(safe-area-inset-bottom));
+  background: #e9e1d4;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+}
+
+/* 顶栏 */
+.policy-topbar {
+  margin: 0 -24rpx;
+  padding: 0 24rpx;
+  border-bottom: 1rpx solid rgba(92, 73, 60, .14);
+  background: #e9e1d4;
+  box-sizing: content-box;
+}
+.topbar-row {
+  display: flex;
+  height: 92rpx;
+  align-items: center;
+  justify-content: space-between;
+}
+.icon-button {
+  width: 64rpx;
+  height: 64rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #663124;
+  font-family: Georgia, serif;
+  font-size: 54rpx;
+  line-height: 58rpx;
+}
+.icon-button::after { border: 0; }
+.topbar-title {
+  color: #3d332c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 31rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 正文纸面 */
+.policy-content {
+  margin-top: 24rpx;
+  padding: 44rpx 32rpx 50rpx;
+  overflow: hidden;
+  border: 1rpx solid rgba(92, 73, 60, .12);
+  border-radius: 24rpx;
+  background: #fbf7ef;
+  box-shadow: 0 12rpx 34rpx rgba(68, 38, 27, .06);
+  box-sizing: border-box;
+}
+.policy-title {
+  display: block;
+  margin: 0;
+  color: #3d332c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 52rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.policy-intro {
+  display: block;
+  margin-top: 26rpx;
+  color: #5c493c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 28rpx;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.policy-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6rpx 22rpx;
+  margin-top: 30rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid rgba(92, 73, 60, .18);
+  color: #8b6b58;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 22rpx;
+  line-height: 1.7;
+}
+.policy-update-notes {
+  display: block;
+  margin-top: 14rpx;
+  color: #8b6b58;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 22rpx;
+  line-height: 1.7;
+}
+.policy-body {
+  margin-top: 34rpx;
+  padding-top: 30rpx;
+  border-top: 1rpx solid rgba(92, 73, 60, .18);
+  color: #4b3f36;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 28rpx;
+  line-height: 1.95;
+  overflow-wrap: anywhere;
+}
+.policy-body rich-text { display: block; }
+
+/* 加载与错误 */
+.policy-state {
+  margin-top: 24rpx;
+  padding: 70rpx 36rpx;
+  border: 1rpx solid rgba(92, 73, 60, .12);
+  border-radius: 24rpx;
+  background: #fbf7ef;
+  color: #5c493c;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 26rpx;
+  line-height: 1.8;
+  box-sizing: border-box;
+}
+.error-state { display: grid; gap: 24rpx; }
+.text-button {
+  width: max-content;
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #663124;
+  font-size: 24rpx;
+  line-height: 64rpx;
+}
+.text-button::after { border: 0; }
+
+.policy-footer {
+  margin-top: 30rpx;
+  color: #a08c7b;
+  font-family: Georgia, serif;
+  font-size: 19rpx;
+  letter-spacing: 3rpx;
+  line-height: 1.5;
+  text-align: center;
+}

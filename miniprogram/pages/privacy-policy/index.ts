@@ -40,8 +40,4 @@ Page({
   },
   handleBack() { wx.navigateBack({ delta: 1 }); },
   handleMore() { wx.showToast({ title: this.data.label + '由后台持续维护', icon: 'none' }); },
-  switchTab(event: WechatMiniprogram.CustomEvent) {
-    const path = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'][Number(event.currentTarget.dataset.index)];
-    if (path) wx.switchTab({ url: path });
-  },
 });

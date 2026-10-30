@@ -1,5 +1,15 @@
 # MYRIAD SHE 开发进度
 
+## 2026-10-30 隐私政策/用户协议页视觉简化
+
+- 移除正文顶部的 `policy-meta` 行（原来的「我的 · PRIVACY & CHOICES」），页面不再出现「我的」这一栏。
+- 同步移除该法律页自带的底部自定义 TabBar（首页/实践/我的）；它是从「我的」等页面 push 进来的二级页，保留左上角返回即可，避免与真实 Tab 导航混淆并遮挡长文。
+- 页面改为「暖沙色底 + 米白纸面卡」：底 `#e9e1d4`、纸面 `#fbf7ef`、文字/call-to-action 使用棕色系；标题、导语、日期和正文收进同一张纸面卡，减少散落的边框与色块。
+- 日期改为轻量信息行（更新日期、生效日期、版本），正文前只保留一条分隔线；底部加一行低调的 `MYRIAD SHE` 收尾。
+- `pages/privacy-policy` 同时服务隐私政策与用户协议，两个文档共用新布局；`index.ts` 删除已无用的 `switchTab` 方法，加载/错误/重试逻辑不变。
+- 验证：WXML 标签闭合、WXSS 括号检查通过；微信开发者工具编译通过；自动化进入隐私政策页，`.policy-meta` 与 `.policy-tabbar` 均为 0，顶栏只有 1 个，纸面卡、正文和底部品牌行正常显示。截图见 `docs/screenshots/privacy-policy-redesign.png`、`privacy-policy-redesign-bottom.png`。
+- 仅修改本地小程序页面结构与样式，未发布体验版或正式版。
+
 ## 2026-10-30 修复用户协议发布 effectiveDate 报错
 
 - 请求编号 `0f42d1e8-9ed8-4b44-8cac-1e2d71f9923f`：用户协议发布返回 400，提示 `effectiveDate内容无效或超出长度限制`。
