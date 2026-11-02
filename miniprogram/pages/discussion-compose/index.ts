@@ -53,7 +53,7 @@ Page({
       this.setData({ body: remote.body, previewConfirmed: false, restored: true, error: '' });
       saveLocalDraft({ issueCode: this.data.issueCode, threadId: this.data.threadId, body: remote.body, updatedAt: remote.updatedAt });
     } catch {
-      if (!localUpdatedAt && !this.data.body) this.setData({ error: '暂时无法读取账户草稿，仍可继续编辑并稍后保存。' });
+      if (!localUpdatedAt && !this.data.body) this.setData({ error: '暂时无法读取账户草稿，仍可继续编辑并稍后提交。' });
     }
   },
   onInput(event: WechatMiniprogram.CustomEvent) {
@@ -70,7 +70,7 @@ Page({
   },
   handleBack() { wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/home/index' }) }); },
   handleMore() {
-    wx.showModal({ title: '草稿说明', content: '输入时会暂存在这台设备。选择保存后，经历会加密写入账户并进入运营后台供编辑团队查看和处理，不会自动公开。', showCancel: false });
+    wx.showModal({ title: '草稿说明', content: '输入时会暂存在这台设备。提交后会加密写入账户，并进入运营后台的「用户经历审核」，供编辑团队查看和处理，不会自动公开。', showCancel: false });
   },
   togglePreview() {
     const previewOpen = !this.data.previewOpen;
@@ -90,16 +90,16 @@ Page({
   },
   async saveDraft() {
     if (this.data.saving || !this.data.issueCode) return;
-    if (!this.data.body.trim()) { this.setData({ error: '先写下一段经历，再保存草稿。' }); return; }
+    if (!this.data.body.trim()) { this.setData({ error: '先写下一段经历，再提交到后台。' }); return; }
     if (this.data.previewOpen && !this.data.previewConfirmed) { this.setData({ error: '请先确认已检查这段内容。' }); return; }
     this.setData({ saving: true, error: '' });
     try {
       await request<CloudContribution>('/discussion/contributions', { method: 'POST', data: { issueCode: this.data.issueCode, threadId: this.data.threadId, body: this.data.body } });
       removeLocalDraft(this.data.issueCode, this.data.threadId);
-      wx.showToast({ title: '已保存到后台', icon: 'none' });
+      wx.showToast({ title: '已提交到后台审核', icon: 'none' });
       this.handleBack();
     } catch (caught) {
-      this.setData({ saving: false, error: apiErrorMessage(caught, '保存到后台失败，请检查网络后重试。') });
+      this.setData({ saving: false, error: apiErrorMessage(caught, '提交到后台失败，请检查网络后重试。') });
     }
   },
   discardDraft() {

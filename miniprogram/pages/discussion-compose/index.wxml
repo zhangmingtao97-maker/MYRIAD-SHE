@@ -22,18 +22,18 @@
     </block>
     <view wx:else class="compose-preview-mode">
       <view class="compose-preview-question">{{copy.intro}}</view>
-      <view class="compose-preview-local">预览内容仅保存在本机，其他人无法看到。</view>
+      <view class="compose-preview-local">预览内容仅在本机显示，其他人无法看到。</view>
       <view class="compose-preview-heading"><text class="compose-preview-heading-title">预览</text><text class="compose-preview-heading-hint">发布前，再读一遍</text></view>
       <view class="compose-preview-card">
-        <view class="compose-preview-byline"><text class="compose-preview-author">我</text><text class="compose-preview-kind">本机预览</text></view>
+        <view class="compose-preview-byline"><text class="compose-preview-author">我</text><text class="compose-preview-kind">提交前预览</text></view>
         <view class="compose-preview-card-body">{{body}}</view>
       </view>
       <view class="compose-preview-confirm" role="checkbox" aria-checked="{{previewConfirmed}}" aria-disabled="{{saving}}" tabindex="0" bindtap="togglePreviewConfirm">
         <view class="compose-preview-checkbox {{previewConfirmed ? 'is-checked' : ''}}" aria-hidden="true"></view>
-        <view class="compose-preview-confirm-text">我已检查内容，确认愿意保存到后台。内容不会自动公开。</view>
+        <view class="compose-preview-confirm-text">我已检查内容，愿意提交到后台审核。内容不会自动公开。</view>
       </view>
       <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
-      <view class="compose-preview-primary {{previewConfirmed ? '' : 'is-disabled'}}" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving || !previewConfirmed}}" tabindex="0" bindtap="saveDraft">{{saving ? '保存中…' : copy.composeSaveAction}}<text class="compose-preview-primary-arrow" aria-hidden="true">→</text></view>
+      <view class="compose-preview-primary {{previewConfirmed ? '' : 'is-disabled'}}" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving || !previewConfirmed}}" tabindex="0" bindtap="saveDraft">{{saving ? '提交中…' : copy.composeSaveAction}}<text class="compose-preview-primary-arrow" aria-hidden="true">→</text></view>
       <view class="compose-preview-back" role="button" aria-label="返回修改" tabindex="0" bindtap="closePreview">返回修改</view>
       <view class="compose-preview-draft-row">
         <view class="compose-preview-draft-action" role="button" aria-label="保留草稿并返回" tabindex="0" bindtap="handleBack">保留草稿并返回</view>
