@@ -1505,6 +1505,16 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .employee-toolbar input,
 .employee-toolbar select { min-height: 40px; background: #fffdf9; }
 .employee-clear-filters { align-self: end; }
+.employee-env-hint {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
 .employee-table {
   overflow-x: auto;
   border: 1px solid var(--line);

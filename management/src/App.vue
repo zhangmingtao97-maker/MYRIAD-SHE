@@ -772,6 +772,13 @@ function clearEmployeeFilters() {
   employeeStatusFilter.value = 'all';
   employeeRoleFilter.value = 'all';
 }
+// 内置环境管理员来自服务器环境变量，不存在于 admin_accounts，因此不会出现在员工列表里。
+const builtInAdminHint = computed(() => {
+  const profile = adminProfile.value;
+  if (!profile || !profile.id.startsWith('admin:')) return '';
+  const name = profile.username || profile.displayName || '环境管理员';
+  return `当前登录的是内置环境管理员「${name}」：它由服务器环境变量提供，不是员工账号，不在下方列表中，也不能停用、改角色或单独授权。需要可管理的超级管理员，请点击「创建员工账号」新建一个。`;
+});
 const passwordRotation = ref({ currentPassword: '', newPassword: '', confirmPassword: '' });
 const passwordRotationError = ref('');
 const passwordRotationSaving = ref(false);
@@ -5264,6 +5271,8 @@ onBeforeUnmount(() => {
           </label>
           <button v-if="employeeFiltersActive" type="button" class="quiet employee-clear-filters" @click="clearEmployeeFilters">清除筛选</button>
         </div>
+
+        <p v-if="builtInAdminHint" class="employee-env-hint">{{ builtInAdminHint }}</p>
 
         <div class="employee-table" :aria-busy="employeeLoading">
           <div class="employee-row employee-table-head"><span>员工</span><span>角色</span><span>状态</span><span>操作</span></div>
