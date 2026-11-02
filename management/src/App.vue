@@ -1958,6 +1958,10 @@ function restoreModuleGrantDefaults() {
 async function saveModuleGrant() {
   const employee = moduleGrantEmployee.value;
   if (!employee) return;
+  if (employee.role === 'super_admin') {
+    moduleGrantError.value = '超级管理员固定拥有全部模块，不能单独授权。';
+    return;
+  }
   moduleGrantSaving.value = true;
   moduleGrantError.value = '';
   try {
@@ -5292,7 +5296,7 @@ onBeforeUnmount(() => {
               <span class="employee-state-pill" :class="employee.status">{{ employee.status === 'active' ? '启用' : '已停用' }}</span>
             </div>
             <div class="employee-actions">
-              <button v-if="employee.role !== 'super_admin'" type="button" class="quiet" @click="openModuleGrant(employee)">授权模块</button>
+              <button type="button" class="quiet" @click="openModuleGrant(employee)">授权模块</button>
               <button type="button" class="quiet" @click="openEmployeeEditor(employee)">编辑</button>
             </div>
           </div>
@@ -5415,7 +5419,10 @@ onBeforeUnmount(() => {
                 <button type="button" class="quiet" aria-label="关闭模块授权" @click="closeModuleGrant">关闭</button>
               </div>
               <div class="employee-form employee-form-grid">
-                <p class="employee-form-hint employee-form-full">
+                <p v-if="moduleGrantEmployee?.role === 'super_admin'" class="employee-form-hint employee-form-full">
+                  超级管理员固定拥有全部 {{ adminModules.length }} 个模块（含发布、删除媒体、停用会员与员工管理），不能单独增减，因此这里是只读预览。
+                </p>
+                <p v-else class="employee-form-hint employee-form-full">
                   {{ moduleGrantEmployee ? adminRoleLabels[moduleGrantEmployee.role] : '' }} · 角色默认 {{ moduleGrantRoleDefaults.length }} 个模块；保存后立即生效，员工无需重新登录。
                 </p>
                 <fieldset class="employee-module-fieldset employee-form-full">
@@ -5426,7 +5433,7 @@ onBeforeUnmount(() => {
                       <input
                         type="checkbox"
                         :checked="isModuleGrantChecked(module.id)"
-                        :disabled="moduleGrantSaving"
+                        :disabled="moduleGrantSaving || moduleGrantEmployee?.role === 'super_admin'"
                         @change="toggleModuleGrant(module.id, ($event.target as HTMLInputElement).checked)"
                       />
                       <span class="employee-module-label">{{ module.label }}</span>
@@ -5434,14 +5441,15 @@ onBeforeUnmount(() => {
                     </label>
                   </div>
                   <div class="employee-module-actions">
-                    <span class="employee-module-count">已授权 {{ moduleGrantCount }} 个模块{{ moduleGrantOverride ? '（自定义）' : '（角色默认）' }}</span>
-                    <button type="button" class="quiet" :disabled="moduleGrantSaving || moduleGrantOverride === null" @click="restoreModuleGrantDefaults">恢复角色默认</button>
+                    <span v-if="moduleGrantEmployee?.role === 'super_admin'" class="employee-module-count">超级管理员固定拥有全部 {{ moduleGrantCount }} 个模块</span>
+                    <span v-else class="employee-module-count">已授权 {{ moduleGrantCount }} 个模块{{ moduleGrantOverride ? '（自定义）' : '（角色默认）' }}</span>
+                    <button v-if="moduleGrantEmployee?.role !== 'super_admin'" type="button" class="quiet" :disabled="moduleGrantSaving || moduleGrantOverride === null" @click="restoreModuleGrantDefaults">恢复角色默认</button>
                   </div>
                 </fieldset>
                 <p v-if="moduleGrantError" class="error employee-form-full" role="alert">{{ moduleGrantError }}</p>
                 <div class="employee-dialog-actions employee-form-full">
-                  <button type="button" :disabled="moduleGrantSaving" @click="saveModuleGrant">{{ moduleGrantSaving ? '保存中…' : '保存授权' }}</button>
-                  <button type="button" class="quiet" :disabled="moduleGrantSaving" @click="closeModuleGrant">取消</button>
+                  <button v-if="moduleGrantEmployee?.role !== 'super_admin'" type="button" :disabled="moduleGrantSaving" @click="saveModuleGrant">{{ moduleGrantSaving ? '保存中…' : '保存授权' }}</button>
+                  <button type="button" class="quiet" :disabled="moduleGrantSaving" @click="closeModuleGrant">{{ moduleGrantEmployee?.role === 'super_admin' ? '关闭' : '取消' }}</button>
                 </div>
               </div>
             </section>
