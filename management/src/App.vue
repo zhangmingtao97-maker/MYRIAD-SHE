@@ -232,6 +232,33 @@ function issuePreviewContents(module: ManagedIssueModule) {
     { number: '04', label: value('entry4Label', '本期讨论'), summary: value('entry4Summary', '一起听见不同的经历') },
   ];
 }
+// 与小程序首页保持一致：第一栏排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · A CURATED EDITION」。
+const issuePreviewKicker = '当期策展';
+const issuePreviewTagline = 'A CURATED EDITION';
+const issuePreviewMonthNames: Record<string, string> = {
+  JAN: 'JANUARY', FEB: 'FEBRUARY', MAR: 'MARCH', APR: 'APRIL', MAY: 'MAY', JUN: 'JUNE',
+  JUL: 'JULY', AUG: 'AUGUST', SEP: 'SEPTEMBER', SEPT: 'SEPTEMBER', OCT: 'OCTOBER', NOV: 'NOVEMBER', DEC: 'DECEMBER',
+};
+function previewIssueText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+// 英文刊期按杂志排印展开缩写（Sep 2026 → SEPTEMBER 2026）；中文月份写法保持原样。
+function expandPreviewIssueMonth(value: string) {
+  return value.toUpperCase().replace(
+    /(^|[^A-Z])(SEPT|SEP|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|OCT|NOV|DEC)\.?(?![A-Z])/g,
+    (_match, prefix: string, month: string) => `${prefix}${issuePreviewMonthNames[month] || month}`,
+  );
+}
+function issuePreviewIssueNumber(module: ManagedIssueModule) {
+  const label = previewIssueText(module.eyebrow) || previewIssueText(issueForm.value.label);
+  if (label) return label.toUpperCase();
+  const digits = previewIssueText(issueForm.value.code).match(/(\d+)/);
+  return digits ? `ISSUE ${digits[1].padStart(2, '0')}` : '';
+}
+function issuePreviewIssueEdition(module: ManagedIssueModule) {
+  const month = previewIssueText(module.month) || previewIssueText(issueForm.value.month);
+  return month ? `${expandPreviewIssueMonth(month)} · ${issuePreviewTagline}` : issuePreviewTagline;
+}
 const issueForm = ref({ code: '', label: '', month: '', theme: '', question: '', status: 'draft', microVoiceTitle: '', microVoiceDuration: '', coverObjectKey: '', microVoiceObjectKey: '', homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面', draftContent: { sections: createDefaultIssueModules(), discussion: createDefaultDiscussionContent() } });
 type IssueForm = typeof issueForm.value;
 const originalIssueForm = ref<IssueForm>({ ...issueForm.value });
@@ -648,6 +675,7 @@ type Employee = {
   status: 'active' | 'disabled';
   wecomUserId?: string | null;
   passwordChangeRequired?: boolean;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string | null;
@@ -665,7 +693,16 @@ const employeeBusyId = ref('');
 const createEmployeeOpen = ref(false);
 const employeeEditorOpen = ref(false);
 const editingEmployee = ref<Employee | null>(null);
-const employeeEditForm = ref({ displayName: '', wecomUserId: '' });
+const employeeEditForm = ref({
+  displayName: '',
+  wecomUserId: '',
+  role: 'content_editor' as Employee['role'],
+  status: 'active' as Employee['status'],
+});
+const employeeAvatarFile = ref<File | null>(null);
+const employeeAvatarPreview = ref('');
+const employeeAvatarRemove = ref(false);
+const employeeAvatarError = ref('');
 const employeeEditError = ref('');
 const employeeEditSaving = ref(false);
 const employeeSearch = ref('');
@@ -703,10 +740,6 @@ function clearEmployeeFilters() {
   employeeStatusFilter.value = 'all';
   employeeRoleFilter.value = 'all';
 }
-function shortWecomUserId(value?: string | null) {
-  if (!value) return '';
-  return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
-}
 const passwordRotation = ref({ currentPassword: '', newPassword: '', confirmPassword: '' });
 const passwordRotationError = ref('');
 const passwordRotationSaving = ref(false);
@@ -723,13 +756,32 @@ const adminTokenPayload = computed<Record<string, unknown>>(() => {
   } catch { return {}; }
 });
 const adminRoleLabels: Record<string, string> = { super_admin: '超级管理员', content_editor: '内容编辑', support_readonly: '客服只读' };
+type AdminProfile = {
+  id: string;
+  username: string;
+  displayName: string;
+  role: string;
+  avatarUrl: string | null;
+  canEditAvatar: boolean;
+  lastLoginAt?: string | null;
+};
+const adminProfile = ref<AdminProfile | null>(null);
 const adminIdentity = computed(() => {
   const payload = adminTokenPayload.value;
-  const raw = String(payload.displayName || payload.username || payload.sub || '').replace(/^admin:/, '');
+  const raw = String(adminProfile.value?.displayName || payload.displayName || payload.username || payload.sub || '').replace(/^admin:(?:wecom:)?/, '');
   const name = raw || '管理员';
-  return { name, initial: name.slice(0, 1).toUpperCase(), roleLabel: adminRoleLabels[adminRole.value] || '管理员' };
+  return {
+    name,
+    avatarUrl: adminProfile.value?.avatarUrl || '',
+    roleLabel: adminRoleLabels[adminProfile.value?.role || adminRole.value] || '管理员',
+    username: adminProfile.value?.username || '',
+  };
 });
 const accountMenuOpen = ref(false);
+const profileDialogOpen = ref(false);
+const profileAvatarSaving = ref(false);
+const profileAvatarError = ref('');
+const profileAvatarMessage = ref('');
 const passwordDialogOpen = ref(false);
 const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' });
 const passwordSaving = ref(false);
@@ -738,6 +790,98 @@ const passwordMessage = ref('');
 
 function closeAccountMenu() {
   accountMenuOpen.value = false;
+}
+
+function openProfileDialog() {
+  accountMenuOpen.value = false;
+  profileAvatarError.value = '';
+  profileAvatarMessage.value = '';
+  profileDialogOpen.value = true;
+}
+
+async function loadAdminProfile() {
+  if (!token.value) return;
+  const session = sessionGeneration;
+  try {
+    const response = await apiFetch(`${apiBase}/admin/me`, { headers: adminHeaders() });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) return;
+    const result = await response.json().catch(() => null) as AdminProfile | null;
+    if (!result || typeof result.id !== 'string' || typeof result.displayName !== 'string') return;
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    adminProfile.value = {
+      id: result.id,
+      username: String(result.username || ''),
+      displayName: result.displayName,
+      role: String(result.role || adminRole.value),
+      avatarUrl: typeof result.avatarUrl === 'string' ? result.avatarUrl : null,
+      canEditAvatar: result.canEditAvatar === true,
+      lastLoginAt: result.lastLoginAt || null,
+    };
+  } catch {
+    // Identity falls back to the JWT payload when this non-critical request fails.
+  }
+}
+
+function validateAvatarFile(file: File | null | undefined) {
+  if (!file) throw new Error('请选择头像图片');
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('头像仅支持 JPEG、PNG 或 WebP 图片');
+  if (file.size > 2 * 1024 * 1024) throw new Error('头像大小不能超过 2 MB');
+  return file;
+}
+
+async function uploadMyAvatar(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file || profileAvatarSaving.value) return;
+  profileAvatarError.value = '';
+  profileAvatarMessage.value = '';
+  const session = sessionGeneration;
+  try {
+    const avatar = validateAvatarFile(file);
+    profileAvatarSaving.value = true;
+    const form = new FormData();
+    form.append('avatar', avatar);
+    const response = await apiFetch(`${apiBase}/admin/me/avatar`, {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: form,
+    }, mediaUploadTimeoutMs);
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '头像上传失败'));
+    const result = await response.json().catch(() => null) as { avatarUrl?: string } | null;
+    if (!result || typeof result.avatarUrl !== 'string') throw new Error('头像上传结果无效');
+    if (session !== sessionGeneration) return;
+    adminProfile.value = adminProfile.value
+      ? { ...adminProfile.value, avatarUrl: result.avatarUrl }
+      : { id: '', username: '', displayName: adminIdentity.value.name, role: adminRole.value, avatarUrl: result.avatarUrl, canEditAvatar: true };
+    profileAvatarMessage.value = '头像已更新。';
+  } catch (caught) {
+    if (session === sessionGeneration) profileAvatarError.value = caught instanceof Error ? caught.message : '头像上传失败';
+  } finally {
+    if (session === sessionGeneration) profileAvatarSaving.value = false;
+  }
+}
+
+async function removeMyAvatar() {
+  if (profileAvatarSaving.value) return;
+  profileAvatarError.value = '';
+  profileAvatarMessage.value = '';
+  const session = sessionGeneration;
+  try {
+    profileAvatarSaving.value = true;
+    const response = await apiFetch(`${apiBase}/admin/me/avatar`, { method: 'DELETE', headers: adminHeaders() });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '恢复默认头像失败'));
+    if (session !== sessionGeneration) return;
+    if (adminProfile.value) adminProfile.value = { ...adminProfile.value, avatarUrl: null };
+    profileAvatarMessage.value = '已恢复默认 M 头像。';
+  } catch (caught) {
+    if (session === sessionGeneration) profileAvatarError.value = caught instanceof Error ? caught.message : '恢复默认头像失败';
+  } finally {
+    if (session === sessionGeneration) profileAvatarSaving.value = false;
+  }
 }
 
 function openPasswordDialog() {
@@ -1661,12 +1805,71 @@ async function createEmployee() {
   finally { employeeSaving.value = false; }
 }
 
+function revokeEmployeeAvatarPreview() {
+  if (employeeAvatarPreview.value.startsWith('blob:')) URL.revokeObjectURL(employeeAvatarPreview.value);
+  employeeAvatarPreview.value = '';
+}
+
 function openEmployeeEditor(employee: Employee) {
+  revokeEmployeeAvatarPreview();
   editingEmployee.value = employee;
-  employeeEditForm.value = { displayName: employee.displayName, wecomUserId: employee.wecomUserId || '' };
+  employeeEditForm.value = {
+    displayName: employee.displayName,
+    wecomUserId: employee.wecomUserId || '',
+    role: employee.role,
+    status: employee.status,
+  };
+  employeeAvatarFile.value = null;
+  employeeAvatarPreview.value = employee.avatarUrl || '';
+  employeeAvatarRemove.value = false;
+  employeeAvatarError.value = '';
   employeeEditError.value = '';
   employeeMessage.value = '';
   employeeEditorOpen.value = true;
+}
+
+function closeEmployeeEditor() {
+  if (employeeEditSaving.value) return;
+  revokeEmployeeAvatarPreview();
+  employeeAvatarFile.value = null;
+  employeeAvatarRemove.value = false;
+  employeeEditorOpen.value = false;
+  editingEmployee.value = null;
+}
+
+function selectEmployeeAvatar(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  employeeAvatarError.value = '';
+  try {
+    const avatar = validateAvatarFile(file);
+    revokeEmployeeAvatarPreview();
+    employeeAvatarFile.value = avatar;
+    employeeAvatarPreview.value = URL.createObjectURL(avatar);
+    employeeAvatarRemove.value = false;
+  } catch (caught) {
+    employeeAvatarError.value = caught instanceof Error ? caught.message : '头像文件无效';
+  }
+}
+
+function resetEmployeeAvatar() {
+  revokeEmployeeAvatarPreview();
+  employeeAvatarFile.value = null;
+  employeeAvatarRemove.value = true;
+  employeeAvatarError.value = '';
+}
+
+async function uploadEmployeeAvatar(employee: Employee, file: File) {
+  const form = new FormData();
+  form.append('avatar', file);
+  const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}/avatar`, {
+    method: 'POST',
+    headers: adminHeaders(),
+    body: form,
+  }, mediaUploadTimeoutMs);
+  if (!response.ok) throw new Error(await responseMessage(response, '员工头像上传失败'));
 }
 
 async function saveEmployeeEdit() {
@@ -1680,16 +1883,31 @@ async function saveEmployeeEdit() {
   employeeEditSaving.value = true;
   employeeEditError.value = '';
   try {
+    if (employeeAvatarFile.value) {
+      await uploadEmployeeAvatar(employee, employeeAvatarFile.value);
+    } else if (employeeAvatarRemove.value && employee.avatarUrl) {
+      const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}/avatar`, {
+        method: 'DELETE',
+        headers: adminHeaders(),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response, '恢复默认头像失败'));
+    }
+    const payload: Record<string, unknown> = {
+      displayName,
+      wecomUserId: employeeEditForm.value.wecomUserId.trim() || null,
+    };
+    if (employee.role !== 'super_admin') {
+      payload.role = employeeEditForm.value.role;
+      payload.status = employeeEditForm.value.status;
+    }
     const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}`, {
       method: 'PATCH',
       headers: adminHeaders(true),
-      body: JSON.stringify({
-        displayName,
-        wecomUserId: employeeEditForm.value.wecomUserId.trim() || null,
-      }),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(await responseMessage(response, '员工资料更新失败'));
     employeeMessage.value = '员工资料已更新。';
+    revokeEmployeeAvatarPreview();
     employeeEditorOpen.value = false;
     editingEmployee.value = null;
     await loadEmployees();
@@ -1707,16 +1925,32 @@ async function updateEmployee(employee: Employee, changes: { role?: Employee['ro
     const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify(changes) });
     if (!response.ok) throw new Error(await responseMessage(response, '员工设置更新失败'));
     employeeMessage.value = '员工权限已更新。';
+    if (employeeEditorOpen.value) employeeEditError.value = '';
     await loadEmployees();
-  } catch (caught) { employeeError.value = caught instanceof Error ? caught.message : '员工设置更新失败'; }
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : '员工设置更新失败';
+    if (employeeEditorOpen.value) employeeEditError.value = message;
+    else employeeError.value = message;
+  }
   finally { if (employeeBusyId.value === employee.id) employeeBusyId.value = ''; }
 }
 
 async function resetEmployeePassword(employee: Employee) {
   const password = window.prompt(`为 ${employee.username} 设置新密码（至少 12 位）。员工下次登录时必须修改。`);
   if (password === null) return;
-  if (password.length < 12) { employeeError.value = '新密码至少需要 12 位。'; return; }
+  if (password.length < 12) {
+    if (employeeEditorOpen.value) employeeEditError.value = '新密码至少需要 12 位。';
+    else employeeError.value = '新密码至少需要 12 位。';
+    return;
+  }
   await updateEmployee(employee, { password });
+  if (employeeEditorOpen.value && editingEmployee.value?.id === employee.id) {
+    editingEmployee.value = { ...editingEmployee.value, passwordChangeRequired: true };
+  }
+}
+
+function resetEditingEmployeePassword() {
+  if (editingEmployee.value) void resetEmployeePassword(editingEmployee.value);
 }
 
 async function applyAdminLogin(result: { accessToken: string; expiresIn: number }) {
@@ -1724,6 +1958,7 @@ async function applyAdminLogin(result: { accessToken: string; expiresIn: number 
   localStorage.setItem('myriad_she_admin_token', token.value);
   sessionGeneration += 1;
   scheduleSessionExpiry(Number(result.expiresIn));
+  await loadAdminProfile();
   if (adminPasswordChangeRequired.value) {
     passwordRotationError.value = '';
   } else if (adminRole.value === 'support_readonly') {
@@ -1901,6 +2136,7 @@ async function changeRequiredPassword() {
     token.value = result.accessToken;
     localStorage.setItem('myriad_she_admin_token', token.value);
     scheduleSessionExpiry(Number(result.expiresIn));
+    await loadAdminProfile();
     passwordRotation.value = { currentPassword: '', newPassword: '', confirmPassword: '' };
     if (adminRole.value === 'support_readonly') { activeSection.value = 'members'; await refreshMembers(); }
     else if (adminRole.value === 'content_editor') { activeSection.value = 'practice'; activeContentSection.value = 'practice'; await loadContentEditorDashboard(); }
@@ -3755,6 +3991,10 @@ function logout(message = '') {
   privacyPageSaving.value = false;
   privacyPageMessage.value = '';
   privacyPageError.value = '';
+  adminProfile.value = null;
+  profileDialogOpen.value = false;
+  profileAvatarError.value = '';
+  profileAvatarMessage.value = '';
   localStorage.removeItem('myriad_she_admin_token');
   localStorage.removeItem('myriad_she_admin_expires_at');
   if (sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
@@ -3794,6 +4034,7 @@ onMounted(() => {
     return;
   }
   scheduleSessionExpiry((sessionExpiresAt.value - Date.now()) / 1000);
+  void loadAdminProfile();
   if (isSuperAdmin.value && activeSection.value === 'life-cards' && !lifeCards.value.length) void loadLifeCards();
   if (isSuperAdmin.value && activeSection.value === 'life-card-views' && !lifeCardViews.value.length) void loadLifeCardViews();
   const session = sessionGeneration;
@@ -3926,10 +4167,20 @@ onBeforeUnmount(() => {
             <div class="topbar-actions">
               
               <div class="account-menu">
-  <button type="button" class="account-avatar-button" :aria-expanded="accountMenuOpen" aria-haspopup="menu" :aria-label="`账号菜单，${adminIdentity.name}`" @click="accountMenuOpen = !accountMenuOpen">{{ adminIdentity.initial }}</button>
+  <button type="button" class="account-avatar-button" :aria-expanded="accountMenuOpen" aria-haspopup="menu" :aria-label="`账号菜单，${adminIdentity.name}`" @click="accountMenuOpen = !accountMenuOpen">
+    <img v-if="adminIdentity.avatarUrl" :src="adminIdentity.avatarUrl" alt="" />
+    <span v-else aria-hidden="true">M</span>
+  </button>
   <div v-if="accountMenuOpen" class="account-menu-backdrop" @click="closeAccountMenu"></div>
   <div v-if="accountMenuOpen" class="account-menu-panel" role="menu">
-    <div class="account-menu-head"><strong>{{ adminIdentity.name }}</strong><small>{{ adminIdentity.roleLabel }}</small></div>
+    <div class="account-menu-head">
+      <span class="account-menu-avatar">
+        <img v-if="adminIdentity.avatarUrl" :src="adminIdentity.avatarUrl" alt="" />
+        <span v-else aria-hidden="true">M</span>
+      </span>
+      <span class="account-menu-copy"><strong>{{ adminIdentity.name }}</strong><small>{{ adminIdentity.roleLabel }}</small></span>
+    </div>
+    <button type="button" class="account-menu-item" role="menuitem" @click="openProfileDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg><span>个人资料</span></button>
     <button type="button" class="account-menu-item" role="menuitem" @click="openPasswordDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M5.5 11h13v9h-13z"/></svg><span>修改密码</span></button>
     <button type="button" class="account-menu-item" role="menuitem" @click="logoutFromButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4.5H6.8A1.3 1.3 0 0 0 5.5 5.8v12.4a1.3 1.3 0 0 0 1.3 1.3h7.7M13.5 12H20m0 0-2.8-2.8M20 12l-2.8 2.8"/></svg><span>退出登录</span></button>
   </div>
@@ -3938,6 +4189,38 @@ onBeforeUnmount(() => {
             </div>
           </header>
         <Teleport to="body">
+<div v-if="profileDialogOpen" class="observation-modal-backdrop" @click.self="profileDialogOpen = false">
+          <section class="observation-detail-panel account-profile-dialog" role="dialog" aria-modal="true" aria-labelledby="account-profile-title" @keydown.esc="profileDialogOpen = false">
+            <div class="section-heading">
+              <div><p class="eyebrow">ACCOUNT / PROFILE</p><h3 id="account-profile-title">个人资料</h3></div>
+              <button type="button" class="quiet" aria-label="关闭个人资料" @click="profileDialogOpen = false">关闭</button>
+            </div>
+            <div class="panel-body">
+              <div class="account-profile-summary">
+                <span class="account-profile-avatar">
+                  <img v-if="adminIdentity.avatarUrl" :src="adminIdentity.avatarUrl" alt="" />
+                  <span v-else aria-hidden="true">M</span>
+                </span>
+                <div class="account-profile-copy">
+                  <strong>{{ adminIdentity.name }}</strong>
+                  <span>{{ adminProfile?.username || '当前账号' }}</span>
+                  <small>{{ adminIdentity.roleLabel }}</small>
+                </div>
+              </div>
+              <div class="account-profile-actions">
+                <label v-if="adminProfile?.canEditAvatar" class="quiet account-avatar-upload">
+                  {{ profileAvatarSaving ? '上传中…' : '更换头像' }}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" :disabled="profileAvatarSaving" @change="uploadMyAvatar" />
+                </label>
+                <button v-if="adminIdentity.avatarUrl && adminProfile?.canEditAvatar" type="button" class="quiet" :disabled="profileAvatarSaving" @click="removeMyAvatar">恢复默认 M 头像</button>
+              </div>
+              <p class="muted account-profile-note">支持 JPEG、PNG、WebP，最大 2 MB；未设置头像时，右上角和员工列表统一显示 M。</p>
+              <p v-if="!adminProfile?.canEditAvatar" class="muted">当前环境管理员由部署配置登录，暂不支持修改头像。</p>
+              <p v-if="profileAvatarError" class="error" role="alert">{{ profileAvatarError }}</p>
+              <p v-if="profileAvatarMessage" class="status-message" role="status">{{ profileAvatarMessage }}</p>
+            </div>
+          </section>
+        </div>
 <div v-if="passwordDialogOpen" class="observation-modal-backdrop" @click.self="passwordDialogOpen = false">
           <section class="observation-detail-panel password-dialog" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title" @keydown.esc="passwordDialogOpen = false">
             <div class="section-heading"><div><p class="eyebrow">ACCOUNT / PASSWORD</p><h3 id="password-dialog-title">修改密码</h3></div><button type="button" class="quiet" aria-label="关闭修改密码" @click="passwordDialogOpen = false">关闭</button></div>
@@ -4044,6 +4327,7 @@ onBeforeUnmount(() => {
                 <div><small>本期问题 · 取自主页问题栏目</small><strong>{{ journalQuestionTitle || '尚未填写' }}</strong><button type="button" class="quiet" :disabled="!journalQuestionModule" @click="selectJournalModule(journalQuestionModule)">去修改问题</button></div>
               </div>
               <p class="field-help">主题与问题只保留一个来源：封面标题和「本期问题」栏目。这里只读展示，避免同一句话在两处维护后不一致。</p>
+              <p class="field-help">小程序首页第一栏固定排成三行：<strong>当期策展</strong> / 期刊标签 / 刊期月份 · A CURATED EDITION。英文月份缩写会自动展开为大写全称（Sep 2026 → SEPTEMBER 2026），中文写法原样保留。</p>
             </section>
             <div v-if="activeContentSection !== 'journal-discussion'" class="journal-module-toolbar-wrap">
               <div class="issue-module-toolbar"><h3>{{ journalModuleWorkspaceTitle }}</h3><select v-if="journalAddableModuleTypes.length" aria-label="新增栏目类型" @change="(event) => { const target = event.target as HTMLSelectElement; if (target.value) { addIssueModule(target.value as ManagedIssueModule['type']); target.value = ''; } }"><option value="">＋ 新增栏目</option><option v-for="type in journalAddableModuleTypes" :key="type" :value="type">{{ issueModuleTypeLabel(type) }}</option></select></div>
@@ -4194,6 +4478,9 @@ onBeforeUnmount(() => {
                       <div class="preview-footer-title">{{ module.title || '我有我的时节' }}</div>
                       <p class="preview-footer-copy">{{ module.body || '记录真实的女性经验，也为看见之后的生活留下一条可行的路。' }}</p>
                       <div class="preview-footer-flower" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                    </template>
+                    <template v-else-if="module.type === 'issueMeta'">
+                      <div class="preview-issue-meta"><small>{{ issuePreviewKicker }}</small><strong v-if="issuePreviewIssueNumber(module)">{{ issuePreviewIssueNumber(module) }}</strong><span>{{ issuePreviewIssueEdition(module) }}</span></div>
                     </template>
                     <template v-else>
                       <small>{{ module.eyebrow || module.type }}</small><h3>{{ module.title || module.month || '' }}</h3><p>{{ module.body || module.text || module.caption || '' }}</p><img v-if="(module.type === 'cover' || module.type === 'image') && issueModulePreviewUrls[module.id]" class="preview-image" :src="issueModulePreviewUrls[module.id]" :alt="String(module.altText || '')" /><div v-else-if="module.type === 'cover' || module.type === 'image'" class="preview-image-placeholder">{{ module.altText || '图片预览（上传或保存后载入）' }}</div>
@@ -4733,34 +5020,23 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="employee-table" :aria-busy="employeeLoading">
-          <div class="employee-row employee-table-head"><span>员工</span><span>角色</span><span>企业微信</span><span>状态 / 最近登录</span><span>操作</span></div>
+          <div class="employee-row employee-table-head"><span>员工</span><span>角色</span><span>状态</span><span>操作</span></div>
           <div v-for="employee in filteredEmployees" :key="employee.id" class="employee-row">
             <div class="employee-person">
-              <span class="employee-avatar" aria-hidden="true">{{ employee.displayName.slice(0, 1) }}</span>
+              <span class="employee-avatar" aria-hidden="true">
+                <img v-if="employee.avatarUrl" :src="employee.avatarUrl" alt="" />
+                <span v-else>M</span>
+              </span>
               <span class="employee-person-copy"><strong>{{ employee.displayName }}</strong><small class="mono">{{ employee.username }}</small></span>
             </div>
             <div class="employee-role-cell">
-              <span v-if="employee.role === 'super_admin'" class="role-badge role-super_admin">超级管理员</span>
-              <select v-else :value="employee.role" :disabled="employeeBusyId === employee.id" :aria-label="`${employee.displayName} 的角色`" @change="updateEmployee(employee, { role: ($event.target as HTMLSelectElement).value as Employee['role'] })">
-                <option value="content_editor">内容编辑</option>
-                <option value="support_readonly">客服只读</option>
-              </select>
-              <small v-if="employee.role === 'super_admin'" class="employee-locked">受控账号</small>
-            </div>
-            <div class="employee-wecom-cell">
-              <span class="employee-wecom-state" :class="{ bound: employee.wecomUserId }">{{ employee.wecomUserId ? '已绑定' : '未绑定' }}</span>
-              <small v-if="employee.wecomUserId" class="mono" :title="employee.wecomUserId">{{ shortWecomUserId(employee.wecomUserId) }}</small>
-              <button type="button" class="quiet employee-link-button" @click="openEmployeeEditor(employee)">{{ employee.wecomUserId ? '更换' : '绑定' }}</button>
+              <span class="role-badge" :class="`role-${employee.role}`">{{ adminRoleLabels[employee.role] }}</span>
             </div>
             <div class="employee-status-cell">
               <span class="employee-state-pill" :class="employee.status">{{ employee.status === 'active' ? '启用' : '已停用' }}</span>
-              <small>{{ employee.lastLoginAt ? `最近登录 ${displayDate(employee.lastLoginAt)}` : '尚未登录' }}</small>
-              <small v-if="employee.passwordChangeRequired" class="employee-pending">待首次改密</small>
             </div>
             <div class="employee-actions">
-              <button type="button" class="quiet" @click="openEmployeeEditor(employee)">编辑资料</button>
-              <button v-if="employee.role !== 'super_admin'" type="button" class="quiet" :disabled="employeeBusyId === employee.id" @click="updateEmployee(employee, { status: employee.status === 'active' ? 'disabled' : 'active' })">{{ employee.status === 'active' ? '停用' : '启用' }}</button>
-              <button v-if="employee.role !== 'super_admin'" type="button" class="quiet" :disabled="employeeBusyId === employee.id" @click="resetEmployeePassword(employee)">重置密码</button>
+              <button type="button" class="quiet" @click="openEmployeeEditor(employee)">编辑</button>
             </div>
           </div>
           <p v-if="employeeLoading" class="employee-empty">正在读取员工账号…</p>
@@ -4768,7 +5044,7 @@ onBeforeUnmount(() => {
           <p v-else-if="!filteredEmployees.length" class="employee-empty">没有符合当前筛选条件的员工。<button type="button" class="employee-inline-link" @click="clearEmployeeFilters">清除筛选</button></p>
         </div>
 
-        <p class="employee-footnote">超级管理员账号受保护：不能在后台停用、降级或重置密码；可编辑姓名和企业微信绑定。员工账号被停用或修改角色后，已有登录会立即失效。</p>
+        <p class="employee-footnote">头像、角色、账号状态、企业微信绑定、最近登录和密码状态统一在「编辑」中维护。超级管理员账号受保护，不能停用、降级或重置密码。</p>
 
         <Teleport to="body">
           <div v-if="createEmployeeOpen" class="observation-modal-backdrop" @click.self="createEmployeeOpen = false">
@@ -4795,21 +5071,58 @@ onBeforeUnmount(() => {
         </Teleport>
 
         <Teleport to="body">
-          <div v-if="employeeEditorOpen" class="observation-modal-backdrop" @click.self="employeeEditorOpen = false">
-            <section class="observation-detail-panel employee-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-employee-title" @keydown.esc="employeeEditorOpen = false">
+          <div v-if="employeeEditorOpen" class="observation-modal-backdrop" @click.self="closeEmployeeEditor">
+            <section class="observation-detail-panel employee-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-employee-title" @keydown.esc="closeEmployeeEditor">
               <div class="section-heading">
                 <div><p class="eyebrow">EDIT STAFF PROFILE</p><h3 id="edit-employee-title">编辑员工资料</h3></div>
-                <button type="button" class="quiet" aria-label="关闭编辑员工资料" @click="employeeEditorOpen = false">关闭</button>
+                <button type="button" class="quiet" aria-label="关闭编辑员工资料" @click="closeEmployeeEditor">关闭</button>
               </div>
               <form class="employee-form employee-form-grid" @submit.prevent="saveEmployeeEdit">
+                <div class="employee-avatar-editor employee-form-full">
+                  <span class="employee-avatar employee-avatar-large" aria-hidden="true">
+                    <img v-if="employeeAvatarPreview" :src="employeeAvatarPreview" alt="" />
+                    <span v-else>M</span>
+                  </span>
+                  <div class="employee-avatar-editor-copy">
+                    <strong>员工头像</strong>
+                    <p>未设置头像时显示默认 M。支持 JPEG、PNG、WebP，最大 2 MB，保存资料时生效。</p>
+                    <div class="employee-avatar-editor-actions">
+                      <label class="quiet employee-file-button">
+                        {{ employeeAvatarPreview ? '更换头像' : '选择头像' }}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" :disabled="employeeEditSaving" @change="selectEmployeeAvatar" />
+                      </label>
+                      <button v-if="employeeAvatarPreview" type="button" class="quiet" :disabled="employeeEditSaving" @click="resetEmployeeAvatar">恢复默认</button>
+                    </div>
+                    <p v-if="employeeAvatarError" class="error" role="alert">{{ employeeAvatarError }}</p>
+                  </div>
+                </div>
                 <label>员工姓名<input v-model="employeeEditForm.displayName" required maxlength="80" /></label>
                 <label>登录账号<input :value="editingEmployee?.username || ''" disabled /></label>
+                <label>角色
+                  <select v-model="employeeEditForm.role" :disabled="editingEmployee?.role === 'super_admin'">
+                    <option v-if="editingEmployee?.role === 'super_admin'" value="super_admin">超级管理员</option>
+                    <option value="content_editor">内容编辑 · 内容与审核</option>
+                    <option value="support_readonly">客服只读 · 仅查看会员</option>
+                  </select>
+                </label>
+                <label>账号状态
+                  <select v-model="employeeEditForm.status" :disabled="editingEmployee?.role === 'super_admin'">
+                    <option value="active">启用</option>
+                    <option value="disabled">已停用</option>
+                  </select>
+                </label>
                 <label class="employee-form-full">企业微信 UserID<input v-model="employeeEditForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="留空可解除绑定" /></label>
                 <p class="employee-form-hint employee-form-full">绑定后该员工可直接使用企业微信扫码登录；留空并保存会解除当前绑定。</p>
+                <div class="employee-edit-meta employee-form-full">
+                  <span>最近登录：{{ editingEmployee?.lastLoginAt ? displayDate(editingEmployee.lastLoginAt) : '尚未登录' }}</span>
+                  <span>密码状态：{{ editingEmployee?.passwordChangeRequired ? '待首次修改密码' : '正常' }}</span>
+                  <span v-if="editingEmployee?.role === 'super_admin'">受控账号：不可停用、降级或重置密码</span>
+                </div>
                 <p v-if="employeeEditError" class="error employee-form-full" role="alert">{{ employeeEditError }}</p>
                 <div class="employee-dialog-actions employee-form-full">
+                  <button v-if="editingEmployee && editingEmployee.role !== 'super_admin'" type="button" class="quiet employee-reset-password" :disabled="employeeEditSaving" @click="resetEditingEmployeePassword">重置密码</button>
                   <button type="submit" :disabled="employeeEditSaving">{{ employeeEditSaving ? '保存中…' : '保存资料' }}</button>
-                  <button type="button" class="quiet" :disabled="employeeEditSaving" @click="employeeEditorOpen = false">取消</button>
+                  <button type="button" class="quiet" :disabled="employeeEditSaving" @click="closeEmployeeEditor">取消</button>
                 </div>
               </form>
             </section>

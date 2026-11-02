@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Get, Header, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards, NotFoundException, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Header, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors, NotFoundException, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -31,6 +32,25 @@ function optionalWecomUserId(value: unknown) {
   return normalized;
 }
 
+type AdminAvatarFile = { buffer: Buffer; mimetype: string };
+const adminAvatarMaxBytes = 2 * 1024 * 1024;
+
+function adminAvatarContentType(file?: AdminAvatarFile): 'image/jpeg' | 'image/png' | 'image/webp' {
+  const buffer = file?.buffer;
+  if (!Buffer.isBuffer(buffer) || buffer.byteLength === 0 || buffer.byteLength > adminAvatarMaxBytes) {
+    throw new BadRequestException('员工头像文件无效或超过 2 MB');
+  }
+  const detected = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+    ? 'image/jpeg'
+    : buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+      ? 'image/png'
+      : buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP'
+        ? 'image/webp'
+        : null;
+  if (!detected || file?.mimetype?.toLowerCase() !== detected) throw new BadRequestException('员工头像仅支持 JPEG、PNG 或 WebP 图片');
+  return detected;
+}
+
 @Controller('admin')
 @UseGuards(AdminAuthGuard)
 export class AdminManagementController {
@@ -42,6 +62,99 @@ export class AdminManagementController {
     @Optional() private readonly storage?: StorageService,
     @Optional() private readonly encryption?: DataEncryptionService,
   ) {}
+
+  private requireStorage() {
+    if (!this.storage) throw new ServiceUnavailableException('头像服务暂时不可用');
+    return this.storage;
+  }
+
+  private async avatarUrl(objectKey?: string | null) {
+    if (!objectKey || !this.storage) return null;
+    try {
+      return (await this.storage.createDownloadUrl(objectKey, 7 * 24 * 60 * 60)).url;
+    } catch {
+      return null;
+    }
+  }
+
+  @Get('me')
+  @Header('Cache-Control', 'no-store')
+  async currentAdmin(@Req() request: AdminRequest) {
+    const actorId = request.user?.sub;
+    if (!actorId) throw new UnauthorizedException('需要管理后台登录');
+    const legacyMatch = /^admin:(?:wecom:)?(.+)$/.exec(actorId);
+    if (legacyMatch) {
+      const username = legacyMatch[1];
+      return {
+        id: actorId,
+        username,
+        displayName: username,
+        role: request.user?.role ?? 'super_admin',
+        avatarUrl: null,
+        canEditAvatar: false,
+        lastLoginAt: null,
+      };
+    }
+    const result = await this.database.query<{
+      id: string; username: string; displayName: string; role: string; avatarObjectKey: string | null; lastLoginAt: string | null;
+    }>(`select id, username, display_name as "displayName", role, avatar_object_key as "avatarObjectKey",
+        last_login_at as "lastLoginAt" from admin_accounts where id = $1`, [actorId]);
+    const row = result.rows[0];
+    if (!row) throw new UnauthorizedException('员工账号不存在，请重新登录');
+    const { avatarObjectKey, ...profile } = row;
+    return { ...profile, avatarUrl: await this.avatarUrl(avatarObjectKey), canEditAvatar: true };
+  }
+
+  @Post('me/avatar')
+  @Header('Cache-Control', 'no-store')
+  @UseInterceptors(FileInterceptor('avatar', { limits: { fileSize: adminAvatarMaxBytes, files: 1 } }))
+  async updateOwnAvatar(@Req() request: AdminRequest, @UploadedFile() file?: AdminAvatarFile) {
+    const actorId = request.user?.sub;
+    if (!actorId) throw new UnauthorizedException('需要管理后台登录');
+    if (actorId.startsWith('admin:')) throw new BadRequestException('当前环境管理员不支持修改头像');
+    const storage = this.requireStorage();
+    const contentType = adminAvatarContentType(file);
+    const objectKey = await storage.saveAdminAvatar(actorId, file!.buffer, contentType);
+    let oldObjectKey: string | null = null;
+    try {
+      await this.database.withTransaction(async (client) => {
+        const current = await client.query<{ avatarObjectKey: string | null }>(
+          `select avatar_object_key as "avatarObjectKey" from admin_accounts where id = $1 and status = 'active' for update`,
+          [actorId],
+        );
+        if (!current.rows[0]) throw new UnauthorizedException('员工账号不存在，请重新登录');
+        oldObjectKey = current.rows[0].avatarObjectKey;
+        await client.query(`update admin_accounts set avatar_object_key = $1, updated_at = now() where id = $2`, [objectKey, actorId]);
+        await this.audit.record({ actorType: 'admin', actorId, action: 'admin.profile.avatar.updated', resourceType: 'admin_account', resourceId: actorId }, client);
+      });
+    } catch (error) {
+      await storage.deleteObject(objectKey).catch(() => undefined);
+      throw error;
+    }
+    if (oldObjectKey && oldObjectKey !== objectKey) await storage.deleteObject(oldObjectKey).catch(() => undefined);
+    return { avatarUrl: await this.avatarUrl(objectKey) };
+  }
+
+  @Delete('me/avatar')
+  @Header('Cache-Control', 'no-store')
+  async removeOwnAvatar(@Req() request: AdminRequest) {
+    const actorId = request.user?.sub;
+    if (!actorId) throw new UnauthorizedException('需要管理后台登录');
+    if (actorId.startsWith('admin:')) throw new BadRequestException('当前环境管理员不支持修改头像');
+    let oldObjectKey: string | null = null;
+    await this.database.withTransaction(async (client) => {
+      const current = await client.query<{ avatarObjectKey: string | null }>(
+        `select avatar_object_key as "avatarObjectKey" from admin_accounts where id = $1 and status = 'active' for update`,
+        [actorId],
+      );
+      if (!current.rows[0]) throw new UnauthorizedException('员工账号不存在，请重新登录');
+      oldObjectKey = current.rows[0].avatarObjectKey;
+      await client.query(`update admin_accounts set avatar_object_key = null, updated_at = now() where id = $1`, [actorId]);
+      await this.audit.record({ actorType: 'admin', actorId, action: 'admin.profile.avatar.removed', resourceType: 'admin_account', resourceId: actorId }, client);
+    });
+    if (oldObjectKey && this.storage) await this.storage.deleteObject(oldObjectKey).catch(() => undefined);
+    return { avatarUrl: null };
+  }
 
   @Patch('me/password')
   async changeOwnPassword(@Body() body: { currentPassword?: string; newPassword?: string }, @Req() request: AdminRequest) {
@@ -243,14 +356,23 @@ export class AdminManagementController {
   @Get('employees')
   @Header('Cache-Control', 'no-store')
   async employees(@Req() request: AdminRequest) {
-    return this.database.withTransaction(async (client) => {
-      const result = await client.query(`select id, username, display_name as "displayName", role, status,
+    const rows = await this.database.withTransaction(async (client) => {
+      const result = await client.query<{
+        id: string; username: string; displayName: string; role: AdminRole; status: string;
+        wecomUserId: string | null; passwordChangeRequired: boolean; avatarObjectKey: string | null;
+        createdAt: string; updatedAt: string; lastLoginAt: string | null;
+      }>(`select id, username, display_name as "displayName", role, status,
         wecom_user_id as "wecomUserId", password_change_required as "passwordChangeRequired",
+        avatar_object_key as "avatarObjectKey",
         created_at as "createdAt", updated_at as "updatedAt", last_login_at as "lastLoginAt"
         from admin_accounts order by created_at desc, id`);
       await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employees.listed', resourceType: 'admin_accounts', metadata: { count: result.rows.length } }, client);
       return result.rows;
     });
+    return Promise.all(rows.map(async ({ avatarObjectKey, ...employee }) => ({
+      ...employee,
+      avatarUrl: await this.avatarUrl(avatarObjectKey),
+    })));
   }
 
   @Post('employees')
@@ -331,6 +453,55 @@ export class AdminManagementController {
       return updated.rows[0];
     });
     return result;
+  }
+
+  @Post('employees/:id/avatar')
+  @Header('Cache-Control', 'no-store')
+  @UseInterceptors(FileInterceptor('avatar', { limits: { fileSize: adminAvatarMaxBytes, files: 1 } }))
+  async updateEmployeeAvatar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() request: AdminRequest,
+    @UploadedFile() file?: AdminAvatarFile,
+  ) {
+    const storage = this.requireStorage();
+    const contentType = adminAvatarContentType(file);
+    const objectKey = await storage.saveAdminAvatar(id, file!.buffer, contentType);
+    let oldObjectKey: string | null = null;
+    try {
+      await this.database.withTransaction(async (client) => {
+        const current = await client.query<{ avatarObjectKey: string | null }>(
+          `select avatar_object_key as "avatarObjectKey" from admin_accounts where id = $1 for update`,
+          [id],
+        );
+        if (!current.rows[0]) throw new BadRequestException('员工账号不存在');
+        oldObjectKey = current.rows[0].avatarObjectKey;
+        await client.query(`update admin_accounts set avatar_object_key = $1, updated_at = now() where id = $2`, [objectKey, id]);
+        await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.avatar.updated', resourceType: 'admin_account', resourceId: id }, client);
+      });
+    } catch (error) {
+      await storage.deleteObject(objectKey).catch(() => undefined);
+      throw error;
+    }
+    if (oldObjectKey && oldObjectKey !== objectKey) await storage.deleteObject(oldObjectKey).catch(() => undefined);
+    return { id, avatarUrl: await this.avatarUrl(objectKey) };
+  }
+
+  @Delete('employees/:id/avatar')
+  @Header('Cache-Control', 'no-store')
+  async removeEmployeeAvatar(@Param('id', ParseUUIDPipe) id: string, @Req() request: AdminRequest) {
+    let oldObjectKey: string | null = null;
+    await this.database.withTransaction(async (client) => {
+      const current = await client.query<{ avatarObjectKey: string | null }>(
+        `select avatar_object_key as "avatarObjectKey" from admin_accounts where id = $1 for update`,
+        [id],
+      );
+      if (!current.rows[0]) throw new BadRequestException('员工账号不存在');
+      oldObjectKey = current.rows[0].avatarObjectKey;
+      await client.query(`update admin_accounts set avatar_object_key = null, updated_at = now() where id = $1`, [id]);
+      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.avatar.removed', resourceType: 'admin_account', resourceId: id }, client);
+    });
+    if (oldObjectKey && this.storage) await this.storage.deleteObject(oldObjectKey).catch(() => undefined);
+    return { id, avatarUrl: null };
   }
 }
 

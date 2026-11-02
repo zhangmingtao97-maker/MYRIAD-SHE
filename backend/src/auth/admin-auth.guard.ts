@@ -28,7 +28,9 @@ export class AdminAuthGuard implements CanActivate {
       }
       const path = request.path.replace(/^\/api(?=\/)/, '');
       const passwordChangeEndpoint = request.method === 'PATCH' && path === '/admin/me/password';
-      if (passwordChangeEndpoint) {
+      const profileEndpoint = request.method === 'GET' && path === '/admin/me';
+      const ownAvatarEndpoint = ['POST', 'DELETE'].includes(request.method) && path === '/admin/me/avatar';
+      if (passwordChangeEndpoint || profileEndpoint || ownAvatarEndpoint) {
         request.user = { sub: payload.sub, role: payload.role };
         return true;
       }

@@ -1,5 +1,13 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-02 小程序首页第一栏改为三行刊期标题
+
+- 首页 `issueMeta` 栏改为竖排三行：`当期策展` / `ISSUE 02` / `SEPTEMBER 2026 · A CURATED EDITION`，取代原先把眉题与月份放在左列、`issue.code` 靠右的两列写法。
+- 文案仍全部来自已发布首页数据：第一行固定栏目名 `当期策展`；第二行取 `issueMeta` 眉题（后台保存时它等于期刊标签，如 `ISSUE 02`），缺失时按 `issue.code` 里的数字补成 `ISSUE 0N`；第三行取 `issueMeta.month`，英文月份缩写展开为大写全称（`Sep 2026` → `SEPTEMBER 2026`）并拼接固定副题 `A CURATED EDITION`，中文月份写法保持原样。
+- 排版：栏目名 24rpx、期刊编号 33rpx（沿用原字号）、刊期副题 22rpx，左对齐 Georgia 衬线；按样式等比换算，320–414px 宽度下三行都保持单行。
+- 同步后台「首页策展 → 小程序首页预览」：`issueMeta` 栏目改为同样的三行排印，草稿里眉题/月份为空时回退到刊期信息面板的期刊标签与刊期月份；刊期信息面板补一行说明该排印与月份缩写展开规则。后台 `npm run build`（含 `vue-tsc`）通过。
+- 仅修改小程序首页 `pages/home` 的 `index.ts`、`index.wxml`、`index.wxss`，以及后台的 `management/src/App.vue`、`management/src/style.css`；未改接口与发布逻辑，未上传体验版或正式版，仍需开发者工具与真机确认视觉效果。
+
 ## 2026-11-02 正式域名切换至 www.myriadshe.com 并发布最新版
 
 - 生产代码目录仍为 `/opt/myriad-she`；发布前将原目录完整备份到 `/opt/myriad-she.pre-myriadshe-20261102-143700`，并额外备份源码、环境文件、Nginx 配置和 PostgreSQL 自定义格式转储到 `/data/backups/myriad-she/*-pre-myriadshe-20261102-143700*`。
@@ -19,6 +27,13 @@
 - 企微域名归属验证文件 `WW_verify_E1sExmCyjcGZWz6q.txt` 放在 `management/public/`，随后台镜像发布到站点根目录；同时将企微应用的授权完成回调域名由旧域名改为 `www.myriadshe.com`。
 - 登录页二维码改为独立白底圆角卡片，二维码 iframe 不再直接贴在米白面板上；移动端取消卡片左右留白，避免二维码横向溢出。
 - 修复登录页「企业微信扫码登录」按钮看不清：原因是 `.login-layout .login-panel button` 把主按钮的深棕背景套到了扫码按钮上，而文字仍是深灰（对比度约 1.38:1）。现将主按钮样式限定为 `button[type="submit"]`，扫码按钮改为白底、棕字、细棕边框，对比度约 9.94:1；同时修复「返回账号登录」被主按钮背景覆盖的问题。
+- 员工列表由五列压缩为四列（员工 / 角色 / 状态 / 操作），角色和账号状态改为只读徽标；角色修改、启停、企业微信绑定、最近登录、密码状态和重置密码全部收进「编辑」弹窗。
+- 新增员工头像：
+  1. 迁移 `059_admin_avatar.sql` 增加 `admin_accounts.avatar_object_key`，头像对象存 MinIO 的 `admins/avatars/<id>/` 前缀。
+  2. `GET /api/admin/me` 返回当前员工资料和 7 天签名头像地址；`POST/DELETE /api/admin/me/avatar` 供员工维护自己的头像。
+  3. `POST/DELETE /api/admin/employees/:id/avatar` 供超级管理员在编辑员工资料时维护头像。
+  4. 右上角账号头像与员工列表头像优先显示上传图片，没有头像时统一显示 `M`；员工编辑弹窗支持选择、更换和恢复默认头像。
+- 员工账号头像支持 JPEG、PNG、WebP，最大 2 MB；自助资料接口对所有已登录员工开放，员工头像管理接口仍仅超级管理员可用。
 - 「员工与权限」重构：
   1. 增加员工总数、启用、企微绑定、停用四项概览，以及三类角色的权限说明卡。
   2. 增加姓名/账号/企微 UserID 搜索、状态和角色筛选。

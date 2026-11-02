@@ -87,8 +87,16 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
   }
 
   async saveUserAvatar(userId: string, body: Buffer, contentType: 'image/jpeg' | 'image/png' | 'image/webp') {
+    return this.saveAvatar(`users/avatars/${userId}`, body, contentType);
+  }
+
+  async saveAdminAvatar(adminId: string, body: Buffer, contentType: 'image/jpeg' | 'image/png' | 'image/webp') {
+    return this.saveAvatar(`admins/avatars/${adminId}`, body, contentType);
+  }
+
+  private async saveAvatar(prefix: string, body: Buffer, contentType: 'image/jpeg' | 'image/png' | 'image/webp') {
     const extension = contentType === 'image/jpeg' ? 'jpg' : contentType === 'image/png' ? 'png' : 'webp';
-    const objectKey = `users/avatars/${userId}/${randomUUID()}.${extension}`;
+    const objectKey = `${prefix}/${randomUUID()}.${extension}`;
     await this.client.send(new PutObjectCommand({
       Bucket: this.bucket,
       Key: objectKey,
@@ -100,9 +108,9 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     return objectKey;
   }
 
-  async createDownloadUrl(objectKey: string) {
-    const url = await getSignedUrl(this.presignClient, new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }), { expiresIn: 3600 });
-    return { url, expiresIn: 3600 };
+  async createDownloadUrl(objectKey: string, expiresIn = 3600) {
+    const url = await getSignedUrl(this.presignClient, new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }), { expiresIn });
+    return { url, expiresIn };
   }
 
   async objectContentType(objectKey: string) {
