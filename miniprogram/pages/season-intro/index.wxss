@@ -137,7 +137,7 @@ page { background: #e7dfd1; }
   letter-spacing: .5rpx;
 }
 .season-guide-toggle:active { opacity: .68; }
-.guide-caret { color: #663124; font-size: 26rpx; line-height: 1; }
+.guide-caret { flex: 0 0 auto; color: #663124; font-size: 52rpx; line-height: 1; }
 /* 说明正文：不加底色、不拉伸字距，按页面对齐方式自然换行 */
 .season-guide-body {
   display: grid;
