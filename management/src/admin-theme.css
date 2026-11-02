@@ -1514,10 +1514,10 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 }
 .employee-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 130px 110px 92px;
+  grid-template-columns: minmax(240px, 1fr) 130px 110px 172px;
   gap: 18px;
   align-items: center;
-  min-width: 620px;
+  min-width: 700px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
 }

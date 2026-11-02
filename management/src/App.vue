@@ -1908,6 +1908,70 @@ function restoreEmployeeRoleModules() {
   employeeEditForm.value.modulePermissions = null;
 }
 
+const moduleGrantOpen = ref(false);
+const moduleGrantEmployee = ref<Employee | null>(null);
+const moduleGrantOverride = ref<AdminModuleId[] | null>(null);
+const moduleGrantSaving = ref(false);
+const moduleGrantError = ref('');
+const moduleGrantModules = computed(() => effectiveModulesForRole(moduleGrantEmployee.value?.role ?? '', moduleGrantOverride.value));
+const moduleGrantCount = computed(() => moduleGrantModules.value.length);
+const moduleGrantRoleDefaults = computed(() => effectiveModulesForRole(moduleGrantEmployee.value?.role ?? '', null));
+
+function openModuleGrant(employee: Employee) {
+  moduleGrantEmployee.value = employee;
+  moduleGrantOverride.value = employee.modulePermissions ? effectiveModulesForRole(employee.role, employee.modulePermissions) : null;
+  moduleGrantError.value = '';
+  employeeMessage.value = '';
+  employeeError.value = '';
+  moduleGrantOpen.value = true;
+}
+
+function closeModuleGrant() {
+  if (moduleGrantSaving.value) return;
+  moduleGrantOpen.value = false;
+  moduleGrantEmployee.value = null;
+  moduleGrantOverride.value = null;
+  moduleGrantError.value = '';
+}
+
+function isModuleGrantChecked(id: AdminModuleId) {
+  return moduleGrantModules.value.includes(id);
+}
+
+function toggleModuleGrant(id: AdminModuleId, checked: boolean) {
+  const selected = new Set(moduleGrantModules.value);
+  if (checked) selected.add(id); else selected.delete(id);
+  moduleGrantOverride.value = adminModules.map((module) => module.id).filter((moduleId) => selected.has(moduleId));
+}
+
+function restoreModuleGrantDefaults() {
+  moduleGrantOverride.value = null;
+}
+
+async function saveModuleGrant() {
+  const employee = moduleGrantEmployee.value;
+  if (!employee) return;
+  moduleGrantSaving.value = true;
+  moduleGrantError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}`, {
+      method: 'PATCH',
+      headers: adminHeaders(true),
+      body: JSON.stringify({ modulePermissions: moduleGrantOverride.value }),
+    });
+    if (!response.ok) throw new Error(await responseMessage(response, '模块授权保存失败'));
+    employeeMessage.value = `已更新 ${employee.displayName} 的模块授权。`;
+    moduleGrantOpen.value = false;
+    moduleGrantEmployee.value = null;
+    moduleGrantOverride.value = null;
+    await loadEmployees();
+  } catch (caught) {
+    moduleGrantError.value = caught instanceof Error ? caught.message : '模块授权保存失败';
+  } finally {
+    moduleGrantSaving.value = false;
+  }
+}
+
 function employeeModuleSummary(employee: Employee) {
   if (employee.role === 'super_admin') return '全部模块';
   const override = employee.modulePermissions ?? null;
@@ -5219,6 +5283,7 @@ onBeforeUnmount(() => {
               <span class="employee-state-pill" :class="employee.status">{{ employee.status === 'active' ? '启用' : '已停用' }}</span>
             </div>
             <div class="employee-actions">
+              <button v-if="employee.role !== 'super_admin'" type="button" class="quiet" @click="openModuleGrant(employee)">授权模块</button>
               <button type="button" class="quiet" @click="openEmployeeEditor(employee)">编辑</button>
             </div>
           </div>
@@ -5227,7 +5292,7 @@ onBeforeUnmount(() => {
           <p v-else-if="!filteredEmployees.length" class="employee-empty">没有符合当前筛选条件的员工。<button type="button" class="employee-inline-link" @click="clearEmployeeFilters">清除筛选</button></p>
         </div>
 
-        <p class="employee-footnote">头像、角色、账号状态、企业微信绑定、最近登录和密码状态统一在「编辑」中维护。超级管理员账号受保护，不能停用、降级或重置密码。</p>
+        <p class="employee-footnote">头像、角色、账号状态、企业微信绑定、最近登录和密码状态统一在「编辑」中维护；可进入的后台模块用「授权模块」单独调整。超级管理员账号受保护，不能停用、降级或重置密码。</p>
 
         <Teleport to="body">
           <div v-if="createEmployeeOpen" class="observation-modal-backdrop" @click.self="createEmployeeOpen = false">
@@ -5243,7 +5308,7 @@ onBeforeUnmount(() => {
                 <label>角色<select v-model="employeeForm.role"><option value="content_editor">内容编辑 · 内容与审核</option><option value="support_readonly">客服只读 · 仅查看会员</option></select></label>
                 <label class="employee-form-full">企业微信 UserID（选填）<input v-model="employeeForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="绑定后员工可直接扫码登录" /></label>
                 <p class="employee-form-hint employee-form-full">企微 UserID 可在员工首次扫码的未绑定提示中查看；留空表示暂不绑定。</p>
-                <p class="employee-form-hint employee-form-full">新账号先按所选角色获得默认模块授权（内容编辑 5 个、客服只读 2 个）；创建后可在「编辑 → 模块授权」中单独增减。</p>
+                <p class="employee-form-hint employee-form-full">新账号先按所选角色获得默认模块授权（内容编辑 5 个、客服只读 2 个）；创建后可在列表的「授权模块」中单独增减。</p>
                 <p v-if="employeeFormError" class="error employee-form-full" role="alert">{{ employeeFormError }}</p>
                 <div class="employee-dialog-actions employee-form-full">
                   <button type="submit" :disabled="employeeSaving">{{ employeeSaving ? '创建中…' : '确认创建' }}</button>
@@ -5329,6 +5394,47 @@ onBeforeUnmount(() => {
                   <button type="button" class="quiet" :disabled="employeeEditSaving" @click="closeEmployeeEditor">取消</button>
                 </div>
               </form>
+            </section>
+          </div>
+        </Teleport>
+
+        <Teleport to="body">
+          <div v-if="moduleGrantOpen" class="observation-modal-backdrop" @click.self="closeModuleGrant">
+            <section class="observation-detail-panel employee-dialog employee-grant-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-grant-title" @keydown.esc="closeModuleGrant">
+              <div class="section-heading">
+                <div><p class="eyebrow">MODULE ACCESS</p><h3 id="employee-grant-title">授权模块 · {{ moduleGrantEmployee?.displayName }}</h3></div>
+                <button type="button" class="quiet" aria-label="关闭模块授权" @click="closeModuleGrant">关闭</button>
+              </div>
+              <div class="employee-form employee-form-grid">
+                <p class="employee-form-hint employee-form-full">
+                  {{ moduleGrantEmployee ? adminRoleLabels[moduleGrantEmployee.role] : '' }} · 角色默认 {{ moduleGrantRoleDefaults.length }} 个模块；保存后立即生效，员工无需重新登录。
+                </p>
+                <fieldset class="employee-module-fieldset employee-form-full">
+                  <legend>可访问模块</legend>
+                  <p class="employee-form-hint">勾选该员工可以进入的后台模块；全部取消表示不能进入任何后台模块。发布、删除媒体、停用会员与员工管理始终只允许超级管理员。</p>
+                  <div class="employee-module-grid">
+                    <label v-for="module in adminModules" :key="module.id" class="employee-module-option" :class="{ checked: isModuleGrantChecked(module.id) }">
+                      <input
+                        type="checkbox"
+                        :checked="isModuleGrantChecked(module.id)"
+                        :disabled="moduleGrantSaving"
+                        @change="toggleModuleGrant(module.id, ($event.target as HTMLInputElement).checked)"
+                      />
+                      <span class="employee-module-label">{{ module.label }}</span>
+                      <small>{{ module.description }}</small>
+                    </label>
+                  </div>
+                  <div class="employee-module-actions">
+                    <span class="employee-module-count">已授权 {{ moduleGrantCount }} 个模块{{ moduleGrantOverride ? '（自定义）' : '（角色默认）' }}</span>
+                    <button type="button" class="quiet" :disabled="moduleGrantSaving || moduleGrantOverride === null" @click="restoreModuleGrantDefaults">恢复角色默认</button>
+                  </div>
+                </fieldset>
+                <p v-if="moduleGrantError" class="error employee-form-full" role="alert">{{ moduleGrantError }}</p>
+                <div class="employee-dialog-actions employee-form-full">
+                  <button type="button" :disabled="moduleGrantSaving" @click="saveModuleGrant">{{ moduleGrantSaving ? '保存中…' : '保存授权' }}</button>
+                  <button type="button" class="quiet" :disabled="moduleGrantSaving" @click="closeModuleGrant">取消</button>
+                </div>
+              </div>
             </section>
           </div>
         </Teleport>
