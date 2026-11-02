@@ -713,7 +713,7 @@ type Employee = {
 };
 const employees = ref<Employee[]>([]);
 const employeeForm = ref({
-  username: '', displayName: '', password: '', role: 'content_editor' as 'content_editor' | 'support_readonly', wecomUserId: '',
+  username: '', displayName: '', password: '', role: 'content_editor' as Employee['role'], wecomUserId: '',
 });
 const employeeFormError = ref('');
 const employeeError = ref('');
@@ -5318,10 +5318,10 @@ onBeforeUnmount(() => {
                 <label>登录账号<input v-model="employeeForm.username" required minlength="3" maxlength="64" autocomplete="off" placeholder="3-64 位字母、数字、_ . -" /></label>
                 <label>员工姓名<input v-model="employeeForm.displayName" required maxlength="80" /></label>
                 <label>初始密码（至少 12 位）<input v-model="employeeForm.password" type="password" required minlength="12" maxlength="256" autocomplete="new-password" /></label>
-                <label>角色<select v-model="employeeForm.role"><option value="content_editor">内容编辑 · 内容与审核</option><option value="support_readonly">客服只读 · 仅查看会员</option></select></label>
+                <label>角色<select v-model="employeeForm.role"><option value="content_editor">内容编辑 · 内容与审核</option><option value="support_readonly">客服只读 · 仅查看会员</option><option value="super_admin">超级管理员 · 全部权限</option></select></label>
                 <label class="employee-form-full">企业微信 UserID（选填）<input v-model="employeeForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="绑定后员工可直接扫码登录" /></label>
                 <p class="employee-form-hint employee-form-full">企微 UserID 可在员工首次扫码的未绑定提示中查看；留空表示暂不绑定。</p>
-                <p class="employee-form-hint employee-form-full">新账号先按所选角色获得默认模块授权（内容编辑 5 个、客服只读 2 个）；创建后可在列表的「授权模块」中单独增减。</p>
+                <p class="employee-form-hint employee-form-full">新账号先按所选角色获得默认模块授权（内容编辑 5 个、客服只读 2 个），创建后可在列表的「授权模块」中单独增减；超级管理员固定拥有全部模块，不参与单独授权。</p>
                 <p v-if="employeeFormError" class="error employee-form-full" role="alert">{{ employeeFormError }}</p>
                 <div class="employee-dialog-actions employee-form-full">
                   <button type="submit" :disabled="employeeSaving">{{ employeeSaving ? '创建中…' : '确认创建' }}</button>

@@ -391,9 +391,14 @@ export class AdminManagementController {
     const password = text(body.password, '初始密码', 256);
     const role = body.role as AdminRole;
     const wecomUserId = optionalWecomUserId(body.wecomUserId);
-    const modulePermissions = parseAdminModuleOverride(body.modulePermissions) ?? null;
-    if (!/^[A-Za-z0-9_.-]{3,64}$/.test(username) || password.length < 12 || !['content_editor', 'support_readonly'].includes(role)) {
+    const requestedModulePermissions = parseAdminModuleOverride(body.modulePermissions) ?? null;
+    if (!/^[A-Za-z0-9_.-]{3,64}$/.test(username) || password.length < 12 || !roles.includes(role)) {
       throw new BadRequestException('账号格式无效，初始密码至少 12 位；请选择有效员工角色');
+    }
+    // 超级管理员固定拥有全部模块，创建时不保存模块覆盖，避免出现看似生效实则被忽略的配置。
+    const modulePermissions = role === 'super_admin' ? null : requestedModulePermissions;
+    if (role === 'super_admin' && requestedModulePermissions !== null) {
+      throw new BadRequestException('超级管理员固定拥有全部模块，不能单独授权');
     }
     return this.database.withTransaction(async (client) => {
       const usernameConflict = await client.query('select id from admin_accounts where lower(username) = lower($1) limit 1', [username]);
