@@ -667,6 +667,36 @@ const settingsMessage = ref('');
 const settingsError = ref('');
 const settingsLoading = ref(false);
 const settingsSaving = ref(false);
+// 后台模块授权：模块 id 必须与后端 backend/src/auth/admin-permissions.ts 保持一致。
+const adminModules = [
+  { id: 'journal', label: '期刊与首页策展', description: '期刊列表、首页栏目、人物故事、微声音、本期讨论与往期策展' },
+  { id: 'practice', label: '实践页面与目录', description: '实践文案、目录设置、共同实践与日常之物' },
+  { id: 'pages', label: '页面与协议', description: '隐私政策、用户协议、关于 MYRIAD SHE 与发布历史' },
+  { id: 'media', label: '媒体库', description: '上传图片与音频、查询孤儿媒体与预览地址' },
+  { id: 'contributions', label: '用户经历审核', description: '本期讨论的用户经历列表、详情与审核状态' },
+  { id: 'observations', label: '观察记录管理', description: '私密观察记录列表、生命周期统计与详情' },
+  { id: 'privacy', label: '隐私申请', description: '账户删除申请的处理与重试' },
+  { id: 'members', label: '会员列表', description: '会员目录与会员详情（停用仍仅超级管理员）' },
+  { id: 'audit', label: '审计日志', description: '后台操作审计日志查询' },
+  { id: 'life-cards', label: '生命牌文案', description: '生命牌文案的查看、导入与逐日编辑' },
+  { id: 'life-card-views', label: '生命牌查看记录', description: '小程序生命牌查看记录' },
+  { id: 'settings', label: '系统设置', description: '业务设置只读与数据库迁移状态' },
+] as const;
+type AdminModuleId = typeof adminModules[number]['id'];
+const adminRoleDefaultModules: Record<string, AdminModuleId[]> = {
+  content_editor: ['journal', 'practice', 'pages', 'media', 'contributions'],
+  support_readonly: ['members', 'settings'],
+};
+const adminModulesById = new Map<string, { id: AdminModuleId; label: string; description: string }>(adminModules.map((module) => [module.id, module]));
+function effectiveModulesForRole(role: string, override: readonly string[] | null | undefined): AdminModuleId[] {
+  if (role === 'super_admin') return adminModules.map((module) => module.id);
+  if (!override) return adminRoleDefaultModules[role] ? [...adminRoleDefaultModules[role]] : [];
+  const result: AdminModuleId[] = [];
+  for (const item of override) {
+    if (adminModulesById.has(item) && !result.includes(item as AdminModuleId)) result.push(item as AdminModuleId);
+  }
+  return result;
+}
 type Employee = {
   id: string;
   username: string;
@@ -676,6 +706,7 @@ type Employee = {
   wecomUserId?: string | null;
   passwordChangeRequired?: boolean;
   avatarUrl?: string | null;
+  modulePermissions?: string[] | null;
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string | null;
@@ -698,6 +729,7 @@ const employeeEditForm = ref({
   wecomUserId: '',
   role: 'content_editor' as Employee['role'],
   status: 'active' as Employee['status'],
+  modulePermissions: null as AdminModuleId[] | null,
 });
 const employeeAvatarFile = ref<File | null>(null);
 const employeeAvatarPreview = ref('');
@@ -764,8 +796,10 @@ type AdminProfile = {
   avatarUrl: string | null;
   canEditAvatar: boolean;
   lastLoginAt?: string | null;
+  permissions?: string[];
 };
 const adminProfile = ref<AdminProfile | null>(null);
+const adminPermissions = ref<AdminModuleId[] | null>(null);
 const adminIdentity = computed(() => {
   const payload = adminTokenPayload.value;
   const raw = String(adminProfile.value?.displayName || payload.displayName || payload.username || payload.sub || '').replace(/^admin:(?:wecom:)?/, '');
@@ -817,7 +851,11 @@ async function loadAdminProfile() {
       avatarUrl: typeof result.avatarUrl === 'string' ? result.avatarUrl : null,
       canEditAvatar: result.canEditAvatar === true,
       lastLoginAt: result.lastLoginAt || null,
+      permissions: Array.isArray(result.permissions) ? result.permissions.filter((item): item is string => typeof item === 'string') : undefined,
     };
+    adminPermissions.value = Array.isArray(result.permissions)
+      ? effectiveModulesForRole(String(result.role || adminRole.value), result.permissions)
+      : null;
   } catch {
     // Identity falls back to the JWT payload when this non-critical request fails.
   }
@@ -1810,6 +1848,27 @@ function revokeEmployeeAvatarPreview() {
   employeeAvatarPreview.value = '';
 }
 
+function isEmployeeModuleChecked(id: AdminModuleId) {
+  return effectiveModulesForRole(employeeEditForm.value.role, employeeEditForm.value.modulePermissions).includes(id);
+}
+
+function toggleEmployeeModule(id: AdminModuleId, checked: boolean) {
+  const selected = new Set(effectiveModulesForRole(employeeEditForm.value.role, employeeEditForm.value.modulePermissions));
+  if (checked) selected.add(id); else selected.delete(id);
+  employeeEditForm.value.modulePermissions = adminModules.map((module) => module.id).filter((moduleId) => selected.has(moduleId));
+}
+
+function restoreEmployeeRoleModules() {
+  employeeEditForm.value.modulePermissions = null;
+}
+
+function employeeModuleSummary(employee: Employee) {
+  if (employee.role === 'super_admin') return '全部模块';
+  const override = employee.modulePermissions ?? null;
+  const count = effectiveModulesForRole(employee.role, override).length;
+  return override ? `自定义 ${count} 个模块` : `角色默认 ${count} 个模块`;
+}
+
 function openEmployeeEditor(employee: Employee) {
   revokeEmployeeAvatarPreview();
   editingEmployee.value = employee;
@@ -1818,6 +1877,7 @@ function openEmployeeEditor(employee: Employee) {
     wecomUserId: employee.wecomUserId || '',
     role: employee.role,
     status: employee.status,
+    modulePermissions: employee.modulePermissions ? effectiveModulesForRole(employee.role, employee.modulePermissions) : null,
   };
   employeeAvatarFile.value = null;
   employeeAvatarPreview.value = employee.avatarUrl || '';
@@ -1899,6 +1959,7 @@ async function saveEmployeeEdit() {
     if (employee.role !== 'super_admin') {
       payload.role = employeeEditForm.value.role;
       payload.status = employeeEditForm.value.status;
+      payload.modulePermissions = employeeEditForm.value.modulePermissions;
     }
     const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}`, {
       method: 'PATCH',
@@ -4045,6 +4106,7 @@ onMounted(() => {
     : Promise.all([
       loadDashboard(),
       ...(isSuperAdmin.value && activeSection.value === 'members' ? [refreshMembers()] : []),
+      ...(isSuperAdmin.value && activeSection.value === 'employees' ? [loadEmployees()] : []),
     ]);
   initialLoad.catch((caught) => {
     if (session === sessionGeneration && loggedIn.value) error.value = caught instanceof Error ? caught.message : '加载失败';
@@ -4118,8 +4180,8 @@ onBeforeUnmount(() => {
             <div class="dashboard-nav-tabs">
               <p v-if="isSuperAdmin" class="dashboard-nav-label">总览</p>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'overview' }" :aria-label="sidebarCollapsed ? '健康与迁移' : undefined" :title="sidebarCollapsed ? '健康与迁移' : undefined" :aria-current="activeSection === 'overview' ? 'page' : undefined" aria-controls="overview-panel" @click="activeSection = 'overview'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.8 13.2a8.2 8.2 0 1 1 16.4 0v5.1H3.8zM12 12l3.5-3.2M7.2 16.5h.1m4.7 0h.1m4.7 0h.1" /></svg><span>健康与迁移</span></button>
-              <p v-if="adminRole !== 'support_readonly'" class="dashboard-nav-label">内容</p>
-              <div v-if="adminRole !== 'support_readonly'" class="dashboard-nav-group practice-nav-group" :class="{ expanded: activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed }">
+              <p v-if="canAccessModule('practice') || canAccessModule('journal') || canAccessModule('media') || canAccessModule('pages')" class="dashboard-nav-label">内容</p>
+              <div v-if="canAccessModule('practice')" class="dashboard-nav-group practice-nav-group" :class="{ expanded: activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'practice' }" :aria-label="sidebarCollapsed ? '实践' : undefined" :title="sidebarCollapsed ? '实践' : undefined" :aria-current="activeSection === 'practice' ? 'page' : undefined" :aria-expanded="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" aria-controls="practice-navigation" @click.stop="openPracticeNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 4.5c-7.7.2-12.8 2.3-13.8 7.1-.8 3.4 1.8 6.3 5 6.3 5.1 0 7.8-5.5 8.8-13.4ZM5 20c2.4-4.4 5.2-7.1 9.2-9.6" /></svg><span>实践</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav"><nav v-if="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" id="practice-navigation" class="dashboard-subnav" aria-label="实践子菜单">
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'practice' }" :aria-current="activeContentSection === 'practice' ? 'page' : undefined" @click="activeContentSection = 'practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12v14H6zM9 8h6m-6 4h6m-6 4h3" /></svg><span>实践页面</span></button>
@@ -4127,7 +4189,7 @@ onBeforeUnmount(() => {
                   <div class="dashboard-subnav-group" :class="{ expanded: ['observation', 'shared-practice', 'daily-objects'].includes(activeContentSection) }"><span class="dashboard-subnav-heading">内容管理</span><button class="dashboard-subtab dashboard-subtab-nested" :class="{ active: activeContentSection === 'observation' }" :aria-current="activeContentSection === 'observation' ? 'page' : undefined" @click="activeContentSection = 'observation'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.7l3.2 2" /></svg><span>此刻观察</span></button><button class="dashboard-subtab dashboard-subtab-nested" :class="{ active: activeContentSection === 'shared-practice' }" :aria-current="activeContentSection === 'shared-practice' ? 'page' : undefined" @click="activeContentSection = 'shared-practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM7 9h10M7 12h7M7 15h4" /></svg><span>共同实践目录</span></button><button class="dashboard-subtab dashboard-subtab-nested" :class="{ active: activeContentSection === 'daily-objects' }" :aria-current="activeContentSection === 'daily-objects' ? 'page' : undefined" @click="openDailyObjectsEditor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Zm4 0V6a3 3 0 0 1 6 0v2" /></svg><span>日常之物</span></button></div>
                 </nav></Transition>
               </div>
-              <div v-if="adminRole !== 'support_readonly'" class="dashboard-nav-group journal-nav-group" :class="{ expanded: activeSection === 'content' && (isJournalSection(activeContentSection) || activeContentSection === 'media') && journalNavigationExpanded && !sidebarCollapsed }">
+              <div v-if="canAccessModule('journal') || canAccessModule('media')" class="dashboard-nav-group journal-nav-group" :class="{ expanded: activeSection === 'content' && (isJournalSection(activeContentSection) || activeContentSection === 'media') && journalNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'content' && (isJournalSection(activeContentSection) || activeContentSection === 'media') }" :aria-label="sidebarCollapsed ? '期刊' : undefined" :title="sidebarCollapsed ? '期刊' : undefined" :aria-current="activeSection === 'content' && (isJournalSection(activeContentSection) || activeContentSection === 'media') ? 'page' : undefined" :aria-expanded="activeSection === 'content' && journalNavigationExpanded && !sidebarCollapsed" aria-controls="journal-navigation" @click.stop="openJournalNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" /></svg><span>期刊</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav"><nav v-if="activeSection === 'content' && journalNavigationExpanded && !sidebarCollapsed" id="journal-navigation" class="dashboard-subnav" aria-label="期刊子菜单">
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'journal-list' }" :aria-current="activeContentSection === 'journal-list' ? 'page' : undefined" @click="openJournalSubsection('journal-list')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" /></svg><span>期刊列表</span></button>
