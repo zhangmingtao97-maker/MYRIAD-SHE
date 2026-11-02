@@ -18,9 +18,27 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .compose-count { margin-top: 6rpx; color: #75675d; font-family: Georgia, serif; font-size: 21rpx; line-height: 1.6; text-align: right; }
 .compose-preview { display: flex; min-height: 84rpx; align-items: center; justify-content: space-between; margin-top: 46rpx; border-top: 1rpx solid #663124; border-bottom: 1rpx solid #663124; color: #663124; font-size: 27rpx; font-weight: 700; }
 .compose-arrow { font-family: Georgia, serif; font-size: 32rpx; }
-.compose-preview-panel { padding: 26rpx 0 30rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .28); }
-.compose-preview-label { color: #8b6b58; font-size: 22rpx; line-height: 1.6; }
-.compose-preview-body { margin-top: 16rpx; color: #5c493c; font-size: 26rpx; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.compose-share-note { margin-top: 20rpx; color: #8b6b58; font-size: 22rpx; line-height: 1.75; letter-spacing: .01em; }
+.compose-preview-mode { padding-top: 96rpx; animation: compose-preview-in .22s ease-out both; }
+.compose-preview-question { color: #5c493c; font-size: 28rpx; line-height: 1.85; letter-spacing: .01em; }
+.compose-preview-local { margin-top: 24rpx; color: #8b6b58; font-size: 21rpx; line-height: 1.7; }
+.compose-preview-heading { display: flex; align-items: baseline; gap: 24rpx; margin-top: 52rpx; }
+.compose-preview-heading-title { color: #663124; font-size: 24rpx; font-weight: 700; line-height: 1.5; }
+.compose-preview-heading-hint { color: #8b6b58; font-size: 21rpx; line-height: 1.5; }
+.compose-preview-card { margin-top: 76rpx; }
+.compose-preview-card-label { color: #8b6b58; font-size: 24rpx; line-height: 1.6; }
+.compose-preview-card-body { margin-top: 22rpx; color: #5c493c; font-size: 27rpx; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.compose-preview-confirm { display: flex; align-items: flex-start; gap: 14rpx; margin-top: 54rpx; }
+.compose-preview-checkbox { flex: 0 0 26rpx; width: 26rpx; height: 26rpx; margin-top: 6rpx; border: 1rpx solid #8b6b58; box-sizing: border-box; }
+.compose-preview-checkbox.is-checked { border-color: #663124; background: #663124; box-shadow: inset 0 0 0 5rpx #e7dfd1; }
+.compose-preview-confirm-text { color: #5c493c; font-size: 22rpx; line-height: 1.75; }
+.compose-preview-primary { display: flex; min-height: 88rpx; align-items: center; margin-top: 40rpx; color: #663124; font-size: 28rpx; font-weight: 700; letter-spacing: .5rpx; }
+.compose-preview-primary.is-disabled { color: #a89b8e; }
+.compose-preview-back { display: flex; min-height: 80rpx; align-items: center; margin-top: 18rpx; color: #5c493c; font-size: 25rpx; }
+.compose-preview-draft-row { display: flex; min-height: 80rpx; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 36rpx; color: #8b6b58; font-size: 21rpx; }
+.compose-preview-draft-action { display: flex; min-height: 80rpx; align-items: center; }
+.compose-preview-draft-action:last-child { color: #75675d; }
+@keyframes compose-preview-in { from { opacity: 0; transform: translateY(18rpx); } to { opacity: 1; transform: translateY(0); } }
 .compose-actions { display: flex; min-height: 84rpx; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 54rpx; color: #663124; font-size: 24rpx; font-weight: 700; }
 .compose-save, .compose-discard { display: flex; min-height: 84rpx; align-items: center; }
 .compose-save { justify-content: flex-start; }
@@ -39,4 +57,4 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .compose-mine-body { position: absolute; bottom: -7rpx; left: 6rpx; width: 21rpx; height: 16rpx; border: 2rpx solid currentColor; border-radius: 50% 50% 0 0; }
 .compose-tab text { color: inherit; font-size: 24rpx; line-height: 1.2; }
 .compose-page [role="button"]:active { opacity: .62; }
-@media (prefers-reduced-motion: reduce) { .compose-page [role="button"] { transition: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .compose-page [role="button"] { transition: none; transform: none; } .compose-preview-mode { animation: none; } }

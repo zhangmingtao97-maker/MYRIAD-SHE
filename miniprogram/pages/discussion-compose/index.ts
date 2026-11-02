@@ -15,7 +15,7 @@ const fallbackCopy: ComposeCopy = {
 };
 
 Page({
-  data: { statusBarHeight: 0, issueCode: '', threadId: '', threadAuthor: '', title: '写下你的经历', fieldLabel: '你的经历', copy: fallbackCopy, body: '', previewOpen: false, restored: false, saving: false, error: '' },
+  data: { statusBarHeight: 0, issueCode: '', threadId: '', threadAuthor: '', title: '写下你的经历', fieldLabel: '你的经历', copy: fallbackCopy, body: '', previewOpen: false, previewConfirmed: false, restored: false, saving: false, error: '' },
   inputChanged: false,
   onLoad(query: Record<string, string | undefined>) {
     this.inputChanged = false;
@@ -50,7 +50,7 @@ Page({
       const remoteTime = Date.parse(remote.updatedAt);
       if (localUpdatedAt && Number.isFinite(localTime) && Number.isFinite(remoteTime) && localTime > remoteTime) return;
       if (this.data.restored && !localUpdatedAt) return;
-      this.setData({ body: remote.body, restored: true, error: '' });
+      this.setData({ body: remote.body, previewConfirmed: false, restored: true, error: '' });
       saveLocalDraft({ issueCode: this.data.issueCode, threadId: this.data.threadId, body: remote.body, updatedAt: remote.updatedAt });
     } catch {
       if (!localUpdatedAt && !this.data.body) this.setData({ error: '暂时无法读取账户草稿，仍可继续编辑并稍后保存。' });
@@ -59,7 +59,7 @@ Page({
   onInput(event: WechatMiniprogram.CustomEvent) {
     this.inputChanged = true;
     const body = String(event.detail.value || '').slice(0, 2000);
-    this.setData({ body, error: '', restored: false });
+    this.setData({ body, previewConfirmed: false, error: '', restored: false });
     if (!this.data.issueCode) return;
     try {
       if (body.trim()) saveLocalDraft({ issueCode: this.data.issueCode, threadId: this.data.threadId, body, updatedAt: new Date().toISOString() });
@@ -72,10 +72,26 @@ Page({
   handleMore() {
     wx.showModal({ title: '草稿说明', content: '输入时会暂存在这台设备。选择保存后，经历会加密写入账户并进入运营后台供编辑团队查看和处理，不会自动公开。', showCancel: false });
   },
-  togglePreview() { this.setData({ previewOpen: !this.data.previewOpen }); },
+  togglePreview() {
+    const previewOpen = !this.data.previewOpen;
+    if (previewOpen && !this.data.body.trim()) { this.setData({ error: '先写下一段经历，再预览。' }); return; }
+    this.setData({ previewOpen, previewConfirmed: false, error: '' }, () => {
+      wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+    });
+  },
+  closePreview() {
+    this.setData({ previewOpen: false, previewConfirmed: false, error: '' }, () => {
+      wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+    });
+  },
+  togglePreviewConfirm() {
+    if (this.data.saving) return;
+    this.setData({ previewConfirmed: !this.data.previewConfirmed, error: '' });
+  },
   async saveDraft() {
     if (this.data.saving || !this.data.issueCode) return;
     if (!this.data.body.trim()) { this.setData({ error: '先写下一段经历，再保存草稿。' }); return; }
+    if (this.data.previewOpen && !this.data.previewConfirmed) { this.setData({ error: '请先确认已检查这段内容。' }); return; }
     this.setData({ saving: true, error: '' });
     try {
       await request<CloudContribution>('/discussion/contributions', { method: 'POST', data: { issueCode: this.data.issueCode, threadId: this.data.threadId, body: this.data.body } });
