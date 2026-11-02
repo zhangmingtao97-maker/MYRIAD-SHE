@@ -14,11 +14,11 @@
       <view class="compose-count">{{body.length}} / 2000</view>
       <view class="compose-preview" role="button" aria-expanded="{{previewOpen}}" aria-label="{{copy.composePreviewAction}}" tabindex="0" bindtap="togglePreview"><text>{{copy.composePreviewAction}}</text><text class="compose-arrow">{{previewOpen ? '↓' : '→'}}</text></view>
       <view class="compose-share-note">请只分享你愿意表达的内容，隐去他人的姓名、联系方式等信息。这里不会带入你的生日或私密观察记录。</view>
+      <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
       <view class="compose-actions">
         <view class="compose-save" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving}}" tabindex="0" bindtap="saveDraft">{{saving ? '保存中…' : copy.composeSaveAction}}</view>
         <view class="compose-discard" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft">{{copy.composeDiscardAction}}</view>
       </view>
-      <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
     </block>
     <view wx:else class="compose-preview-mode">
       <view class="compose-preview-question">{{copy.intro}}</view>
