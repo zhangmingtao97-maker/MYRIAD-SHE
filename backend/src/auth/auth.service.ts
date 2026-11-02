@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { BadRequestException, HttpException, HttpStatus, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -25,8 +26,11 @@ export class AuthService {
   ) {}
 
   private readonly adminLoginFailures = new Map<string, AdminLoginFailureState>();
+  private readonly adminWecomStates = new Map<string, number>();
   private wechatAccessToken: { value: string; expiresAt: number } | null = null;
   private wechatAccessTokenPromise: Promise<string> | null = null;
+  private wecomAccessToken: { value: string; expiresAt: number } | null = null;
+  private wecomAccessTokenPromise: Promise<string> | null = null;
 
   private loginPolicy() {
     const maxAttempts = Number(this.config.get('ADMIN_LOGIN_MAX_ATTEMPTS', 5));
@@ -141,6 +145,227 @@ export class AuthService {
     if (staffAccount) await this.database.query('update admin_accounts set last_login_at = now() where id = $1', [staffAccount.id]);
     const token = await this.jwt.signAsync({ sub: loginId, role, ...(staffAccount ? { passwordChangeRequired: staffAccount.passwordChangeRequired === true } : {}) }, { expiresIn });
     await this.recordAdminLoginAudit('admin.auth.login_succeeded', normalizedUsername);
+    return { accessToken: token, expiresIn };
+  }
+
+  private adminWecomSettings() {
+    const enabledValue = String(this.config.get('ADMIN_WECOM_LOGIN_ENABLED', 'false')).trim().toLowerCase();
+    const corpId = String(this.config.get('ADMIN_WECOM_CORP_ID', '') || '').trim();
+    const agentId = String(this.config.get('ADMIN_WECOM_AGENT_ID', '') || '').trim();
+    const secret = String(this.config.get('ADMIN_WECOM_APP_SECRET', '') || '').trim();
+    const redirectUri = String(
+      this.config.get('ADMIN_WECOM_REDIRECT_URI', '') || this.config.get('ADMIN_WECOM_CALLBACK_URL', '') || '',
+    ).trim();
+    let validRedirect = false;
+    try {
+      validRedirect = new URL(redirectUri).protocol === 'https:';
+    } catch {
+      validRedirect = false;
+    }
+    return {
+      enabled: ['1', 'true', 'yes'].includes(enabledValue)
+        && Boolean(corpId)
+        && /^\d{1,20}$/.test(agentId)
+        && Boolean(secret)
+        && validRedirect,
+      corpId,
+      agentId,
+      secret,
+      redirectUri,
+    };
+  }
+
+  private pruneAdminWecomStates(now = Date.now()) {
+    for (const [state, expiresAt] of this.adminWecomStates) {
+      if (expiresAt <= now) this.adminWecomStates.delete(state);
+    }
+    if (this.adminWecomStates.size <= 5_000) return;
+    const oldest = [...this.adminWecomStates.entries()]
+      .sort(([, left], [, right]) => left - right)
+      .slice(0, this.adminWecomStates.size - 5_000);
+    for (const [state] of oldest) this.adminWecomStates.delete(state);
+  }
+
+  private adminWecomTimeoutMs() {
+    const configured = Number(this.config.get('ADMIN_WECOM_API_TIMEOUT_MS', 8_000));
+    return Number.isInteger(configured) && configured >= 100 ? Math.min(configured, 30_000) : 8_000;
+  }
+
+  private async adminWecomRequest(path: string, query: Record<string, string>) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.adminWecomTimeoutMs());
+    try {
+      const url = new URL(`${String(this.config.get('ADMIN_WECOM_API_BASE_URL', 'https://qyapi.weixin.qq.com')).replace(/\/+$/, '')}${path}`);
+      for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new ServiceUnavailableException('企业微信服务暂时不可用');
+      const result: unknown = await response.json();
+      if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new ServiceUnavailableException('企业微信服务返回无效数据');
+      }
+      return result as Record<string, unknown>;
+    } catch (caught) {
+      if (caught instanceof HttpException) throw caught;
+      throw new ServiceUnavailableException('企业微信服务暂时不可用');
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private async getAdminWecomAccessToken() {
+    if (this.wecomAccessToken && this.wecomAccessToken.expiresAt > Date.now() + 60_000) return this.wecomAccessToken.value;
+    if (this.wecomAccessTokenPromise) return this.wecomAccessTokenPromise;
+    const pending = (async () => {
+      const settings = this.adminWecomSettings();
+      if (!settings.enabled) throw new ServiceUnavailableException('企业微信扫码登录未启用');
+      const result = await this.adminWecomRequest('/cgi-bin/gettoken', {
+        corpid: settings.corpId,
+        corpsecret: settings.secret,
+      });
+      const errcode = Number(result.errcode ?? 0);
+      const accessToken = typeof result.access_token === 'string' ? result.access_token : '';
+      const expiresIn = Number(result.expires_in);
+      if (errcode !== 0 || !accessToken
+        || !Number.isSafeInteger(expiresIn) || expiresIn <= 60) {
+        throw new ServiceUnavailableException('企业微信应用凭证配置无效');
+      }
+      this.wecomAccessToken = {
+        value: accessToken,
+        expiresAt: Date.now() + (expiresIn - 60) * 1000,
+      };
+      return accessToken;
+    })();
+    this.wecomAccessTokenPromise = pending;
+    try {
+      return await pending;
+    } finally {
+      if (this.wecomAccessTokenPromise === pending) this.wecomAccessTokenPromise = null;
+    }
+  }
+
+  private async getAdminWecomUserId(code: string) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const accessToken = await this.getAdminWecomAccessToken();
+      const result = await this.adminWecomRequest('/cgi-bin/auth/getuserinfo', {
+        access_token: accessToken,
+        code,
+      });
+      const errcode = Number(result.errcode ?? 0);
+      if ([40001, 40014, 42001].includes(errcode) && attempt === 0) {
+        this.wecomAccessToken = null;
+        continue;
+      }
+      if (errcode !== 0) throw new UnauthorizedException('企业微信扫码凭证无效或已过期，请重新扫码');
+      const rawUserId = typeof result.userid === 'string'
+        ? result.userid
+        : typeof result.UserId === 'string' ? result.UserId : '';
+      const userId = rawUserId.trim();
+      if (!userId) throw new UnauthorizedException('仅支持企业微信内部成员扫码登录');
+      if (userId.length > 128 || /[\u0000-\u001f\u007f]/.test(userId)) {
+        throw new UnauthorizedException('企业微信成员身份无效');
+      }
+      return userId;
+    }
+    throw new ServiceUnavailableException('企业微信服务暂时不可用');
+  }
+
+  async adminWecomConfig() {
+    const settings = this.adminWecomSettings();
+    if (!settings.enabled) return { enabled: false };
+    const now = Date.now();
+    this.pruneAdminWecomStates(now);
+    let state = '';
+    do {
+      state = randomBytes(24).toString('base64url');
+    } while (this.adminWecomStates.has(state));
+    const expiresIn = 300;
+    this.adminWecomStates.set(state, now + expiresIn * 1000);
+    const qrParams = new URLSearchParams({
+      appid: settings.corpId,
+      agentid: settings.agentId,
+      redirect_uri: settings.redirectUri,
+      state,
+    });
+    return {
+      enabled: true,
+      appid: settings.corpId,
+      agentid: settings.agentId,
+      redirectUri: settings.redirectUri,
+      state,
+      expiresIn,
+      qrConnectUrl: `https://open.work.weixin.qq.com/wwopen/sso/qrConnect?${qrParams.toString()}`,
+    };
+  }
+
+  async adminWecomLogin(code: string, state: string, source?: AdminLoginSource) {
+    const normalizedCode = typeof code === 'string' ? code.trim() : '';
+    const normalizedState = typeof state === 'string' ? state.trim() : '';
+    if (!normalizedCode || normalizedCode.length > 256 || !normalizedState || normalizedState.length > 256) {
+      throw new BadRequestException('企业微信扫码参数无效');
+    }
+    const settings = this.adminWecomSettings();
+    if (!settings.enabled) throw new ServiceUnavailableException('企业微信扫码登录未启用');
+    const stateExpiresAt = this.adminWecomStates.get(normalizedState);
+    this.adminWecomStates.delete(normalizedState);
+    if (!stateExpiresAt) throw new UnauthorizedException('扫码登录状态已失效，请重新扫码');
+    if (stateExpiresAt <= Date.now()) throw new UnauthorizedException('扫码登录已过期，请重新扫码');
+
+    const wecomUserId = await this.getAdminWecomUserId(normalizedCode);
+    const auditMetadata: Record<string, unknown> = {
+      method: 'wecom',
+      wecomUserId: wecomUserId.slice(0, 128),
+      ...(source?.ip ? { ip: source.ip.slice(0, 64) } : {}),
+    };
+    const staff = await this.database.query<{ id: string; role: string; passwordChangeRequired: boolean }>(
+      `select id, role, password_change_required as "passwordChangeRequired"
+       from admin_accounts
+       where status = 'active' and (wecom_user_id = $1 or lower(username) = lower($1))
+       order by case when wecom_user_id = $1 then 0 else 1 end, created_at
+       limit 1`,
+      [wecomUserId],
+    );
+    const staffAccount = staff.rows[0];
+    let loginId: string;
+    let role: 'super_admin' | 'content_editor' | 'support_readonly';
+    if (staffAccount) {
+      if (!['super_admin', 'content_editor', 'support_readonly'].includes(staffAccount.role)) {
+        throw new UnauthorizedException('企业微信成员权限无效');
+      }
+      loginId = staffAccount.id;
+      role = staffAccount.role as 'super_admin' | 'content_editor' | 'support_readonly';
+      await this.database.query(
+        `update admin_accounts
+         set last_login_at = now(), password_change_required = false, updated_at = now()
+         where id = $1`,
+        [staffAccount.id],
+      );
+    } else {
+      const legacyUsername = String(this.config.get('ADMIN_DEV_USERNAME', '')).trim();
+      const allowedUserIds = String(this.config.get('ADMIN_WECOM_SUPER_ADMIN_USER_IDS', ''))
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+      const isLegacyOwner = Boolean(legacyUsername)
+        && legacyUsername.toLowerCase() === wecomUserId.toLowerCase();
+      const isExplicitlyAllowed = allowedUserIds.includes(wecomUserId.toLowerCase());
+      if (!isLegacyOwner && !isExplicitlyAllowed) {
+        await this.recordAdminLoginAudit('admin.auth.login_failed', wecomUserId, {
+          ...auditMetadata,
+          reason: 'wecom_unbound',
+        });
+        throw new UnauthorizedException('该企业微信账号未绑定管理后台，请联系超级管理员');
+      }
+      loginId = `admin:wecom:${wecomUserId}`;
+      role = 'super_admin';
+    }
+
+    const expiresIn = this.sessionTtlSeconds('ADMIN_SESSION_TTL_SECONDS', 86400);
+    const token = await this.jwt.signAsync({ sub: loginId, role, passwordChangeRequired: false }, { expiresIn });
+    await this.recordAdminLoginAudit('admin.auth.login_succeeded', wecomUserId, {
+      ...auditMetadata,
+      role,
+      ...(staffAccount ? { accountId: staffAccount.id } : { legacy: true }),
+    });
     return { accessToken: token, expiresIn };
   }
 

@@ -31,6 +31,21 @@ const token = ref(readAdminToken());
 const sessionExpiresAt = ref(readAdminExpiry());
 const loading = ref(false);
 const error = ref('');
+const wecomQrVisible = ref(false);
+const wecomLoading = ref(false);
+const wecomError = ref('');
+type WecomLoginConfig = {
+  enabled: boolean;
+  appid?: string;
+  agentid?: string;
+  redirectUri?: string;
+  state?: string;
+  expiresIn?: number;
+  qrConnectUrl?: string;
+};
+type WecomLoginInstance = { destroyed?: () => void };
+let wecomQrInstance: WecomLoginInstance | null = null;
+let wecomSdkPromise: Promise<void> | null = null;
 type HealthResult = { status: string; timestamp: string; dependencies?: { database?: string; objectStorage?: string; redis?: string } };
 const health = ref<HealthResult | null>(null);
 const migrationStatus = ref<MigrationStatus | null>(null);
@@ -1595,6 +1610,23 @@ async function resetEmployeePassword(employee: Employee) {
   await updateEmployee(employee, { password });
 }
 
+async function applyAdminLogin(result: { accessToken: string; expiresIn: number }) {
+  token.value = result.accessToken;
+  localStorage.setItem('myriad_she_admin_token', token.value);
+  sessionGeneration += 1;
+  scheduleSessionExpiry(Number(result.expiresIn));
+  if (adminPasswordChangeRequired.value) {
+    passwordRotationError.value = '';
+  } else if (adminRole.value === 'support_readonly') {
+    activeSection.value = 'members';
+    await refreshMembers();
+  } else if (adminRole.value === 'content_editor') {
+    activeSection.value = 'practice';
+    activeContentSection.value = 'practice';
+    await loadContentEditorDashboard();
+  } else await loadDashboard();
+}
+
 async function login() {
   loading.value = true;
   error.value = '';
@@ -1610,26 +1642,136 @@ async function login() {
     if (!isAdminLoginResult(result)) {
       throw new Error(withRequestId('管理后台登录服务返回无效数据', response));
     }
-    token.value = result.accessToken;
-    localStorage.setItem('myriad_she_admin_token', token.value);
-    sessionGeneration += 1;
     password.value = '';
-    scheduleSessionExpiry(Number(result.expiresIn));
-    if (adminPasswordChangeRequired.value) {
-      passwordRotationError.value = '';
-    } else if (adminRole.value === 'support_readonly') {
-      activeSection.value = 'members';
-      await refreshMembers();
-    } else if (adminRole.value === 'content_editor') {
-      activeSection.value = 'practice';
-      activeContentSection.value = 'practice';
-      await loadContentEditorDashboard();
-    } else await loadDashboard();
+    await applyAdminLogin(result);
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : '登录失败';
   } finally {
     loading.value = false;
   }
+}
+
+function loadWecomSdk() {
+  if (window.WwLogin) return Promise.resolve();
+  if (wecomSdkPromise) return wecomSdkPromise;
+  const pending = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-wecom-login-sdk]');
+    if (existing) {
+      if (window.WwLogin) {
+        resolve();
+        return;
+      }
+      existing.addEventListener('load', () => {
+        if (window.WwLogin) resolve();
+        else reject(new Error('企业微信扫码组件加载失败'));
+      }, { once: true });
+      existing.addEventListener('error', () => reject(new Error('企业微信扫码组件加载失败，请检查网络。')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://wwcdn.weixin.qq.com/node/wework/wwopen/js/wwLogin-1.2.7.js';
+    script.async = true;
+    script.dataset.wecomLoginSdk = 'true';
+    script.addEventListener('load', () => {
+      if (window.WwLogin) resolve();
+      else reject(new Error('企业微信扫码组件加载失败'));
+    }, { once: true });
+    script.addEventListener('error', () => reject(new Error('企业微信扫码组件加载失败，请检查网络。')), { once: true });
+    document.head.appendChild(script);
+  });
+  wecomSdkPromise = pending.catch((caught) => {
+    wecomSdkPromise = null;
+    throw caught;
+  });
+  return wecomSdkPromise;
+}
+
+function closeWecomLogin() {
+  wecomQrInstance?.destroyed?.();
+  wecomQrInstance = null;
+  const container = document.getElementById('wecom-qr');
+  if (container) container.innerHTML = '';
+  wecomQrVisible.value = false;
+  wecomLoading.value = false;
+  wecomError.value = '';
+}
+
+async function openWecomLogin() {
+  error.value = '';
+  wecomError.value = '';
+  wecomQrVisible.value = true;
+  wecomLoading.value = true;
+  await nextTick();
+  try {
+    const response = await apiFetch(`${apiBase}/auth/admin/wecom/config`, {
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(await responseMessage(response, '企业微信扫码登录暂不可用'));
+    const config = await response.json().catch(() => null) as WecomLoginConfig | null;
+    if (!config || config.enabled !== true || !config.appid || !config.agentid
+      || !config.redirectUri || !config.state) {
+      throw new Error('企业微信扫码登录暂未启用，请使用账号密码登录。');
+    }
+    await loadWecomSdk();
+    const container = document.getElementById('wecom-qr');
+    const WwLogin = window.WwLogin;
+    if (!container || !WwLogin) throw new Error('企业微信扫码组件初始化失败');
+    wecomQrInstance?.destroyed?.();
+    container.innerHTML = '';
+    wecomQrInstance = new WwLogin({
+      id: 'wecom-qr',
+      appid: config.appid,
+      agentid: config.agentid,
+      redirect_uri: encodeURIComponent(config.redirectUri),
+      state: config.state,
+      is_mobile: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+    });
+  } catch (caught) {
+    wecomError.value = caught instanceof Error ? caught.message : '企业微信扫码登录暂时不可用';
+    wecomQrVisible.value = false;
+    wecomQrInstance?.destroyed?.();
+    wecomQrInstance = null;
+  } finally {
+    wecomLoading.value = false;
+  }
+}
+
+async function completeWecomLogin(code: string, state: string) {
+  if (loading.value || loggedIn.value) return;
+  loading.value = true;
+  error.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/auth/admin/wecom/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code, state }),
+    });
+    if (!response.ok) throw new Error(await responseMessage(response, '企业微信扫码登录失败，请重新扫码。'));
+    const result = await response.json().catch(() => null);
+    if (!isAdminLoginResult(result)) {
+      throw new Error(withRequestId('企业微信登录服务返回无效数据', response));
+    }
+    await applyAdminLogin(result);
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : '企业微信扫码登录失败';
+  } finally {
+    loading.value = false;
+  }
+}
+
+function consumeWecomCallback() {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+  if (!code) return;
+  url.searchParams.delete('code');
+  url.searchParams.delete('state');
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  if (!state) {
+    error.value = '扫码登录参数不完整，请重新扫码。';
+    return;
+  }
+  if (!loggedIn.value) void completeWecomLogin(code, state);
 }
 
 async function changeRequiredPassword() {
@@ -3530,6 +3672,13 @@ onMounted(() => {
     token.value = '';
     sessionExpiresAt.value = 0;
   }
+  if (token.value && (!sessionExpiresAt.value || sessionExpiresAt.value <= Date.now())) {
+    localStorage.removeItem('myriad_she_admin_token');
+    localStorage.removeItem('myriad_she_admin_expires_at');
+    token.value = '';
+    sessionExpiresAt.value = 0;
+  }
+  consumeWecomCallback();
   if (!loggedIn.value) return;
   if (!sessionExpiresAt.value || sessionExpiresAt.value <= Date.now()) {
     logout('后台登录已过期，请重新登录。');
@@ -3555,6 +3704,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleWorkspaceScroll);
+  wecomQrInstance?.destroyed?.();
+  wecomQrInstance = null;
 });
 </script>
 
@@ -3562,18 +3713,33 @@ onBeforeUnmount(() => {
   <div class="app-frame" :class="{ 'login-frame': !loggedIn }">
     <a class="skip-link" href="#dashboard-content">跳到主要内容</a>
     <main id="dashboard-content" class="shell" :class="{ 'dashboard-shell': loggedIn, 'login-shell': !loggedIn }" :aria-busy="dashboardLoading">
-    <section v-if="!loggedIn" class="login-layout">
+    <section v-if="!loggedIn" class="login-layout" :class="{ 'wecom-open': wecomQrVisible }">
       <div class="login-visual" aria-hidden="true">
-        <img src="/login-ms-brand.png" alt="" draggable="false" />
+        <img src="/login-ms-brand.png?v=2" alt="" draggable="false" />
       </div>
       <section class="login-panel" aria-labelledby="login-brand">
         <div class="login-panel-inner">
           <h1 id="login-brand" class="login-brand">MYRIAD SHE</h1>
-          <form @submit.prevent="login">
-            <label>账号<input v-model="username" autocomplete="username" required /></label>
-            <label>密码<input v-model="password" type="password" autocomplete="current-password" required /></label>
-            <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录' }}</button>
-          </form>
+          <div v-if="wecomQrVisible" class="wecom-login">
+            <div id="wecom-qr" class="wecom-qr"></div>
+            <p v-if="wecomLoading" class="wecom-qr-loading">正在加载二维码…</p>
+            <p class="wecom-hint">请使用企业微信扫一扫</p>
+            <p v-if="wecomError" class="error login-error" role="alert">{{ wecomError }}</p>
+            <button type="button" class="wecom-back" @click="closeWecomLogin">返回账号登录</button>
+          </div>
+          <template v-else>
+            <form @submit.prevent="login">
+              <label>账号<input v-model="username" autocomplete="username" required /></label>
+              <label>密码<input v-model="password" type="password" autocomplete="current-password" required /></label>
+              <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录' }}</button>
+            </form>
+            <div class="login-divider"><span>或</span></div>
+            <button type="button" class="wecom-login-button" :disabled="loading || wecomLoading" @click="openWecomLogin">
+              <span class="wecom-mark" aria-hidden="true">企</span>
+              企业微信扫码登录
+            </button>
+            <p v-if="wecomError" class="error login-error" role="alert">{{ wecomError }}</p>
+          </template>
         </div>
       </section>
     </section>

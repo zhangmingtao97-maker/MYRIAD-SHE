@@ -12,6 +12,10 @@
 - 旧域名证书将于 2026-11-03 到期；过渡期结束后应移除旧域名跳转或续期旧证书，避免历史 HTTPS 链接出现证书过期提示。
 - 后台登录页简化为仅保留 `MYRIAD SHE` 品牌字、账号/密码表单和登录按钮，移除管理后台说明文案；底部备案号页脚改为透明背景并去掉分隔线。
 - 登录页改为左右分栏布局：左侧为以 `MS` 为主视觉的深赭红/米白品牌图（`management/public/login-ms-brand.png`），右侧为账号密码登录；桌面端卡片居中，移动端图片在上、表单在下，备案号保持透明页脚。
+- 左侧品牌图进一步简化为米白渐变底、`MYRIAD SHE` 字标与居中的 `MS` 字标，去掉了拱形、圆环、花瓣和说明文字。
+- 新增企业微信扫码登录：`GET /api/auth/admin/wecom/config` 下发企微应用参数和一次性 state，`POST /api/auth/admin/wecom/login` 校验 state 后用 code 换取企业微信成员身份并签发与账号密码登录一致的后台 JWT；后台登录页增加「企业微信扫码登录」入口和二维码面板。
+- 企微登录身份映射：启用中的员工账号按 `admin_accounts.wecom_user_id` 或 `username` 匹配企微 UserID；旧版环境管理员和 `ADMIN_WECOM_SUPER_ADMIN_USER_IDS` 允许的 UserID 以超级管理员身份登录。新增迁移 `058_admin_wecom_binding.sql`。
+- 生产 `.env.production` 已写入 `ADMIN_WECOM_LOGIN_ENABLED`、CorpID、AgentID、应用 Secret、`ADMIN_WECOM_REDIRECT_URI=https://www.myriadshe.com/` 和白名单；企业微信管理后台仍需把 `https://www.myriadshe.com/` 加入应用可信域名/扫码登录回调域，否则扫码后会被企微拒绝跳转。
 
 ## 2026-10-30 后台统一错误弹窗与微声音「有音频即可」
 
