@@ -18,6 +18,7 @@
 - 生产 `.env.production` 已写入 `ADMIN_WECOM_LOGIN_ENABLED`、CorpID、AgentID、应用 Secret、`ADMIN_WECOM_REDIRECT_URI=https://www.myriadshe.com/` 和白名单；企业微信管理后台仍需把 `https://www.myriadshe.com/` 加入应用可信域名/扫码登录回调域，否则扫码后会被企微拒绝跳转。
 - 企微域名归属验证文件 `WW_verify_E1sExmCyjcGZWz6q.txt` 放在 `management/public/`，随后台镜像发布到站点根目录；同时将企微应用的授权完成回调域名由旧域名改为 `www.myriadshe.com`。
 - 登录页二维码改为独立白底圆角卡片，二维码 iframe 不再直接贴在米白面板上；移动端取消卡片左右留白，避免二维码横向溢出。
+- 修复登录页「企业微信扫码登录」按钮看不清：原因是 `.login-layout .login-panel button` 把主按钮的深棕背景套到了扫码按钮上，而文字仍是深灰（对比度约 1.38:1）。现将主按钮样式限定为 `button[type="submit"]`，扫码按钮改为白底、棕字、细棕边框，对比度约 9.94:1；同时修复「返回账号登录」被主按钮背景覆盖的问题。
 - 「员工与权限」重构：
   1. 增加员工总数、启用、企微绑定、停用四项概览，以及三类角色的权限说明卡。
   2. 增加姓名/账号/企微 UserID 搜索、状态和角色筛选。
