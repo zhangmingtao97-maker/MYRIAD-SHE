@@ -18,29 +18,29 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .compose-count { margin-top: 6rpx; color: #6b584a; font-family: Georgia, serif; font-size: 21rpx; line-height: 1.6; text-align: right; }
 .compose-preview { display: flex; box-sizing: border-box; min-height: 90rpx; align-items: center; justify-content: space-between; margin-top: 46rpx; padding: 18rpx 0; border-top: 1px solid #5c493c; border-bottom: 1px solid #5c493c; color: #5c493c; font-size: 26rpx; font-weight: 400; line-height: 1.85; }
 .compose-arrow { flex: 0 0 auto; font-family: "MYRIAD Garamond", Georgia, serif; font-size: 38rpx; line-height: 1; }
-.compose-share-note { margin-top: 20rpx; color: #6b584a; font-size: 23rpx; line-height: 1.8; letter-spacing: .01em; }
-.compose-preview-mode { margin: 0 8rpx; padding-top: 96rpx; animation: compose-preview-in .22s ease-out both; }
+.compose-share-note { margin-top: 20rpx; color: #6b584a; font-size: 23rpx; font-weight: 500; line-height: 1.8; letter-spacing: .01em; }
+.compose-preview-mode { margin: 0 8rpx; padding-top: 96rpx; font-weight: 600; animation: compose-preview-in .22s ease-out both; }
 .compose-preview-question { color: #5c493c; font-size: 27rpx; line-height: 1.9; letter-spacing: .01em; }
-.compose-preview-local { margin-top: 40rpx; color: #6b584a; font-size: 22rpx; line-height: 1.8; }
+.compose-preview-local { margin-top: 40rpx; color: #6b584a; font-size: 22rpx; font-weight: 500; line-height: 1.8; }
 .compose-preview-heading { display: grid; grid-template-columns: 80rpx 1fr; margin-top: 62rpx; color: #663124; font-family: "MYRIAD Garamond", Georgia, serif; font-size: 22rpx; line-height: 1.6; letter-spacing: .08em; }
-.compose-preview-heading-title, .compose-preview-heading-hint { color: #663124; font-size: 22rpx; font-weight: 400; line-height: 1.6; }
+.compose-preview-heading-title, .compose-preview-heading-hint { color: #663124; font-size: 22rpx; font-weight: 600; line-height: 1.6; }
 .compose-preview-card { margin-top: 46rpx; padding-top: 38rpx; border-top: 1px solid rgba(92, 73, 60, .3); }
 .compose-preview-byline { display: flex; align-items: baseline; gap: 24rpx; color: #5c493c; font-size: 26rpx; line-height: 1.6; }
 .compose-preview-author { font-size: 26rpx; }
-.compose-preview-kind { color: #6b584a; font-size: 20rpx; letter-spacing: .04em; }
+.compose-preview-kind { color: #6b584a; font-size: 20rpx; font-weight: 500; letter-spacing: .04em; }
 .compose-preview-card-body { margin-top: 26rpx; color: #5c493c; font-size: 27rpx; line-height: 1.95; white-space: pre-wrap; overflow-wrap: anywhere; }
-.compose-preview-confirm { display: grid; grid-template-columns: 30rpx 1fr; align-items: start; gap: 22rpx; margin: 52rpx 0; color: #4f3f34; font-size: 23rpx; line-height: 1.8; }
+.compose-preview-confirm { display: grid; grid-template-columns: 30rpx 1fr; align-items: start; gap: 22rpx; margin: 52rpx 0; color: #4f3f34; font-size: 23rpx; font-weight: 500; line-height: 1.8; }
 .compose-preview-checkbox { width: 30rpx; height: 30rpx; margin-top: 6rpx; border: 2rpx solid #6b584a; box-sizing: border-box; }
 .compose-preview-checkbox.is-checked { border-color: #663124; background: #663124; box-shadow: inset 0 0 0 5rpx #e7dfd1; }
 .compose-preview-confirm-text { color: #4f3f34; font-size: 23rpx; line-height: 1.8; }
-.compose-preview-primary { display: flex; box-sizing: border-box; min-height: 90rpx; align-items: center; justify-content: space-between; gap: 16rpx; padding: 18rpx 0; border-top: 1px solid #5c493c; border-bottom: 1px solid #5c493c; color: #5c493c; font-size: 27rpx; font-weight: 500; line-height: 1.85; }
+.compose-preview-primary { display: flex; box-sizing: border-box; min-height: 90rpx; align-items: center; justify-content: space-between; gap: 16rpx; padding: 18rpx 0; border-top: 1px solid #5c493c; border-bottom: 1px solid #5c493c; color: #5c493c; font-size: 27rpx; font-weight: 600; line-height: 1.85; }
 .compose-preview-primary.is-disabled { border-color: rgba(92, 73, 60, .5); color: #6b584a; }
 .compose-preview-primary-arrow { flex: 0 0 auto; color: inherit; font-family: "MYRIAD Garamond", Georgia, serif; font-size: 40rpx; line-height: 1; }
-.compose-preview-back { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; margin-top: 19rpx; padding: 8rpx 0; color: #5c493c; font-size: 26rpx; line-height: 1.7; }
-.compose-preview-draft-row { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; justify-content: space-between; gap: 10rpx; margin-top: 49rpx; color: #6b584a; font-size: 22rpx; line-height: 1.8; }
+.compose-preview-back { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; margin-top: 19rpx; padding: 8rpx 0; color: #5c493c; font-size: 26rpx; font-weight: 600; line-height: 1.7; }
+.compose-preview-draft-row { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; justify-content: space-between; gap: 10rpx; margin-top: 49rpx; color: #6b584a; font-size: 22rpx; font-weight: 500; line-height: 1.8; }
 .compose-preview-draft-action { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; padding: 8rpx 0; }
 .compose-preview-draft-action:last-child { color: #6b584a; }
-@keyframes compose-preview-in { from { opacity: 0; transform: translateY(18rpx); } to { opacity: 1; transform: translateY(0); } }
+@keyframes compose-preview-in { from { transform: translateY(18rpx); } to { transform: translateY(0); } }
 .compose-editor-draft-row { margin-top: 49rpx; }
 .compose-error { margin-top: 12rpx; color: #8c4035; font-size: 23rpx; line-height: 1.7; }
 .compose-tabbar { position: fixed; z-index: 30; right: 0; bottom: 0; left: 0; display: flex; height: calc(120rpx + env(safe-area-inset-bottom)); padding: 0 24rpx env(safe-area-inset-bottom); border-top: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; box-sizing: border-box; }
