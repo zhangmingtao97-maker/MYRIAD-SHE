@@ -3559,16 +3559,23 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="app-frame">
+  <div class="app-frame" :class="{ 'login-frame': !loggedIn }">
     <a class="skip-link" href="#dashboard-content">跳到主要内容</a>
-    <main id="dashboard-content" class="shell" :class="{ 'dashboard-shell': loggedIn }" :aria-busy="dashboardLoading">
-    <section v-if="!loggedIn" class="login-panel">
-      <h1 class="login-brand">MYRIAD SHE</h1>
-      <form @submit.prevent="login">
-        <label>账号<input v-model="username" autocomplete="username" required /></label>
-        <label>密码<input v-model="password" type="password" autocomplete="current-password" required /></label>
-        <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录' }}</button>
-      </form>
+    <main id="dashboard-content" class="shell" :class="{ 'dashboard-shell': loggedIn, 'login-shell': !loggedIn }" :aria-busy="dashboardLoading">
+    <section v-if="!loggedIn" class="login-layout">
+      <div class="login-visual" aria-hidden="true">
+        <img src="/login-ms-brand.png" alt="" draggable="false" />
+      </div>
+      <section class="login-panel" aria-labelledby="login-brand">
+        <div class="login-panel-inner">
+          <h1 id="login-brand" class="login-brand">MYRIAD SHE</h1>
+          <form @submit.prevent="login">
+            <label>账号<input v-model="username" autocomplete="username" required /></label>
+            <label>密码<input v-model="password" type="password" autocomplete="current-password" required /></label>
+            <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录' }}</button>
+          </form>
+        </div>
+      </section>
     </section>
 
     <template v-else>

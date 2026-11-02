@@ -523,6 +523,49 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 }
 
 /* ---------- 登录 / 密码 ---------- */
+.app-frame.login-frame {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(196, 145, 116, .10), transparent 34%),
+    radial-gradient(circle at 88% 88%, rgba(138, 65, 48, .06), transparent 32%),
+    var(--bg);
+}
+.shell.login-shell {
+  max-width: 1180px;
+  padding: 36px 24px 20px;
+}
+.login-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(360px, .82fr);
+  width: min(100%, 1120px);
+  height: clamp(560px, calc(100vh - 124px), 760px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #fffdf9;
+  box-shadow: 0 28px 80px rgba(49, 28, 22, .14);
+}
+.login-visual {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: #e6d8c9;
+}
+.login-visual::after {
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(246, 239, 230, .22);
+  border-radius: 18px;
+  content: "";
+  pointer-events: none;
+}
+.login-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  user-select: none;
+}
 .login-panel {
   width: 100%;
   max-width: 400px;
@@ -534,18 +577,75 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   box-shadow: var(--shadow-2);
 }
 .login-panel h1 { font-size: 24px; }
+.login-layout .login-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  width: 100%;
+  padding: clamp(36px, 5vw, 64px) clamp(30px, 4.5vw, 56px);
+  border: 0;
+  border-radius: 0;
+  background: #fffdf9;
+  box-shadow: none;
+}
+.login-panel-inner { width: 100%; max-width: 340px; }
 .login-brand {
-  margin: 0 0 28px;
-  font-family: Georgia, "Times New Roman", "Songti SC", serif;
-  font-size: clamp(24px, 7vw, 30px);
+  margin: 0 0 36px;
+  font-family: Garamond, Georgia, "Times New Roman", "Songti SC", serif;
+  font-size: clamp(28px, 2.6vw, 34px);
   font-weight: 400;
-  letter-spacing: .14em;
+  letter-spacing: .12em;
   line-height: 1.2;
-  text-align: center;
+  text-align: left;
 }
 .login-panel form { margin-top: 0; }
+.login-layout .login-panel form { gap: 18px; }
+.login-layout .login-panel label { color: var(--ink-2); font-size: 13px; }
+.login-layout .login-panel input {
+  min-height: 48px;
+  border-color: var(--line-strong);
+  border-radius: 10px;
+  background: #fbf8f3;
+  color: var(--ink);
+}
+.login-layout .login-panel input:focus {
+  border-color: var(--accent);
+  outline: 2px solid rgba(138, 65, 48, .14);
+  outline-offset: 1px;
+  background: #fffdf9;
+}
+.login-layout .login-panel button {
+  min-height: 48px;
+  margin-top: 6px;
+  border-radius: 10px;
+  background: var(--accent);
+}
+.login-layout .login-panel button:not(:disabled):hover { background: var(--accent-strong); }
 .login-panel .muted { margin: 8px 0 0; font-size: 13px; }
 .password-rotation-panel { max-width: 440px; }
+
+@media (max-width: 900px) {
+  .shell.login-shell { padding: 20px 16px 14px; }
+  .login-layout {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    height: auto;
+    border-radius: 20px;
+  }
+  .login-visual { height: 250px; }
+  .login-visual::after { inset: 12px; border-radius: 14px; }
+  .login-visual img { object-position: center 78%; }
+  .login-layout .login-panel { padding: 30px 24px 34px; }
+  .login-panel-inner { max-width: 360px; margin: 0 auto; }
+  .login-brand { margin-bottom: 26px; text-align: center; }
+}
+
+@media (max-width: 480px) {
+  .login-visual { height: 210px; }
+  .login-layout .login-panel { padding: 26px 20px 30px; }
+  .login-brand { margin-bottom: 22px; font-size: 26px; }
+}
 
 /* ---------- 弹层 ---------- */
 .observation-modal-backdrop {
