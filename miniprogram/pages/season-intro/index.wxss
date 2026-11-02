@@ -193,7 +193,6 @@ page { background: #e7dfd1; }
   text-align: center;
   box-sizing: border-box;
 }
-.season-skip::after { border: 0; }
-.season-skip--hover, .season-skip:active { opacity: .6; }
+.season-skip:active { opacity: .6; }
 
 .season-page [role="button"]:active { opacity: .72; }

@@ -52,7 +52,7 @@
   </view>
 
   <view class="season-secondary" role="button" aria-label="从现实处境开始" tabindex="0" bindtap="openReality">从现实处境开始</view>
-  <button class="season-skip" aria-label="暂不使用四时气韵" hover-class="season-skip--hover" bindtap="handleBack">暂不使用四时气韵</button>
+  <view class="season-skip" role="button" aria-label="暂不使用四时气韵" tabindex="0" bindtap="pauseSeason">暂不使用四时气韵</view>
 
   <app-tab-bar />
 </view>

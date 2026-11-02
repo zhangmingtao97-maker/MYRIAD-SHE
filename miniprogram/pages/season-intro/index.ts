@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'myriad_she_season_birthday';
+const SEASON_PAUSED_KEY = 'myriad_she_season_paused';
 const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 function dayOptionsFor(month: number) {
@@ -86,7 +87,22 @@ Page({
     this.persistBirthday();
     wx.navigateTo({
       url: `/pages/observation/index?method=season&birthMonth=${this.data.birthMonth}&birthDay=${this.data.birthDay}`,
+      success: () => {
+        try {
+          wx.removeStorageSync(SEASON_PAUSED_KEY);
+        } catch {
+          // 本机存储不可用时忽略，不阻断进入观察。
+        }
+      },
     });
+  },
+  pauseSeason() {
+    try {
+      wx.setStorageSync(SEASON_PAUSED_KEY, true);
+    } catch {
+      // 本机存储不可用时仍然返回，不阻断退出。
+    }
+    this.handleBack();
   },
   openReality() {
     wx.navigateTo({ url: '/pages/observation/index?method=reality' });

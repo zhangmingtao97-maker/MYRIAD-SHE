@@ -5,12 +5,14 @@ import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation, ObservationMethod } from '../../utils/observation';
 
 const app = getApp<IAppOption>();
+const SEASON_PAUSED_KEY = 'myriad_she_season_paused';
 
 Page({
   data: {
     statusBarHeight: 0,
     navTitle: '此刻观察',
     seasonGuideOpen: false,
+    seasonPaused: false,
     seasonSteps: [{ key: 'card', label: '底色' }, { key: 'experience', label: '此刻' }, { key: 'season', label: '选择' }, { key: 'sevenDayAction', label: '行动' }],
     lifeCard: null as (LifeCard & { suitSymbol: string; sourceParagraphs: string[] }) | null,
     lifeCardLoading: false,
@@ -154,6 +156,7 @@ Page({
     }
   },
   onShow() {
+    this.syncSeasonPaused();
     if (app.globalData.accountDeleted) {
       this.showAccountDeleted();
       return;
@@ -284,9 +287,27 @@ Page({
   },
   startMethod(method: ObservationMethod) {
     if (app.globalData.accountDeleted || !['reality', 'season'].includes(method) || this.data.issueLoading || this.data.phase !== 'choose') return;
+    if (method === 'season') this.clearSeasonPaused();
     this.cloudRevision = 0;
     this.setData({ selected: method, phase: 'form', editingSaved: false, step: 0, revision: 0, conflict: false, issueError: '', validationError: '', clientDraftId: this.createDraftId(), syncState: 'idle', navTitle: method === 'reality' ? '从现实处境开始' : '四时气韵' });
     wx.setNavigationBarTitle({ title: method === 'reality' ? '从现实处境开始' : '从四时气韵开始' });
+  },
+  syncSeasonPaused() {
+    let paused = false;
+    try {
+      paused = wx.getStorageSync(SEASON_PAUSED_KEY) === true;
+    } catch {
+      paused = false;
+    }
+    if (paused !== this.data.seasonPaused) this.setData({ seasonPaused: paused });
+  },
+  clearSeasonPaused() {
+    try {
+      wx.removeStorageSync(SEASON_PAUSED_KEY);
+    } catch {
+      // 本机存储不可用时忽略，不影响进入观察。
+    }
+    if (this.data.seasonPaused) this.setData({ seasonPaused: false });
   },
   openSeasonGuide() {
     this.setData({ seasonGuideOpen: true });

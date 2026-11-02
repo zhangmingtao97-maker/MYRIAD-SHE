@@ -29,6 +29,7 @@ page { background: #e7dfd1; }
 .guide-action rich-text, .guide-action text { display: inline-block; flex: 0 0 auto; white-space: nowrap; }
 .guide-action text { margin-left: 8rpx; }
 .method-season .method-action { margin-top: 52rpx; }
+.season-action-paused { color: #663124; font-size: 27rpx; font-weight: 600; line-height: 1.5; white-space: nowrap; }
 .privacy-note { display: grid; grid-template-columns: 150rpx minmax(0, 1fr); gap: 20rpx; padding: 38rpx 0 26rpx; border-top: 1rpx solid #cdbbae; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .privacy-label { color: #663124; font-size: 23rpx; }
 .privacy-copy { color: #76695f; font-size: 22rpx; line-height: 1.7; }
