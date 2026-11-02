@@ -353,7 +353,7 @@ export class AuthService {
           ...auditMetadata,
           reason: 'wecom_unbound',
         });
-        throw new UnauthorizedException('该企业微信账号未绑定管理后台，请联系超级管理员');
+        throw new UnauthorizedException(`该企业微信账号未绑定管理后台（UserID: ${wecomUserId.slice(0, 128)}），请联系超级管理员`);
       }
       loginId = `admin:wecom:${wecomUserId}`;
       role = 'super_admin';
