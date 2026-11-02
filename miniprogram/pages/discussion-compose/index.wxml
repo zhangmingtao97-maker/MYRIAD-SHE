@@ -30,7 +30,7 @@
       </view>
       <view class="compose-preview-confirm" role="checkbox" aria-checked="{{previewConfirmed}}" aria-disabled="{{saving}}" tabindex="0" bindtap="togglePreviewConfirm">
         <view class="compose-preview-checkbox {{previewConfirmed ? 'is-checked' : ''}}" aria-hidden="true"></view>
-        <view class="compose-preview-confirm-text">我已检查内容，愿意提交到后台审核。内容不会自动公开。</view>
+        <view class="compose-preview-confirm-text"><view>我已检查内容，愿意提交到后台审核。</view><view>内容不会自动公开。</view></view>
       </view>
       <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
       <view class="compose-preview-primary {{previewConfirmed ? '' : 'is-disabled'}}" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving || !previewConfirmed}}" tabindex="0" bindtap="saveDraft">{{saving ? '提交中…' : copy.composeSaveAction}}<text class="compose-preview-primary-arrow" aria-hidden="true">→</text></view>
