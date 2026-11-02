@@ -534,7 +534,16 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   box-shadow: var(--shadow-2);
 }
 .login-panel h1 { font-size: 24px; }
-.login-panel form { margin-top: 22px; }
+.login-brand {
+  margin: 0 0 28px;
+  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  font-size: clamp(24px, 7vw, 30px);
+  font-weight: 400;
+  letter-spacing: .14em;
+  line-height: 1.2;
+  text-align: center;
+}
+.login-panel form { margin-top: 0; }
 .login-panel .muted { margin: 8px 0 0; font-size: 13px; }
 .password-rotation-panel { max-width: 440px; }
 
@@ -675,9 +684,9 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 
 /* ---------- 页脚 ---------- */
 .filing-footer {
-  padding: 14px 16px max(16px, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
-  background: var(--surface);
+  padding: 10px 16px max(14px, env(safe-area-inset-bottom));
+  border-top: 0;
+  background: transparent;
   color: var(--faint);
   font-size: 12px;
   text-align: center;

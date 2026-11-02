@@ -10,6 +10,7 @@
 - 验证通过：`https://www.myriadshe.com/` 与 `/api/health/ready` 返回 200，裸域返回 301，CORS 预检返回 204 且允许新来源，签名媒体对象返回 200，API/PostgreSQL 均为 healthy。
 - 小程序正式环境 API 已改为 `https://www.myriadshe.com/api`，并将 `ENV` 切到 `prod`；仍需在微信公众平台配置 request/uploadFile/downloadFile 合法域名，并重新上传发布小程序版本，平台白名单无法由服务器部署替代。
 - 旧域名证书将于 2026-11-03 到期；过渡期结束后应移除旧域名跳转或续期旧证书，避免历史 HTTPS 链接出现证书过期提示。
+- 后台登录页简化为仅保留 `MYRIAD SHE` 品牌字、账号/密码表单和登录按钮，移除管理后台说明文案；底部备案号页脚改为透明背景并去掉分隔线。
 
 ## 2026-10-30 后台统一错误弹窗与微声音「有音频即可」
 

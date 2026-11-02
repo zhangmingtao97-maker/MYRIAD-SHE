@@ -3563,13 +3563,11 @@ onBeforeUnmount(() => {
     <a class="skip-link" href="#dashboard-content">跳到主要内容</a>
     <main id="dashboard-content" class="shell" :class="{ 'dashboard-shell': loggedIn }" :aria-busy="dashboardLoading">
     <section v-if="!loggedIn" class="login-panel">
-      <p class="eyebrow">MYRIAD SHE / MANAGEMENT</p>
-      <h1>内容与观察管理</h1>
-      <p class="muted">维护实践内容、观察记录与账户隐私申请。</p>
+      <h1 class="login-brand">MYRIAD SHE</h1>
       <form @submit.prevent="login">
         <label>账号<input v-model="username" autocomplete="username" required /></label>
         <label>密码<input v-model="password" type="password" autocomplete="current-password" required /></label>
-        <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录后台' }}</button>
+        <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录' }}</button>
       </form>
     </section>
 
