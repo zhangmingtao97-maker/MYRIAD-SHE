@@ -640,14 +640,73 @@ const settingsMessage = ref('');
 const settingsError = ref('');
 const settingsLoading = ref(false);
 const settingsSaving = ref(false);
-type Employee = { id: string; username: string; displayName: string; role: 'super_admin' | 'content_editor' | 'support_readonly'; status: 'active' | 'disabled'; createdAt: string; updatedAt?: string; lastLoginAt?: string | null };
+type Employee = {
+  id: string;
+  username: string;
+  displayName: string;
+  role: 'super_admin' | 'content_editor' | 'support_readonly';
+  status: 'active' | 'disabled';
+  wecomUserId?: string | null;
+  passwordChangeRequired?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  lastLoginAt?: string | null;
+};
 const employees = ref<Employee[]>([]);
-const employeeForm = ref({ username: '', displayName: '', password: '', role: 'content_editor' as 'content_editor' | 'support_readonly' });
+const employeeForm = ref({
+  username: '', displayName: '', password: '', role: 'content_editor' as 'content_editor' | 'support_readonly', wecomUserId: '',
+});
+const employeeFormError = ref('');
 const employeeError = ref('');
 const employeeMessage = ref('');
 const employeeLoading = ref(false);
 const employeeSaving = ref(false);
+const employeeBusyId = ref('');
 const createEmployeeOpen = ref(false);
+const employeeEditorOpen = ref(false);
+const editingEmployee = ref<Employee | null>(null);
+const employeeEditForm = ref({ displayName: '', wecomUserId: '' });
+const employeeEditError = ref('');
+const employeeEditSaving = ref(false);
+const employeeSearch = ref('');
+const employeeStatusFilter = ref<'all' | 'active' | 'disabled'>('all');
+const employeeRoleFilter = ref<'all' | Employee['role']>('all');
+const employeeRoleGuides = [
+  { role: 'super_admin' as const, label: '超级管理员', scope: '全部权限', detail: '系统设置、员工与权限、会员敏感操作、内容发布与审计。' },
+  { role: 'content_editor' as const, label: '内容编辑', scope: '内容与审核', detail: '期刊、实践页面、日常之物、关于页面和用户经历审核。' },
+  { role: 'support_readonly' as const, label: '客服只读', scope: '只读查询', detail: '仅可查看会员目录和业务设置，不能修改内容或员工权限。' },
+];
+const employeeStats = computed(() => {
+  const active = employees.value.filter((employee) => employee.status === 'active');
+  return {
+    total: employees.value.length,
+    active: active.length,
+    disabled: employees.value.length - active.length,
+    wecomBound: employees.value.filter((employee) => Boolean(employee.wecomUserId)).length,
+  };
+});
+const employeeFiltersActive = computed(() => Boolean(employeeSearch.value.trim())
+  || employeeStatusFilter.value !== 'all'
+  || employeeRoleFilter.value !== 'all');
+const filteredEmployees = computed(() => {
+  const query = employeeSearch.value.trim().toLowerCase();
+  return employees.value.filter((employee) => {
+    if (employeeStatusFilter.value !== 'all' && employee.status !== employeeStatusFilter.value) return false;
+    if (employeeRoleFilter.value !== 'all' && employee.role !== employeeRoleFilter.value) return false;
+    if (!query) return true;
+    return [employee.displayName, employee.username, employee.wecomUserId || '']
+      .some((value) => value.toLowerCase().includes(query));
+  });
+});
+function clearEmployeeFilters() {
+  employeeSearch.value = '';
+  employeeStatusFilter.value = 'all';
+  employeeRoleFilter.value = 'all';
+}
+function shortWecomUserId(value?: string | null) {
+  if (!value) return '';
+  return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
+}
 const passwordRotation = ref({ currentPassword: '', newPassword: '', confirmPassword: '' });
 const passwordRotationError = ref('');
 const passwordRotationSaving = ref(false);
@@ -1578,22 +1637,71 @@ async function loadEmployees() {
   finally { employeeLoading.value = false; }
 }
 
+function openCreateEmployee() {
+  employeeForm.value = { username: '', displayName: '', password: '', role: 'content_editor', wecomUserId: '' };
+  employeeFormError.value = '';
+  employeeError.value = '';
+  employeeMessage.value = '';
+  createEmployeeOpen.value = true;
+}
+
 async function createEmployee() {
   employeeSaving.value = true;
+  employeeFormError.value = '';
   employeeError.value = '';
   employeeMessage.value = '';
   try {
     const response = await apiFetch(`${apiBase}/admin/employees`, { method: 'POST', headers: adminHeaders(true), body: JSON.stringify(employeeForm.value) });
     if (!response.ok) throw new Error(await responseMessage(response, '员工账号创建失败'));
-    employeeForm.value = { username: '', displayName: '', password: '', role: 'content_editor' };
+    employeeForm.value = { username: '', displayName: '', password: '', role: 'content_editor', wecomUserId: '' };
     employeeMessage.value = '员工账号已创建。';
     createEmployeeOpen.value = false;
     await loadEmployees();
-  } catch (caught) { employeeError.value = caught instanceof Error ? caught.message : '员工账号创建失败'; }
+  } catch (caught) { employeeFormError.value = caught instanceof Error ? caught.message : '员工账号创建失败'; }
   finally { employeeSaving.value = false; }
 }
 
+function openEmployeeEditor(employee: Employee) {
+  editingEmployee.value = employee;
+  employeeEditForm.value = { displayName: employee.displayName, wecomUserId: employee.wecomUserId || '' };
+  employeeEditError.value = '';
+  employeeMessage.value = '';
+  employeeEditorOpen.value = true;
+}
+
+async function saveEmployeeEdit() {
+  const employee = editingEmployee.value;
+  if (!employee) return;
+  const displayName = employeeEditForm.value.displayName.trim();
+  if (!displayName) {
+    employeeEditError.value = '请输入员工姓名';
+    return;
+  }
+  employeeEditSaving.value = true;
+  employeeEditError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}`, {
+      method: 'PATCH',
+      headers: adminHeaders(true),
+      body: JSON.stringify({
+        displayName,
+        wecomUserId: employeeEditForm.value.wecomUserId.trim() || null,
+      }),
+    });
+    if (!response.ok) throw new Error(await responseMessage(response, '员工资料更新失败'));
+    employeeMessage.value = '员工资料已更新。';
+    employeeEditorOpen.value = false;
+    editingEmployee.value = null;
+    await loadEmployees();
+  } catch (caught) {
+    employeeEditError.value = caught instanceof Error ? caught.message : '员工资料更新失败';
+  } finally {
+    employeeEditSaving.value = false;
+  }
+}
+
 async function updateEmployee(employee: Employee, changes: { role?: Employee['role']; status?: Employee['status']; password?: string }) {
+  employeeBusyId.value = employee.id;
   employeeError.value = '';
   try {
     const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify(changes) });
@@ -1601,6 +1709,7 @@ async function updateEmployee(employee: Employee, changes: { role?: Employee['ro
     employeeMessage.value = '员工权限已更新。';
     await loadEmployees();
   } catch (caught) { employeeError.value = caught instanceof Error ? caught.message : '员工设置更新失败'; }
+  finally { if (employeeBusyId.value === employee.id) employeeBusyId.value = ''; }
 }
 
 async function resetEmployeePassword(employee: Employee) {
@@ -3721,8 +3830,10 @@ onBeforeUnmount(() => {
         <div class="login-panel-inner">
           <h1 id="login-brand" class="login-brand">MYRIAD SHE</h1>
           <div v-if="wecomQrVisible" class="wecom-login">
-            <div id="wecom-qr" class="wecom-qr"></div>
-            <p v-if="wecomLoading" class="wecom-qr-loading">正在加载二维码…</p>
+            <div class="wecom-qr-frame">
+              <div id="wecom-qr" class="wecom-qr"></div>
+              <p v-if="wecomLoading" class="wecom-qr-loading">正在加载二维码…</p>
+            </div>
             <p class="wecom-hint">请使用企业微信扫一扫</p>
             <p v-if="wecomError" class="error login-error" role="alert">{{ wecomError }}</p>
             <button type="button" class="wecom-back" @click="closeWecomLogin">返回账号登录</button>
@@ -4567,17 +4678,143 @@ onBeforeUnmount(() => {
         <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p><p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
         <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>总开关：关闭时小程序不展示「日常之物」的商品与价格；开启后还需在「实践 → 实践目录设置」启用「日常之物」入口才会展示。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
       </section>
-      <section v-if="activeSection === 'employees' && isSuperAdmin" id="employee-access" class="content-area">
-        <div class="section-heading"><div><p class="eyebrow">STAFF ACCESS</p><h2>员工与权限</h2></div><button @click="createEmployeeOpen = true; employeeError = ''; employeeMessage = ''">创建员工账号</button></div>
-        <p v-if="employeeError" class="error" role="alert">{{ employeeError }}</p><p v-if="employeeMessage" class="status-message" role="status">{{ employeeMessage }}</p>
-        <p class="muted">员工当前支持内容编辑和客服只读；敏感会员操作保留给超级管理员。</p>
-        <div class="observation-table"><div class="observation-head employee-head"><span>员工</span><span>账号</span><span>角色</span><span>状态 / 最近登录</span><span>管理</span></div><div v-for="employee in employees" :key="employee.id" class="observation-row employee-head"><span>{{ employee.displayName }}</span><span>{{ employee.username }}</span><span><select :value="employee.role" :disabled="employee.role === 'super_admin'" aria-label="员工角色" @change="updateEmployee(employee, { role: ($event.target as HTMLSelectElement).value as Employee['role'] })"><option value="super_admin" disabled>超级管理员（受控账号）</option><option value="content_editor">内容编辑</option><option value="support_readonly">客服只读</option></select></span><span>{{ employee.status === 'active' ? '启用' : '已停用' }}<small>最近登录：{{ employee.lastLoginAt ? displayDate(employee.lastLoginAt) : '暂无' }}</small></span><span><button class="quiet" :disabled="employee.role === 'super_admin'" @click="updateEmployee(employee, { status: employee.status === 'active' ? 'disabled' : 'active' })">{{ employee.status === 'active' ? '停用' : '启用' }}</button><button class="quiet" :disabled="employee.role === 'super_admin'" @click="resetEmployeePassword(employee)">重置密码</button></span></div><p v-if="!employees.length && !employeeLoading" class="muted">暂无数据库员工账号。当前环境管理员仍可使用部署配置的超级管理员登录。</p></div>
-        <Teleport to="body">
-<div v-if="createEmployeeOpen" class="observation-modal-backdrop" @click.self="createEmployeeOpen = false"><section class="observation-detail-panel employee-create-dialog" role="dialog" aria-modal="true" aria-labelledby="create-employee-title" @keydown.esc="createEmployeeOpen = false"><div class="section-heading"><div><p class="eyebrow">NEW STAFF ACCOUNT</p><h3 id="create-employee-title">创建员工账号</h3></div><button type="button" class="quiet" aria-label="关闭创建员工账号" @click="createEmployeeOpen = false">关闭</button></div>
-          <div class="panel-body"><form class="employee-form" @submit.prevent="createEmployee"><label>登录账号<input v-model="employeeForm.username" required minlength="3" maxlength="64" autocomplete="off" /></label><label>员工姓名<input v-model="employeeForm.displayName" required maxlength="80" /></label><label>初始密码（至少 12 位）<input v-model="employeeForm.password" type="password" required minlength="12" maxlength="256" autocomplete="new-password" /></label><label>角色<select v-model="employeeForm.role"><option value="content_editor">内容编辑</option><option value="support_readonly">客服只读</option></select></label><p v-if="employeeError" class="error" role="alert">{{ employeeError }}</p><div class="topbar-actions"><button type="submit" :disabled="employeeSaving">{{ employeeSaving ? '创建中…' : '确认创建' }}</button><button type="button" class="quiet" :disabled="employeeSaving" @click="createEmployeeOpen = false">取消</button></div></form>
+      <section v-if="activeSection === 'employees' && isSuperAdmin" id="employee-access" class="content-area employee-page">
+        <div class="employee-hero">
+          <div>
+            <p class="eyebrow">STAFF &amp; PERMISSIONS</p>
+            <p class="employee-hero-copy">管理工作台账号、角色范围和企业微信扫码登录绑定。</p>
           </div>
-        </section></div>
-</Teleport>
+          <button type="button" @click="openCreateEmployee">创建员工账号</button>
+        </div>
+
+        <p v-if="employeeError" class="error" role="alert">{{ employeeError }}</p>
+        <p v-if="employeeMessage" class="status-message" role="status">{{ employeeMessage }}</p>
+
+        <div class="employee-stats" aria-label="员工账号概览">
+          <article class="employee-stat"><span>员工总数</span><strong>{{ employeeStats.total }}</strong><small>工作台账号</small></article>
+          <article class="employee-stat"><span>已启用</span><strong>{{ employeeStats.active }}</strong><small>可正常登录</small></article>
+          <article class="employee-stat"><span>已绑定企微</span><strong>{{ employeeStats.wecomBound }}</strong><small>支持扫码登录</small></article>
+          <article class="employee-stat"><span>已停用</span><strong>{{ employeeStats.disabled }}</strong><small>登录立即失效</small></article>
+        </div>
+
+        <div class="employee-role-guide" aria-label="角色权限说明">
+          <article v-for="guide in employeeRoleGuides" :key="guide.role" class="employee-role-card">
+            <div class="employee-role-card-head">
+              <span class="role-badge" :class="`role-${guide.role}`">{{ guide.label }}</span>
+              <small>{{ guide.scope }}</small>
+            </div>
+            <p>{{ guide.detail }}</p>
+          </article>
+        </div>
+
+        <div class="employee-toolbar">
+          <label class="employee-search-field">
+            <span>搜索员工</span>
+            <input v-model="employeeSearch" type="search" placeholder="姓名 / 账号 / 企微 UserID" />
+          </label>
+          <label>
+            <span>状态</span>
+            <select v-model="employeeStatusFilter">
+              <option value="all">全部状态</option>
+              <option value="active">已启用</option>
+              <option value="disabled">已停用</option>
+            </select>
+          </label>
+          <label>
+            <span>角色</span>
+            <select v-model="employeeRoleFilter">
+              <option value="all">全部角色</option>
+              <option value="super_admin">超级管理员</option>
+              <option value="content_editor">内容编辑</option>
+              <option value="support_readonly">客服只读</option>
+            </select>
+          </label>
+          <button v-if="employeeFiltersActive" type="button" class="quiet employee-clear-filters" @click="clearEmployeeFilters">清除筛选</button>
+        </div>
+
+        <div class="employee-table" :aria-busy="employeeLoading">
+          <div class="employee-row employee-table-head"><span>员工</span><span>角色</span><span>企业微信</span><span>状态 / 最近登录</span><span>操作</span></div>
+          <div v-for="employee in filteredEmployees" :key="employee.id" class="employee-row">
+            <div class="employee-person">
+              <span class="employee-avatar" aria-hidden="true">{{ employee.displayName.slice(0, 1) }}</span>
+              <span class="employee-person-copy"><strong>{{ employee.displayName }}</strong><small class="mono">{{ employee.username }}</small></span>
+            </div>
+            <div class="employee-role-cell">
+              <span v-if="employee.role === 'super_admin'" class="role-badge role-super_admin">超级管理员</span>
+              <select v-else :value="employee.role" :disabled="employeeBusyId === employee.id" :aria-label="`${employee.displayName} 的角色`" @change="updateEmployee(employee, { role: ($event.target as HTMLSelectElement).value as Employee['role'] })">
+                <option value="content_editor">内容编辑</option>
+                <option value="support_readonly">客服只读</option>
+              </select>
+              <small v-if="employee.role === 'super_admin'" class="employee-locked">受控账号</small>
+            </div>
+            <div class="employee-wecom-cell">
+              <span class="employee-wecom-state" :class="{ bound: employee.wecomUserId }">{{ employee.wecomUserId ? '已绑定' : '未绑定' }}</span>
+              <small v-if="employee.wecomUserId" class="mono" :title="employee.wecomUserId">{{ shortWecomUserId(employee.wecomUserId) }}</small>
+              <button type="button" class="quiet employee-link-button" @click="openEmployeeEditor(employee)">{{ employee.wecomUserId ? '更换' : '绑定' }}</button>
+            </div>
+            <div class="employee-status-cell">
+              <span class="employee-state-pill" :class="employee.status">{{ employee.status === 'active' ? '启用' : '已停用' }}</span>
+              <small>{{ employee.lastLoginAt ? `最近登录 ${displayDate(employee.lastLoginAt)}` : '尚未登录' }}</small>
+              <small v-if="employee.passwordChangeRequired" class="employee-pending">待首次改密</small>
+            </div>
+            <div class="employee-actions">
+              <button type="button" class="quiet" @click="openEmployeeEditor(employee)">编辑资料</button>
+              <button v-if="employee.role !== 'super_admin'" type="button" class="quiet" :disabled="employeeBusyId === employee.id" @click="updateEmployee(employee, { status: employee.status === 'active' ? 'disabled' : 'active' })">{{ employee.status === 'active' ? '停用' : '启用' }}</button>
+              <button v-if="employee.role !== 'super_admin'" type="button" class="quiet" :disabled="employeeBusyId === employee.id" @click="resetEmployeePassword(employee)">重置密码</button>
+            </div>
+          </div>
+          <p v-if="employeeLoading" class="employee-empty">正在读取员工账号…</p>
+          <p v-else-if="!employees.length" class="employee-empty">暂无员工账号，点击右上角「创建员工账号」开始添加。</p>
+          <p v-else-if="!filteredEmployees.length" class="employee-empty">没有符合当前筛选条件的员工。<button type="button" class="employee-inline-link" @click="clearEmployeeFilters">清除筛选</button></p>
+        </div>
+
+        <p class="employee-footnote">超级管理员账号受保护：不能在后台停用、降级或重置密码；可编辑姓名和企业微信绑定。员工账号被停用或修改角色后，已有登录会立即失效。</p>
+
+        <Teleport to="body">
+          <div v-if="createEmployeeOpen" class="observation-modal-backdrop" @click.self="createEmployeeOpen = false">
+            <section class="observation-detail-panel employee-dialog" role="dialog" aria-modal="true" aria-labelledby="create-employee-title" @keydown.esc="createEmployeeOpen = false">
+              <div class="section-heading">
+                <div><p class="eyebrow">NEW STAFF ACCOUNT</p><h3 id="create-employee-title">创建员工账号</h3></div>
+                <button type="button" class="quiet" aria-label="关闭创建员工账号" @click="createEmployeeOpen = false">关闭</button>
+              </div>
+              <form class="employee-form employee-form-grid" @submit.prevent="createEmployee">
+                <label>登录账号<input v-model="employeeForm.username" required minlength="3" maxlength="64" autocomplete="off" placeholder="3-64 位字母、数字、_ . -" /></label>
+                <label>员工姓名<input v-model="employeeForm.displayName" required maxlength="80" /></label>
+                <label>初始密码（至少 12 位）<input v-model="employeeForm.password" type="password" required minlength="12" maxlength="256" autocomplete="new-password" /></label>
+                <label>角色<select v-model="employeeForm.role"><option value="content_editor">内容编辑 · 内容与审核</option><option value="support_readonly">客服只读 · 仅查看会员</option></select></label>
+                <label class="employee-form-full">企业微信 UserID（选填）<input v-model="employeeForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="绑定后员工可直接扫码登录" /></label>
+                <p class="employee-form-hint employee-form-full">企微 UserID 可在员工首次扫码的未绑定提示中查看；留空表示暂不绑定。</p>
+                <p v-if="employeeFormError" class="error employee-form-full" role="alert">{{ employeeFormError }}</p>
+                <div class="employee-dialog-actions employee-form-full">
+                  <button type="submit" :disabled="employeeSaving">{{ employeeSaving ? '创建中…' : '确认创建' }}</button>
+                  <button type="button" class="quiet" :disabled="employeeSaving" @click="createEmployeeOpen = false">取消</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </Teleport>
+
+        <Teleport to="body">
+          <div v-if="employeeEditorOpen" class="observation-modal-backdrop" @click.self="employeeEditorOpen = false">
+            <section class="observation-detail-panel employee-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-employee-title" @keydown.esc="employeeEditorOpen = false">
+              <div class="section-heading">
+                <div><p class="eyebrow">EDIT STAFF PROFILE</p><h3 id="edit-employee-title">编辑员工资料</h3></div>
+                <button type="button" class="quiet" aria-label="关闭编辑员工资料" @click="employeeEditorOpen = false">关闭</button>
+              </div>
+              <form class="employee-form employee-form-grid" @submit.prevent="saveEmployeeEdit">
+                <label>员工姓名<input v-model="employeeEditForm.displayName" required maxlength="80" /></label>
+                <label>登录账号<input :value="editingEmployee?.username || ''" disabled /></label>
+                <label class="employee-form-full">企业微信 UserID<input v-model="employeeEditForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="留空可解除绑定" /></label>
+                <p class="employee-form-hint employee-form-full">绑定后该员工可直接使用企业微信扫码登录；留空并保存会解除当前绑定。</p>
+                <p v-if="employeeEditError" class="error employee-form-full" role="alert">{{ employeeEditError }}</p>
+                <div class="employee-dialog-actions employee-form-full">
+                  <button type="submit" :disabled="employeeEditSaving">{{ employeeEditSaving ? '保存中…' : '保存资料' }}</button>
+                  <button type="button" class="quiet" :disabled="employeeEditSaving" @click="employeeEditorOpen = false">取消</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </Teleport>
       </section>
         </div>
       </div>
