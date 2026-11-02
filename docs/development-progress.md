@@ -1,5 +1,16 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-02 正式域名切换至 www.myriadshe.com 并发布最新版
+
+- 生产代码目录仍为 `/opt/myriad-she`；发布前将原目录完整备份到 `/opt/myriad-she.pre-myriadshe-20261102-143700`，并额外备份源码、环境文件、Nginx 配置和 PostgreSQL 自定义格式转储到 `/data/backups/myriad-she/*-pre-myriadshe-20261102-143700*`。
+- 生产证书使用 `/data/myriadshe.com_bundle.crt` 与 `/data/myriadshe.com.key`，SAN 覆盖 `myriadshe.com`、`www.myriadshe.com`，有效期至 2027-01-20；Compose 同时保留旧域名证书挂载，用于旧链接跳转。
+- Nginx 正式入口改为 `https://www.myriadshe.com`：HTTP 和裸域均 301 到 www，旧 `hszfckga.com` 域名保留 301 跳转；API、MinIO 公共媒体和后台均由主域名提供。
+- `.env.production` 已切换 `VITE_API_BASE_URL`、`CORS_ORIGIN`、`MINIO_PUBLIC_ENDPOINT`；后台镜像按新地址重建，产物中的 API 地址为 `https://www.myriadshe.com/api`。
+- 本次发布包含最新后台错误弹窗、微声音放宽与总览一致性修复；API 启动迁移已应用至 `057_issue_practice_copy.sql`，发布后 PostgreSQL 数据量保持为 1 期、8 个发布快照、3 条观察、2 个用户。
+- 验证通过：`https://www.myriadshe.com/` 与 `/api/health/ready` 返回 200，裸域返回 301，CORS 预检返回 204 且允许新来源，签名媒体对象返回 200，API/PostgreSQL 均为 healthy。
+- 小程序正式环境 API 已改为 `https://www.myriadshe.com/api`，并将 `ENV` 切到 `prod`；仍需在微信公众平台配置 request/uploadFile/downloadFile 合法域名，并重新上传发布小程序版本，平台白名单无法由服务器部署替代。
+- 旧域名证书将于 2026-11-03 到期；过渡期结束后应移除旧域名跳转或续期旧证书，避免历史 HTTPS 链接出现证书过期提示。
+
 ## 2026-10-30 后台统一错误弹窗与微声音「有音频即可」
 
 - 后台所有操作错误不再显示在页面顶部：错误状态统一进入居中弹窗，标题固定为「操作未完成」，展示后端返回的简短原因，提供「知道了」关闭，支持点击遮罩或 `Esc` 关闭，并自动聚焦按钮。

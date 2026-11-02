@@ -32,9 +32,9 @@ docker compose --env-file .env.local logs -f api
 
 数据库结构统一由 API 启动迁移器管理，不再依赖 PostgreSQL 数据卷的首次初始化目录。API 开始监听前按版本顺序执行尚未登记的 `backend/sql/` 脚本，并在 `app_schema_migrations` 中记录文件名与 SHA-256 摘要；执行使用 PostgreSQL advisory lock 串行化。已登记脚本若被改写，或账本中存在但镜像缺失的迁移文件，都会阻止 API 启动；已有数据卷无需删除。管理后台总览还提供只读的迁移账本状态，可识别待执行、缺失或被修改的迁移文件，不提供通过页面执行迁移的入口。
 
-生产服务 HTTPS 主入口为 `https://hszfckga.com`，`https://www.hszfckga.com` 也可直接访问同一站点；API 为 `https://hszfckga.com/api`，管理后台由根路径提供。生产 Compose 只向公网发布 80/443，MinIO 管理 API 仅绑定服务器回环地址；私有配置和初始化数据库备份分别保存在服务器 `/opt/myriad-she/.env.production` 与 `/data/backups/myriad-she/`。
+生产服务 HTTPS 主入口为 `https://www.myriadshe.com`，裸域 `https://myriadshe.com` 会跳转到 www；API 为 `https://www.myriadshe.com/api`，管理后台由根路径提供。生产 Compose 只向公网发布 80/443，MinIO 管理 API 仅绑定服务器回环地址；私有配置和初始化数据库备份分别保存在服务器 `/opt/myriad-she/.env.production` 与 `/data/backups/myriad-she/`。证书挂载自服务器 `/data/myriadshe.com_bundle.crt` 与 `/data/myriadshe.com.key`。
 
-小程序源码默认连接正式 HTTPS API。使用微信开发者工具真机体验或发布前，需在小程序后台将 `https://hszfckga.com` 配置为合法 request、uploadFile 和 downloadFile 域名；`miniprogram/project.config.json` 的 `urlCheck` 仅用于本地开发工具设置，不会替代平台域名配置。
+小程序源码默认连接正式 HTTPS API。使用微信开发者工具真机体验或发布前，需在小程序后台将 `https://www.myriadshe.com` 配置为合法 request、uploadFile 和 downloadFile 域名；`miniprogram/project.config.json` 的 `urlCheck` 仅用于本地开发工具设置，不会替代平台域名配置。
 
 ## 当前第一阶段能力
 

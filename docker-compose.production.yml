@@ -10,6 +10,8 @@ services:
       - "443:443"
     volumes:
       - ./deploy/nginx/myriadshe.conf:/etc/nginx/conf.d/default.conf:ro
+      - /data/myriadshe.com_bundle.crt:/etc/nginx/certs/myriadshe.com_bundle.crt:ro
+      - /data/myriadshe.com.key:/etc/nginx/certs/myriadshe.com.key:ro
       - /data/hszf/hszfckga.com_bundle.crt:/etc/nginx/certs/hszfckga.com_bundle.crt:ro
       - /data/hszf/hszfckga.com.key:/etc/nginx/certs/hszfckga.com.key:ro
     depends_on:
