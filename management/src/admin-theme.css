@@ -704,7 +704,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
     border-radius: 20px;
   }
   .login-visual { height: 250px; }
-  .login-visual img { object-position: center 78%; }
+  .login-visual img { object-position: center 56%; }
   .login-layout .login-panel { padding: 30px 24px 34px; }
   .login-panel-inner { max-width: 360px; margin: 0 auto; }
   .login-brand { margin-bottom: 26px; text-align: center; }
