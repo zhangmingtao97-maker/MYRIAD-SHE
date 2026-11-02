@@ -893,13 +893,17 @@ test('practice observation copy keeps text and line breaks while enforcing the f
   assert.equal(result.observationCopy.realityAction.richText, '现在开始');
 });
 
+type SharedCopyResult = {
+  sharedPracticeCopy: Record<string, { richText: string; fontSize: number; color: string }>;
+};
+
 test('shared practice copy preserves editable text, font sizing, and color', async () => {
   const { controller } = practiceHarness();
   const update = practiceUpdate();
   update.sharedPracticeCopy.heroTitle = { richText: '<strong>一起谈谈，</strong><br/>也在生活中相见。', fontSize: 34, color: '#663124' };
   update.sharedPracticeCopy.onlineAction = { richText: '<span style="color:#ff0000;font-size:18px">开始相见</span>', fontSize: 16, color: '#663124' };
 
-  const result = await controller.updatePracticeContent(request, update);
+  const result = await controller.updatePracticeContent(request, update) as unknown as SharedCopyResult;
 
   assert.equal(result.sharedPracticeCopy.heroTitle.richText, '<strong>一起谈谈，</strong><br/>也在生活中相见。');
   assert.equal(result.sharedPracticeCopy.heroTitle.fontSize, 34);
@@ -914,7 +918,7 @@ test('shared practice issue copy is editable as rich text', async () => {
   update.sharedPracticeCopy.onlineIssueLabel = { richText: '<strong>ISSUE 03</strong>', fontSize: 12, color: '#663124' };
   update.sharedPracticeCopy.onlineQuestion = { richText: '事情过去以后，<br/>我们还在松开什么？', fontSize: 22, color: '#5c493c' };
 
-  const result = await controller.updatePracticeContent(request, update);
+  const result = await controller.updatePracticeContent(request, update) as unknown as SharedCopyResult;
 
   assert.equal(result.sharedPracticeCopy.onlineIssueLabel.richText, '<strong>ISSUE 03</strong>');
   assert.equal(result.sharedPracticeCopy.onlineQuestion.richText, '事情过去以后，<br/>我们还在松开什么？');

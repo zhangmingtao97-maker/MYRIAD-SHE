@@ -6,6 +6,14 @@ type HomeIssue = NonNullable<PublicHomeContent['issue']>;
 type HomeContentsDestination = 'story' | 'audio' | 'observation' | 'discussion';
 interface HomeContentsEntry { id: HomeContentsDestination; number: string; label: string; summary: string; destination: HomeContentsDestination }
 const emptyIssue: HomeIssue = { code: '', label: '', month: '', theme: '', question: '', microVoiceTitle: null, microVoiceDuration: null, homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '', homeCoverCaptionRight: '' };
+// 首页第一栏固定排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · A CURATED EDITION」三行。
+const ISSUE_KICKER = '当期策展';
+const EDITION_TAGLINE = 'A CURATED EDITION';
+const emptyIssueHeader = { kicker: ISSUE_KICKER, number: '', edition: '' };
+const englishMonthNames: Record<string, string> = {
+  JAN: 'JANUARY', FEB: 'FEBRUARY', MAR: 'MARCH', APR: 'APRIL', MAY: 'MAY', JUN: 'JUNE',
+  JUL: 'JULY', AUG: 'AUGUST', SEP: 'SEPTEMBER', SEPT: 'SEPTEMBER', OCT: 'OCTOBER', NOV: 'NOVEMBER', DEC: 'DECEMBER',
+};
 
 function formatAudioTime(seconds: number) {
   const totalSeconds = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -94,8 +102,33 @@ function buildContentsEntries(modules: PublicHomeModule[], issue: HomeIssue): Ho
   ];
 }
 
+function textValue(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// 英文刊期按杂志排印展开缩写（SEP 2026 → SEPTEMBER 2026）；中文月份写法保持原样。
+function expandIssueMonth(value: string) {
+  return value.toUpperCase().replace(
+    /(^|[^A-Z])(SEPT|SEP|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|OCT|NOV|DEC)\.?(?![A-Z])/g,
+    (_match, prefix: string, month: string) => `${prefix}${englishMonthNames[month] || month}`,
+  );
+}
+
+function buildIssueHeader(modules: PublicHomeModule[], issue: HomeIssue) {
+  const meta = modules.find((module) => module.type === 'issueMeta');
+  const label = textValue(meta?.eyebrow) || textValue(issue.label);
+  const codeDigits = textValue(issue.code).match(/(\d+)/);
+  const number = label || (codeDigits ? `ISSUE ${codeDigits[1].padStart(2, '0')}` : '');
+  const month = textValue(meta?.month) || textValue(issue.month);
+  return {
+    kicker: ISSUE_KICKER,
+    number: number.toUpperCase(),
+    edition: month ? `${expandIssueMonth(month)} · ${EDITION_TAGLINE}` : EDITION_TAGLINE,
+  };
+}
+
 Page({
-  data: { loading: true, statusBarHeight: 0, issue: emptyIssue, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', expandedAudio: {} as Record<string, boolean>, audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
+  data: { loading: true, statusBarHeight: 0, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', expandedAudio: {} as Record<string, boolean>, audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
   requestGeneration: 0,
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   audioContextModuleId: '',
@@ -124,7 +157,7 @@ Page({
   },
   async loadContent() {
     const generation = ++this.requestGeneration;
-    this.setData({ loading: true, error: '', issue: emptyIssue, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, expandedAudio: {}, audioSeeking: false });
+    this.setData({ loading: true, error: '', issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, expandedAudio: {}, audioSeeking: false });
     try {
       const data = await request<PublicHomeContent>('/content/home');
       if (generation !== this.requestGeneration) return;
@@ -134,10 +167,10 @@ Page({
       const combinedModules = combineCoverAndOpener(orderedModules);
       const modules = presentHomeModules(combinedModules);
       const issue = data.issue || emptyIssue;
-      this.setData({ ...data, issue, modules, contentsEntries: buildContentsEntries(modules, issue), hasModules: modules.length > 0, loading: false });
+      this.setData({ ...data, issue, issueHeader: buildIssueHeader(modules, issue), modules, contentsEntries: buildContentsEntries(modules, issue), hasModules: modules.length > 0, loading: false });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
-      this.setData({ loading: false, error: apiErrorMessage(caught, '暂时无法连接云端内容'), issue: emptyIssue, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false });
+      this.setData({ loading: false, error: apiErrorMessage(caught, '暂时无法连接云端内容'), issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false });
     }
   },
   scrollToSection(event: WechatMiniprogram.CustomEvent) {

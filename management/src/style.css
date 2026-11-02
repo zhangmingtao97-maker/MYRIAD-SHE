@@ -454,6 +454,11 @@ button { border-radius: 14px; }
 .issue-phone-preview-body small { color: #8b6b58; font-size: 10px; }
 .issue-phone-preview-body h3 { margin: 12px 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 23px; line-height: 1.45; }
 .issue-phone-preview-body p { margin: 0; color: #5e5045; font-family: Georgia, "Songti SC", serif; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
+.preview-issueMeta { padding: 21px 0 14px !important; border-bottom: 0 !important; }
+.preview-issue-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; color: #40362f; }
+.preview-issue-meta small { color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 12px; line-height: 1.5; letter-spacing: 2px; }
+.preview-issue-meta strong { color: inherit; font-family: Georgia, serif; font-size: 17px; font-weight: 400; line-height: 1.4; letter-spacing: 1px; }
+.preview-issue-meta span { color: #8b6b58; font-family: Georgia, serif; font-size: 11px; line-height: 1.5; letter-spacing: 1px; text-transform: uppercase; }
 .preview-cover { text-align: center; }
 .preview-image-placeholder { display: grid; min-height: 120px; place-items: center; margin-top: 10px; background: #ddd1c3; color: #806854; font-size: 11px; }
 .preview-image { display: block; width: 100%; max-height: 300px; margin-top: 10px; object-fit: cover; }

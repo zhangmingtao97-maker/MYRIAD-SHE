@@ -2,11 +2,11 @@
 .home-page { padding-top: 0; background: #e7dfd1; }
 .home-page [role="button"]:active { opacity: .72; }
 .home-page [role="button"]:focus { opacity: .7; }
-.issue-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; padding: 42rpx 0 28rpx; font-size: 33rpx; }
-.issue-meta .eyebrow, .issue-month, .issue-code { color: inherit; font-family: Georgia, serif; font-size: 1em; letter-spacing: 2rpx; text-transform: uppercase; }
+.issue-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 10rpx; padding: 42rpx 0 28rpx; font-size: 33rpx; line-height: 1.4; }
+.issue-meta-kicker { color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.5; letter-spacing: 4rpx; }
+.issue-meta-number { color: inherit; font-family: Georgia, serif; font-size: 1em; letter-spacing: 2rpx; text-transform: uppercase; }
+.issue-meta-edition { color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; line-height: 1.5; letter-spacing: 2rpx; text-transform: uppercase; }
 .issue-meta-rich-text { display: block; width: 100%; color: inherit; line-height: 1.5; }
-.issue-month { margin-top: 12rpx; }
-.issue-code { margin-top: 0; white-space: nowrap; }
 .loading-state, .error-state { padding: 70rpx 0; }
 .error-state { color: #a53f32; }
 .error-text { line-height: 1.7; }

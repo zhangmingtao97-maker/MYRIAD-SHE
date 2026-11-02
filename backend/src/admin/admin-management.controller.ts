@@ -4,6 +4,7 @@ import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AdminAuthGuard } from '../auth/admin-auth.guard';
+import { adminModuleIds, effectiveAdminModules, parseAdminModuleOverride } from '../auth/admin-permissions';
 import { hashAdminPassword, verifyAdminPassword } from '../auth/admin-password';
 import { DatabaseService } from '../database/database.service';
 import { AuditService } from './audit.service';
@@ -93,16 +94,24 @@ export class AdminManagementController {
         avatarUrl: null,
         canEditAvatar: false,
         lastLoginAt: null,
+        permissions: [...adminModuleIds],
+        permissionOverride: null,
       };
     }
     const result = await this.database.query<{
-      id: string; username: string; displayName: string; role: string; avatarObjectKey: string | null; lastLoginAt: string | null;
+      id: string; username: string; displayName: string; role: string; avatarObjectKey: string | null; lastLoginAt: string | null; modulePermissions: string[] | null;
     }>(`select id, username, display_name as "displayName", role, avatar_object_key as "avatarObjectKey",
-        last_login_at as "lastLoginAt" from admin_accounts where id = $1`, [actorId]);
+        last_login_at as "lastLoginAt", module_permissions as "modulePermissions" from admin_accounts where id = $1`, [actorId]);
     const row = result.rows[0];
     if (!row) throw new UnauthorizedException('员工账号不存在，请重新登录');
-    const { avatarObjectKey, ...profile } = row;
-    return { ...profile, avatarUrl: await this.avatarUrl(avatarObjectKey), canEditAvatar: true };
+    const { avatarObjectKey, modulePermissions, ...profile } = row;
+    return {
+      ...profile,
+      avatarUrl: await this.avatarUrl(avatarObjectKey),
+      canEditAvatar: true,
+      permissions: effectiveAdminModules(row.role, modulePermissions ?? null),
+      permissionOverride: modulePermissions ?? null,
+    };
   }
 
   @Post('me/avatar')
@@ -360,10 +369,10 @@ export class AdminManagementController {
       const result = await client.query<{
         id: string; username: string; displayName: string; role: AdminRole; status: string;
         wecomUserId: string | null; passwordChangeRequired: boolean; avatarObjectKey: string | null;
-        createdAt: string; updatedAt: string; lastLoginAt: string | null;
+        modulePermissions: string[] | null; createdAt: string; updatedAt: string; lastLoginAt: string | null;
       }>(`select id, username, display_name as "displayName", role, status,
         wecom_user_id as "wecomUserId", password_change_required as "passwordChangeRequired",
-        avatar_object_key as "avatarObjectKey",
+        avatar_object_key as "avatarObjectKey", module_permissions as "modulePermissions",
         created_at as "createdAt", updated_at as "updatedAt", last_login_at as "lastLoginAt"
         from admin_accounts order by created_at desc, id`);
       await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employees.listed', resourceType: 'admin_accounts', metadata: { count: result.rows.length } }, client);
@@ -382,6 +391,7 @@ export class AdminManagementController {
     const password = text(body.password, '初始密码', 256);
     const role = body.role as AdminRole;
     const wecomUserId = optionalWecomUserId(body.wecomUserId);
+    const modulePermissions = parseAdminModuleOverride(body.modulePermissions) ?? null;
     if (!/^[A-Za-z0-9_.-]{3,64}$/.test(username) || password.length < 12 || !['content_editor', 'support_readonly'].includes(role)) {
       throw new BadRequestException('账号格式无效，初始密码至少 12 位；请选择有效员工角色');
     }
@@ -393,12 +403,13 @@ export class AdminManagementController {
         if (conflict.rows[0]) throw new BadRequestException('该企业微信已绑定其他员工账号');
       }
       const result = await client.query(`insert into admin_accounts
-          (username, display_name, password_hash, role, password_change_required, wecom_user_id)
-        values ($1, $2, $3, $4, true, $5)
+          (username, display_name, password_hash, role, password_change_required, wecom_user_id, module_permissions)
+        values ($1, $2, $3, $4, true, $5, $6::text[])
         returning id, username, display_name as "displayName", role, status, wecom_user_id as "wecomUserId",
+          module_permissions as "modulePermissions",
           password_change_required as "passwordChangeRequired", created_at as "createdAt"`,
-      [username, displayName, await hashAdminPassword(password), role, wecomUserId]);
-      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.created', resourceType: 'admin_account', resourceId: result.rows[0].id, metadata: { username, role, wecomBound: Boolean(wecomUserId) } }, client);
+      [username, displayName, await hashAdminPassword(password), role, wecomUserId, modulePermissions]);
+      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.created', resourceType: 'admin_account', resourceId: result.rows[0].id, metadata: { username, role, wecomBound: Boolean(wecomUserId), modulePermissions } }, client);
       return result.rows[0];
     });
   }
@@ -411,6 +422,7 @@ export class AdminManagementController {
     const displayName = body.displayName === undefined ? undefined : text(body.displayName, '员工姓名', 80);
     const wecomChanged = body.wecomUserId !== undefined;
     const wecomUserId = wecomChanged ? optionalWecomUserId(body.wecomUserId) : undefined;
+    const modulePermissions = parseAdminModuleOverride(body.modulePermissions);
     if (role !== undefined && !roles.includes(role)) throw new BadRequestException('员工角色无效');
     if (role === 'super_admin') throw new BadRequestException('不能从后台提升超级管理员；请通过受控初始化流程处理');
     if (status !== undefined && !['active', 'disabled'].includes(status)) throw new BadRequestException('员工状态无效');
@@ -426,6 +438,7 @@ export class AdminManagementController {
         const count = await client.query<{ count: string }>(`select count(*)::text as count from admin_accounts where role = 'super_admin' and status = 'active'`);
         if (Number(count.rows[0].count) <= 1) throw new BadRequestException('必须保留至少一名启用的超级管理员');
       }
+      if (current.rows[0].role === 'super_admin' && modulePermissions !== undefined) throw new BadRequestException('超级管理员固定拥有全部模块授权，不能单独调整');
       if (wecomUserId) {
         const conflict = await client.query('select id from admin_accounts where wecom_user_id = $1 and id <> $2 limit 1', [wecomUserId, id]);
         if (conflict.rows[0]) throw new BadRequestException('该企业微信已绑定其他员工账号');
@@ -444,12 +457,17 @@ export class AdminManagementController {
         values.push(await hashAdminPassword(password));
         assignments.push(`password_hash = $${values.length}`, 'password_change_required = true');
       }
+      if (modulePermissions !== undefined) {
+        values.push(modulePermissions);
+        assignments.push(`module_permissions = $${values.length}::text[]`);
+      }
       assignments.push('updated_at = now()');
       values.push(id);
       const updated = await client.query(`update admin_accounts set ${assignments.join(', ')} where id = $${values.length}
         returning id, username, display_name as "displayName", role, status, wecom_user_id as "wecomUserId",
+          module_permissions as "modulePermissions",
           password_change_required as "passwordChangeRequired", updated_at as "updatedAt", last_login_at as "lastLoginAt"`, values);
-      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.updated', resourceType: 'admin_account', resourceId: id, metadata: { role: nextRole, status: nextStatus, passwordChanged: Boolean(password), displayNameChanged: displayName !== undefined, wecomBound: wecomChanged ? Boolean(wecomUserId) : undefined } }, client);
+      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.updated', resourceType: 'admin_account', resourceId: id, metadata: { role: nextRole, status: nextStatus, passwordChanged: Boolean(password), displayNameChanged: displayName !== undefined, wecomBound: wecomChanged ? Boolean(wecomUserId) : undefined, modulePermissions } }, client);
       return updated.rows[0];
     });
     return result;

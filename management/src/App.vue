@@ -973,6 +973,9 @@ const adminPasswordChangeRequired = computed(() => {
   } catch { return false; }
 });
 const isSuperAdmin = computed(() => adminRole.value === 'super_admin');
+const adminModuleList = computed<AdminModuleId[]>(() => adminPermissions.value ?? effectiveModulesForRole(adminRole.value, null));
+const canAccessAnyModule = computed(() => adminModuleList.value.length > 0);
+function canAccessModule(id: AdminModuleId) { return adminModuleList.value.includes(id); }
 const observationStatus = ref('');
 const observationMethod = ref('');
 const observationIssueCode = ref('');
@@ -1010,6 +1013,49 @@ function readDashboardLocation() {
 const initialDashboardLocation = readDashboardLocation();
 const activeSection = ref<DashboardSection>(initialDashboardLocation.section);
 const activeContentSection = ref<ContentSection>(initialDashboardLocation.contentSection);
+// 员工登录后的默认落点：按已授权模块选择第一个可用页面。
+const staffLandingCandidates: Array<{ section: DashboardSection; contentSection: ContentSection; module: AdminModuleId }> = [
+  { section: 'practice', contentSection: 'practice', module: 'practice' },
+  { section: 'content', contentSection: 'journal-list', module: 'journal' },
+  { section: 'content', contentSection: 'privacy-page', module: 'pages' },
+  { section: 'content', contentSection: 'media', module: 'media' },
+  { section: 'contributions', contentSection: 'practice', module: 'contributions' },
+  { section: 'observations', contentSection: 'practice', module: 'observations' },
+  { section: 'privacy', contentSection: 'practice', module: 'privacy' },
+  { section: 'audit', contentSection: 'practice', module: 'audit' },
+  { section: 'members', contentSection: 'practice', module: 'members' },
+  { section: 'settings', contentSection: 'practice', module: 'settings' },
+  { section: 'life-cards', contentSection: 'practice', module: 'life-cards' },
+  { section: 'life-card-views', contentSection: 'practice', module: 'life-card-views' },
+];
+
+function resolveLandingLocation() {
+  const match = staffLandingCandidates.find((candidate) => canAccessModule(candidate.module));
+  return match
+    ? { section: match.section, contentSection: match.contentSection }
+    : { section: activeSection.value, contentSection: activeContentSection.value };
+}
+
+async function enterDashboardByPermissions() {
+  if (isSuperAdmin.value) {
+    await loadDashboard();
+    if (activeSection.value === 'members' && !members.value.length) await refreshMembers();
+    if (activeSection.value === 'employees' && !employees.value.length) await loadEmployees();
+    if (activeSection.value === 'life-cards' && !lifeCards.value.length) await loadLifeCards();
+    if (activeSection.value === 'life-card-views' && !lifeCardViews.value.length) await loadLifeCardViews();
+    return;
+  }
+  const landing = resolveLandingLocation();
+  activeSection.value = landing.section;
+  activeContentSection.value = landing.contentSection;
+  await loadStaffDashboard();
+  if (landing.section === 'content' && landing.contentSection === 'media') await loadOrphanMedia(true);
+  if (landing.section === 'members') await refreshMembers();
+  if (landing.section === 'settings') await loadSystemSettings();
+  if (landing.section === 'life-cards') await loadLifeCards();
+  if (landing.section === 'life-card-views') await loadLifeCardViews();
+  if (landing.section === 'contributions') await refreshDiscussionContributions();
+}
 const sidebarCollapsed = ref(false);
 // 回到顶部：滚动超过一屏后出现，避免长表格页无处可回去。
 const showBackToTop = ref(false);
@@ -1869,6 +1915,8 @@ function employeeModuleSummary(employee: Employee) {
   return override ? `自定义 ${count} 个模块` : `角色默认 ${count} 个模块`;
 }
 
+const employeeModuleCount = computed(() => effectiveModulesForRole(employeeEditForm.value.role, employeeEditForm.value.modulePermissions).length);
+
 function openEmployeeEditor(employee: Employee) {
   revokeEmployeeAvatarPreview();
   editingEmployee.value = employee;
@@ -2022,14 +2070,9 @@ async function applyAdminLogin(result: { accessToken: string; expiresIn: number 
   await loadAdminProfile();
   if (adminPasswordChangeRequired.value) {
     passwordRotationError.value = '';
-  } else if (adminRole.value === 'support_readonly') {
-    activeSection.value = 'members';
-    await refreshMembers();
-  } else if (adminRole.value === 'content_editor') {
-    activeSection.value = 'practice';
-    activeContentSection.value = 'practice';
-    await loadContentEditorDashboard();
-  } else await loadDashboard();
+  } else {
+    await enterDashboardByPermissions();
+  }
 }
 
 async function login() {
@@ -2199,16 +2242,14 @@ async function changeRequiredPassword() {
     scheduleSessionExpiry(Number(result.expiresIn));
     await loadAdminProfile();
     passwordRotation.value = { currentPassword: '', newPassword: '', confirmPassword: '' };
-    if (adminRole.value === 'support_readonly') { activeSection.value = 'members'; await refreshMembers(); }
-    else if (adminRole.value === 'content_editor') { activeSection.value = 'practice'; activeContentSection.value = 'practice'; await loadContentEditorDashboard(); }
-    else await loadDashboard();
+    await enterDashboardByPermissions();
   } catch (caught) {
     passwordRotationError.value = caught instanceof Error ? caught.message : '密码修改失败。';
   } finally { passwordRotationSaving.value = false; }
 }
 
 async function loadDashboard() {
-  if (adminRole.value === 'content_editor') return loadContentEditorDashboard();
+  if (!isSuperAdmin.value) return loadStaffDashboard();
   const session = sessionGeneration;
   const dashboardGeneration = ++dashboardRequestGeneration;
   const practiceGeneration = ++practiceContentRequestGeneration;
@@ -2321,39 +2362,124 @@ async function loadDashboard() {
   }
 }
 
-async function loadContentEditorDashboard() {
+async function loadStaffDashboard() {
   const session = sessionGeneration;
-  const generation = ++dashboardRequestGeneration;
+  const dashboardGeneration = ++dashboardRequestGeneration;
+  const practiceGeneration = ++practiceContentRequestGeneration;
+  const privacyPageGeneration = ++privacyPageContentRequestGeneration;
+  const observationGeneration = ++observationRequestGeneration;
+  const privacyGeneration = ++privacyRequestGeneration;
+  const auditGeneration = ++auditRequestGeneration;
+  observationLoadingMore.value = false;
+  observationMoreError.value = '';
+  privacyLoadingMore.value = false;
+  privacyRefreshing.value = false;
+  privacyMoreError.value = '';
+  auditLoadingMore.value = false;
+  auditMoreError.value = '';
   dashboardLoading.value = true;
-  const headers = { Authorization: `Bearer ${token.value}` };
+  const authHeaders = { Authorization: `Bearer ${token.value}` };
+  const canJournal = canAccessModule('journal');
+  const canPractice = canAccessModule('practice');
+  const canPages = canAccessModule('pages');
+  const canObservations = canAccessModule('observations');
+  const canPrivacy = canAccessModule('privacy');
+  const canAudit = canAccessModule('audit');
+  const optionalFetch = (enabled: boolean, url: string) => (enabled ? apiFetch(url, { headers: authHeaders }) : Promise.resolve(null));
   try {
-    const [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse] = await Promise.all([
-      apiFetch(`${apiBase}/content/home`),
-      apiFetch(`${apiBase}/content/issues`, { headers }),
-      apiFetch(`${apiBase}/content/issues/summary`, { headers }),
-      apiFetch(`${apiBase}/content/practice/manage`, { headers }),
+    const [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse] = await Promise.all([
+      optionalFetch(canJournal, `${apiBase}/content/home`),
+      optionalFetch(canJournal, `${apiBase}/content/issues`),
+      optionalFetch(canJournal, `${apiBase}/content/issues/summary`),
+      optionalFetch(canPractice, `${apiBase}/content/practice/manage`),
+      optionalFetch(canPages, `${apiBase}/content/about/manage`),
+      optionalFetch(canObservations, `${apiBase}/admin/observations?${observationQuery(0)}`),
+      optionalFetch(canObservations, `${apiBase}/admin/observations/lifecycle`),
+      optionalFetch(canPrivacy, `${apiBase}/admin/privacy-requests?${privacyQuery(0)}`),
+      optionalFetch(canAudit, `${apiBase}/admin/audit-logs?${auditQuery(0)}`),
     ]);
-    const responses = [issuesResponse, issueSummaryResponse, practiceResponse];
-    if (responses.some((response) => response.status === 401)) { logout('后台登录已过期，请重新登录。'); return; }
-    const failed = [homeResponse, ...responses].find((response) => !response.ok);
-    if (failed) throw new Error(await responseMessage(failed, '无法读取内容配置'));
-    const [homeResult, issueResult, summaryResult, practiceResult] = await Promise.all([
-      homeResponse.json(), issuesResponse.json(), issueSummaryResponse.json(), practiceResponse.json(),
-    ]);
-    if (!isPublicHome(homeResult) || !isManagedIssueList(issueResult)
-      || !isIssueDashboardConsistent(summaryResult, issueResult, homeResult)) throw new Error('实践内容列表与首页状态不一致，请刷新后重试');
-    if (!isPracticeContent(practiceResult)) throw new Error('内容配置格式无效');
-    if (generation !== dashboardRequestGeneration || session !== sessionGeneration) return;
-    home.value = homeResult;
-    issues.value = issueResult;
-    issueLifecycle.value = summaryResult;
-    practiceContent.value = practiceResult;
-    await loadDailyObjectsContent();
+    const responses = [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse].filter((response): response is Response => response !== null);
+    if (responses.some((response) => response.status === 401)) {
+      if (session === sessionGeneration && loggedIn.value) logout('后台登录已过期，请重新登录。');
+      return;
+    }
+    assertSession(session);
+    const failedResponse = responses.find((response) => !response.ok);
+    if (failedResponse) throw new Error(await responseMessage(failedResponse, '无法读取 API 数据'));
+    if (canJournal && homeResponse && issuesResponse && issueSummaryResponse) {
+      const [homeResult, issuesResult, issueSummaryResult] = await Promise.all([homeResponse.json(), issuesResponse.json(), issueSummaryResponse.json()]);
+      if (!isPublicHome(homeResult)) throw new Error('首页内容格式无效');
+      if (!isManagedIssueList(issuesResult)) throw new Error('期刊列表格式无效');
+      if (!isIssueDashboardConsistent(issueSummaryResult, issuesResult, homeResult)) throw new Error('期刊列表、生命周期摘要与首页发布内容不一致，请刷新后核实');
+      if (dashboardGeneration === dashboardRequestGeneration) {
+        home.value = homeResult;
+        issues.value = issuesResult;
+        issueLifecycle.value = issueSummaryResult;
+        void ensureJournalIssueSelection();
+      }
+    }
+    if (canPractice && practiceResponse) {
+      const practiceResult = await practiceResponse.json();
+      if (!isPracticeContent(practiceResult)) throw new Error(practiceContentFormatError(practiceResult));
+      if (practiceGeneration === practiceContentRequestGeneration && !practiceContentSaving.value && !practiceContentDirty.value) {
+        practiceContent.value = practiceResult;
+        practiceContentDirty.value = false;
+      }
+      await loadDailyObjectsContent();
+    }
+    if (canPages && aboutResponse) {
+      const privacyPageResult = await aboutResponse.json();
+      if (!isPrivacyPageContent(privacyPageResult)) throw new Error('关于 MYRIAD SHE 内容格式无效');
+      if (privacyPageGeneration === privacyPageContentRequestGeneration && !privacyPageSaving.value && !privacyPageDirty.value) {
+        privacyPageContent.value = privacyPageResult;
+        privacyPagePublishedVersion.value = Number((privacyPageResult as AboutPageContent & { publishedVersion?: number }).publishedVersion) || 1;
+        privacyPagePublishedAt.value = String((privacyPageResult as AboutPageContent & { publishedAt?: string }).publishedAt ?? '');
+        privacyPageDirty.value = false;
+      }
+    }
+    if (canObservations && observationsResponse && lifecycleResponse) {
+      const [observationResult, lifecycleResult] = await Promise.all([observationsResponse.json(), lifecycleResponse.json()]);
+      if (!isManagedObservationPage(observationResult)) throw new Error('观察记录列表格式无效');
+      if (!isObservationLifecycle(lifecycleResult)) throw new Error('观察生命周期格式无效');
+      if (observationGeneration === observationRequestGeneration) {
+        observations.value = observationResult.items;
+        observationTotal.value = observationResult.total;
+        observationOffset.value = observationResult.offset + observationResult.items.length;
+        observationHasMore.value = observationOffset.value < observationResult.total;
+        observationMoreError.value = '';
+        observationLifecycle.value = lifecycleResult;
+      }
+    }
+    if (canPrivacy && privacyResponse) {
+      const privacyResult = await privacyResponse.json();
+      if (!isPrivacyRequestPage(privacyResult)) throw new Error('删除申请列表格式无效');
+      if (privacyGeneration === privacyRequestGeneration) {
+        privacyRequests.value = privacyResult.items;
+        privacyTotal.value = privacyResult.total;
+        privacyLifecycle.value = privacyResult.summary;
+        privacyOffset.value = privacyResult.offset + privacyResult.items.length;
+        privacyHasMore.value = privacyOffset.value < privacyResult.total;
+        privacyMoreError.value = '';
+      }
+    }
+    if (canAudit && auditResponse) {
+      const auditResult = await auditResponse.json();
+      if (!isAuditPage(auditResult)) throw new Error('操作审计列表格式无效');
+      if (auditGeneration === auditRequestGeneration) {
+        auditLogs.value = auditResult.rows;
+        auditTotal.value = auditResult.total;
+        auditOffset.value = auditResult.offset + auditResult.rows.length;
+        auditHasMore.value = auditOffset.value < auditResult.total;
+        auditMoreError.value = '';
+      }
+    }
   } catch (caught) {
-    if (generation === dashboardRequestGeneration && session === sessionGeneration && loggedIn.value) error.value = caught instanceof Error ? caught.message : '无法读取内容配置';
+    if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration && loggedIn.value) {
+      error.value = caught instanceof Error ? caught.message : '无法读取 API 数据';
+    }
     throw caught;
   } finally {
-    if (generation === dashboardRequestGeneration && session === sessionGeneration) dashboardLoading.value = false;
+    if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration) dashboardLoading.value = false;
   }
 }
 
@@ -2363,7 +2489,7 @@ async function refreshCurrentPage() {
   if (location.section === 'settings'
     && JSON.stringify(systemSettings.value) !== JSON.stringify(systemSettingsOriginal.value)
     && !window.confirm('刷新会放弃尚未保存的系统设置修改，是否继续？')) return;
-  if (adminRole.value === 'content_editor'
+  if (canAccessModule('practice')
     && ['practice', 'observation', 'shared-practice'].includes(location.contentSection)
     && practiceContentDirty.value
     && !window.confirm('刷新会放弃尚未保存的实践文案修改，是否继续？')) return;
@@ -3960,6 +4086,7 @@ function logout(message = '') {
   audioLibraryRequestGeneration += 1;
   token.value = '';
   username.value = '';
+  adminPermissions.value = null;
   password.value = '';
   loading.value = false;
   sessionExpiresAt.value = 0;
@@ -4095,23 +4222,15 @@ onMounted(() => {
     return;
   }
   scheduleSessionExpiry((sessionExpiresAt.value - Date.now()) / 1000);
-  void loadAdminProfile();
-  if (isSuperAdmin.value && activeSection.value === 'life-cards' && !lifeCards.value.length) void loadLifeCards();
-  if (isSuperAdmin.value && activeSection.value === 'life-card-views' && !lifeCardViews.value.length) void loadLifeCardViews();
   const session = sessionGeneration;
-  const initialLoad = adminPasswordChangeRequired.value
-    ? Promise.resolve()
-    : adminRole.value === 'support_readonly'
-    ? (activeSection.value = 'members', refreshMembers())
-    : Promise.all([
-      loadDashboard(),
-      ...(isSuperAdmin.value && activeSection.value === 'members' ? [refreshMembers()] : []),
-      ...(isSuperAdmin.value && activeSection.value === 'employees' ? [loadEmployees()] : []),
-    ]);
+  const initialLoad = (async () => {
+    await loadAdminProfile();
+    if (!loggedIn.value || session !== sessionGeneration || adminPasswordChangeRequired.value) return;
+    await enterDashboardByPermissions();
+  })();
   initialLoad.catch((caught) => {
     if (session === sessionGeneration && loggedIn.value) error.value = caught instanceof Error ? caught.message : '加载失败';
   });
-  if (activeSection.value === 'contributions' && adminRole.value !== 'support_readonly' && !adminPasswordChangeRequired.value) void refreshDiscussionContributions();
 });
 
 onBeforeUnmount(() => {
@@ -4178,6 +4297,7 @@ onBeforeUnmount(() => {
           </div>
           <nav class="dashboard-nav" aria-label="后台分区">
             <div class="dashboard-nav-tabs">
+              <p v-if="!isSuperAdmin && !canAccessAnyModule" class="dashboard-nav-label">暂无授权模块</p>
               <p v-if="isSuperAdmin" class="dashboard-nav-label">总览</p>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'overview' }" :aria-label="sidebarCollapsed ? '健康与迁移' : undefined" :title="sidebarCollapsed ? '健康与迁移' : undefined" :aria-current="activeSection === 'overview' ? 'page' : undefined" aria-controls="overview-panel" @click="activeSection = 'overview'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.8 13.2a8.2 8.2 0 1 1 16.4 0v5.1H3.8zM12 12l3.5-3.2M7.2 16.5h.1m4.7 0h.1m4.7 0h.1" /></svg><span>健康与迁移</span></button>
               <p v-if="canAccessModule('practice') || canAccessModule('journal') || canAccessModule('media') || canAccessModule('pages')" class="dashboard-nav-label">内容</p>
@@ -4201,24 +4321,24 @@ onBeforeUnmount(() => {
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'media' }" :aria-current="activeContentSection === 'media' ? 'page' : undefined" @click="openJournalSubsection('media'); loadAudioLibrary(true)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><circle cx="9" cy="9" r="1.6"/><path d="m5 17 4.5-4.5 3 3 2.5-2.5 4 4" /></svg><span>媒体库</span></button>
                 </nav></Transition>
               </div>
-              <div class="dashboard-nav-group" :class="{ expanded: activeSection === 'content' && isPageSection(activeContentSection) && pageNavigationExpanded && !sidebarCollapsed }">
+              <div v-if="canAccessModule('pages')" class="dashboard-nav-group" :class="{ expanded: activeSection === 'content' && isPageSection(activeContentSection) && pageNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'content' && isPageSection(activeContentSection) }" :aria-label="sidebarCollapsed ? '页面与协议' : undefined" :title="sidebarCollapsed ? '页面与协议' : undefined" :aria-current="activeSection === 'content' && isPageSection(activeContentSection) ? 'page' : undefined" :aria-expanded="activeSection === 'content' && pageNavigationExpanded && !sidebarCollapsed" aria-controls="page-navigation" @click.stop="openPageNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>页面与协议</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav"><nav v-if="activeSection === 'content' && pageNavigationExpanded && !sidebarCollapsed" id="page-navigation" class="dashboard-subnav" aria-label="页面与协议子菜单">
                   <button v-if="isSuperAdmin" class="dashboard-subtab" :class="{ active: activeContentSection === 'mine' }" :aria-current="activeContentSection === 'mine' ? 'page' : undefined" @click="activeContentSection = 'mine'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0M4 4h16v16H4z" /></svg><span>我的页面设置</span></button>
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-page' }" :aria-current="activeContentSection === 'privacy-page' ? 'page' : undefined" @click="activeContentSection = 'privacy-page'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6z" /></svg><span>关于 MYRIAD SHE</span></button>
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'about-history' }" :aria-current="activeContentSection === 'about-history' ? 'page' : undefined" @click="activeContentSection = 'about-history'; loadPrivacyRevisions('about-page')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2" /></svg><span>关于发布历史</span></button>
-                  <button v-if="adminRole !== 'support_readonly'" class="dashboard-subtab" :class="{ active: activeContentSection === 'user-agreement' }" :aria-current="activeContentSection === 'user-agreement' ? 'page' : undefined" @click="activeContentSection = 'user-agreement'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>用户协议</span></button>
-                  <button v-if="adminRole !== 'support_readonly'" class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-policy' }" :aria-current="activeContentSection === 'privacy-policy' ? 'page' : undefined" @click="activeContentSection = 'privacy-policy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>隐私政策</span></button>
+                  <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'user-agreement' }" :aria-current="activeContentSection === 'user-agreement' ? 'page' : undefined" @click="activeContentSection = 'user-agreement'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>用户协议</span></button>
+                  <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-policy' }" :aria-current="activeContentSection === 'privacy-policy' ? 'page' : undefined" @click="activeContentSection = 'privacy-policy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>隐私政策</span></button>
                 </nav></Transition>
               </div>
-              <p v-if="isSuperAdmin || adminRole === 'content_editor'" class="dashboard-nav-label">运营</p>
-              <button v-if="isSuperAdmin || adminRole === 'content_editor'" type="button" class="dashboard-tab" :class="{ active: activeSection === 'contributions' }" :aria-label="sidebarCollapsed ? '用户经历审核' : undefined" :title="sidebarCollapsed ? '用户经历审核' : undefined" :aria-current="activeSection === 'contributions' ? 'page' : undefined" aria-controls="discussion-contributions" @click="activeSection = 'contributions'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>用户经历审核</span></button>
-              <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'observations' }" :aria-label="sidebarCollapsed ? '观察记录管理' : undefined" :title="sidebarCollapsed ? '观察记录管理' : undefined" :aria-current="activeSection === 'observations' ? 'page' : undefined" aria-controls="observations" @click="activeSection = 'observations'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
-              <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'privacy' }" :aria-label="sidebarCollapsed ? '隐私申请' : undefined" :title="sidebarCollapsed ? '隐私申请' : undefined" :aria-current="activeSection === 'privacy' ? 'page' : undefined" aria-controls="privacy-requests" @click="activeSection = 'privacy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
-              <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'audit' }" :aria-label="sidebarCollapsed ? '审计日志' : undefined" :title="sidebarCollapsed ? '审计日志' : undefined" :aria-current="activeSection === 'audit' ? 'page' : undefined" aria-controls="audit-logs" @click="activeSection = 'audit'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
-              <p v-if="isSuperAdmin || adminRole === 'support_readonly'" class="dashboard-nav-label">系统</p>
-              <button v-if="isSuperAdmin || adminRole === 'support_readonly'" type="button" class="dashboard-tab" :class="{ active: activeSection === 'members' }" :aria-current="activeSection === 'members' ? 'page' : undefined" aria-controls="member-directory" @click="activeSection = 'members'; refreshMembers()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
-              <button v-if="isSuperAdmin || adminRole === 'support_readonly'" type="button" class="dashboard-tab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" aria-controls="system-settings" @click="activeSection = 'settings'; loadSystemSettings()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button><button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" aria-controls="life-card-copy" @click="activeSection = 'life-cards'; loadLifeCards()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button><button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" aria-controls="life-card-views" @click="activeSection = 'life-card-views'; loadLifeCardViews()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
+              <p v-if="canAccessModule('contributions') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-label">运营</p>
+              <button v-if="canAccessModule('contributions')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'contributions' }" :aria-label="sidebarCollapsed ? '用户经历审核' : undefined" :title="sidebarCollapsed ? '用户经历审核' : undefined" :aria-current="activeSection === 'contributions' ? 'page' : undefined" aria-controls="discussion-contributions" @click="activeSection = 'contributions'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>用户经历审核</span></button>
+              <button v-if="canAccessModule('observations')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'observations' }" :aria-label="sidebarCollapsed ? '观察记录管理' : undefined" :title="sidebarCollapsed ? '观察记录管理' : undefined" :aria-current="activeSection === 'observations' ? 'page' : undefined" aria-controls="observations" @click="activeSection = 'observations'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
+              <button v-if="canAccessModule('privacy')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'privacy' }" :aria-label="sidebarCollapsed ? '隐私申请' : undefined" :title="sidebarCollapsed ? '隐私申请' : undefined" :aria-current="activeSection === 'privacy' ? 'page' : undefined" aria-controls="privacy-requests" @click="activeSection = 'privacy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
+              <button v-if="canAccessModule('audit')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'audit' }" :aria-label="sidebarCollapsed ? '审计日志' : undefined" :title="sidebarCollapsed ? '审计日志' : undefined" :aria-current="activeSection === 'audit' ? 'page' : undefined" aria-controls="audit-logs" @click="activeSection = 'audit'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
+              <p v-if="isSuperAdmin || canAccessModule('members') || canAccessModule('settings') || canAccessModule('life-cards') || canAccessModule('life-card-views')" class="dashboard-nav-label">系统</p>
+              <button v-if="canAccessModule('members')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'members' }" :aria-current="activeSection === 'members' ? 'page' : undefined" aria-controls="member-directory" @click="activeSection = 'members'; refreshMembers()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
+              <button v-if="canAccessModule('settings')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" aria-controls="system-settings" @click="activeSection = 'settings'; loadSystemSettings()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button><button v-if="canAccessModule('life-cards')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" aria-controls="life-card-copy" @click="activeSection = 'life-cards'; loadLifeCards()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button><button v-if="canAccessModule('life-card-views')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" aria-controls="life-card-views" @click="activeSection = 'life-card-views'; loadLifeCardViews()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'employees' }" :aria-current="activeSection === 'employees' ? 'page' : undefined" aria-controls="employee-access" @click="activeSection = 'employees'; loadEmployees()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>员工与权限</span></button>
             </div>
           </nav>
@@ -5093,6 +5213,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="employee-role-cell">
               <span class="role-badge" :class="`role-${employee.role}`">{{ adminRoleLabels[employee.role] }}</span>
+              <small class="employee-module-summary">{{ employeeModuleSummary(employee) }}</small>
             </div>
             <div class="employee-status-cell">
               <span class="employee-state-pill" :class="employee.status">{{ employee.status === 'active' ? '启用' : '已停用' }}</span>
@@ -5122,6 +5243,7 @@ onBeforeUnmount(() => {
                 <label>角色<select v-model="employeeForm.role"><option value="content_editor">内容编辑 · 内容与审核</option><option value="support_readonly">客服只读 · 仅查看会员</option></select></label>
                 <label class="employee-form-full">企业微信 UserID（选填）<input v-model="employeeForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="绑定后员工可直接扫码登录" /></label>
                 <p class="employee-form-hint employee-form-full">企微 UserID 可在员工首次扫码的未绑定提示中查看；留空表示暂不绑定。</p>
+                <p class="employee-form-hint employee-form-full">新账号先按所选角色获得默认模块授权（内容编辑 5 个、客服只读 2 个）；创建后可在「编辑 → 模块授权」中单独增减。</p>
                 <p v-if="employeeFormError" class="error employee-form-full" role="alert">{{ employeeFormError }}</p>
                 <div class="employee-dialog-actions employee-form-full">
                   <button type="submit" :disabled="employeeSaving">{{ employeeSaving ? '创建中…' : '确认创建' }}</button>
@@ -5174,6 +5296,26 @@ onBeforeUnmount(() => {
                   </select>
                 </label>
                 <label class="employee-form-full">企业微信 UserID<input v-model="employeeEditForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="留空可解除绑定" /></label>
+                <fieldset class="employee-module-fieldset employee-form-full">
+                  <legend>模块授权</legend>
+                  <p class="employee-form-hint">勾选该员工可以进入的后台模块。默认跟随角色授权；发布、删除媒体、停用会员与员工管理始终只允许超级管理员。</p>
+                  <div class="employee-module-grid">
+                    <label v-for="module in adminModules" :key="module.id" class="employee-module-option" :class="{ checked: isEmployeeModuleChecked(module.id) }">
+                      <input
+                        type="checkbox"
+                        :checked="isEmployeeModuleChecked(module.id)"
+                        :disabled="employeeEditSaving"
+                        @change="toggleEmployeeModule(module.id, ($event.target as HTMLInputElement).checked)"
+                      />
+                      <span class="employee-module-label">{{ module.label }}</span>
+                      <small>{{ module.description }}</small>
+                    </label>
+                  </div>
+                  <div class="employee-module-actions">
+                    <span class="employee-module-count">已授权 {{ employeeModuleCount }} 个模块{{ employeeEditForm.modulePermissions ? '（自定义）' : '（角色默认）' }}</span>
+                    <button type="button" class="quiet" :disabled="employeeEditSaving || employeeEditForm.modulePermissions === null" @click="restoreEmployeeRoleModules">恢复角色默认</button>
+                  </div>
+                </fieldset>
                 <p class="employee-form-hint employee-form-full">绑定后该员工可直接使用企业微信扫码登录；留空并保存会解除当前绑定。</p>
                 <div class="employee-edit-meta employee-form-full">
                   <span>最近登录：{{ editingEmployee?.lastLoginAt ? displayDate(editingEmployee.lastLoginAt) : '尚未登录' }}</span>

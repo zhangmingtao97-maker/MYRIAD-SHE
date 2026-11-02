@@ -8,7 +8,7 @@
   <block wx:else>
     <block wx:if="{{hasModules}}">
       <view wx:for="{{modules}}" wx:key="id" id="home-module-{{item.id}}" class="editorial-section module-{{item.type}}">
-        <view wx:if="{{item.type === 'issueMeta'}}" class="issue-meta"><view><view class="eyebrow">{{item.eyebrow}}</view><view class="issue-month">{{item.month}}</view></view><view class="issue-code">{{issue.code}}</view></view>
+        <view wx:if="{{item.type === 'issueMeta'}}" class="issue-meta" aria-label="{{issueHeader.kicker}} {{issueHeader.number}} {{issueHeader.edition}}"><view class="issue-meta-kicker">{{issueHeader.kicker}}</view><view wx:if="{{issueHeader.number}}" class="issue-meta-number">{{issueHeader.number}}</view><view wx:if="{{issueHeader.edition}}" class="issue-meta-edition">{{issueHeader.edition}}</view></view>
         <block wx:elif="{{item.type === 'cover' || item.type === 'image'}}">
           <image wx:if="{{item.imageUrl}}" class="issue-cover" src="{{item.imageUrl}}" mode="aspectFill" lazy-load="true" aria-label="{{item.altText}}" data-index="{{index}}" binderror="onModuleImageError" />
           <view wx:else class="cover-empty">图片暂不可用</view>

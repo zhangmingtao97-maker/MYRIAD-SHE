@@ -1,5 +1,20 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-02 员工改为按模块单独授权
+
+- 新增后台模块目录 `backend/src/auth/admin-permissions.ts`（12 个模块：期刊与首页策展、实践页面与目录、页面与协议、媒体库、用户经历审核、观察记录管理、隐私申请、会员列表、审计日志、生命牌文案、生命牌查看记录、系统设置），每个模块登记允许的 `方法 + 路径` 规则、中文名与说明，并提供 `parseAdminModuleOverride`、`effectiveAdminModules`、`adminModulesAllow`。
+- 迁移 `060_admin_module_permissions.sql` 为 `admin_accounts` 增加 `module_permissions text[]`：`NULL` 表示跟随角色默认授权（内容编辑 = 期刊/实践/页面/媒体/经历审核；客服只读 = 会员/设置），空数组表示显式不授权任何模块。API 启动时自动应用该迁移。
+- `AdminAuthGuard` 改为按模块授权判定：`super_admin` 与环境管理员始终全部放行；员工每次请求都读取数据库中的角色与 `module_permissions`，因此调整授权后无需重新登录即生效；`GET /admin/me`、`PATCH /admin/me/password`、`POST/DELETE /admin/me/avatar` 始终允许，首次登录/重置密码后的改密闸门保持不变。
+- 发布、删除媒体、停用会员、修改系统设置、员工与头像管理仍只允许超级管理员，未登记为可授权模块，避免越权提升。
+- `GET/POST/PATCH /admin/employees` 增加 `modulePermissions` 字段（创建时不传即跟随角色默认，PATCH 传 `null` 恢复角色默认，传数组为显式授权，非法模块返回 400）；`GET /admin/me` 返回当前账号的生效模块列表 `permissions`，超级管理员编辑弹窗中的模块授权固定为全部模块。
+- 后台界面：员工列表在角色徽标下显示「角色默认 N 个模块 / 自定义 N 个模块」；员工编辑弹窗新增 12 个模块的勾选卡片（含每项说明、已授权数量与「恢复角色默认」按钮）；左侧导航、默认落地页与初始数据加载全部改为按生效模块判定，只拉取已授权模块的数据，未授权模块不再出现在导航中；无任何授权时导航提示「暂无授权模块」。
+- 默认授权相对旧硬编码白名单有两处有意放宽：内容编辑可编辑实践共同文案（`practice-copy`）与「关于 MYRIAD SHE」草稿，但两者发布仍仅超级管理员；客服只读可查看数据库迁移状态。其余默认权限不变。
+- 验证：后端 `npm run lint`（`tsc --noEmit`）通过；`npm run test:unit` 现在可以完整编译并运行 176 项，175 项通过——唯一失败项 `observation.controller.spec.ts` 的「管理端查看解密观察记录」在 HEAD 上同样失败，属既有问题；顺带修复了 `content.controller.spec.ts` 中阻断整包编译的两处既有类型错误。新增守卫用例覆盖模块覆盖、显式空授权、超级管理员豁免与授权解析。后台 `npm run build`（`vue-tsc` + Vite）通过。
+- 已发布到生产 `https://www.myriadshe.com`（服务器 `118.25.227.159`，目录 `/opt/myriad-she`，Compose 项目 `myriad_she_prod`）：同步 `backend/src`（控制器、守卫、新增模块目录）、`backend/sql/060_admin_module_permissions.sql` 与 `management/src`（`App.vue`、`admin-theme.css`、`style.css`）共 7 个文件，`docker compose build api admin` 后 `up -d --no-deps api admin`；gateway、PostgreSQL、Redis、MinIO 未重建。发布前已将源码、数据库转储与镜像分别备份为 `/data/backups/myriad-she/{source,postgres}-pre-module-permissions-20261102-171716.*` 和 `myriad-she-{api,admin}:pre-modules-20261102-171716`。
+- 发布后验证：API 启动日志出现 `Applied database migration 060_admin_module_permissions.sql`，`app_schema_migrations` 最新为 060，`admin_accounts.module_permissions` 为可为空的 `text[]`；`/`、`/api/health/ready`、`/api/content/home` 均 200，未登录 `/api/admin/me` 为 401；管理员登录后 `/api/admin/me` 返回 12 个模块与 `permissionOverride: null`，`/api/admin/employees` 含 `modulePermissions` 字段，审计日志、系统设置、期刊接口均 200；线上后台 bundle 已包含「模块授权 / 恢复角色默认」文案。当前生产仅 1 个超级管理员账号，尚无员工账号，模块授权需在「员工与权限 → 编辑」中按人勾选。
+- 回滚方式：源码用上述 `source-pre-module-permissions-*.tar.gz` 覆盖回去；镜像可 `docker tag myriad-she-{api,admin}:pre-modules-20261102-171716 myriad-she-{api,admin}:production` 后 `up -d --no-deps api admin`；`module_permissions` 列可留可删（`alter table admin_accounts drop column module_permissions`），旧代码不读取该列。
+- 小程序首页三行刊期标题与本次权限改造不同渠道：本次只发布 API 与管理后台，小程序端仍需在微信开发者工具中上传体验版/正式版。
+
 ## 2026-11-02 小程序首页第一栏改为三行刊期标题
 
 - 首页 `issueMeta` 栏改为竖排三行：`当期策展` / `ISSUE 02` / `SEPTEMBER 2026 · A CURATED EDITION`，取代原先把眉题与月份放在左列、`issue.code` 靠右的两列写法。
