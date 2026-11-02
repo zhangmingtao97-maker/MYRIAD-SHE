@@ -81,8 +81,7 @@
           <view class="question-title">{{item.title || issue.question}}</view>
           <view wx:if="{{item.body}}" class="question-body">{{item.body}}</view>
           <view wx:if="{{item.questionActions.length}}" class="question-actions">
-            <view wx:for="{{item.questionActions}}" wx:for-item="action" wx:for-index="actionIndex" wx:key="id" class="question-action" role="button" tabindex="0" aria-label="{{action.title}}" data-action="{{action.type === 'observationAction' ? 'observation' : 'discussion'}}" bindtap="openModuleAction">
-              <text class="question-action-number">0{{actionIndex + 1}}</text>
+            <view wx:for="{{item.questionActions}}" wx:for-item="action" wx:key="id" class="question-action" role="button" tabindex="0" aria-label="{{action.title}}" data-action="{{action.type === 'observationAction' ? 'observation' : 'discussion'}}" bindtap="openModuleAction">
               <view class="question-action-main"><view class="question-action-title">{{action.title}}</view><view wx:if="{{action.body}}" class="question-action-copy">{{action.body}}</view></view>
               <text class="question-action-arrow">→</text>
             </view>
