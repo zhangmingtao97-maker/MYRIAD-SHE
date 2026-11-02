@@ -5374,9 +5374,9 @@ onBeforeUnmount(() => {
                   </select>
                 </label>
                 <label class="employee-form-full">企业微信 UserID<input v-model="employeeEditForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="留空可解除绑定" /></label>
-                <fieldset class="employee-module-fieldset employee-form-full">
+                <fieldset v-if="editingEmployee?.role !== 'super_admin'" class="employee-module-fieldset employee-form-full">
                   <legend>模块授权</legend>
-                  <p class="employee-form-hint">勾选该员工可以进入的后台模块。默认跟随角色授权；发布、删除媒体、停用会员与员工管理始终只允许超级管理员。</p>
+                  <p class="employee-form-hint">勾选该员工可以进入的后台模块。默认跟随角色授权；发布、删除媒体、停用会员与员工管理始终只允许超级管理员。也可以直接用列表里的「授权模块」修改。</p>
                   <div class="employee-module-grid">
                     <label v-for="module in adminModules" :key="module.id" class="employee-module-option" :class="{ checked: isEmployeeModuleChecked(module.id) }">
                       <input
@@ -5394,6 +5394,7 @@ onBeforeUnmount(() => {
                     <button type="button" class="quiet" :disabled="employeeEditSaving || employeeEditForm.modulePermissions === null" @click="restoreEmployeeRoleModules">恢复角色默认</button>
                   </div>
                 </fieldset>
+                <p v-else class="employee-form-hint employee-form-full">超级管理员固定拥有全部 {{ adminModules.length }} 个模块，不能单独增减；如需按人授权，请给非超管员工使用列表里的「授权模块」。</p>
                 <p class="employee-form-hint employee-form-full">绑定后该员工可直接使用企业微信扫码登录；留空并保存会解除当前绑定。</p>
                 <div class="employee-edit-meta employee-form-full">
                   <span>最近登录：{{ editingEmployee?.lastLoginAt ? displayDate(editingEmployee.lastLoginAt) : '尚未登录' }}</span>
