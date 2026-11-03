@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    绠＄悊鍚庡彴 路 璁捐绯荤粺 v3
    鐜颁唬 SaaS 椋庢牸锛氭敹鏁涢厤鑹层€佹棤琛嚎灞傜骇銆佺粺涓€鎺т欢銆佽交閲忓姩鏁堛€佸畬鏁村搷搴斿紡銆?   閫氳繃 main.ts 鍦?style.css 涔嬪悗瀵煎叆锛岃鐩栨棫涓婚涓庡巻鍙茶鐩栬鍒欍€?   ========================================================================= */
 
@@ -386,6 +386,7 @@ strong { font-weight: 600; }
 .discussion-contribution-row:hover { background: var(--surface-2); }
 .observation-row:last-child,
 .discussion-contribution-row:last-child { border-bottom: 0; }
+.discussion-contribution-preview { color: var(--ink-2); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
 .table-actions { padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface-2); }
 .discussion-contribution-body {
   margin: 0;
@@ -419,6 +420,16 @@ button:not(:disabled):hover {
   transform: translateY(-1px);
 }
 button:not(:disabled):active { transform: translateY(0); box-shadow: none; }
+
+/* 侧边导航是 button，别被上面的主按钮 hover 样式染成深底，否则当前项文字会与底色同色 */
+button.dashboard-tab:hover,
+button.dashboard-tab.active:hover,
+button.dashboard-subtab:hover {
+  box-shadow: none;
+  transform: none;
+}
+button.dashboard-tab:hover { background: var(--surface-2); color: var(--ink); }
+button.dashboard-tab.active:hover { background: var(--accent-soft); color: var(--accent-strong); }
 
 button.quiet,
 .quiet {

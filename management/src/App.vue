@@ -458,10 +458,11 @@ const observationLoadingMore = ref(false);
 const observationMoreError = ref('');
 const observationPageSize = 50;
 type DiscussionContributionStatus = 'pending' | 'handled' | 'dismissed';
-type ManagedDiscussionContribution = { id: string; revision: number; issueCode: string; issueLabel: string; threadId: string; threadAuthor: string | null; status: DiscussionContributionStatus; createdAt: string; updatedAt: string };
+type ManagedDiscussionContribution = { id: string; revision: number; issueCode: string; issueLabel: string; threadId: string; threadAuthor: string | null; bodyPreview: string; status: DiscussionContributionStatus; createdAt: string; updatedAt: string };
 type ManagedDiscussionContributionDetail = ManagedDiscussionContribution & { body: string };
 const discussionContributions = ref<ManagedDiscussionContribution[]>([]);
 const discussionContributionStatus = ref<DiscussionContributionStatus | ''>('pending');
+const discussionContributionKind = ref<'' | 'experience' | 'reply'>('');
 const discussionContributionIssueCode = ref('');
 const discussionContributionTotal = ref(0);
 const discussionContributionOffset = ref(0);
@@ -3054,6 +3055,7 @@ function discussionContributionQuery(offset = 0) {
     limit: String(discussionContributionPageSize),
     offset: String(offset),
     ...(discussionContributionStatus.value ? { status: discussionContributionStatus.value } : {}),
+    ...(discussionContributionKind.value ? { kind: discussionContributionKind.value } : {}),
     ...(discussionContributionIssueCode.value ? { issueCode: discussionContributionIssueCode.value } : {}),
   });
 }
@@ -5306,7 +5308,7 @@ onBeforeUnmount(() => {
         
         <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
         <p v-if="discussionContributionError" class="error" role="alert">{{ discussionContributionError }}</p>
-        <div class="filters" aria-label="用户经历筛选"><label>处理状态<select v-model="discussionContributionStatus" @change="refreshDiscussionContributions"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionContributionIssueCode" @change="refreshDiscussionContributions"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
+        <div class="filters" aria-label="用户经历筛选"><label>处理状态<select v-model="discussionContributionStatus" @change="refreshDiscussionContributions"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>类型<select v-model="discussionContributionKind" @change="refreshDiscussionContributions"><option value="">全部</option><option value="experience">经历</option><option value="reply">回复留言</option></select></label><label>期刊<select v-model="discussionContributionIssueCode" @change="refreshDiscussionContributions"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
         <div class="discussion-report-block">
         <div class="subsection-heading"><div><p class="eyebrow">REPORTED CONTENT</p><h3>用户举报</h3></div><div class="section-tools"><small v-if="discussionReportSummary.pending">待处理 {{ discussionReportSummary.pending }} 条</small><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button></div></div>
         <p v-if="discussionReportActionMessage" class="status-message" role="status">{{ discussionReportActionMessage }}</p>
@@ -5331,15 +5333,16 @@ onBeforeUnmount(() => {
         </div>
         </div>
         <div class="discussion-contribution-table" aria-live="polite">
-          <div class="discussion-contribution-head"><span>期刊 / 回复对象</span><span>状态</span><span>更新时间</span><span>内容</span></div>
+          <div class="discussion-contribution-head"><span>期刊 / 类型</span><span>内容摘要</span><span>状态</span><span>更新时间</span><span>操作</span></div>
           <div v-for="record in discussionContributions" :key="record.id" class="discussion-contribution-row">
-            <span><strong>{{ record.issueLabel || record.issueCode }}</strong><small>{{ record.threadAuthor ? `回复 ${record.threadAuthor}` : '本期经历' }}</small></span>
+            <span><strong>{{ record.issueLabel || record.issueCode }}</strong><small>{{ record.threadAuthor ? `回复留言 · ${record.threadAuthor}` : '经历' }}</small></span>
+            <span class="discussion-contribution-preview">{{ record.bodyPreview || '正文需要打开后查看' }}</span>
             <span>{{ record.status === 'pending' ? '待处理' : record.status === 'handled' ? '已处理' : '不采纳' }}</span>
             <span>{{ displayDate(record.updatedAt) }}</span>
             <span><button type="button" class="quiet observation-view-button" @click="viewDiscussionContribution(record)">查看正文</button></span>
           </div>
           <p v-if="discussionContributionLoading && !discussionContributions.length" class="muted" role="status">正在读取用户经历…</p>
-          <p v-else-if="!discussionContributionLoading && !discussionContributions.length" class="muted">当前筛选下没有用户经历。</p>
+          <p v-else-if="!discussionContributionLoading && !discussionContributions.length" class="muted">当前筛选下没有用户经历或回复留言。</p>
           <div v-if="discussionContributionHasMore || discussionContributionMoreError" class="table-actions"><button type="button" class="quiet" :disabled="discussionContributionLoadingMore" @click="discussionContributionMoreError ? refreshDiscussionContributions() : loadMoreDiscussionContributions()">{{ discussionContributionLoadingMore ? '加载中…' : discussionContributionMoreError || '加载更多经历' }}</button></div>
         </div>
         <Teleport to="body">
@@ -5350,7 +5353,7 @@ onBeforeUnmount(() => {
             <p v-if="selectedDiscussionContributionLoading" class="muted" role="status">正在读取并解密经历…</p>
             <p v-else-if="selectedDiscussionContributionError" class="error" role="alert">{{ selectedDiscussionContributionError }}</p>
             <template v-else-if="selectedDiscussionContribution">
-              <p class="muted observation-detail-meta">{{ selectedDiscussionContribution.issueLabel }} · {{ selectedDiscussionContribution.threadAuthor ? `回复 ${selectedDiscussionContribution.threadAuthor}` : '本期经历' }} · {{ selectedDiscussionContribution.status === 'pending' ? '待处理' : selectedDiscussionContribution.status === 'handled' ? '已处理' : '不采纳' }}</p>
+              <p class="muted observation-detail-meta">{{ selectedDiscussionContribution.issueLabel }} · {{ selectedDiscussionContribution.threadAuthor ? `回复留言 · ${selectedDiscussionContribution.threadAuthor}` : '经历' }} · {{ selectedDiscussionContribution.status === 'pending' ? '待处理' : selectedDiscussionContribution.status === 'handled' ? '已处理' : '不采纳' }}</p>
               <article class="discussion-contribution-body">{{ selectedDiscussionContribution.body }}</article>
               <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
               <div class="form-actions discussion-contribution-actions">

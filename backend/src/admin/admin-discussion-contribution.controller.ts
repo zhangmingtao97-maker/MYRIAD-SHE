@@ -38,29 +38,49 @@ export class AdminDiscussionContributionController {
     private readonly audit: AuditService,
   ) {}
 
+  private previewOf(body: unknown) {
+    try {
+      const payload = this.encryption.decryptJson(body);
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload) || typeof (payload as Record<string, unknown>).body !== 'string') return '';
+      const text = (payload as { body: string }).body.replace(/\s+/g, ' ').trim();
+      return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+    } catch {
+      return '';
+    }
+  }
+
   @Get()
   @Header('Cache-Control', 'no-store')
-  async list(@Query('status') status?: string, @Query('issueCode') issueValue?: string, @Query('limit') limitValue?: string, @Query('offset') offsetValue?: string) {
+  async list(@Query('status') status?: string, @Query('issueCode') issueValue?: string, @Query('kind') kindValue?: string, @Query('limit') limitValue?: string, @Query('offset') offsetValue?: string) {
     if (status && !['pending', 'handled', 'dismissed'].includes(status)) throw new BadRequestException('经历状态筛选无效');
     const issueCode = issueValue?.trim() || '';
     if (issueCode.length > 64) throw new BadRequestException('期刊编号筛选无效');
+    const kind = kindValue === 'experience' || kindValue === 'reply' ? kindValue : '';
+    if (kindValue && !kind && kindValue !== 'all') throw new BadRequestException('内容类型筛选无效');
     const filters: string[] = [];
     const values: unknown[] = [];
     if (status) { values.push(status); filters.push(`status = $${values.length}`); }
     if (issueCode) { values.push(issueCode); filters.push(`issue_code = $${values.length}`); }
+    if (kind === 'experience') filters.push(`thread_id = ''`);
+    if (kind === 'reply') filters.push(`thread_id <> ''`);
     const where = filters.length ? `where ${filters.join(' and ')}` : '';
     const { limit, offset } = parsePagination(limitValue, offsetValue, { defaultLimit: 50, maxLimit: 100, label: '用户经历分页' });
     return this.database.withTransaction(async (client) => {
       await client.query('set transaction isolation level repeatable read');
       const pageValues = [...values, limit, offset];
       const [records, count] = await Promise.all([
-        client.query<AdminContributionRow>(
-          `select ${listColumns} from discussion_contributions ${where}
+        client.query<AdminContributionRow & { body: unknown }>(
+          `select ${listColumns}, body from discussion_contributions ${where}
            order by updated_at desc, id desc limit $${pageValues.length - 1} offset $${pageValues.length}`, pageValues,
         ),
         client.query<{ total: string }>(`select count(*)::text as total from discussion_contributions ${where}`, values),
       ]);
-      return { items: records.rows, total: parseDatabaseCount(count.rows[0]?.total ?? '0', '用户经历总数'), limit, offset };
+      return {
+        items: records.rows.map(({ body, ...row }) => ({ ...row, bodyPreview: this.previewOf(body) })),
+        total: parseDatabaseCount(count.rows[0]?.total ?? '0', '用户经历总数'),
+        limit,
+        offset,
+      };
     });
   }
 
