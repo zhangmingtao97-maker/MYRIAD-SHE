@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    期刊工作台 · 视觉统一层
    接在 admin-theme.css / admin-fixes.css 之后加载。
    目标：把期刊工作台从独立的“米色纸张”风格收回到后台设计系统内，
@@ -732,28 +732,26 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* 内容页：切换时整体上浮，内部卡片稍后跟进 */
+/* 内容页：切页时只做极短淡入（≤120ms），避免每次点击都像“卡住”再浮现。 */
 .content-area {
-  animation: view-reveal .38s var(--ease) both;
+  animation: view-fade .09s linear both;
 }
 .content-area > .panel,
 .content-area > .overview-metrics,
 .content-area > .journal-page-head,
 .content-area > .section-heading,
-.content-area > .journal-workspace {
-  animation: content-rise .42s var(--ease) both;
+.content-area > .journal-workspace,
+.content-area > :nth-child(2),
+.content-area > :nth-child(3),
+.content-area > :nth-child(4) {
+  animation: none;
 }
-.content-area > :nth-child(2) { animation-delay: .045s; }
-.content-area > :nth-child(3) { animation-delay: .09s; }
-.content-area > :nth-child(4) { animation-delay: .135s; }
+/* 顶栏标题随切换重挂载，不做入场动画。 */
+.topbar-title { animation: none; }
 
-@keyframes view-reveal {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes content-rise {
-  from { opacity: 0; transform: translateY(7px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes view-fade {
+  from { opacity: .6; }
+  to { opacity: 1; }
 }
 
 .topbar::after {
