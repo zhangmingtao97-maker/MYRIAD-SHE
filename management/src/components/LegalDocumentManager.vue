@@ -22,12 +22,75 @@ const historyLoading = ref(false); const historyError = ref('');
 const historyPreview = ref<LegalContent | null>(null);
 const effectiveDateInput = ref<InstanceType<typeof DatePickerField> | null>(null);
 const missingEffectiveDate = computed(() => Boolean(content.value && !content.value.effectiveDate.trim()));
-const preview = computed(() => content.value ? safeLegalHtml(content.value.body.richText) : '');
 const disabled = computed(() => Boolean(busy.value) || conflict.value);
 let alive = true;
 const base = computed(() => `${props.apiBase}/content/legal-documents/${props.documentKey}`);
 
 function markDirty() { dirty.value = true; message.value = ''; error.value = ''; }
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
+}
+
+function openDraftPreview() {
+  if (!content.value) return;
+  error.value = '';
+  const title = safeLegalHtml(content.value.title.richText);
+  const intro = safeLegalHtml(content.value.intro.richText);
+  const body = safeLegalHtml(content.value.body.richText);
+  const effectiveDate = escapeHtml(content.value.effectiveDate.trim() || '待填写');
+  const updatedDate = content.value.updatedDate.trim();
+  const version = escapeHtml(content.value.version.trim() || '未填写');
+  const html = `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(label.value)} · 草稿预览</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 40px 20px 64px; background: #f1e9de; color: #40362f; font-family: "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif; }
+.document { width: min(760px, 100%); margin: 0 auto; padding: 56px 64px 48px; background: #fffdf9; border: 1px solid #ded3c5; box-shadow: 0 18px 60px rgb(64 54 47 / 8%); }
+.eyebrow { margin: 0 0 24px; color: #8a6755; font-family: Arial, sans-serif; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+.title { margin: 0 0 20px; font-size: 34px; font-weight: 600; line-height: 1.35; }
+.title p, .intro p, .body p { margin: 0 0 1em; }
+.intro { margin: 0 0 22px; color: #75675d; font-size: 16px; line-height: 1.9; }
+.meta { margin: 0 0 32px; padding-bottom: 22px; border-bottom: 1px solid #e4dbd1; color: #75675d; font-size: 13px; line-height: 1.8; }
+.body { font-size: 15px; line-height: 2; }
+.body h1, .body h2, .body h3 { margin: 1.4em 0 .6em; line-height: 1.5; }
+.body ul, .body ol { padding-left: 1.6em; }
+.body li { margin: .3em 0; }
+.body strong { font-weight: 600; }
+.body a { color: #663124; }
+.empty { color: #9b8b7d; }
+.note { margin: 40px 0 0; padding-top: 18px; border-top: 1px solid #e4dbd1; color: #9b8b7d; font-family: Arial, sans-serif; font-size: 11px; line-height: 1.7; }
+@media (max-width: 640px) { body { padding: 0; background: #fffdf9; } .document { padding: 36px 24px 40px; border: 0; box-shadow: none; } .title { font-size: 28px; } }
+@media print { body { padding: 0; background: #fff; } .document { width: 100%; padding: 0; border: 0; box-shadow: none; } .note { display: none; } }
+</style>
+</head>
+<body>
+<main class="document">
+  <p class="eyebrow">MYRIAD SHE / DRAFT PREVIEW</p>
+  <div class="title">${title}</div>
+  ${intro ? `<div class="intro">${intro}</div>` : ''}
+  <p class="meta">生效日期：${effectiveDate} · 版本：${version}${updatedDate ? `<br>更新日期：${escapeHtml(updatedDate)}` : ''}</p>
+  <article class="body">${body || '<p class="empty">正文尚未填写。</p>'}</article>
+  <p class="note">这是后台草稿预览，尚未发布到小程序。关闭此页面不会保存或发布任何修改。</p>
+</main>
+</body>
+</html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  const preview = window.open(url, '_blank');
+  if (!preview) {
+    URL.revokeObjectURL(url);
+    error.value = '浏览器阻止了新窗口，请允许弹出窗口后重试。';
+    return;
+  }
+  preview.opener = null;
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  message.value = '草稿预览已在新页面打开。';
+}
 async function requireEffectiveDate(message: string) {
   error.value = message;
   await nextTick();
@@ -146,9 +209,9 @@ defineExpose({ reload });
         <div class="observation-copy-groups"><section class="observation-copy-group"><h3>文档信息</h3><label>文档标题<input v-model="content.title.richText" maxlength="160" required @input="markDirty" /></label><label>导语（选填）<textarea v-model="content.intro.richText" maxlength="1000" rows="3" @input="markDirty" /></label><label>更新日期（选填）<DatePickerField v-model="content.updatedDate" aria-label="更新日期" placeholder="选择日期" clearable @change="markDirty" /></label><label>生效日期（发布必填）<DatePickerField ref="effectiveDateInput" v-model="content.effectiveDate" aria-label="生效日期" placeholder="选择日期" @change="markDirty" /></label><label>版本号<input v-model="content.version" maxlength="16" pattern="[0-9]{1,4}(\.[0-9]{1,4}){0,2}" required placeholder="例如 1.0 或 1.1.2" @input="markDirty" /></label><label>本次更新说明（选填）<textarea v-model="content.updateNotes" maxlength="1000" rows="3" @input="markDirty" /></label></section>
           <section class="observation-copy-group"><h3>正文编辑</h3><RichTextEditor v-model="content.body.richText" label="完整正文" basic :disabled="disabled" @change="markDirty" /><small>字号与颜色由小程序统一排版。{{ content.body.richText.length.toLocaleString() }} / 200,000 字符（含格式标记）。</small></section></div>
       </fieldset>
-      <details class="revision-list"><summary>预览当前草稿</summary><article class="legal-preview"><h3 v-html="safeLegalHtml(content.title.richText)" /><div v-html="safeLegalHtml(content.intro.richText)" /><p v-if="content.updatedDate">更新日期：{{ content.updatedDate }}</p><p>生效日期：{{ content.effectiveDate || '待填写' }} · 版本：{{ content.version }}</p><p v-if="content.updateNotes">本次更新：{{ content.updateNotes }}</p><div v-html="preview" /></article></details>
       <p v-if="dirty" class="muted" role="status">有未保存的修改。</p><p v-else-if="hasDraft" class="muted">云端有待发布草稿。</p>
       <div class="form-actions"><button type="submit" :disabled="disabled || !dirty || Boolean(imported) || content.body.richText.length > 200000">保存草稿</button><button v-if="canPublish" type="button" class="quiet" :disabled="disabled || dirty || !hasDraft || Boolean(imported)" @click="publish">发布到小程序</button><span v-else class="muted">草稿保存后由超级管理员发布。</span></div>
+      <div class="legal-preview-action"><button type="button" class="quiet" :disabled="!content" @click="openDraftPreview">预览当前草稿</button><small>在新页面打开，按小程序阅读样式展示；不会保存或发布。</small></div>
     </form>
     <details class="revision-list" @toggle="($event.target as HTMLDetailsElement).open && loadHistory()"><summary>查看发布历史与旧版正文</summary><p v-if="historyLoading" role="status">正在读取历史…</p><p v-if="historyError" class="error" role="alert">{{ historyError }}</p><p v-if="!historyLoading && !historyError && !history.length" class="muted">暂无发布记录。</p><div v-for="revision in history" :key="revision.version" class="legal-revision"><span>第 {{ revision.version }} 版 · {{ new Date(revision.publishedAt).toLocaleString() }} · {{ revision.publishedBy }}</span><button type="button" class="quiet" @click="historyPreview = revision.content">查看正文</button></div></details>
     <section v-if="historyPreview" class="observation-copy-group"><div class="section-heading"><h3>历史版本 · {{ historyPreview.version }}</h3><button type="button" class="quiet" @click="historyPreview = null">关闭历史预览</button></div><article class="legal-preview"><h3 v-html="safeLegalHtml(historyPreview.title.richText)" /><p>生效日期：{{ historyPreview.effectiveDate }}</p><div v-html="safeLegalHtml(historyPreview.body.richText)" /></article><button type="button" class="quiet" :disabled="disabled || !content" @click="restoreHistory">将此版本载入草稿</button></section>
@@ -165,6 +228,8 @@ defineExpose({ reload });
 .legal-preview :deep(p) { margin: 0 0 1em; }
 .legal-preview :deep(h1), .legal-preview :deep(h2), .legal-preview :deep(h3) { line-height: 1.5; }
 .legal-revision { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; flex-wrap: wrap; }
+.legal-preview-action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; padding-top: 16px; border-top: 1px solid #e4dbd1; }
+.legal-preview-action small { color: #8a7b6f; font-size: 12px; line-height: 1.6; }
 .legal-manager :deep(.rich-text-toolbar) { flex-wrap: wrap; }
 .legal-manager :deep(.rich-text-canvas) { max-height: 700px; min-height: 320px; overflow: auto; }
 .legal-manager button { min-height: 44px; }
