@@ -2,12 +2,12 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicDiscussion } from '../../utils/discussion-content';
 import type { DiscussionThread, PublicDiscussion } from '../../utils/discussion-content';
 import { discussionStorageKey, readLocalDiscussion, reportLocalThread } from '../../utils/discussion-storage';
-import type { LocalContribution } from '../../utils/discussion-storage';
+import type { LocalContribution, LocalDiscussionDraft } from '../../utils/discussion-storage';
 
 type DisplayThread = DiscussionThread & { localReplies: LocalContribution[]; expanded: boolean; reported: boolean };
 
 Page({
-  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, threads: [] as DisplayThread[], myPosts: [] as LocalContribution[], loading: true, error: '', localPostCount: 0 },
+  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, threads: [] as DisplayThread[], myPosts: [] as LocalContribution[], draft: null as LocalDiscussionDraft | null, loading: true, error: '', localPostCount: 0 },
   requestGeneration: 0,
   onLoad(query: Record<string, string | undefined>) {
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, issueCode: query.issueCode || '' });
@@ -20,7 +20,10 @@ Page({
     const issueCode = this.data.issueCode;
     const mine = stored.contributions.filter((entry) => entry.issueCode === issueCode);
     const localReplies = (threadId: string) => mine.filter((entry) => entry.threadId === threadId);
-    this.setData({ myPosts: mine.filter((entry) => !entry.threadId), localPostCount: mine.length,
+    const draft = stored.drafts
+      .filter((entry) => entry.issueCode === issueCode)
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] || null;
+    this.setData({ myPosts: mine.filter((entry) => !entry.threadId), localPostCount: mine.length, draft,
       threads: this.data.threads.map((thread) => ({ ...thread, localReplies: localReplies(thread.id), reported: stored.reports.some((item) => item.issueCode === issueCode && item.threadId === thread.id) })) });
   },
   async load() {
@@ -55,6 +58,7 @@ Page({
     this.openComposer(String(event?.currentTarget.dataset.threadId || ''));
   },
   replyToThread(event: WechatMiniprogram.CustomEvent) { this.openComposer(String(event.currentTarget.dataset.threadId || '')); },
+  continueDraft() { if (this.data.draft) this.openComposer(this.data.draft.threadId); },
   openComposer(threadId: string) {
     const thread = this.data.threads.find((item) => item.id === threadId);
     const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}&threadAuthor=${encodeURIComponent(thread?.author || '')}`;

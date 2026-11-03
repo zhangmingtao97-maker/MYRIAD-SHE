@@ -16,6 +16,7 @@
       <view class="discussion-description">{{content.copy.paragraph2}}</view>
       <view class="discussion-description">{{content.copy.paragraph3}}</view>
       <view class="discussion-write" role="button" aria-label="{{content.copy.writeAction}}" tabindex="0" bindtap="writeExperience"><text>{{content.copy.writeAction}}</text><text class="discussion-external" aria-hidden="true">↗</text></view>
+      <view wx:if="{{draft}}" class="discussion-draft" role="button" aria-label="继续未完成的草稿" tabindex="0" bindtap="continueDraft"><text>继续未完成的草稿</text><text class="discussion-draft-arrow" aria-hidden="true">→</text></view>
     </view>
     <view class="discussion-voices">
       <view class="discussion-section-heading"><text>{{content.copy.voicesTitle}}</text><text class="discussion-example-badge">{{content.copy.exampleBadge}}</text></view>
