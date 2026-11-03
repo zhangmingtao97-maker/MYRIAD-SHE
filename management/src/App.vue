@@ -1585,6 +1585,11 @@ function memberBirthday(member: Pick<Member, 'birthMonth' | 'birthDay'>) {
   return `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function memberAddressRegion(address?: MemberAddress | null) {
+  if (!address) return '未保存';
+  return [address.provinceName, address.cityName].filter(Boolean).join(' ') || '未保存';
+}
+
 function memberAddressLabel(address?: MemberAddress | null) {
   if (!address) return '未保存';
   return [address.provinceName, address.cityName, address.countyName, address.detailInfo].filter(Boolean).join(' ') || '未保存';
@@ -5540,7 +5545,7 @@ onBeforeUnmount(() => {
         <p class="muted">当前条件 {{ memberTotal }} 位会员</p>
         <div class="observation-table">
           <div class="observation-head member-head"><span>会员资料</span><span>生日</span><span>收货地址</span><span>注册时间</span><span>手机号</span><span>观察记录</span><span>账号状态</span><span>详情 / 管理</span></div>
-          <div v-for="member in members" :key="member.id" class="observation-row member-head"><div class="member-summary"><img v-if="member.avatarUrl" class="member-avatar" :src="member.avatarUrl" :alt="member.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ member.nickname ? member.nickname.slice(0, 1) : 'M' }}</span><span class="member-summary-copy"><strong>{{ member.nickname || '未设置昵称' }}</strong><small class="mono">{{ member.id }}</small></span></div><span class="member-birthday">{{ memberBirthday(member) }}</span><span class="member-address" :title="isSuperAdmin ? memberAddressLabel(member.address) : '仅超级管理员可见'">{{ isSuperAdmin ? memberAddressLabel(member.address) : '仅超级管理员可见' }}</span><span>{{ displayDate(member.createdAt) }}</span><span class="member-phone">{{ member.phoneNumber || member.phoneMasked || '未绑定' }}</span><span>{{ member.observationCount }}</span><span>{{ member.status === 'active' ? '正常' : '已停用' }}</span><span class="member-actions"><button class="quiet" @click="showMember(member.id)">详情</button><button v-if="isSuperAdmin" class="quiet" @click="toggleMemberStatus(member)">{{ member.status === 'active' ? '停用' : '恢复' }}</button></span></div>
+          <div v-for="member in members" :key="member.id" class="observation-row member-head"><div class="member-summary"><img v-if="member.avatarUrl" class="member-avatar" :src="member.avatarUrl" :alt="member.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ member.nickname ? member.nickname.slice(0, 1) : 'M' }}</span><span class="member-summary-copy"><strong>{{ member.nickname || '未设置昵称' }}</strong><small class="mono">{{ member.id }}</small></span></div><span class="member-birthday">{{ memberBirthday(member) }}</span><span class="member-address" :title="isSuperAdmin ? memberAddressRegion(member.address) : '仅超级管理员可见'">{{ isSuperAdmin ? memberAddressRegion(member.address) : '仅超级管理员可见' }}</span><span>{{ displayDate(member.createdAt) }}</span><span class="member-phone">{{ member.phoneNumber || member.phoneMasked || '未绑定' }}</span><span>{{ member.observationCount }}</span><span>{{ member.status === 'active' ? '正常' : '已停用' }}</span><span class="member-actions"><button class="quiet" @click="showMember(member.id)">详情</button><button v-if="isSuperAdmin" class="quiet" @click="toggleMemberStatus(member)">{{ member.status === 'active' ? '停用' : '恢复' }}</button></span></div>
           <p v-if="!members.length && !memberLoading" class="muted">没有找到会员记录。</p>
           <div v-if="memberOffset < memberTotal" class="table-actions"><button class="quiet" :disabled="memberLoading" @click="refreshMembers(true)">加载更多会员</button></div>
         </div>
