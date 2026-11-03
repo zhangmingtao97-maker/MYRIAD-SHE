@@ -51,6 +51,26 @@ test('public discussion is read from the requested issue publication snapshot', 
   assert.deepEqual(response.content, snapshot.discussion);
 });
 
+test('public discussion prefers an independently published discussion page', async () => {
+  const snapshot = { issue: { code: 'ISSUE 02', label: '本期' }, discussion: defaultDiscussionContent() };
+  const independent = defaultDiscussionContent();
+  independent.copy.title = '独立发布的讨论问题';
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+  const database = {
+    query: async (sql: string, values: unknown[]) => {
+      calls.push({ sql, values });
+      if (sql.includes('content_discussion_pages')) return { rows: [{ content: independent, version: 7 }] };
+      return { rows: [{ snapshot, version: 4 }] };
+    },
+  } as unknown as DatabaseService;
+  const controller = new ContentController(database, {} as StorageService, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+  const response = await controller.discussion('ISSUE 02');
+  assert.equal(calls[1].values[0], 'ISSUE 02');
+  assert.match(calls[1].sql, /content_discussion_pages/);
+  assert.equal(response.publishedVersion, 7);
+  assert.equal(response.content.copy.title, '独立发布的讨论问题');
+});
+
 function harness(input: { referenced?: boolean; failIntentAudit?: boolean; failCompletionAudit?: boolean; failDelete?: boolean; orphanModifiedAt?: Date | null; cleanupClaims?: { sub?: string; scope?: string; objectKey?: string } } = {}) {
   const events: string[] = [];
   const committedAuditActions: string[] = [];

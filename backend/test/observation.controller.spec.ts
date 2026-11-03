@@ -71,7 +71,7 @@ function harness(input: { status?: TestRow['status']; method?: TestRow['method']
     if (sql.includes('from observations') && sql.includes('limit') && sql.includes('offset')) {
       return { rows: state.row && state.row.status !== 'deleted' ? [structuredClone(state.row)] : [] };
     }
-    if (sql.includes('from observations o where o.id = $1')) {
+    if (sql.includes('from observations o') && sql.includes('where o.id = $1')) {
       return { rows: state.row && values[0] === state.row.id && state.row.status !== 'deleted' ? [structuredClone(state.row)] : [] };
     }
     if (sql.includes('select') && sql.includes('from observations')) {

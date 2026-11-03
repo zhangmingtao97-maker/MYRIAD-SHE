@@ -5,6 +5,7 @@ import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
 import { LegalDocumentsController } from './content/legal-documents.controller';
 import { ContentController } from './content/content.controller';
+import { DiscussionPageController } from './content/discussion-page.controller';
 import { DatabaseService } from './database/database.service';
 import { HealthController } from './health.controller';
 import { ObservationController } from './observation/observation.controller';
@@ -33,7 +34,7 @@ import { AdminDiscussionContributionController } from './admin/admin-discussion-
       useFactory: (config: ConfigService) => ({ secret: config.get('JWT_ACCESS_SECRET') }),
     }),
   ],
-  controllers: [HealthController, AuthController, ContentController, LegalDocumentsController, ObservationController, DiscussionContributionController, UserController, AdminObservationController, AdminDiscussionContributionController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController],
+  controllers: [HealthController, AuthController, ContentController, DiscussionPageController, LegalDocumentsController, ObservationController, DiscussionContributionController, UserController, AdminObservationController, AdminDiscussionContributionController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController],
   providers: [DatabaseService, AuthService, AdminAuthGuard, UserAuthGuard, StorageService, RedisService, AuditService, PrivacyService, DataEncryptionService],
 })
 export class AppModule {}

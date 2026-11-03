@@ -4,6 +4,7 @@ import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
 import PracticeLineEditor from './components/PracticeLineEditor.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
+import type { DiscussionContent } from './discussion-content';
 import { isAdminLoginResult, isAuditPage, isIssueDashboardConsistent, isManagedIssueList, isManagedMediaKey, isManagedObservationDetail, isManagedObservationPage, isMediaAudioPage, isMediaDeleteResult, isMediaOrphanPage, isMediaUploadTarget, isMediaViewTarget, isObservationLifecycle, isPrivacyProcessResult, isPrivacyRequestPage, isPublicHome, isReencryptResult, isRetryResult } from './api-shapes';
 import type { AuditEntry, IssueLifecycle, ManagedAudioTrack, ManagedIssue, ManagedIssueModule, ManagedObservation, ManagedObservationDetail, MediaOrphan, ObservationLifecycle, PrivacyLifecycle, PrivacyRequest, PublicHome } from './api-shapes';
 
@@ -270,6 +271,15 @@ const issueSaveMessage = ref('');
 const issueHistory = ref<Array<{ version: number; publishedAt: string; publishedBy: string | null; snapshot: unknown }>>([]);
 const issueModulePreviewUrls = ref<Record<string, string>>({});
 const selectedIssueModuleId = ref('cover-story');
+const discussionPageEditVersion = ref(0);
+const discussionPagePublishedVersion = ref(0);
+const discussionPagePublishedAt = ref<string | null>(null);
+const discussionPageLoading = ref(false);
+const discussionPageSaving = ref(false);
+const discussionPagePublishing = ref(false);
+const discussionPageMessage = ref('');
+const discussionPageError = ref('');
+const discussionPageLoadedIssueId = ref('');
 
 /* ---------- 共同实践文案：按期 + 列表化 ---------- */
 type CopyItem = { richText: string; fontSize: number; color: string };
@@ -1131,6 +1141,7 @@ async function openJournalSubsection(section: JournalSection | 'media') {
     if (preferred) await editIssue(preferred);
   }
   ensureJournalModuleSelection();
+  if (section === 'journal-discussion') void loadDiscussionPageDraft();
 }
 async function ensureJournalIssueSelection() {
   if (editingIssueId.value || uploading.value || !issues.value.length) return;
@@ -1323,7 +1334,7 @@ const journalSectionDescription = computed(() => {
     case 'journal-home': return '刊期信息、封面主题、首页栏目顺序与整期手机预览。';
     case 'journal-story': return '人物纪实摘要与人物故事详情页；保存后同时更新首页对应栏目。';
     case 'journal-audio': return '本期可放 1–3 段微声音；至少 1 段有音频即可，未上传音频的条目发布时会忽略。';
-    case 'journal-discussion': return '讨论页固定文案、示例经历与写作页预览，随本期整体发布。';
+    case 'journal-discussion': return '讨论页固定文案、示例经历与写作页预览；可在讨论页单独保存/发布，也可随整期发布。';
     case 'journal-archive': return '首页「策展档案」入口文案，以及已发布/已归档期次列表。';
     case 'journal-list': return '期号创建、线上状态、整期发布与发布记录。';
     default: return '';
@@ -3424,6 +3435,94 @@ function moveDiscussionReply(threadIndex: number, replyIndex: number, direction:
   [replies[replyIndex], replies[target]] = [replies[target], replies[replyIndex]];
 }
 
+interface DiscussionPageAdminResponse {
+  issueStatus?: string;
+  editVersion: number;
+  draftContent: DiscussionContent;
+  publishedVersion: number;
+  publishedAt: string | null;
+  published: boolean;
+}
+
+async function loadDiscussionPageDraft(force = false) {
+  const issueId = editingIssueId.value;
+  if (!issueId || (!force && (discussionPageLoading.value || discussionPageLoadedIssueId.value === issueId))) return;
+  const issueCode = issueForm.value.code.trim();
+  if (!issueCode) return;
+  const session = sessionGeneration;
+  discussionPageLoading.value = true;
+  discussionPageError.value = '';
+  discussionPageMessage.value = '';
+  try {
+    const params = new URLSearchParams({ issueCode });
+    const response = await apiFetch(`${apiBase}/content/discussion/manage?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
+    if (handleAdminUnauthorized(response, session)) return;
+    assertSession(session);
+    if (!response.ok) throw new Error(await responseMessage(response, '读取本期讨论草稿失败'));
+    const result = await response.json() as DiscussionPageAdminResponse;
+    if (!result?.draftContent?.copy || !Array.isArray(result.draftContent.threads)) throw new Error('本期讨论草稿格式无效');
+    issueForm.value.draftContent.discussion = result.draftContent;
+    originalIssueForm.value.draftContent.discussion = JSON.parse(JSON.stringify(result.draftContent)) as DiscussionContent;
+    discussionPageEditVersion.value = Number(result.editVersion) || 0;
+    discussionPagePublishedVersion.value = Number(result.publishedVersion) || 0;
+    discussionPagePublishedAt.value = result.publishedAt;
+    discussionPageLoadedIssueId.value = issueId;
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      discussionPageError.value = caught instanceof Error ? caught.message : '读取本期讨论草稿失败';
+    }
+  } finally {
+    if (session === sessionGeneration) discussionPageLoading.value = false;
+  }
+}
+
+async function saveDiscussionPage(publish = false) {
+  if (!editingIssueId.value || discussionPageSaving.value || discussionPagePublishing.value) return;
+  const issueCode = issueForm.value.code.trim();
+  if (!issueCode) { discussionPageError.value = '请先填写期刊编号。'; return; }
+  if (publish) discussionPagePublishing.value = true;
+  else discussionPageSaving.value = true;
+  discussionPageError.value = '';
+  discussionPageMessage.value = '';
+  const session = sessionGeneration;
+  try {
+    const response = await apiFetch(`${apiBase}/content/discussion/manage${publish ? '/publish' : ''}`, {
+      method: publish ? 'POST' : 'PUT',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        issueCode,
+        content: issueForm.value.draftContent.discussion,
+        editVersion: discussionPageEditVersion.value,
+      }),
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    assertSession(session);
+    if (response.status === 409) throw new Error('本期讨论已在其他位置更新，请刷新页面后再保存。');
+    if (!response.ok) throw new Error(await responseMessage(response, publish ? '发布本期讨论失败' : '保存讨论草稿失败'));
+    const result = await response.json() as DiscussionPageAdminResponse;
+    discussionPageEditVersion.value = Number(result.editVersion) || discussionPageEditVersion.value;
+    discussionPagePublishedVersion.value = Number(result.publishedVersion) || discussionPagePublishedVersion.value;
+    discussionPagePublishedAt.value = result.publishedAt;
+    originalIssueForm.value.draftContent.discussion = JSON.parse(JSON.stringify(issueForm.value.draftContent.discussion)) as DiscussionContent;
+    if (publish) {
+      discussionPageMessage.value = result.issueStatus === 'published'
+        ? `已发布第 ${discussionPagePublishedVersion.value} 版讨论内容，小程序本期讨论已更新。`
+        : `讨论内容已发布；该期期刊尚未上线，读者暂时看不到。`;
+    } else {
+      discussionPageMessage.value = '讨论草稿已单独保存，不会改变线上内容。';
+    }
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      discussionPageError.value = caught instanceof Error ? caught.message : '保存本期讨论失败';
+    }
+  } finally {
+    if (session === sessionGeneration) {
+      discussionPageSaving.value = false;
+      discussionPagePublishing.value = false;
+    }
+  }
+}
+
 function setIssueModuleText(module: ManagedIssueModule, field: string, event: Event) {
   const target = event.target;
   if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
@@ -3779,6 +3878,12 @@ async function editIssue(issue: ManagedIssue) {
   editingIssueId.value = issue.id;
   issueHistory.value = [];
   issueModulePreviewUrls.value = {};
+  discussionPageLoadedIssueId.value = '';
+  discussionPageEditVersion.value = 0;
+  discussionPagePublishedVersion.value = 0;
+  discussionPagePublishedAt.value = null;
+  discussionPageMessage.value = '';
+  discussionPageError.value = '';
   editingIssueEditVersion.value = issue.editVersion;
   originalIssueStatus.value = issue.status;
   issueForm.value = { code: issue.code, label: issue.label, month: issue.month, theme: issue.theme, question: issue.question, status: issue.status, microVoiceTitle: issue.microVoiceTitle || '', microVoiceDuration: issue.microVoiceDuration || '', coverObjectKey: issue.coverObjectKey || '', microVoiceObjectKey: issue.microVoiceObjectKey || '', homeMetaRichText: issue.homeMetaRichText, homeMetaFontSize: issue.homeMetaFontSize, homeMetaColor: issue.homeMetaColor, homeCoverCaptionLeft: issue.homeCoverCaptionLeft, homeCoverCaptionRight: issue.homeCoverCaptionRight, draftContent: { sections: combineCoverAndOpener(issue.draftContent?.sections || createDefaultIssueModules()), discussion: issue.draftContent?.discussion || createDefaultDiscussionContent() } };
@@ -3796,6 +3901,7 @@ async function editIssue(issue: ManagedIssue) {
   mediaPreviewUrls.value = { cover: '', voice: '' };
   mediaPreviewError.value = '';
   ensureJournalModuleSelection();
+  if (activeContentSection.value === 'journal-discussion') void loadDiscussionPageDraft();
   void previewIssueModules().catch(() => { mediaPreviewError.value = '部分草稿媒体暂时无法预览'; });
 }
 
@@ -3968,7 +4074,7 @@ async function saveIssue() {
     originalIssueStatus.value = issueForm.value.status;
     issueConflict.value = false;
     issueConflictResolved.value = '';
-    issueSaveMessage.value = '草稿已保存。期号、首页、人物、声音、讨论与往期入口共用这份草稿，发布时整期一起生效。';
+    issueSaveMessage.value = '草稿已保存。期号、首页、人物、声音与往期入口共用这份草稿；本期讨论也可在讨论页单独保存/发布，整期发布时仍会一并写入期刊快照。';
     const cleanup = await cleanupMedia(candidates, session);
     assertSession(session);
     uploadedMediaKeys.value = cleanup.remaining.map((item) => item.objectKey);
@@ -4600,6 +4706,21 @@ onBeforeUnmount(() => {
             <details v-if="activeContentSection === 'journal-discussion'" class="issue-module-details discussion-editor-details" open>
               <summary>本期讨论页文案与示例对话</summary>
               <p class="field-help">示例经历与编辑追问只用于排版演示。用户主动保存的正文会进入审核队列并加密存储；本编辑器只维护固定文案与示例，不会自动发布用户内容。</p>
+              <div class="discussion-save-bar">
+                <div>
+                  <strong>独立保存与发布</strong>
+                  <p class="field-help">这里只更新本期讨论页，不需要重发整期期刊。发布后小程序会读取新版讨论内容；用户经历仍需在「用户经历审核」中单独处理。</p>
+                  <p v-if="discussionPageLoading" class="muted" role="status">正在读取本期讨论的独立草稿…</p>
+                  <p v-else-if="discussionPagePublishedVersion" class="field-help">线上：第 {{ discussionPagePublishedVersion }} 版<span v-if="discussionPagePublishedAt"> · {{ displayDate(discussionPagePublishedAt) }}</span></p>
+                  <p v-else class="field-help">线上尚未单独发布；小程序当前仍显示整期发布时的讨论内容。</p>
+                  <p v-if="discussionPageMessage" class="status-message" role="status">{{ discussionPageMessage }}</p>
+                  <p v-if="discussionPageError" class="error" role="alert">{{ discussionPageError }}</p>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="quiet" :disabled="discussionPageLoading || discussionPageSaving || discussionPagePublishing" @click="saveDiscussionPage(false)">{{ discussionPageSaving ? '保存中…' : '保存讨论草稿' }}</button>
+                  <button type="button" :disabled="discussionPageLoading || discussionPageSaving || discussionPagePublishing" @click="saveDiscussionPage(true)">{{ discussionPagePublishing ? '发布中…' : '发布本期讨论' }}</button>
+                </div>
+              </div>
               <div class="discussion-copy-grid">
                 <label>栏目序号<input v-model="issueForm.draftContent.discussion.copy.number" required maxlength="20" /></label>
                 <label>栏目眉题<input v-model="issueForm.draftContent.discussion.copy.kicker" required maxlength="200" /></label>

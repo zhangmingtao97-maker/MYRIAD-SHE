@@ -1396,10 +1396,20 @@ export class ContentController {
     );
     const publication = result.rows[0];
     if (!publication) throw new NotFoundException('本期讨论尚未发布或期刊已更新，请返回首页重试');
+    const independent = await this.database.query<{ content: DiscussionContent; version: number }>(
+      `select page.published_content as content, page.published_version as version
+       from content_discussion_pages page
+       join content_issues issue on issue.id = page.issue_id
+       where issue.code = $1 and issue.status = 'published' and page.published_content is not null`,
+      [publication.snapshot.issue.code],
+    );
+    const independentPage = independent.rows[0];
+    const independentContent = independentPage?.content ? validateDiscussionContent(independentPage.content) : null;
     return {
       issueCode: publication.snapshot.issue.code, issueLabel: publication.snapshot.issue.label,
-      publishedVersion: publication.version,
-      content: publication.snapshot.discussion === undefined ? defaultDiscussionContent() : validateDiscussionContent(publication.snapshot.discussion),
+      publishedVersion: independentContent ? independentPage.version : publication.version,
+      content: independentContent
+        ?? (publication.snapshot.discussion === undefined ? defaultDiscussionContent() : validateDiscussionContent(publication.snapshot.discussion)),
     };
   }
 
