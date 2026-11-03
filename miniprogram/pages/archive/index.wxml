@@ -9,7 +9,7 @@
 
   <view class="archive-content">
     <view class="archive-meta"><text>策展档案</text><text>ARCHIVE</text></view>
-    <view class="archive-hero-title">回到一个曾经<br />认真看过的问题</view>
+    <view class="archive-hero-title"><text>回到一个曾经</text><text>认真看过的问题</text></view>
     <view class="archive-intro">这里保存每一期的策展路径，而不是复制另一套文章目录。</view>
 
     <view class="archive-issues">

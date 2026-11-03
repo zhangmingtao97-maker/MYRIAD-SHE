@@ -56,6 +56,7 @@ Page({
       if (!isPublicArchive(response)) throw new Error('策展档案格式无效');
       const published = response.issues.map((issue) => ({
         ...issue,
+        theme: issue.theme.replace(/\s*\n\s*/g, ''),
         number: '',
         statusLabel: issue.status === 'published' ? '正在策展' : issue.month || issue.label,
         subline: issue.status === 'published' ? '当前这一期' : issue.question,

@@ -13,6 +13,7 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .archive-meta { display: flex; align-items: center; justify-content: space-between; color: #8a6755; font-size: 23rpx; line-height: 1.5; }
 .archive-meta text:last-child, .archive-issues-heading text:last-child { color: #663124; font-family: Garamond, Georgia, serif; letter-spacing: .08em; }
 .archive-hero-title { margin-top: 108rpx; color: #5c493c; font-size: 58rpx; font-weight: 600; line-height: 1.25; letter-spacing: .01em; }
+.archive-hero-title text { display: block; }
 .archive-intro { max-width: 650rpx; margin-top: 42rpx; color: #40362f; font-size: 28rpx; line-height: 1.8; }
 .archive-issues { margin-top: 126rpx; border-top: 1rpx solid rgba(92, 73, 60, .24); }
 .archive-issues-heading { display: flex; min-height: 92rpx; align-items: center; justify-content: space-between; color: #8a6755; font-size: 23rpx; line-height: 1.5; }
