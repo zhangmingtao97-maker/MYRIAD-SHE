@@ -1,5 +1,13 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-03 后台把「用户举报」拆出经历审核页
+
+- 侧边栏「运营」下新增独立入口「用户举报」，与「用户经历审核」并列；经历审核页不再显示举报区块，两个页面各自只做一件事。
+- 权限同步拆分：新增后端模块 `discussion-reports`（`GET /api/admin/discussion-reports`、`PATCH /api/admin/discussion-reports/:id/status`），从 `contributions` 模块移出；`content_editor` 角色默认授权加入该模块，超级管理员自动拥有。线上两个后台账号的 `module_permissions` 都是 `null`（跟随角色默认），因此升级后自动可见；如果之前单独收窄过某人的模块授权，需要到「员工与权限」里手动补勾。
+- 页面细节：举报页顶栏标题为「用户举报」，正文只保留待处理数量、「刷新举报」、状态/期刊筛选与举报表格，并写明「这里只处理用户提交的举报；经历与回复留言的审核在『用户经历审核』页面单独处理」；经历审核页保留类型筛选、内容摘要与查看正文。
+- 验证：后端 177 项单元测试全过（`admin-auth.guard.spec` 的 content_editor 默认模块断言更新为 6 个模块）；后台 `vue-tsc + vite build` 通过；Playwright 确认侧栏同时出现「用户经历审核」「用户举报」，举报页只有举报表格（0 条待处理 / 全部筛选下 1 条已处理）、经历页只有经历表格且无举报区块；线上 `/` 200、`/api/health/ready` 200，两个管理接口未登录均 401，bundle `index-Bv21UTae.js` 含 `discussion-reports`，样式 `index-CYsuaT5d.css` 含 `reports-toolbar`。
+- 发布备份：`source-pre-reports-page-20261103-150416.tar.gz`（回滚需连同源码目录一起回滚后重建 api admin）。小程序不受影响。
+
 ## 2026-11-03 后台「用户经历审核」：留言与回复留言直接可见
 
 - 列表接口 `GET /api/admin/discussion-contributions` 增加 `kind` 筛选（`experience` / `reply` / 留空为全部）与 `bodyPreview`：读取时解密正文，压缩空白后截取 80 字返回，列表不再只显示「查看正文」按钮；接口仍不返回完整密文与 `body` 字段，非法 `kind` 返回 400。
