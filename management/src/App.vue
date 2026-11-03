@@ -684,15 +684,15 @@ const adminModules = [
 ] as const;
 type AdminModuleId = typeof adminModules[number]['id'];
 const adminRoleDefaultModules: Record<string, AdminModuleId[]> = {
+  super_admin: adminModules.map((module) => module.id),
   content_editor: ['journal', 'practice', 'pages', 'media', 'contributions'],
   support_readonly: ['members', 'settings'],
 };
 const adminModulesById = new Map<string, { id: AdminModuleId; label: string; description: string }>(adminModules.map((module) => [module.id, module]));
 function effectiveModulesForRole(role: string, override: readonly string[] | null | undefined): AdminModuleId[] {
-  if (role === 'super_admin') return adminModules.map((module) => module.id);
-  if (!override) return adminRoleDefaultModules[role] ? [...adminRoleDefaultModules[role]] : [];
+  const source = override ?? adminRoleDefaultModules[role] ?? [];
   const result: AdminModuleId[] = [];
-  for (const item of override) {
+  for (const item of source) {
     if (adminModulesById.has(item) && !result.includes(item as AdminModuleId)) result.push(item as AdminModuleId);
   }
   return result;
@@ -1958,10 +1958,6 @@ function restoreModuleGrantDefaults() {
 async function saveModuleGrant() {
   const employee = moduleGrantEmployee.value;
   if (!employee) return;
-  if (employee.role === 'super_admin') {
-    moduleGrantError.value = '超级管理员固定拥有全部模块，不能单独授权。';
-    return;
-  }
   moduleGrantSaving.value = true;
   moduleGrantError.value = '';
   try {
@@ -1984,7 +1980,6 @@ async function saveModuleGrant() {
 }
 
 function employeeModuleSummary(employee: Employee) {
-  if (employee.role === 'super_admin') return '全部模块';
   const override = employee.modulePermissions ?? null;
   const count = effectiveModulesForRole(employee.role, override).length;
   return override ? `自定义 ${count} 个模块` : `角色默认 ${count} 个模块`;
@@ -2009,6 +2004,11 @@ function openEmployeeEditor(employee: Employee) {
   employeeEditError.value = '';
   employeeMessage.value = '';
   employeeEditorOpen.value = true;
+}
+
+function onEmployeeRoleChange() {
+  // 角色切换后回到新角色的默认授权（超级管理员为全部模块），之后仍可单独勾选。
+  employeeEditForm.value.modulePermissions = null;
 }
 
 function closeEmployeeEditor() {
@@ -2078,12 +2078,10 @@ async function saveEmployeeEdit() {
     const payload: Record<string, unknown> = {
       displayName,
       wecomUserId: employeeEditForm.value.wecomUserId.trim() || null,
+      role: employeeEditForm.value.role,
+      status: employeeEditForm.value.status,
+      modulePermissions: employeeEditForm.value.modulePermissions,
     };
-    if (employee.role !== 'super_admin') {
-      payload.role = employeeEditForm.value.role;
-      payload.status = employeeEditForm.value.status;
-      payload.modulePermissions = employeeEditForm.value.modulePermissions;
-    }
     const response = await apiFetch(`${apiBase}/admin/employees/${encodeURIComponent(employee.id)}`, {
       method: 'PATCH',
       headers: adminHeaders(true),
@@ -5361,22 +5359,22 @@ onBeforeUnmount(() => {
                 <label>员工姓名<input v-model="employeeEditForm.displayName" required maxlength="80" /></label>
                 <label>登录账号<input :value="editingEmployee?.username || ''" disabled /></label>
                 <label>角色
-                  <select v-model="employeeEditForm.role" :disabled="editingEmployee?.role === 'super_admin'">
-                    <option v-if="editingEmployee?.role === 'super_admin'" value="super_admin">超级管理员</option>
+                  <select v-model="employeeEditForm.role" @change="onEmployeeRoleChange">
+                    <option value="super_admin">超级管理员 · 全部权限</option>
                     <option value="content_editor">内容编辑 · 内容与审核</option>
                     <option value="support_readonly">客服只读 · 仅查看会员</option>
                   </select>
                 </label>
                 <label>账号状态
-                  <select v-model="employeeEditForm.status" :disabled="editingEmployee?.role === 'super_admin'">
+                  <select v-model="employeeEditForm.status">
                     <option value="active">启用</option>
                     <option value="disabled">已停用</option>
                   </select>
                 </label>
                 <label class="employee-form-full">企业微信 UserID<input v-model="employeeEditForm.wecomUserId" maxlength="128" autocomplete="off" placeholder="留空可解除绑定" /></label>
-                <fieldset v-if="editingEmployee?.role !== 'super_admin'" class="employee-module-fieldset employee-form-full">
+                <fieldset class="employee-module-fieldset employee-form-full">
                   <legend>模块授权</legend>
-                  <p class="employee-form-hint">勾选该员工可以进入的后台模块。默认跟随角色授权；发布、删除媒体、停用会员与员工管理始终只允许超级管理员。也可以直接用列表里的「授权模块」修改。</p>
+                  <p class="employee-form-hint">勾选该员工可以进入的后台模块。新建时先按角色给出默认授权（超级管理员为全部模块），之后每个角色都可以单独增减；发布、删除媒体、停用会员与员工管理仍只允许超级管理员。也可以直接用列表里的「授权模块」修改。</p>
                   <div class="employee-module-grid">
                     <label v-for="module in adminModules" :key="module.id" class="employee-module-option" :class="{ checked: isEmployeeModuleChecked(module.id) }">
                       <input
@@ -5394,16 +5392,14 @@ onBeforeUnmount(() => {
                     <button type="button" class="quiet" :disabled="employeeEditSaving || employeeEditForm.modulePermissions === null" @click="restoreEmployeeRoleModules">恢复角色默认</button>
                   </div>
                 </fieldset>
-                <p v-else class="employee-form-hint employee-form-full">超级管理员固定拥有全部 {{ adminModules.length }} 个模块，不能单独增减；如需按人授权，请给非超管员工使用列表里的「授权模块」。</p>
                 <p class="employee-form-hint employee-form-full">绑定后该员工可直接使用企业微信扫码登录；留空并保存会解除当前绑定。</p>
                 <div class="employee-edit-meta employee-form-full">
                   <span>最近登录：{{ editingEmployee?.lastLoginAt ? displayDate(editingEmployee.lastLoginAt) : '尚未登录' }}</span>
                   <span>密码状态：{{ editingEmployee?.passwordChangeRequired ? '待首次修改密码' : '正常' }}</span>
-                  <span v-if="editingEmployee?.role === 'super_admin'">受控账号：不可停用、降级或重置密码</span>
                 </div>
                 <p v-if="employeeEditError" class="error employee-form-full" role="alert">{{ employeeEditError }}</p>
                 <div class="employee-dialog-actions employee-form-full">
-                  <button v-if="editingEmployee && editingEmployee.role !== 'super_admin'" type="button" class="quiet employee-reset-password" :disabled="employeeEditSaving" @click="resetEditingEmployeePassword">重置密码</button>
+                  <button v-if="editingEmployee" type="button" class="quiet employee-reset-password" :disabled="employeeEditSaving" @click="resetEditingEmployeePassword">重置密码</button>
                   <button type="submit" :disabled="employeeEditSaving">{{ employeeEditSaving ? '保存中…' : '保存资料' }}</button>
                   <button type="button" class="quiet" :disabled="employeeEditSaving" @click="closeEmployeeEditor">取消</button>
                 </div>
@@ -5420,10 +5416,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="quiet" aria-label="关闭模块授权" @click="closeModuleGrant">关闭</button>
               </div>
               <div class="employee-form employee-form-grid">
-                <p v-if="moduleGrantEmployee?.role === 'super_admin'" class="employee-form-hint employee-form-full">
-                  超级管理员固定拥有全部 {{ adminModules.length }} 个模块（含发布、删除媒体、停用会员与员工管理），不能单独增减，因此这里是只读预览。
-                </p>
-                <p v-else class="employee-form-hint employee-form-full">
+                <p class="employee-form-hint employee-form-full">
                   {{ moduleGrantEmployee ? adminRoleLabels[moduleGrantEmployee.role] : '' }} · 角色默认 {{ moduleGrantRoleDefaults.length }} 个模块；保存后立即生效，员工无需重新登录。
                 </p>
                 <fieldset class="employee-module-fieldset employee-form-full">
@@ -5434,7 +5427,7 @@ onBeforeUnmount(() => {
                       <input
                         type="checkbox"
                         :checked="isModuleGrantChecked(module.id)"
-                        :disabled="moduleGrantSaving || moduleGrantEmployee?.role === 'super_admin'"
+                        :disabled="moduleGrantSaving"
                         @change="toggleModuleGrant(module.id, ($event.target as HTMLInputElement).checked)"
                       />
                       <span class="employee-module-label">{{ module.label }}</span>
@@ -5442,15 +5435,14 @@ onBeforeUnmount(() => {
                     </label>
                   </div>
                   <div class="employee-module-actions">
-                    <span v-if="moduleGrantEmployee?.role === 'super_admin'" class="employee-module-count">超级管理员固定拥有全部 {{ moduleGrantCount }} 个模块</span>
-                    <span v-else class="employee-module-count">已授权 {{ moduleGrantCount }} 个模块{{ moduleGrantOverride ? '（自定义）' : '（角色默认）' }}</span>
-                    <button v-if="moduleGrantEmployee?.role !== 'super_admin'" type="button" class="quiet" :disabled="moduleGrantSaving || moduleGrantOverride === null" @click="restoreModuleGrantDefaults">恢复角色默认</button>
+                    <span class="employee-module-count">已授权 {{ moduleGrantCount }} 个模块{{ moduleGrantOverride ? '（自定义）' : '（角色默认）' }}</span>
+                    <button type="button" class="quiet" :disabled="moduleGrantSaving || moduleGrantOverride === null" @click="restoreModuleGrantDefaults">恢复角色默认</button>
                   </div>
                 </fieldset>
                 <p v-if="moduleGrantError" class="error employee-form-full" role="alert">{{ moduleGrantError }}</p>
                 <div class="employee-dialog-actions employee-form-full">
-                  <button v-if="moduleGrantEmployee?.role !== 'super_admin'" type="button" :disabled="moduleGrantSaving" @click="saveModuleGrant">{{ moduleGrantSaving ? '保存中…' : '保存授权' }}</button>
-                  <button type="button" class="quiet" :disabled="moduleGrantSaving" @click="closeModuleGrant">{{ moduleGrantEmployee?.role === 'super_admin' ? '关闭' : '取消' }}</button>
+                  <button type="button" :disabled="moduleGrantSaving" @click="saveModuleGrant">{{ moduleGrantSaving ? '保存中…' : '保存授权' }}</button>
+                  <button type="button" class="quiet" :disabled="moduleGrantSaving" @click="closeModuleGrant">取消</button>
                 </div>
               </div>
             </section>

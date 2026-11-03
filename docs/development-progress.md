@@ -1,5 +1,16 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-03 角色与模块解耦：任意角色可提升并单独授权
+
+- 模块授权不再与角色写死：`effectiveAdminModules` 对任何角色都按 `module_permissions` 计算（`NULL` = 角色默认、`[]` = 不授权、数组 = 显式授权）。超级管理员默认仍是全部 12 个模块，但同样可以被收窄或恢复默认，取代上一节「超管固定全部模块、弹窗只读」的做法。
+- 鉴权规则：`adminModulesAllow` 对登记在模块里的接口一律按实际授权判定；未登记在任何模块中的接口（员工管理、发布、删除媒体、停用会员、系统设置写入等）仍只按角色放行给超级管理员。`GET /admin/me` 返回按覆盖计算后的 `permissions`，后台导航与初始数据加载随之收缩。
+- 角色可提升/降级：`PATCH /admin/employees/:id` 允许把任意账号改为超级管理员（也允许降级），角色变化且未显式传模块时自动回到新角色的默认授权（超管 = 全部 12 个）；保留「至少一名启用的超级管理员」校验，并新增「不能修改当前登录账号自己的角色」（原有「不能停用自己」保留）。`POST /admin/employees` 接受任意角色与显式模块。
+- 后台界面：「编辑」弹窗的角色下拉对所有人开放（含超级管理员）、账号状态可改、模块勾选区对所有角色显示；「授权模块」弹窗对超管不再只读，可正常勾选保存；列表摘要去掉「全部模块」特例，统一显示「角色默认 / 自定义 N 个模块」。
+- 验证（开发联调真实数据库 + Playwright，14 项全部通过）：内容编辑 `devstaff` → 编辑提级为超级管理员 → 徽标变「超级管理员」、摘要「角色默认 12 个模块」→ 授权弹窗取消「会员列表」「系统设置」并保存 → 摘要「自定义 10 个模块」→ 该账号首次登录改密后进入后台：侧栏无「会员列表」「系统设置」、保留「期刊」，接口 `/api/admin/users` 403、`/api/content/issues` 200、`/api/admin/employees` 200。测试账号已删除，开发库恢复 0 个员工账号。
+- 测试与构建：后端 `tsc --noEmit` 通过；`npm run test:unit` 176 项中 175 项通过（唯一失败仍为既有 `observation.controller`「管理端查看解密观察记录」，HEAD 上同样失败）；守卫用例更新为「超管保留超级管理员专用路由，但尊重模块授权」。后台 `npm run build` 通过。
+- 已发布生产：同步 `backend/src/auth/admin-permissions.ts`、`backend/src/admin/admin-management.controller.ts`、`backend/test/admin-auth.guard.spec.ts`、`management/src/App.vue`，`build api admin` 后 `up -d --no-deps api admin`。容器内对已编译产物断言：`superEmpty=0`、`superNull=12`、仅授权期刊的超管访问会员为 false、员工管理为 true、默认会员为 true、内容编辑默认仍是 5 项；线上 bundle `index-CFbYdVH_.js` 含新提示文案，`/` 与 `/api/health/ready` 均 200。备份 `source-pre-role-modules-20261103-112331.tar.gz`，镜像 `myriad-she-{api,admin}:pre-role-modules-20261103-112331`，回滚时重新打标后 `up -d --no-deps api admin`。
+- 说明：角色默认模块仍作为「预设值」保留在代码中（超管 12、内容编辑 5、客服只读 2），但任何账号都能覆盖，不再存在写死的模块限制；如果希望连默认预设也在后台按角色维护，可再加一层角色预设表。
+
 ## 2026-11-02 员工改为按模块单独授权
 
 - 新增后台模块目录 `backend/src/auth/admin-permissions.ts`（12 个模块：期刊与首页策展、实践页面与目录、页面与协议、媒体库、用户经历审核、观察记录管理、隐私申请、会员列表、审计日志、生命牌文案、生命牌查看记录、系统设置），每个模块登记允许的 `方法 + 路径` 规则、中文名与说明，并提供 `parseAdminModuleOverride`、`effectiveAdminModules`、`adminModulesAllow`。

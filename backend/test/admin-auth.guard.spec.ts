@@ -109,9 +109,15 @@ test('null module overrides keep the role defaults', async () => {
   await assert.rejects(denied.guard.canActivate(denied.context), ForbiddenException);
 });
 
-test('super admins ignore module overrides and keep every route', async () => {
+test('super admins keep super-only routes but respect module grants', async () => {
   const guard = guardFor('super_admin', '/api/admin/employees', 'GET', false, []);
   assert.equal(await guard.guard.canActivate(guard.context), true);
+  const restrictedMembers = guardFor('super_admin', '/api/admin/users', 'GET', false, ['journal']);
+  await assert.rejects(restrictedMembers.guard.canActivate(restrictedMembers.context), ForbiddenException);
+  const grantedMembers = guardFor('super_admin', '/api/admin/users', 'GET', false, ['members']);
+  assert.equal(await grantedMembers.guard.canActivate(grantedMembers.context), true);
+  const roleDefaults = guardFor('super_admin', '/api/admin/users', 'GET', false, null);
+  assert.equal(await roleDefaults.guard.canActivate(roleDefaults.context), true);
 });
 
 test('module overrides are validated and deduplicated', () => {
@@ -123,5 +129,6 @@ test('module overrides are validated and deduplicated', () => {
   assert.deepEqual(effectiveAdminModules('content_editor', null), ['journal', 'practice', 'pages', 'media', 'contributions']);
   assert.deepEqual(effectiveAdminModules('content_editor', []), []);
   assert.deepEqual(effectiveAdminModules('support_readonly', ['audit', 'not-a-module']), ['audit']);
-  assert.deepEqual(effectiveAdminModules('super_admin', []), [...adminModuleIds]);
+  assert.deepEqual(effectiveAdminModules('super_admin', []), []);
+  assert.deepEqual(effectiveAdminModules('super_admin', null), [...adminModuleIds]);
 });

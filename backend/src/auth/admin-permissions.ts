@@ -161,6 +161,7 @@ export const adminModules: AdminModuleDefinition[] = [
 const adminModuleIdsSet = new Set<string>(adminModuleIds);
 
 export const adminRoleDefaultModules: Record<string, AdminModuleId[]> = {
+  super_admin: [...adminModuleIds],
   content_editor: ['journal', 'practice', 'pages', 'media', 'contributions'],
   support_readonly: ['members', 'settings'],
 };
@@ -186,18 +187,21 @@ export function parseAdminModuleOverride(value: unknown): AdminModuleId[] | null
 }
 
 export function effectiveAdminModules(role: string, override?: readonly string[] | null): AdminModuleId[] {
-  if (role === 'super_admin') return [...adminModuleIds];
-  if (!override) return [...(adminRoleDefaultModules[role] ?? [])];
+  const source = override ?? adminRoleDefaultModules[role] ?? [];
   const result: AdminModuleId[] = [];
-  for (const item of override) {
+  for (const item of source) {
     if (isAdminModuleId(item) && !result.includes(item)) result.push(item);
   }
   return result;
 }
 
+/**
+ * 模块授权对每个角色都生效（超级管理员默认拥有全部模块，也可以被单独收窄）。
+ * 没有登记在任何模块里的接口属于超级管理员专用操作，只按角色放行。
+ */
 export function adminModulesAllow(role: string, override: readonly string[] | null | undefined, method: string, path: string) {
-  if (role === 'super_admin') return true;
   const modules = effectiveAdminModules(role, override);
-  return adminModules.some((definition) => modules.includes(definition.id)
-    && definition.rules.some((rule) => rule.method === method && rule.pattern.test(path)));
+  const matched = adminModules.filter((definition) => definition.rules.some((rule) => rule.method === method && rule.pattern.test(path)));
+  if (matched.length === 0) return role === 'super_admin';
+  return matched.some((definition) => modules.includes(definition.id));
 }

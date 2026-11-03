@@ -391,14 +391,9 @@ export class AdminManagementController {
     const password = text(body.password, '初始密码', 256);
     const role = body.role as AdminRole;
     const wecomUserId = optionalWecomUserId(body.wecomUserId);
-    const requestedModulePermissions = parseAdminModuleOverride(body.modulePermissions) ?? null;
+    const modulePermissions = parseAdminModuleOverride(body.modulePermissions) ?? null;
     if (!/^[A-Za-z0-9_.-]{3,64}$/.test(username) || password.length < 12 || !roles.includes(role)) {
       throw new BadRequestException('账号格式无效，初始密码至少 12 位；请选择有效员工角色');
-    }
-    // 超级管理员固定拥有全部模块，创建时不保存模块覆盖，避免出现看似生效实则被忽略的配置。
-    const modulePermissions = role === 'super_admin' ? null : requestedModulePermissions;
-    if (role === 'super_admin' && requestedModulePermissions !== null) {
-      throw new BadRequestException('超级管理员固定拥有全部模块，不能单独授权');
     }
     return this.database.withTransaction(async (client) => {
       const usernameConflict = await client.query('select id from admin_accounts where lower(username) = lower($1) limit 1', [username]);
@@ -429,7 +424,6 @@ export class AdminManagementController {
     const wecomUserId = wecomChanged ? optionalWecomUserId(body.wecomUserId) : undefined;
     const modulePermissions = parseAdminModuleOverride(body.modulePermissions);
     if (role !== undefined && !roles.includes(role)) throw new BadRequestException('员工角色无效');
-    if (role === 'super_admin') throw new BadRequestException('不能从后台提升超级管理员；请通过受控初始化流程处理');
     if (status !== undefined && !['active', 'disabled'].includes(status)) throw new BadRequestException('员工状态无效');
     if (password !== undefined && password.length < 12) throw new BadRequestException('新密码至少 12 位');
     const result = await this.database.withTransaction(async (client) => {
@@ -439,11 +433,14 @@ export class AdminManagementController {
       const nextRole = role ?? current.rows[0].role;
       const nextStatus = status ?? current.rows[0].status;
       if (id === request.user?.sub && nextStatus === 'disabled') throw new BadRequestException('不能停用当前登录的员工账号');
+      if (id === request.user?.sub && nextRole !== current.rows[0].role) throw new BadRequestException('不能修改当前登录账号的角色，请用另一名超级管理员操作');
       if (current.rows[0].role === 'super_admin' && (nextRole !== 'super_admin' || nextStatus !== 'active')) {
         const count = await client.query<{ count: string }>(`select count(*)::text as count from admin_accounts where role = 'super_admin' and status = 'active'`);
         if (Number(count.rows[0].count) <= 1) throw new BadRequestException('必须保留至少一名启用的超级管理员');
       }
-      if (current.rows[0].role === 'super_admin' && modulePermissions !== undefined) throw new BadRequestException('超级管理员固定拥有全部模块授权，不能单独调整');
+      // 角色变化时默认回到新角色的默认模块授权（超级管理员为全部模块），除非本次请求显式指定了模块。
+      const roleChanged = nextRole !== current.rows[0].role;
+      const nextModulePermissions = modulePermissions !== undefined ? modulePermissions : roleChanged ? null : undefined;
       if (wecomUserId) {
         const conflict = await client.query('select id from admin_accounts where wecom_user_id = $1 and id <> $2 limit 1', [wecomUserId, id]);
         if (conflict.rows[0]) throw new BadRequestException('该企业微信已绑定其他员工账号');
@@ -462,8 +459,8 @@ export class AdminManagementController {
         values.push(await hashAdminPassword(password));
         assignments.push(`password_hash = $${values.length}`, 'password_change_required = true');
       }
-      if (modulePermissions !== undefined) {
-        values.push(modulePermissions);
+      if (nextModulePermissions !== undefined) {
+        values.push(nextModulePermissions);
         assignments.push(`module_permissions = $${values.length}::text[]`);
       }
       assignments.push('updated_at = now()');
@@ -472,7 +469,7 @@ export class AdminManagementController {
         returning id, username, display_name as "displayName", role, status, wecom_user_id as "wecomUserId",
           module_permissions as "modulePermissions",
           password_change_required as "passwordChangeRequired", updated_at as "updatedAt", last_login_at as "lastLoginAt"`, values);
-      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.updated', resourceType: 'admin_account', resourceId: id, metadata: { role: nextRole, status: nextStatus, passwordChanged: Boolean(password), displayNameChanged: displayName !== undefined, wecomBound: wecomChanged ? Boolean(wecomUserId) : undefined, modulePermissions } }, client);
+      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'admin.employee.updated', resourceType: 'admin_account', resourceId: id, metadata: { role: nextRole, status: nextStatus, passwordChanged: Boolean(password), displayNameChanged: displayName !== undefined, wecomBound: wecomChanged ? Boolean(wecomUserId) : undefined, modulePermissions: nextModulePermissions } }, client);
       return updated.rows[0];
     });
     return result;
