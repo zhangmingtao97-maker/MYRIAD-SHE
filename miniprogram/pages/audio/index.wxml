@@ -1,0 +1,43 @@
+<view class="audio-page">
+  <view class="audio-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="audio-topbar-row">
+      <view class="audio-control" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">‹</view>
+      <text class="audio-nav-title">微声音</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="audio-state" role="status">正在读取本期声音…</view>
+  <view wx:elif="{{error}}" class="audio-state audio-error" role="alert">
+    <text>{{error}}</text>
+    <view class="audio-retry" role="button" aria-label="重新读取本期声音" tabindex="0" bindtap="loadContent">重新读取</view>
+  </view>
+  <block wx:else>
+    <view class="audio-meta"><text>02 · 微声音</text><text>{{issueCode}}</text></view>
+    <view class="audio-hero">
+      <view class="audio-eyebrow">LISTEN / 本期声音</view>
+      <view class="audio-title">{{audio.title}}</view>
+      <view wx:if="{{audio.subtitle}}" class="audio-subtitle">{{audio.subtitle}}</view>
+    </view>
+
+    <view class="audio-tracks">
+      <view wx:for="{{audio.tracks}}" wx:key="id" class="audio-track {{activeId === item.id ? 'is-active' : ''}}">
+        <view class="audio-track-row">
+          <view class="audio-play" role="button" tabindex="0" aria-label="{{activeId === item.id && playing ? '暂停' : '播放'}}{{item.title}}" data-track-id="{{item.id}}" bindtap="toggleTrack">{{activeId === item.id && playing ? 'Ⅱ' : '▶'}}</view>
+          <view class="audio-track-copy">
+            <view class="audio-track-title">{{item.title}}</view>
+            <view wx:if="{{item.subtitle}}" class="audio-track-subtitle">{{item.subtitle}}</view>
+          </view>
+          <text class="audio-track-duration">{{activeId === item.id ? durationLabel : item.duration}}</text>
+        </view>
+        <view wx:if="{{activeId === item.id}}" class="audio-progress">
+          <view class="audio-progress-track"><view class="audio-progress-fill" style="width: {{progress}}%"></view></view>
+          <view class="audio-progress-times"><text>{{currentLabel}}</text><text>{{durationLabel}}</text></view>
+        </view>
+        <view wx:if="{{item.quote}}" class="audio-track-quote">{{item.quote}}</view>
+        <view wx:if="{{item.transcript}}" class="audio-track-transcript">{{item.transcript}}</view>
+      </view>
+    </view>
+
+    <view class="audio-return" role="button" aria-label="回到当期策展" tabindex="0" bindtap="handleBack"><text>回到当期策展</text><text>←</text></view>
+  </block>
+</view>

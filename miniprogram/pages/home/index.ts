@@ -378,18 +378,28 @@ Page({
   },
   openContentsEntry(event: WechatMiniprogram.CustomEvent) {
     const destination = String(event.currentTarget.dataset.destination || '');
+    if (destination === 'story') {
+      const target = this.data.modules.find((module) => module.type === 'story' && module.enabled);
+      if (!target) {
+        wx.showToast({ title: '人物纪实暂未开放', icon: 'none' });
+        return;
+      }
+      const issueCode = this.data.issue?.code || '';
+      wx.navigateTo({ url: `/pages/story-detail/index?moduleId=${encodeURIComponent(target.id)}&issueCode=${encodeURIComponent(issueCode)}` });
+      return;
+    }
+    if (destination === 'audio') {
+      if (!this.data.modules.some((module) => module.type === 'audio' && module.enabled)) {
+        wx.showToast({ title: '微声音暂未开放', icon: 'none' });
+        return;
+      }
+      wx.navigateTo({ url: '/pages/audio/index' });
+      return;
+    }
     if (destination === 'observation') return this.startObservation();
     if (destination === 'discussion') {
       this.openDiscussion();
-      return;
     }
-    if (destination !== 'story' && destination !== 'audio') return;
-    const target = this.data.modules.find((module) => module.type === destination && module.enabled);
-    if (!target) {
-      wx.showToast({ title: '该栏目暂未开放', icon: 'none' });
-      return;
-    }
-    this.scrollToModuleId(target.id);
   },
   scrollToModuleId(id: string) {
     if (!id || !this.data.modules.some((module) => module.id === id)) return;
