@@ -1,33 +1,31 @@
-/* =========================================================================
-   管理后台 · 设计系统 v3
-   现代 SaaS 风格：收敛配色、无衬线层级、统一控件、轻量动效、完整响应式。
-   通过 main.ts 在 style.css 之后导入，覆盖旧主题与历史覆盖规则。
-   ========================================================================= */
+﻿/* =========================================================================
+   绠＄悊鍚庡彴 路 璁捐绯荤粺 v3
+   鐜颁唬 SaaS 椋庢牸锛氭敹鏁涢厤鑹层€佹棤琛嚎灞傜骇銆佺粺涓€鎺т欢銆佽交閲忓姩鏁堛€佸畬鏁村搷搴斿紡銆?   閫氳繃 main.ts 鍦?style.css 涔嬪悗瀵煎叆锛岃鐩栨棫涓婚涓庡巻鍙茶鐩栬鍒欍€?   ========================================================================= */
 
 :root {
-  /* 画布与面 */
+  /* 鐢诲竷涓庨潰 */
   --bg: #f6f6f4;
   --surface: #ffffff;
   --surface-2: #fafaf8;
   --surface-3: #f2f2ee;
 
-  /* 墨色层级 */
+  /* 澧ㄨ壊灞傜骇 */
   --ink: #17181a;
   --ink-2: #3f4247;
   --muted: #6f7378;
   --faint: #9a9ea3;
 
-  /* 分隔 */
+  /* 鍒嗛殧 */
   --line: #e7e7e2;
   --line-strong: #d7d7d0;
 
-  /* 唯一强调色（品牌陶土色） */
+  /* 鍞竴寮鸿皟鑹诧紙鍝佺墝闄跺湡鑹诧級 */
   --accent: #8a4130;
   --accent-strong: #6d3122;
   --accent-soft: #f7ede9;
   --accent-line: #e9d3ca;
 
-  /* 状态 */
+  /* 鐘舵€?*/
   --ok: #2f6b46;
   --ok-soft: #eef5f0;
   --warn: #8a5d1f;
@@ -35,7 +33,7 @@
   --danger: #a1372a;
   --danger-soft: #fbefec;
 
-  /* 形状与阴影 */
+  /* 褰㈢姸涓庨槾褰?*/
   --radius: 14px;
   --radius-sm: 10px;
   --shadow-1: 0 1px 2px rgba(23, 24, 26, .04);
@@ -74,7 +72,7 @@ body {
 
 ::selection { background: rgba(138, 65, 48, .14); }
 
-/* ---------- 文字层级 ---------- */
+/* ---------- 鏂囧瓧灞傜骇 ---------- */
 h1, h2, h3, h4 {
   margin: 0;
   color: var(--ink);
@@ -105,9 +103,9 @@ strong { font-weight: 600; }
 .field-help { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
 .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace; }
 
-/* ---------- 外壳 ---------- */
-/* .app-frame 是 column flex 容器：交叉轴上的 auto margin 会让 .shell 收缩成内容宽度，
-   这里显式给 width:100%，保证外壳占满视口、max-width 才真正生效。 */
+/* ---------- 澶栧３ ---------- */
+/* .app-frame 鏄?column flex 瀹瑰櫒锛氫氦鍙夎酱涓婄殑 auto margin 浼氳 .shell 鏀剁缉鎴愬唴瀹瑰搴︼紝
+   杩欓噷鏄惧紡缁?width:100%锛屼繚璇佸澹冲崰婊¤鍙ｃ€乵ax-width 鎵嶇湡姝ｇ敓鏁堛€?*/
 .shell:not(.dashboard-shell) {
   display: flex;
   flex: 1;
@@ -119,7 +117,7 @@ strong { font-weight: 600; }
   padding: 48px 24px;
 }
 
-/* 仪表盘是全宽布局：必须显式覆盖上面的登录壳约束。 */
+/* 浠〃鐩樻槸鍏ㄥ甯冨眬锛氬繀椤绘樉寮忚鐩栦笂闈㈢殑鐧诲綍澹崇害鏉熴€?*/
 .shell.dashboard-shell {
   display: block;
   width: 100%;
@@ -164,12 +162,12 @@ strong { font-weight: 600; }
 .dashboard-workspace {
   width: 100%;
   max-width: 1440px;
-  /* 内容紧跟侧栏左对齐：宽屏下不再居中，避免侧栏与内容之间出现大片空白 */
+  /* 鍐呭绱ц窡渚ф爮宸﹀榻愶細瀹藉睆涓嬩笉鍐嶅眳涓紝閬垮厤渚ф爮涓庡唴瀹逛箣闂村嚭鐜板ぇ鐗囩┖鐧?*/
   margin: 0;
   padding: 36px clamp(24px, 3vw, 48px) 96px;
 }
 
-/* ---------- 侧栏导航 ---------- */
+/* ---------- 渚ф爮瀵艰埅 ---------- */
 .dashboard-nav { margin-top: 4px; }
 .dashboard-nav-tabs { display: grid; gap: 2px; }
 
@@ -254,7 +252,7 @@ strong { font-weight: 600; }
 .nav-collapsed .dashboard-tab > span, .nav-collapsed .dashboard-tab .nav-chevron { display: none; }
 .nav-collapsed .dashboard-tab::before { left: -10px; }
 
-/* ---------- 顶栏 ---------- */
+/* ---------- 椤舵爮 ---------- */
 .topbar {
   position: sticky;
   top: 0;
@@ -272,7 +270,7 @@ strong { font-weight: 600; }
 .dashboard-workspace h1 { font-size: 25px; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
-/* ---------- 内容区 ---------- */
+/* ---------- 鍐呭鍖?---------- */
 .content-area { margin-top: 28px; animation: section-in .22s var(--ease) both; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
 
@@ -285,7 +283,7 @@ strong { font-weight: 600; }
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
 }
-/* 页面标题已在顶栏出现，板块标题只作分区标签，避免两处同样的大标题 */
+/* 椤甸潰鏍囬宸插湪椤舵爮鍑虹幇锛屾澘鍧楁爣棰樺彧浣滃垎鍖烘爣绛撅紝閬垮厤涓ゅ鍚屾牱鐨勫ぇ鏍囬 */
 .section-heading h2 {
   font-size: 17px;
   font-weight: 600;
@@ -303,7 +301,7 @@ strong { font-weight: 600; }
 }
 .section-tools small { max-width: 64ch; line-height: 1.6; text-align: right; }
 
-/* 卡片 */
+/* 鍗＄墖 */
 .panel,
 .settings-form,
 .issue-form,
@@ -334,9 +332,9 @@ strong { font-weight: 600; }
 }
 .panel:hover { transform: none; border-color: var(--line-strong); box-shadow: var(--shadow-2); }
 .panel strong { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
-/* 说明性段落走正文层级；旧规则把 .panel 内的 p 放大成 22px 衬线，编辑器里会误伤 */
+/* 璇存槑鎬ф钀借蛋姝ｆ枃灞傜骇锛涙棫瑙勫垯鎶?.panel 鍐呯殑 p 鏀惧ぇ鎴?22px 琛嚎锛岀紪杈戝櫒閲屼細璇激 */
 .panel p:not(.eyebrow) { margin: 0; font-family: var(--font-ui); font-size: 13.5px; font-weight: 400; line-height: 1.7; }
-/* 期刊列表卡片本身带 .panel，内部标题不该继承面板的 22px */
+/* 鏈熷垔鍒楄〃鍗＄墖鏈韩甯?.panel锛屽唴閮ㄦ爣棰樹笉璇ョ户鎵块潰鏉跨殑 22px */
 .panel .issue-list-item strong { font-size: 14px; font-weight: 600; line-height: 1.5; }
 .health-panel { gap: 10px; }
 
@@ -352,7 +350,7 @@ strong { font-weight: 600; }
 .health-dependencies .healthy { color: var(--ok); border-color: #cfe0d4; background: var(--ok-soft); }
 .health-dependencies .unhealthy { color: var(--danger); border-color: #eccfc8; background: var(--danger-soft); }
 
-/* 表格 */
+/* 琛ㄦ牸 */
 .observation-table,
 .discussion-contribution-table {
   margin-top: 18px;
@@ -399,7 +397,7 @@ strong { font-weight: 600; }
   line-height: 1.85;
 }
 
-/* ---------- 按钮 ---------- */
+/* ---------- 鎸夐挳 ---------- */
 button {
   min-height: 38px;
   padding: 8px 14px;
@@ -469,7 +467,7 @@ a:focus-visible {
 .refresh-current-page svg.spinning { animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------- 表单 ---------- */
+/* ---------- 琛ㄥ崟 ---------- */
 input, textarea, select {
   min-height: 38px;
   padding: 8px 11px;
@@ -500,7 +498,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .filters select { min-height: 38px; }
 .form-actions { display: flex; align-items: flex-end; gap: 10px; }
 
-/* ---------- 徽标 / 状态 ---------- */
+/* ---------- 寰芥爣 / 鐘舵€?---------- */
 .status {
   display: inline-flex;
   align-items: center;
@@ -522,7 +520,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   font-weight: 500;
 }
 
-/* ---------- 登录 / 密码 ---------- */
+/* ---------- 鐧诲綍 / 瀵嗙爜 ---------- */
 .app-frame.login-frame {
   background:
     radial-gradient(circle at 12% 10%, rgba(196, 145, 116, .10), transparent 34%),
@@ -745,7 +743,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .login-brand { margin-bottom: 22px; font-size: 26px; }
 }
 
-/* ---------- 弹层 ---------- */
+/* ---------- 寮瑰眰 ---------- */
 .observation-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -779,7 +777,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .observation-answer h4 { color: var(--muted); font-size: 12px; font-weight: 600; }
 .observation-answer p { margin: 0; font-size: 13px; line-height: 1.8; }
 
-/* 统一错误弹窗：后台所有操作错误集中在这里提示，不再占用页面顶部。 */
+/* 缁熶竴閿欒寮圭獥锛氬悗鍙版墍鏈夋搷浣滈敊璇泦涓湪杩欓噷鎻愮ず锛屼笉鍐嶅崰鐢ㄩ〉闈㈤《閮ㄣ€?*/
 .admin-error-backdrop {
   position: fixed;
   inset: 0;
@@ -818,7 +816,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .admin-error-dialog { padding: 20px; border-radius: 14px; }
 }
 
-/* ---------- 编辑器局部控件 ---------- */
+/* ---------- 缂栬緫鍣ㄥ眬閮ㄦ帶浠?---------- */
 .issue-list-item {
   padding: 12px 13px;
   border: 1px solid var(--line);
@@ -880,7 +878,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 }
 .practice-entry-status-toggle.enabled { border-color: var(--accent); background: var(--accent); color: #fff; }
 
-/* ---------- 页脚 ---------- */
+/* ---------- 椤佃剼 ---------- */
 .filing-footer {
   padding: 10px 16px max(14px, env(safe-area-inset-bottom));
   border-top: 0;
@@ -892,7 +890,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .filing-footer a { color: var(--muted); text-decoration: none; transition: color var(--t); }
 .filing-footer a:hover { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; }
 
-/* ---------- 回到顶部 ---------- */
+/* ---------- 鍥炲埌椤堕儴 ---------- */
 .to-top {
   position: fixed;
   right: 24px;
@@ -915,13 +913,13 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .to-top:hover { background: var(--surface); border-color: var(--accent-line); color: var(--accent-strong); }
 .to-top svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- 动效 ---------- */
+/* ---------- 鍔ㄦ晥 ---------- */
 @keyframes section-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(.995); } to { opacity: 1; transform: none; } }
 @keyframes to-top-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-/* ---------- 响应式 ---------- */
+/* ---------- 鍝嶅簲寮?---------- */
 @media (max-width: 1100px) {
   .dashboard-workspace { padding: 28px 24px 80px; }
   .topbar { margin-top: -28px; padding-top: 20px; }
@@ -931,7 +929,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .dashboard-layout,
   .dashboard-layout.nav-collapsed {
     grid-template-columns: minmax(0, 1fr);
-    /* 单列时不要让 align-content:stretch 把导航行拉高 */
+    /* 鍗曞垪鏃朵笉瑕佽 align-content:stretch 鎶婂鑸鎷夐珮 */
     align-content: start;
   }
 
@@ -1012,7 +1010,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   button:not(:disabled):hover { transform: none; }
 }
 
-/* ---------- 窄屏补充：板块头部纵向排列，操作按钮不被挤压 ---------- */
+/* ---------- 绐勫睆琛ュ厖锛氭澘鍧楀ご閮ㄧ旱鍚戞帓鍒楋紝鎿嶄綔鎸夐挳涓嶈鎸ゅ帇 ---------- */
 @media (max-width: 720px) {
   .section-heading {
     align-items: flex-start;
@@ -1031,7 +1029,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .section-tools button { flex: 0 0 auto; white-space: nowrap; }
 }
 
-/* ---------- 生命牌文案编辑 ---------- */
+/* ---------- 鐢熷懡鐗屾枃妗堢紪杈?---------- */
 .life-card-months {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -1088,14 +1086,14 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .life-card-face-row { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ---------- 生命牌查看记录 ---------- */
+/* ---------- 鐢熷懡鐗屾煡鐪嬭褰?---------- */
 .life-card-view-head,
 .life-card-view-row {
   grid-template-columns: minmax(150px, 1.2fr) 120px 90px minmax(180px, 1fr);
 }
 .life-card-view-empty { margin: 0; padding: 18px; }
 
-/* ---------- 生命牌查看：筛选栏 ---------- */
+/* ---------- 鐢熷懡鐗屾煡鐪嬶細绛涢€夋爮 ---------- */
 .life-card-view-filters {
   display: flex;
   flex-wrap: wrap;
@@ -1117,14 +1115,14 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .life-card-view-filter-actions { margin-left: 0; width: 100%; }
 }
 
-/* ---------- 生命牌文案：导入导出 ---------- */
+/* ---------- 鐢熷懡鐗屾枃妗堬細瀵煎叆瀵煎嚭 ---------- */
 .life-card-io { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
 .life-card-import { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 15px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink-2); font-size: 13.5px; cursor: pointer; transition: background-color var(--t), border-color var(--t), color var(--t); }
 .life-card-import:hover { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-strong); }
 .life-card-import input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .life-card-import.disabled { cursor: not-allowed; opacity: .6; }
 
-/* ---------- 生命牌文案：宽屏排版 ---------- */
+/* ---------- 鐢熷懡鐗屾枃妗堬細瀹藉睆鎺掔増 ---------- */
 .life-card-layout { grid-template-columns: minmax(190px, 260px) minmax(0, 1fr); }
 .life-card-form { max-width: 780px; }
 .life-card-months { max-width: 780px; }
@@ -1132,7 +1130,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .life-card-list { max-height: 720px; }
 }
 
-/* 宽屏：表单两列，减少纵向滚动 */
+/* 瀹藉睆锛氳〃鍗曚袱鍒楋紝鍑忓皯绾靛悜婊氬姩 */
 @media (min-width: 1400px) {
   .life-card-layout { grid-template-columns: minmax(190px, 280px) minmax(0, 1fr); align-items: start; }
   .life-card-form {
@@ -1149,7 +1147,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .life-card-list { max-height: calc(100vh - 260px); }
 }
 
-/* ---------- 生命牌文案：月份与导入导出同一行 ---------- */
+/* ---------- 鐢熷懡鐗屾枃妗堬細鏈堜唤涓庡鍏ュ鍑哄悓涓€琛?---------- */
 .life-card-toolbar {
   display: flex;
   align-items: center;
@@ -1170,7 +1168,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .life-card-toolbar .life-card-io { width: 100%; }
 }
 
-/* ---------- 顶栏：圆形退出按钮 ---------- */
+/* ---------- 椤舵爮锛氬渾褰㈤€€鍑烘寜閽?---------- */
 .logout-icon-button {
   display: inline-flex;
   width: 38px;
@@ -1202,7 +1200,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   stroke-linejoin: round;
 }
 
-/* ---------- 顶栏账号菜单 ---------- */
+/* ---------- 椤舵爮璐﹀彿鑿滃崟 ---------- */
 .account-menu { position: relative; }
 .account-avatar-button {
   display: inline-flex;
@@ -1282,17 +1280,17 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .password-form { display: grid; gap: 14px; margin-top: 18px; }
 .topbar-status { margin: 0 0 0 4px; color: var(--ok); font-size: 12.5px; white-space: nowrap; }
 
-/* ---------- 页面内第二栏与顶栏标题重复：只保留操作，隐藏重复标题 ---------- */
+/* ---------- 椤甸潰鍐呯浜屾爮涓庨《鏍忔爣棰橀噸澶嶏細鍙繚鐣欐搷浣滐紝闅愯棌閲嶅鏍囬 ---------- */
 .content-area > .section-heading > div:first-child { display: none; }
 .content-area > .section-heading {
   padding-bottom: 10px;
   border-bottom: 0;
   margin-bottom: 12px;
 }
-/* 没有任何操作按钮的重复标题行整行隐藏 */
+/* 娌℃湁浠讳綍鎿嶄綔鎸夐挳鐨勯噸澶嶆爣棰樿鏁磋闅愯棌 */
 .content-area > .section-heading:not(:has(.section-tools)) { display: none; }
 
-/* 有操作按钮的页面：让重复标题行收紧成一行右侧操作 */
+/* 鏈夋搷浣滄寜閽殑椤甸潰锛氳閲嶅鏍囬琛屾敹绱ф垚涓€琛屽彸渚ф搷浣?*/
 .content-area > .section-heading {
   align-items: center;
   padding-bottom: 0;
@@ -1304,7 +1302,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 }
 .content-area { margin-top: 20px; }
 
-/* ---------- 弹层：遮罩更淡 + 头部吸顶（关闭按钮常驻） ---------- */
+/* ---------- 寮瑰眰锛氶伄缃╂洿娣?+ 澶撮儴鍚搁《锛堝叧闂寜閽父椹伙級 ---------- */
 .observation-modal-backdrop { background: rgba(23, 24, 26, .22); }
 .observation-detail-panel > .section-heading {
   position: sticky;
@@ -1317,7 +1315,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 }
 .observation-detail-panel > .section-heading h3 { font-size: 18px; }
 
-/* ---------- 弹层遮罩最终修正：去掉模糊、显著调淡 ---------- */
+/* ---------- 寮瑰眰閬僵鏈€缁堜慨姝ｏ細鍘绘帀妯＄硦銆佹樉钁楄皟娣?---------- */
 #dashboard-content .observation-modal-backdrop,
 .observation-modal-backdrop {
   background: rgba(20, 22, 24, .16);
@@ -1325,7 +1323,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   -webkit-backdrop-filter: none;
 }
 
-/* ---------- 弹层：改为 block 以让 sticky 头部真正生效（grid 子项 sticky 无效） ---------- */
+/* ---------- 寮瑰眰锛氭敼涓?block 浠ヨ sticky 澶撮儴鐪熸鐢熸晥锛坓rid 瀛愰」 sticky 鏃犳晥锛?---------- */
 .observation-detail-panel {
   display: block;
   padding-top: 0;
@@ -1347,14 +1345,14 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   .observation-detail-panel > .section-heading { padding-top: 18px; }
 }
 
-/* 空字段提示弱化 */
+/* 绌哄瓧娈垫彁绀哄急鍖?*/
 .observation-answer--empty p { color: var(--muted); font-style: normal; opacity: .75; }
 
-/* 观察记录表：用户与更新时间分列（6 列） */
+/* 瑙傚療璁板綍琛細鐢ㄦ埛涓庢洿鏂版椂闂村垎鍒楋紙6 鍒楋級 */
 .observation-head.managed-observation-head,
 .observation-row.managed-observation-head { grid-template-columns: 1.1fr .9fr .6fr .8fr 1.2fr 104px; }
 
-/* 观察记录筛选行：控件底部对齐，同步按钮靠右 */
+/* 瑙傚療璁板綍绛涢€夎锛氭帶浠跺簳閮ㄥ榻愶紝鍚屾鎸夐挳闈犲彸 */
 .filters { align-items: flex-end; }
 .filters > label { display: grid; gap: 6px; }
 .filters > label.checkbox-filter { display: flex; height: 40px; align-items: center; gap: 8px; }
@@ -1366,7 +1364,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   white-space: nowrap;
 }
 
-/* ---------- 共同实践文案：按期编辑面板 ---------- */
+/* ---------- 鍏卞悓瀹炶返鏂囨锛氭寜鏈熺紪杈戦潰鏉?---------- */
 .practice-copy-panel {
   margin: 0 0 26px;
   padding: 20px;
@@ -1436,7 +1434,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 @media (max-width: 900px) {
   .practice-copy-row { grid-template-columns: 24px minmax(0, 1fr); }
   .practice-copy-row-actions { grid-column: 1 / -1; justify-content: flex-end; }
-}/* ---------- 员工与权限 ---------- */
+}/* ---------- 鍛樺伐涓庢潈闄?---------- */
 .employee-hero {
   display: flex;
   align-items: flex-end;
@@ -1733,4 +1731,34 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 @media (max-width: 560px) {
   .employee-toolbar { grid-template-columns: minmax(0, 1fr); }
   .employee-clear-filters { width: 100%; }
+}
+
+/* 鎬昏宸ヤ綔鍙?*/
+.overview-workspace { display: grid; gap: 16px; margin-top: 24px; }
+.overview-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; min-height: 0; padding: 24px; }
+.overview-hero-copy { display: grid; gap: 6px; min-width: 0; }
+.overview-hero-copy h2 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+.overview-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.overview-empty { min-height: 0; padding: 18px 20px; color: var(--muted); font-size: 13px; }
+.overview-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); gap: 16px; }
+.overview-metric { min-height: 0; }
+.overview-metric strong { font-size: 20px; line-height: 1.35; }
+.overview-metric-line { color: var(--muted) !important; font-size: 13px !important; }
+.overview-metric small { font-size: 12px; }
+.overview-metric-action { justify-self: start; margin-top: 4px; }
+.overview-columns { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; }
+.overview-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.overview-list li { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.overview-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.overview-list li > div { display: grid; gap: 2px; min-width: 0; }
+.overview-list strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.overview-list small, .overview-list time { color: var(--muted); font-size: 12px; }
+.overview-list time { white-space: nowrap; }
+.overview-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.overview-chip { padding: 4px 10px; border: 1px dashed var(--line-strong); border-radius: 999px; color: var(--muted); font-size: 12px; }
+.overview-chip.granted { border-style: solid; border-color: var(--accent); color: var(--accent-strong); background: var(--surface-2); }
+.overview-access-note { font-size: 12px !important; }
+@media (max-width: 980px) {
+  .overview-columns { grid-template-columns: minmax(0, 1fr); }
+  .overview-hero { align-items: flex-start; }
 }

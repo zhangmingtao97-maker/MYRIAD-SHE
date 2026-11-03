@@ -1,5 +1,14 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-03 后台首页重建为「工作台」，下线健康与迁移面板
+
+- 取消原有「健康与迁移」：删除总览里的 API STATUS（`/health` 状态与数据库/对象存储/缓存依赖）与 SCHEMA STATUS（迁移账本 `appliedCount/availableCount/pending`）两个面板，同时移除 `health`、`migrationStatus` 状态、`normalizeHealthResult`、`/health` 与 `/admin/system/migrations` 的请求与校验以及登出重置；后台不再展示迁移账本，迁移仍由启动日志与数据库账本维护（`/api/health/ready` 仍供运维与网关探活使用）。
+- 新「工作台」结构：顶部问候卡（`早上好/下午好/晚上好，<姓名>` + 角色 + 已授权模块数 + 最近同步时间）与快捷入口（期刊工作台、审核用户经历、观察记录、员工与权限、刷新数据）；中部 6 张指标卡——期刊（已发布期号、草稿/归档数、发布时间）、待审核的用户经历、观察记录（已保存/草稿/超期草稿/保留期）、会员总数与最近注册、删除申请（待处理/到期/失败/最早申请）、审计记录总数；底部「最近操作」（6 条，动作与资源类型做了中文映射，未命中的保留原标识）与「当前授权模块」（12 个模块 chip，已授权高亮，并说明授权位置）。
+- 数据加载重构：`loadDashboard` 改为与员工视角同一套按模块并行拉取（`canAccessModule` + `optionalFetch` 返回 `null` 再过滤），未授权模块不再发请求、也不参与响应校验，因此**被收窄模块的超级管理员不会再因为 403 报「无法读取 API 数据」**；进入总览时额外拉取审核队列与会员列表以生成指标；`loadStaffDashboard` 合并进 `loadDashboard`，单一入口。导航与标题同步改为「工作台」（`WORKSPACE / OVERVIEW`）。
+- 验证（本机开发联调 `http://192.168.1.32:61022` + Playwright，真实数据库）：全量超管 13 项断言全部通过——标题为工作台、旧「健康与迁移/API STATUS/SCHEMA STATUS」为 0、问候语、`已授权 12 / 12 个模块`、6 张指标卡且顺序为 JOURNAL/REVIEW/OBSERVATIONS/MEMBERS/PRIVACY/AUDIT、最近操作与授权模块区块存在、12 个 chip 全部点亮、桌面与 820px 均无横向溢出、无控制台报错（仅 dev server 的 favicon 404）。另建受限超管 `devlimited`（仅授权「期刊与首页策展」）走完「创建 → 收窄授权 → 首次改密 → 进后台」，13 项断言通过——工作台正常打开、只剩 1 张期刊指标卡、页面无「无法读取 API 数据」、侧栏无会员列表、`/api/content/issues` 200、`/api/admin/observations` 403、`/api/admin/employees` 仍 200。测试账号已删除，开发库恢复 0 个员工账号。
+- 已发布生产：仅同步 `management/src/App.vue` 与 `management/src/admin-theme.css`，`build admin` 后 `up -d --no-deps admin`（API 与数据库无变化）。线上 bundle `index-Cji-Ay8z.js` / `index-D15Gp1rV.css`：`WORKSPACE / OVERVIEW`、`最近操作`、`当前授权模块` 均命中，旧「健康与迁移」为 0，样式含 `overview-metrics`；`/` 与 `/api/health/ready` 均 200，admin 容器 Up。备份 `source-pre-overview-rebuild-20261103-113912.tar.gz`，镜像 `myriad-she-admin:pre-overview-20261103-113912`，回滚时重新打标后 `up -d --no-deps admin`。
+- 说明：工作台指标全部来自各模块已有接口，不新增后端路由；`life-cards`、`life-card-views`、`media`、`settings` 等模块暂未做卡片，保持侧栏入口，后续可按需补充。
+
 ## 2026-11-03 角色与模块解耦：任意角色可提升并单独授权
 
 - 模块授权不再与角色写死：`effectiveAdminModules` 对任何角色都按 `module_permissions` 计算（`NULL` = 角色默认、`[]` = 不授权、数组 = 显式授权）。超级管理员默认仍是全部 12 个模块，但同样可以被收窄或恢复默认，取代上一节「超管固定全部模块、弹窗只读」的做法。

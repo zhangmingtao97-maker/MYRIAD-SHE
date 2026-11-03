@@ -4,8 +4,8 @@ import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
 import PracticeLineEditor from './components/PracticeLineEditor.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
-import { isAdminLoginResult, isAuditPage, isIssueDashboardConsistent, isManagedIssueList, isManagedMediaKey, isManagedObservationDetail, isManagedObservationPage, isMediaAudioPage, isMediaDeleteResult, isMediaOrphanPage, isMediaUploadTarget, isMediaViewTarget, isMigrationStatus, isObservationLifecycle, isPrivacyProcessResult, isPrivacyRequestPage, isPublicHome, isReencryptResult, isRetryResult } from './api-shapes';
-import type { AuditEntry, IssueLifecycle, ManagedAudioTrack, ManagedIssue, ManagedIssueModule, ManagedObservation, ManagedObservationDetail, MediaOrphan, MigrationStatus, ObservationLifecycle, PrivacyLifecycle, PrivacyRequest, PublicHome } from './api-shapes';
+import { isAdminLoginResult, isAuditPage, isIssueDashboardConsistent, isManagedIssueList, isManagedMediaKey, isManagedObservationDetail, isManagedObservationPage, isMediaAudioPage, isMediaDeleteResult, isMediaOrphanPage, isMediaUploadTarget, isMediaViewTarget, isObservationLifecycle, isPrivacyProcessResult, isPrivacyRequestPage, isPublicHome, isReencryptResult, isRetryResult } from './api-shapes';
+import type { AuditEntry, IssueLifecycle, ManagedAudioTrack, ManagedIssue, ManagedIssueModule, ManagedObservation, ManagedObservationDetail, MediaOrphan, ObservationLifecycle, PrivacyLifecycle, PrivacyRequest, PublicHome } from './api-shapes';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.32:61021/api';
 const maxAdminTokenLength = 16_384;
@@ -46,9 +46,6 @@ type WecomLoginConfig = {
 type WecomLoginInstance = { destroyed?: () => void };
 let wecomQrInstance: WecomLoginInstance | null = null;
 let wecomSdkPromise: Promise<void> | null = null;
-type HealthResult = { status: string; timestamp: string; dependencies?: { database?: string; objectStorage?: string; redis?: string } };
-const health = ref<HealthResult | null>(null);
-const migrationStatus = ref<MigrationStatus | null>(null);
 const home = ref<PublicHome | null>(null);
 const issues = ref<ManagedIssue[]>([]);
 const issueLifecycle = ref<IssueLifecycle | null>(null);
@@ -982,6 +979,42 @@ const adminPasswordChangeRequired = computed(() => {
 const isSuperAdmin = computed(() => adminRole.value === 'super_admin');
 const adminModuleList = computed<AdminModuleId[]>(() => adminPermissions.value ?? effectiveModulesForRole(adminRole.value, null));
 const canAccessAnyModule = computed(() => adminModuleList.value.length > 0);
+const overviewGreeting = computed(() => {
+  const hour = new Date().getHours();
+  const period = hour < 6 ? '夜深了' : hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
+  return `${period}，${adminIdentity.value.name}`;
+});
+const overviewAuditActions: Record<string, string> = {
+  'admin.auth.login_succeeded': '管理员登录成功',
+  'admin.auth.login_failed': '管理员登录失败',
+  'audit.logs.viewed': '查看审计日志',
+  'member.listed': '查看会员列表',
+  'member.viewed': '查看会员详情',
+  'member.phone.viewed': '查看会员手机号',
+  'member.suspended': '停用会员',
+  'member.active': '恢复会员',
+  'privacy.requests.listed': '查看删除申请',
+  'admin.employee.created': '创建员工账号',
+  'admin.employee.updated': '更新员工账号',
+  'admin.employees.listed': '查看员工列表',
+  'admin.password.changed': '修改登录密码',
+  'observation.listed': '查看观察记录',
+};
+const overviewAuditResources: Record<string, string> = {
+  admin_login: '登录',
+  audit_logs: '审计日志',
+  users: '会员',
+  user: '会员',
+  admin_account: '员工账号',
+  admin_accounts: '员工账号',
+  privacy_requests: '删除申请',
+  observations: '观察记录',
+  discussion_contributions: '用户经历',
+  content_issues: '期刊',
+  system_settings: '系统设置',
+};
+function overviewAuditAction(action: string) { return overviewAuditActions[action] ?? action; }
+function overviewAuditResource(resourceType: string) { return overviewAuditResources[resourceType] ?? resourceType; }
 function canAccessModule(id: AdminModuleId) { return adminModuleList.value.includes(id); }
 const observationStatus = ref('');
 const observationMethod = ref('');
@@ -989,6 +1022,7 @@ const observationIssueCode = ref('');
 const observationStaleOnly = ref(false);
 const observationStatusBeforeStale = ref<string | null>(null);
 const dashboardLoading = ref(false);
+const overviewUpdatedAt = ref('');
 const currentPageRefreshing = ref(false);
 type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
@@ -1055,7 +1089,7 @@ async function enterDashboardByPermissions() {
   const landing = resolveLandingLocation();
   activeSection.value = landing.section;
   activeContentSection.value = landing.contentSection;
-  await loadStaffDashboard();
+  await loadDashboard();
   if (landing.section === 'content' && landing.contentSection === 'media') await loadOrphanMedia(true);
   if (landing.section === 'members') await refreshMembers();
   if (landing.section === 'settings') await loadSystemSettings();
@@ -1167,7 +1201,7 @@ const currentView = computed(() => {
     return contentViews[activeContentSection.value];
   }
   const views: Record<Exclude<DashboardSection, 'content' | 'practice'>, { eyebrow: string; title: string }> = {
-    overview: { eyebrow: 'SYSTEM / OVERVIEW', title: '健康与迁移' },
+    overview: { eyebrow: 'WORKSPACE / OVERVIEW', title: '工作台' },
     observations: { eyebrow: 'OBSERVATIONS / MANAGEMENT', title: '观察记录管理' },
     contributions: { eyebrow: 'DISCUSSION / MODERATION', title: '用户经历审核' },
     privacy: { eyebrow: 'PRIVACY / REQUESTS', title: '隐私申请' },
@@ -1427,24 +1461,6 @@ async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}, timeou
   } finally {
     clearTimeout(timeout);
   }
-}
-
-function normalizeHealthResult(raw: unknown): HealthResult {
-  const root = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
-  const nested = root.message && typeof root.message === 'object' ? root.message as Record<string, unknown> : {};
-  const source = typeof root.status === 'string' ? root : nested;
-  const dependencies = source.dependencies && typeof source.dependencies === 'object'
-    ? source.dependencies as Record<string, unknown>
-    : {};
-  return {
-    status: typeof source.status === 'string' ? source.status : 'error',
-    timestamp: typeof source.timestamp === 'string' ? source.timestamp : new Date().toISOString(),
-    dependencies: {
-      database: typeof dependencies.database === 'string' ? dependencies.database : undefined,
-      objectStorage: typeof dependencies.objectStorage === 'string' ? dependencies.objectStorage : undefined,
-      redis: typeof dependencies.redis === 'string' ? dependencies.redis : undefined,
-    },
-  };
 }
 
 function isPracticeContent(raw: unknown): raw is PracticeContent {
@@ -2322,123 +2338,10 @@ async function changeRequiredPassword() {
 }
 
 async function loadDashboard() {
-  if (!isSuperAdmin.value) return loadStaffDashboard();
   const session = sessionGeneration;
   const dashboardGeneration = ++dashboardRequestGeneration;
   const practiceGeneration = ++practiceContentRequestGeneration;
   const minePageGeneration = ++minePageContentRequestGeneration;
-  const privacyPageGeneration = ++privacyPageContentRequestGeneration;
-  const observationGeneration = ++observationRequestGeneration;
-  const privacyGeneration = ++privacyRequestGeneration;
-  const auditGeneration = ++auditRequestGeneration;
-  observationLoadingMore.value = false;
-  observationMoreError.value = '';
-  privacyLoadingMore.value = false;
-  privacyRefreshing.value = false;
-  privacyMoreError.value = '';
-  auditLoadingMore.value = false;
-  auditMoreError.value = '';
-  dashboardLoading.value = true;
-  const authHeaders = { Authorization: `Bearer ${token.value}` };
-  const observationParams = observationQuery(0);
-  try {
-    const [healthResponse, homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, privacyPageResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse, migrationResponse] = await Promise.all([
-      apiFetch(`${apiBase}/health`),
-      apiFetch(`${apiBase}/content/home`),
-      apiFetch(`${apiBase}/content/issues`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/content/issues/summary`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/content/practice/manage`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/content/mine/manage`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/content/about/manage`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/admin/observations?${observationParams}`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/admin/observations/lifecycle`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/admin/privacy-requests?${privacyQuery(0)}`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/admin/audit-logs?${auditQuery(0)}`, { headers: authHeaders }),
-      apiFetch(`${apiBase}/admin/system/migrations`, { headers: authHeaders }),
-    ]);
-    const healthResult = normalizeHealthResult(await healthResponse.json().catch(() => null));
-    if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration && loggedIn.value) health.value = healthResult;
-    if ([issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, privacyPageResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse, migrationResponse].some((response) => response.status === 401)) {
-      if (session === sessionGeneration && loggedIn.value) logout('后台登录已过期，请重新登录。');
-      return;
-    }
-    assertSession(session);
-    const failedResponse = [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, privacyPageResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse, migrationResponse].find((response) => !response.ok);
-    if (failedResponse) throw new Error(await responseMessage(failedResponse, '无法读取 API 数据'));
-    const [homeResult, issuesResult, issueSummaryResult, practiceResult, minePageResult, privacyPageResult, observationResult, lifecycleResult, privacyResult, auditResult, migrationResult] = await Promise.all([
-      homeResponse.json(), issuesResponse.json(), issueSummaryResponse.json(), practiceResponse.json(), minePageResponse.json(), privacyPageResponse.json(), observationsResponse.json(), lifecycleResponse.json(), privacyResponse.json(), auditResponse.json(), migrationResponse.json(),
-    ]);
-    if (!isPublicHome(homeResult)) throw new Error('首页内容格式无效');
-    if (!isManagedIssueList(issuesResult)) throw new Error('期刊列表格式无效');
-    if (!isIssueDashboardConsistent(issueSummaryResult, issuesResult, homeResult)) throw new Error('期刊列表、生命周期摘要与首页发布内容不一致，请刷新后核实');
-    if (!isPracticeContent(practiceResult)) throw new Error(practiceContentFormatError(practiceResult));
-    if (!isMinePageContent(minePageResult)) throw new Error('我的页面配置格式无效');
-    if (!isPrivacyPageContent(privacyPageResult)) throw new Error('关于 MYRIAD SHE 内容格式无效');
-    if (!isManagedObservationPage(observationResult)) throw new Error('观察记录列表格式无效');
-    if (!isObservationLifecycle(lifecycleResult)) throw new Error('观察生命周期格式无效');
-    if (!isPrivacyRequestPage(privacyResult)) throw new Error('删除申请列表格式无效');
-    if (!isAuditPage(auditResult)) throw new Error('操作审计列表格式无效');
-    if (!isMigrationStatus(migrationResult)) throw new Error('数据库迁移状态格式无效');
-    if (dashboardGeneration !== dashboardRequestGeneration) return;
-    home.value = homeResult;
-    migrationStatus.value = migrationResult;
-    issues.value = issuesResult;
-    issueLifecycle.value = issueSummaryResult;
-    void ensureJournalIssueSelection();
-    if (practiceGeneration === practiceContentRequestGeneration && !practiceContentSaving.value && !practiceContentDirty.value) {
-      practiceContent.value = practiceResult;
-      practiceContentDirty.value = false;
-    }
-    if (minePageGeneration === minePageContentRequestGeneration && !minePageContentSaving.value && !minePageContentDirty.value) {
-      minePageContent.value = minePageResult;
-      minePageContentDirty.value = false;
-    }
-    if (privacyPageGeneration === privacyPageContentRequestGeneration && !privacyPageSaving.value && !privacyPageDirty.value) {
-      privacyPageContent.value = privacyPageResult;
-      privacyPagePublishedVersion.value = Number((privacyPageResult as AboutPageContent & { publishedVersion?: number }).publishedVersion) || 1;
-      privacyPagePublishedAt.value = String((privacyPageResult as AboutPageContent & { publishedAt?: string }).publishedAt ?? '');
-      privacyPageDirty.value = false;
-    }
-    if (observationGeneration === observationRequestGeneration) {
-      observations.value = observationResult.items;
-      observationTotal.value = observationResult.total;
-      observationOffset.value = observationResult.offset + observationResult.items.length;
-      observationHasMore.value = observationOffset.value < observationResult.total;
-      observationMoreError.value = '';
-      observationLifecycle.value = lifecycleResult;
-    }
-    if (privacyGeneration === privacyRequestGeneration) {
-      privacyRequests.value = privacyResult.items;
-      privacyTotal.value = privacyResult.total;
-      privacyLifecycle.value = privacyResult.summary;
-      privacyOffset.value = privacyResult.offset + privacyResult.items.length;
-      privacyHasMore.value = privacyOffset.value < privacyResult.total;
-      privacyMoreError.value = '';
-    }
-    if (auditGeneration === auditRequestGeneration) {
-      auditLogs.value = auditResult.rows;
-      auditTotal.value = auditResult.total;
-      auditOffset.value = auditResult.offset + auditResult.rows.length;
-      auditHasMore.value = auditOffset.value < auditResult.total;
-      auditMoreError.value = '';
-    }
-    if (activeSection.value === 'content' && activeContentSection.value === 'about-history' && privacyPageRevisions.value.length === 0) {
-      await loadPrivacyRevisions('about-page');
-    }
-  } catch (caught) {
-    if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration && loggedIn.value) {
-      error.value = caught instanceof Error ? caught.message : '无法读取 API 数据';
-    }
-    throw caught;
-  } finally {
-    if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration) dashboardLoading.value = false;
-  }
-}
-
-async function loadStaffDashboard() {
-  const session = sessionGeneration;
-  const dashboardGeneration = ++dashboardRequestGeneration;
-  const practiceGeneration = ++practiceContentRequestGeneration;
   const privacyPageGeneration = ++privacyPageContentRequestGeneration;
   const observationGeneration = ++observationRequestGeneration;
   const privacyGeneration = ++privacyRequestGeneration;
@@ -2460,18 +2363,19 @@ async function loadStaffDashboard() {
   const canAudit = canAccessModule('audit');
   const optionalFetch = (enabled: boolean, url: string) => (enabled ? apiFetch(url, { headers: authHeaders }) : Promise.resolve(null));
   try {
-    const [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse] = await Promise.all([
+    const [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse] = await Promise.all([
       optionalFetch(canJournal, `${apiBase}/content/home`),
       optionalFetch(canJournal, `${apiBase}/content/issues`),
       optionalFetch(canJournal, `${apiBase}/content/issues/summary`),
       optionalFetch(canPractice, `${apiBase}/content/practice/manage`),
+      optionalFetch(canPages, `${apiBase}/content/mine/manage`),
       optionalFetch(canPages, `${apiBase}/content/about/manage`),
       optionalFetch(canObservations, `${apiBase}/admin/observations?${observationQuery(0)}`),
       optionalFetch(canObservations, `${apiBase}/admin/observations/lifecycle`),
       optionalFetch(canPrivacy, `${apiBase}/admin/privacy-requests?${privacyQuery(0)}`),
       optionalFetch(canAudit, `${apiBase}/admin/audit-logs?${auditQuery(0)}`),
     ]);
-    const responses = [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse].filter((response): response is Response => response !== null);
+    const responses = [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse].filter((response): response is Response => response !== null);
     if (responses.some((response) => response.status === 401)) {
       if (session === sessionGeneration && loggedIn.value) logout('后台登录已过期，请重新登录。');
       return;
@@ -2499,6 +2403,14 @@ async function loadStaffDashboard() {
         practiceContentDirty.value = false;
       }
       await loadDailyObjectsContent();
+    }
+    if (canPages && minePageResponse) {
+      const minePageResult = await minePageResponse.json();
+      if (!isMinePageContent(minePageResult)) throw new Error('我的页面配置格式无效');
+      if (minePageGeneration === minePageContentRequestGeneration && !minePageContentSaving.value && !minePageContentDirty.value) {
+        minePageContent.value = minePageResult;
+        minePageContentDirty.value = false;
+      }
     }
     if (canPages && aboutResponse) {
       const privacyPageResult = await aboutResponse.json();
@@ -2545,6 +2457,16 @@ async function loadStaffDashboard() {
         auditHasMore.value = auditOffset.value < auditResult.total;
         auditMoreError.value = '';
       }
+    }
+    overviewUpdatedAt.value = new Date().toISOString();
+    if (activeSection.value === 'content' && activeContentSection.value === 'about-history' && privacyPageRevisions.value.length === 0) {
+      await loadPrivacyRevisions('about-page');
+    }
+    if (activeSection.value === 'overview') {
+      await Promise.all([
+        canAccessModule('contributions') ? refreshDiscussionContributions() : Promise.resolve(),
+        canAccessModule('members') ? refreshMembers() : Promise.resolve(),
+      ]);
     }
   } catch (caught) {
     if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration && loggedIn.value) {
@@ -4163,8 +4085,7 @@ function logout(message = '') {
   password.value = '';
   loading.value = false;
   sessionExpiresAt.value = 0;
-  health.value = null;
-  migrationStatus.value = null;
+  overviewUpdatedAt.value = '';
   home.value = null;
   issues.value = [];
   issueLifecycle.value = null;
@@ -4372,7 +4293,7 @@ onBeforeUnmount(() => {
             <div class="dashboard-nav-tabs">
               <p v-if="!isSuperAdmin && !canAccessAnyModule" class="dashboard-nav-label">暂无授权模块</p>
               <p v-if="isSuperAdmin" class="dashboard-nav-label">总览</p>
-              <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'overview' }" :aria-label="sidebarCollapsed ? '健康与迁移' : undefined" :title="sidebarCollapsed ? '健康与迁移' : undefined" :aria-current="activeSection === 'overview' ? 'page' : undefined" aria-controls="overview-panel" @click="activeSection = 'overview'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.8 13.2a8.2 8.2 0 1 1 16.4 0v5.1H3.8zM12 12l3.5-3.2M7.2 16.5h.1m4.7 0h.1m4.7 0h.1" /></svg><span>健康与迁移</span></button>
+              <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'overview' }" :aria-label="sidebarCollapsed ? '工作台' : undefined" :title="sidebarCollapsed ? '工作台' : undefined" :aria-current="activeSection === 'overview' ? 'page' : undefined" aria-controls="overview-panel" @click="activeSection = 'overview'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h7v7H4zM13 4.5h7v4h-7zM13 10.5h7v9h-7zM4 13.5h7v6H4z" /></svg><span>工作台</span></button>
               <p v-if="canAccessModule('practice') || canAccessModule('journal') || canAccessModule('media') || canAccessModule('pages')" class="dashboard-nav-label">内容</p>
               <div v-if="canAccessModule('practice')" class="dashboard-nav-group practice-nav-group" :class="{ expanded: activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'practice' }" :aria-label="sidebarCollapsed ? '实践' : undefined" :title="sidebarCollapsed ? '实践' : undefined" :aria-current="activeSection === 'practice' ? 'page' : undefined" :aria-expanded="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" aria-controls="practice-navigation" @click.stop="openPracticeNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 4.5c-7.7.2-12.8 2.3-13.8 7.1-.8 3.4 1.8 6.3 5 6.3 5.1 0 7.8-5.5 8.8-13.4ZM5 20c2.4-4.4 5.2-7.1 9.2-9.6" /></svg><span>实践</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
@@ -4493,9 +4414,95 @@ onBeforeUnmount(() => {
 </Teleport>
           <button v-if="showBackToTop" type="button" class="to-top" aria-label="回到顶部" title="回到顶部" @click="scrollToTop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
           <p v-if="dashboardLoading" class="loading-note" role="status" aria-live="polite">正在同步云端数据…</p>
-      <section v-if="activeSection === 'overview'" id="overview-panel" class="grid">
-        <article class="panel health-panel"><p class="eyebrow">API STATUS</p><strong>{{ health?.status === 'ok' ? '运行正常' : health?.status === 'degraded' ? '依赖异常' : '检查中' }}</strong><div class="health-dependencies"><span :class="health?.dependencies?.database === 'ok' ? 'healthy' : 'unhealthy'">数据库 {{ health?.dependencies?.database === 'ok' ? '正常' : health?.dependencies?.database === 'error' ? '异常' : '待检查' }}</span><span :class="health?.dependencies?.objectStorage === 'ok' ? 'healthy' : 'unhealthy'">对象存储 {{ health?.dependencies?.objectStorage === 'ok' ? '正常' : health?.dependencies?.objectStorage === 'error' ? '异常' : '待检查' }}</span><span :class="health?.dependencies?.redis === 'ok' ? 'healthy' : 'unhealthy'">缓存 {{ health?.dependencies?.redis === 'ok' ? '正常' : health?.dependencies?.redis === 'error' ? '异常' : '待检查' }}</span></div><small>{{ health?.timestamp }}</small></article>
-        <article class="panel"><p class="eyebrow">SCHEMA STATUS</p><strong>{{ migrationStatus?.consistent ? '迁移账本一致' : '需要核对迁移' }}</strong><small>已应用 {{ migrationStatus?.appliedCount ?? 0 }} / 可用 {{ migrationStatus?.availableCount ?? 0 }}</small><small v-if="migrationStatus?.pending.length">待执行：{{ migrationStatus.pending.join('、') }}</small><small v-else-if="migrationStatus?.missing.length || migrationStatus?.modified.length">发现缺失或被修改的迁移文件</small><small v-else-if="migrationStatus?.latestApplied">最新：{{ migrationStatus.latestApplied.name }} · {{ displayDate(migrationStatus.latestApplied.appliedAt) }}</small></article>
+      <section v-if="activeSection === 'overview'" id="overview-panel" class="overview-workspace">
+        <header class="panel overview-hero">
+          <div class="overview-hero-copy">
+            <p class="eyebrow">MYRIAD SHE / WORKSPACE</p>
+            <h2>{{ overviewGreeting }}</h2>
+            <p class="muted">{{ adminRoleLabels[adminRole] }} · 已授权 {{ adminModuleList.length }} / {{ adminModules.length }} 个模块<template v-if="overviewUpdatedAt"> · 更新于 {{ displayDate(overviewUpdatedAt) }}</template></p>
+          </div>
+          <div class="overview-hero-actions">
+            <button v-if="canAccessModule('journal')" type="button" @click="openJournalSubsection('journal-list')">期刊工作台</button>
+            <button v-if="canAccessModule('contributions')" type="button" class="quiet" @click="activeSection = 'contributions'; refreshDiscussionContributions()">审核用户经历</button>
+            <button v-if="canAccessModule('observations')" type="button" class="quiet" @click="activeSection = 'observations'; refreshObservations()">观察记录</button>
+            <button v-if="isSuperAdmin" type="button" class="quiet" @click="activeSection = 'employees'; loadEmployees()">员工与权限</button>
+            <button type="button" class="quiet" :disabled="dashboardLoading" @click="refreshCurrentPage">{{ dashboardLoading ? '同步中…' : '刷新数据' }}</button>
+          </div>
+        </header>
+
+        <p v-if="adminModuleList.length === 0" class="panel overview-empty">当前账号还没有获得任何后台模块。请让超级管理员在「员工与权限 → 授权模块」中勾选后使用。</p>
+
+        <div class="overview-metrics">
+          <article v-if="canAccessModule('journal')" class="panel overview-metric">
+            <p class="eyebrow">JOURNAL</p>
+            <strong>{{ issueLifecycle?.publishedCode || '尚未发布' }}</strong>
+            <p class="overview-metric-line">草稿 {{ issueLifecycle?.draftCount ?? 0 }} 期 · 归档 {{ issueLifecycle?.archivedCount ?? 0 }} 期</p>
+            <small>{{ issueLifecycle?.publishedUpdatedAt ? '发布时间 ' + displayDate(issueLifecycle.publishedUpdatedAt) : '还没有已发布期刊' }}</small>
+            <button type="button" class="quiet overview-metric-action" @click="openJournalSubsection('journal-list')">管理期刊</button>
+          </article>
+
+          <article v-if="canAccessModule('contributions')" class="panel overview-metric">
+            <p class="eyebrow">REVIEW</p>
+            <strong>{{ discussionContributionTotal }} 条待审核</strong>
+            <p class="overview-metric-line">本期讨论里用户主动保存的经历</p>
+            <small v-if="discussionContributions[0]">最近提交：{{ displayDate(discussionContributions[0].createdAt) }}</small>
+            <small v-else>暂时没有待审核内容</small>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'contributions'; refreshDiscussionContributions()">进入审核队列</button>
+          </article>
+
+          <article v-if="canAccessModule('observations')" class="panel overview-metric">
+            <p class="eyebrow">OBSERVATIONS</p>
+            <strong>{{ observationLifecycle?.savedCount ?? observationTotal }} 条已保存</strong>
+            <p class="overview-metric-line">草稿 {{ observationLifecycle?.draftCount ?? 0 }} 条 · 超期草稿 {{ observationLifecycle?.staleDraftCount ?? 0 }} 条</p>
+            <small>保留期 {{ observationLifecycle?.retentionDays ?? 90 }} 天</small>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'observations'; refreshObservations()">查看观察记录</button>
+          </article>
+
+          <article v-if="canAccessModule('members')" class="panel overview-metric">
+            <p class="eyebrow">MEMBERS</p>
+            <strong>{{ memberTotal }} 位会员</strong>
+            <p class="overview-metric-line">按注册时间倒序展示在会员列表</p>
+            <small>{{ members[0] ? '最近注册 ' + displayDate(members[0].createdAt) : '暂无注册会员' }}</small>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'members'; refreshMembers()">打开会员列表</button>
+          </article>
+
+          <article v-if="canAccessModule('privacy')" class="panel overview-metric">
+            <p class="eyebrow">PRIVACY</p>
+            <strong>{{ privacyLifecycle?.pendingCount ?? 0 }} 条待处理</strong>
+            <p class="overview-metric-line">其中到期 {{ privacyLifecycle?.duePendingCount ?? 0 }} 条 · 失败 {{ privacyLifecycle?.failedCount ?? 0 }} 条</p>
+            <small>{{ privacyLifecycle?.oldestPendingAt ? '最早申请 ' + displayDate(privacyLifecycle.oldestPendingAt) : '没有积压的删除申请' }}</small>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'privacy'; refreshPrivacy(true)">处理删除申请</button>
+          </article>
+
+          <article v-if="canAccessModule('audit')" class="panel overview-metric">
+            <p class="eyebrow">AUDIT</p>
+            <strong>{{ auditTotal }} 条操作记录</strong>
+            <p class="overview-metric-line">覆盖用户、管理员与系统动作</p>
+            <small>{{ auditLogs[0] ? '最近动作 ' + displayDate(auditLogs[0].createdAt) : '暂无审计记录' }}</small>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'audit'; refreshAudit()">查看审计日志</button>
+          </article>
+        </div>
+
+        <div class="overview-columns">
+          <section v-if="canAccessModule('audit')" class="panel overview-recent">
+            <div class="section-heading"><div><p class="eyebrow">RECENT ACTIVITY</p><h3>最近操作</h3></div><small>{{ auditTotal }} 条</small></div>
+            <ul class="overview-list">
+              <li v-for="entry in auditLogs.slice(0, 6)" :key="entry.id">
+                <div><strong>{{ overviewAuditAction(entry.action) }}</strong><small>{{ entry.actorType === 'admin' ? '管理员' : entry.actorType === 'user' ? '用户' : '系统' }} · {{ overviewAuditResource(entry.resourceType) }}<template v-if="entry.resourceId"> · {{ entry.resourceId.slice(0, 8) }}</template></small></div>
+                <time>{{ displayDate(entry.createdAt) }}</time>
+              </li>
+            </ul>
+            <p v-if="!auditLogs.length" class="muted">还没有审计记录。</p>
+          </section>
+
+          <section class="panel overview-access">
+            <div class="section-heading"><div><p class="eyebrow">ACCESS</p><h3>当前授权模块</h3></div><small>{{ adminModuleList.length }} / {{ adminModules.length }}</small></div>
+            <div class="overview-chips">
+              <span v-for="module in adminModules" :key="module.id" class="overview-chip" :class="{ granted: adminModuleList.includes(module.id) }">{{ module.label }}</span>
+            </div>
+            <p class="muted overview-access-note">模块授权由超级管理员在「员工与权限 → 授权模块」中按人调整，保存后立即生效。</p>
+          </section>
+        </div>
       </section>
       <section v-if="activeSection === 'content' && activeContentSection === 'journal-list'" id="journal-list" class="content-area">
         <div class="journal-page-head">
