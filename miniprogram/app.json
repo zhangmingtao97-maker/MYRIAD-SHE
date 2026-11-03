@@ -25,6 +25,7 @@
     "pages/privacy-policy/index",
     "pages/about/index"
   ],
+  "lazyCodeLoading": "requiredComponents",
   "window": {
     "navigationBarTitleText": "MYRIAD SHE",
     "navigationBarBackgroundColor": "#f5f0e8",
