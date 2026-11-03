@@ -11,6 +11,7 @@
     "pages/contact-support/index",
     "pages/shared-practice/index",
     "pages/discussion/index",
+    "pages/discussion-thread/index",
     "pages/discussion-compose/index",
     "pages/mine/index",
     "pages/profile/index",

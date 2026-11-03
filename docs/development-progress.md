@@ -11,6 +11,15 @@
 - 发布：构建时发现生产源码落后于 main（缺 `discussion-page.controller.ts`，`up` 前 `build api` 直接失败），改为整目录同步 `backend/src`、`backend/sql`、`management/src` 后重建 `api admin`，顺带把已上线的讨论页编辑 API 补齐。线上 `061`、`062` 迁移均已应用（`discussion_reports` 15 列），`/api/discussion/reports`、`/api/admin/discussion-reports` 未登录 401，`/` 与 `/api/health/ready` 200，bundle `index-DYOtdilx.js` 含「用户举报」，样式 `index-BkZS-OLQ.css` 含 `subsection-heading`。备份 `source-pre-discussion-reports-20261103-115820.tar.gz`，镜像 `myriad-she-{api,admin}:pre-reports-20261103-115820`（回滚需连同源码目录一起回滚）。
 - 待办：小程序端需在微信开发者工具中上传并发布后生效（本次只改了 `miniprogram/pages/discussion/*` 与 `utils/discussion-storage.ts`、`utils/request.ts`）。
 
+### 2026-11-03 本期讨论：「一段对话」独立成页
+
+- 列表页原来的「展开这段对话 / 收起这段对话」改为「查看这段对话 →」，点击 `navigateTo` 到新页 `pages/discussion-thread/index?issueCode=…&threadId=…`；列表不再内联展开回复，也不再显示本机回复，避免同一份对话在两处渲染。
+- 新页结构对齐设计稿：顶部「一段对话」，`02 本期讨论 · 一段对话`，标题「从这一段经历，继续谈起。」，导语复用 `content.copy.intro`；正文为所选 thread，作者与「示例」标签，底部「回应X ↗」与「举报」；下方「接着这段经历」按 `replies` 渲染编辑追问（左侧竖线引用块 + 「回应 X 的示例」小标），每条同样可回应与举报；页尾「接着谈谈 →」进入投稿页，「查看本期其他经历 →」返回列表。
+- 举报仍是 thread 级（后端 `unique (user_id, issue_code, thread_id)`），详情页提交后本地标记「已举报」；返回列表时 `onShow` 重新拉取 `/discussion/reports/mine`，两处状态保持同步。
+- 页内说明沿用设计稿版式，但把「原型演示 · 内容仅保存在本机」改成「示例内容 · 新写的经历会进入运营后台，不会自动公开。」，与投稿、举报都进后台的现状一致。
+- 新增 `pages/discussion-thread/index.{json,ts,wxml,wxss}`，`index.wxss` 通过 `@import "../discussion/index.wxss"` 复用讨论页的顶栏、字体、底部导航等基础样式，只在本地补详情排版；`app.json` 已注册该页。
+- 验证：`tsc` 类型检查通过；微信开发者工具 `preview` 构建 635.6 KB 成功；自动化点击列表「查看这段对话」成功进入 `pages/discussion-thread/index`（thread=岚、replies=2、无报错），滚动截图核对正文、追问、举报按钮与页尾两个入口。仍需上传小程序才在手机上生效。
+
 ## 2026-11-03 后台首页重建为「工作台」，下线健康与迁移面板
 
 - 取消原有「健康与迁移」：删除总览里的 API STATUS（`/health` 状态与数据库/对象存储/缓存依赖）与 SCHEMA STATUS（迁移账本 `appliedCount/availableCount/pending`）两个面板，同时移除 `health`、`migrationStatus` 状态、`normalizeHealthResult`、`/health` 与 `/admin/system/migrations` 的请求与校验以及登出重置；后台不再展示迁移账本，迁移仍由启动日志与数据库账本维护（`/api/health/ready` 仍供运维与网关探活使用）。

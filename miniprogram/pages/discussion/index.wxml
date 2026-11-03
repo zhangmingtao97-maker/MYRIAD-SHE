@@ -25,15 +25,7 @@
         <view class="discussion-thread-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">示例</text></view>
         <view class="discussion-thread-body">{{item.body}}</view>
         <view class="discussion-thread-actions"><view class="discussion-reply-action" role="button" aria-label="回复{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="replyToThread">回复{{item.author}} <text>↗</text></view><view class="discussion-report" role="button" aria-label="{{item.reported ? '已举报' : '举报'}}{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="reportThread">{{item.reported ? '已举报' : '举报'}}</view></view>
-        <view wx:if="{{item.expanded}}" class="discussion-replies">
-          <view wx:for="{{item.replies}}" wx:for-item="reply" wx:key="id" class="discussion-reply">
-            <view class="discussion-reply-meta">{{reply.author}} · 示例</view><view class="discussion-reply-body">{{reply.body}}</view>
-          </view>
-          <view wx:for="{{item.localReplies}}" wx:for-item="reply" wx:key="id" class="discussion-reply local-reply">
-            <view class="discussion-reply-meta">你 · 本机演示</view><view class="discussion-reply-body">{{reply.body}}</view>
-          </view>
-        </view>
-        <view wx:if="{{item.replies.length + item.localReplies.length}}" class="discussion-expand" role="button" aria-expanded="{{item.expanded}}" aria-label="{{item.expanded ? '收起这段对话' : '展开这段对话'}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="toggleConversation">{{item.expanded ? '收起这段对话' : '展开这段对话'}}<text>→</text></view>
+        <view wx:if="{{item.replies.length}}" class="discussion-expand" role="button" aria-label="查看{{item.author}}这段对话" tabindex="0" data-thread-id="{{item.id}}" bindtap="openConversation">查看这段对话<text>→</text></view>
       </view>
     </view>
     <view class="discussion-my-posts" wx:if="{{myPosts.length}}">

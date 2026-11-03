@@ -4,7 +4,7 @@ import type { DiscussionThread, PublicDiscussion } from '../../utils/discussion-
 import { discussionStorageKey, readLocalDiscussion } from '../../utils/discussion-storage';
 import type { LocalContribution, LocalDiscussionDraft } from '../../utils/discussion-storage';
 
-type DisplayThread = DiscussionThread & { localReplies: LocalContribution[]; expanded: boolean; reported: boolean };
+type DisplayThread = DiscussionThread & { reported: boolean };
 interface CloudReport { threadId: string; status: 'pending' | 'handled' | 'dismissed' }
 const reportReasons = [
   { code: 'inappropriate', label: '不适当内容' },
@@ -21,18 +21,17 @@ Page({
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, issueCode: query.issueCode || '' });
     void this.load();
   },
-  onShow() { this.syncLocalContent(); },
+  onShow() { this.syncLocalContent(); if (!this.data.loading) void this.loadReports(); },
   onHide() { this.requestGeneration += 1; if (this.data.loading) this.setData({ loading: false }); },
   syncLocalContent() {
     const stored = readLocalDiscussion();
     const issueCode = this.data.issueCode;
     const mine = stored.contributions.filter((entry) => entry.issueCode === issueCode);
-    const localReplies = (threadId: string) => mine.filter((entry) => entry.threadId === threadId);
     const draft = stored.drafts
       .filter((entry) => entry.issueCode === issueCode)
       .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] || null;
     this.setData({ myPosts: mine.filter((entry) => !entry.threadId), localPostCount: mine.length, draft,
-      threads: this.data.threads.map((thread) => ({ ...thread, localReplies: localReplies(thread.id), reported: Boolean(this.reportedThreads[thread.id]) })) });
+      threads: this.data.threads.map((thread) => ({ ...thread, reported: Boolean(this.reportedThreads[thread.id]) })) });
   },
   async load() {
     const generation = ++this.requestGeneration;
@@ -42,7 +41,7 @@ Page({
       const data = await request<PublicDiscussion>(path);
       if (generation !== this.requestGeneration) return;
       if (!isPublicDiscussion(data)) throw new Error('本期讨论内容格式无效');
-      this.setData({ issueCode: data.issueCode, issueLabel: data.issueLabel, content: data.content, threads: data.content.threads.map((thread) => ({ ...thread, expanded: true, localReplies: [], reported: false })), loading: false, error: '' });
+      this.setData({ issueCode: data.issueCode, issueLabel: data.issueLabel, content: data.content, threads: data.content.threads.map((thread) => ({ ...thread, reported: false })), loading: false, error: '' });
       this.syncLocalContent();
       void this.loadReports();
     } catch (caught) {
@@ -126,11 +125,10 @@ Page({
       this.setData({ reporting: false });
     }
   },
-  toggleConversation(event: WechatMiniprogram.CustomEvent) {
+  openConversation(event: WechatMiniprogram.CustomEvent) {
     const threadId = String(event.currentTarget.dataset.threadId || '');
-    const index = this.data.threads.findIndex((item) => item.id === threadId);
-    if (index < 0) return;
-    this.setData({ [`threads[${index}].expanded`]: !this.data.threads[index].expanded });
+    if (!threadId) return;
+    wx.navigateTo({ url: `/pages/discussion-thread/index?issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}` });
   },
   openPrivateObservation() {
     wx.navigateTo({ url: `/pages/observation/index?issueCode=${encodeURIComponent(this.data.issueCode)}` });
