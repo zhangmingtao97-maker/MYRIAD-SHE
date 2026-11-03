@@ -1,5 +1,13 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-03 后台侧栏点击「卡顿」排查：切页整页淡入是主因
+
+- 测量（dev 后台，Playwright + Event Timing + CPU Profile）：点击侧栏按钮的处理耗时 0–1ms，Event Timing 16–32ms，没有 longtask；即使登录后立刻点击、6 倍 CPU 降速也不到 30ms。JS、布局和接口请求都不是瓶颈（多数栏目切换不发请求，会员列表/用户举报各只发 1 条）。
+- 真正原因：每次切换栏目都会重建 `.content-area` 并播放入场动画 —— `.content-area` 是 `view-reveal .38s`（opacity 0→1 + 上移 10px），内部卡片是 `content-rise .42s` 且按 `.045/.09/.135s` 分批延迟，顶栏标题另有 `.28s` 动画（`style.css`、`admin-theme.css`、`admin-journal.css` 三处各有一份，叠加生效）。实测点击后首帧内容 opacity=0，43ms 时只有 37%，最后一批卡片约 555ms 才稳定 —— 视觉上就是「点了一下没反应，然后整页慢慢浮出来」。
+- 修复：切页动画改为 `view-fade .09s`（opacity .6→1，不再位移、不再分批延迟），顶栏标题与内容区子卡片取消入场动画，`prefers-reduced-motion` 的分支保持。修复后实测首帧 opacity 0.60，约 94ms 全显，点击即时可读。
+- 验证：后台 `vue-tsc + vite build` 通过；线上 bundle `index-spNJaCWx.js` / `index-DqMiaBcS.css` 含 `view-fade`、不再含 `view-reveal`；线上 `/` 200、`/api/health/ready` 200、登录页无控制台报错。
+- 发布备份：`source-pre-click-latency-20261103-184053.tar.gz`。本次发布以仓库 HEAD 为准，同时带上了已提交的侧栏分组、协议历史等改动。
+
 ## 2026-11-03 后台把「用户举报」拆出经历审核页
 
 - 侧边栏「运营」下新增独立入口「用户举报」，与「用户经历审核」并列；经历审核页不再显示举报区块，两个页面各自只做一件事。
