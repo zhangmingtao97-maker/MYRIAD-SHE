@@ -17,7 +17,7 @@ export function apiErrorMessage(error: unknown, fallback: string) {
 }
 
 export function request<T>(path: string, options: WechatMiniprogram.RequestOption = {}) {
-  const requiresLogin = path.startsWith('/observations') || path.startsWith('/me/') || path.startsWith('/discussion/contributions');
+  const requiresLogin = path.startsWith('/observations') || path.startsWith('/me/') || path.startsWith('/discussion/contributions') || path.startsWith('/discussion/reports');
   return send<T>(path, options, requiresLogin, false);
 }
 

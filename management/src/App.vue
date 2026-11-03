@@ -477,6 +477,23 @@ const discussionContributionSaving = ref(false);
 const discussionContributionActionMessage = ref('');
 const discussionContributionPageSize = 50;
 let discussionContributionGeneration = 0;
+type DiscussionReportStatus = 'pending' | 'handled' | 'dismissed';
+type ManagedDiscussionReport = { id: string; revision: number; issueCode: string; issueLabel: string; threadId: string; threadAuthor: string | null; threadBody: string | null; reason: string; detail: string | null; status: DiscussionReportStatus; createdAt: string; updatedAt: string };
+const discussionReports = ref<ManagedDiscussionReport[]>([]);
+const discussionReportStatus = ref<DiscussionReportStatus | ''>('pending');
+const discussionReportIssueCode = ref('');
+const discussionReportTotal = ref(0);
+const discussionReportOffset = ref(0);
+const discussionReportHasMore = ref(false);
+const discussionReportSummary = ref<Record<DiscussionReportStatus, number>>({ pending: 0, handled: 0, dismissed: 0 });
+const discussionReportLoading = ref(false);
+const discussionReportActionMessage = ref('');
+const discussionReportError = ref('');
+const discussionReportSavingId = ref('');
+const discussionReportPageSize = 20;
+let discussionReportGeneration = 0;
+const discussionReportReasonLabels: Record<string, string> = { inappropriate: '不适当内容', spam: '垃圾信息', privacy: '隐私问题', other: '其他' };
+function discussionReportReasonLabel(reason: string) { return discussionReportReasonLabels[reason] ?? reason; }
 const privacyRequests = ref<PrivacyRequest[]>([]);
 const privacyLifecycle = ref<PrivacyLifecycle | null>(null);
 const privacyTotal = ref(0);
@@ -1105,7 +1122,7 @@ async function enterDashboardByPermissions() {
   if (landing.section === 'settings') await loadSystemSettings();
   if (landing.section === 'life-cards') await loadLifeCards();
   if (landing.section === 'life-card-views') await loadLifeCardViews();
-  if (landing.section === 'contributions') await refreshDiscussionContributions();
+  if (landing.section === 'contributions') { await refreshDiscussionContributions(); await refreshDiscussionReports(); }
 }
 const sidebarCollapsed = ref(false);
 // 回到顶部：滚动超过一屏后出现，避免长表格页无处可回去。
@@ -1176,7 +1193,7 @@ watch([activeSection, activeContentSection], ([section, contentSection]) => {
   localStorage.setItem('myriad_she_admin_location', JSON.stringify({ section, contentSection }));
 });
 watch(activeSection, (section) => {
-  if (section === 'contributions' && loggedIn.value) void refreshDiscussionContributions();
+  if (section === 'contributions' && loggedIn.value) { void refreshDiscussionContributions(); void refreshDiscussionReports(); }
 });
 const currentView = computed(() => {
   if (activeSection.value === 'practice') {
@@ -3142,6 +3159,91 @@ async function updateDiscussionContributionStatus(status: DiscussionContribution
     selectedDiscussionContributionError.value = caught instanceof Error ? caught.message : '无法更新处理状态';
   } finally {
     if (session === sessionGeneration) discussionContributionSaving.value = false;
+  }
+}
+
+function isDiscussionReportPage(value: unknown): value is { items: ManagedDiscussionReport[]; total: number; limit: number; offset: number; summary: Record<DiscussionReportStatus, number> } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const page = value as Record<string, unknown>;
+  const summary = page.summary as Record<string, unknown> | undefined;
+  const optionalText = (candidate: unknown) => candidate === null || typeof candidate === 'string';
+  return Number.isSafeInteger(page.total) && Number.isSafeInteger(page.limit) && Number.isSafeInteger(page.offset)
+    && Boolean(summary && typeof summary === 'object' && ['pending', 'handled', 'dismissed'].every((key) => Number.isSafeInteger((summary as Record<string, unknown>)[key])))
+    && Array.isArray(page.items) && page.items.every((item) => Boolean(item && typeof item === 'object' && !Array.isArray(item)
+      && typeof (item as Record<string, unknown>).id === 'string'
+      && Number.isSafeInteger((item as Record<string, unknown>).revision)
+      && typeof (item as Record<string, unknown>).issueCode === 'string'
+      && typeof (item as Record<string, unknown>).issueLabel === 'string'
+      && typeof (item as Record<string, unknown>).threadId === 'string'
+      && optionalText((item as Record<string, unknown>).threadAuthor)
+      && optionalText((item as Record<string, unknown>).threadBody)
+      && optionalText((item as Record<string, unknown>).detail)
+      && typeof (item as Record<string, unknown>).reason === 'string'
+      && ['pending', 'handled', 'dismissed'].includes(String((item as Record<string, unknown>).status))
+      && typeof (item as Record<string, unknown>).createdAt === 'string'
+      && typeof (item as Record<string, unknown>).updatedAt === 'string'));
+}
+
+function discussionReportQuery(offset = 0) {
+  return new URLSearchParams({
+    limit: String(discussionReportPageSize),
+    offset: String(offset),
+    ...(discussionReportStatus.value ? { status: discussionReportStatus.value } : {}),
+    ...(discussionReportIssueCode.value ? { issueCode: discussionReportIssueCode.value } : {}),
+  });
+}
+
+async function refreshDiscussionReports(append = false) {
+  if (!loggedIn.value) return;
+  const session = sessionGeneration;
+  const generation = ++discussionReportGeneration;
+  discussionReportLoading.value = true;
+  discussionReportError.value = '';
+  try {
+    const offset = append ? discussionReportOffset.value : 0;
+    const response = await apiFetch(`${apiBase}/admin/discussion-reports?${discussionReportQuery(offset)}`, { headers: { Authorization: `Bearer ${token.value}` } });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法读取内容举报'));
+    const result = await response.json();
+    if (!isDiscussionReportPage(result)) throw new Error('内容举报列表格式无效');
+    if (generation !== discussionReportGeneration || session !== sessionGeneration || !loggedIn.value) return;
+    discussionReports.value = append ? [...discussionReports.value, ...result.items] : result.items;
+    discussionReportTotal.value = result.total;
+    discussionReportOffset.value = result.offset + result.items.length;
+    discussionReportHasMore.value = discussionReportOffset.value < result.total;
+    discussionReportSummary.value = result.summary;
+  } catch (caught) {
+    if (generation !== discussionReportGeneration || session !== sessionGeneration || !loggedIn.value) return;
+    discussionReportError.value = caught instanceof Error ? caught.message : '无法读取内容举报';
+  } finally {
+    if (generation === discussionReportGeneration && session === sessionGeneration) discussionReportLoading.value = false;
+  }
+}
+
+async function updateDiscussionReportStatus(record: ManagedDiscussionReport, status: DiscussionReportStatus) {
+  if (discussionReportSavingId.value || record.status === status) return;
+  const session = sessionGeneration;
+  discussionReportSavingId.value = record.id;
+  discussionReportActionMessage.value = '';
+  discussionReportError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/discussion-reports/${encodeURIComponent(record.id)}/status`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({ status, revision: record.revision }),
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法更新举报状态'));
+    const result = await response.json() as ManagedDiscussionReport;
+    if (!result || result.id !== record.id || !['pending', 'handled', 'dismissed'].includes(result.status)) throw new Error('举报处理结果格式无效');
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    discussionReportActionMessage.value = status === 'handled' ? '已标记这条举报为已处理。' : status === 'dismissed' ? '已标记这条举报为不采纳。' : '已重新打开这条举报。';
+    await refreshDiscussionReports();
+  } catch (caught) {
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    discussionReportError.value = caught instanceof Error ? caught.message : '无法更新举报状态';
+  } finally {
+    if (session === sessionGeneration) discussionReportSavingId.value = '';
   }
 }
 
@@ -5205,6 +5307,29 @@ onBeforeUnmount(() => {
         <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
         <p v-if="discussionContributionError" class="error" role="alert">{{ discussionContributionError }}</p>
         <div class="filters" aria-label="用户经历筛选"><label>处理状态<select v-model="discussionContributionStatus" @change="refreshDiscussionContributions"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionContributionIssueCode" @change="refreshDiscussionContributions"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
+        <div class="discussion-report-block">
+        <div class="subsection-heading"><div><p class="eyebrow">REPORTED CONTENT</p><h3>用户举报</h3></div><div class="section-tools"><small v-if="discussionReportSummary.pending">待处理 {{ discussionReportSummary.pending }} 条</small><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button></div></div>
+        <p v-if="discussionReportActionMessage" class="status-message" role="status">{{ discussionReportActionMessage }}</p>
+        <p v-if="discussionReportError" class="error" role="alert">{{ discussionReportError }}</p>
+        <div class="filters" aria-label="内容举报筛选"><label>处理状态<select v-model="discussionReportStatus" @change="refreshDiscussionReports()"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionReportIssueCode" @change="refreshDiscussionReports()"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
+        <div class="discussion-report-table" aria-live="polite">
+          <div class="discussion-report-head"><span>期刊 / 被举报内容</span><span>原因</span><span>状态</span><span>提交时间</span><span>处理</span></div>
+          <div v-for="report in discussionReports" :key="report.id" class="discussion-report-row">
+            <span><strong>{{ report.issueLabel || report.issueCode }}</strong><small>{{ report.threadAuthor ? `作者 ${report.threadAuthor} · ` : '' }}{{ report.threadBody ? (report.threadBody.length > 60 ? `${report.threadBody.slice(0, 60)}…` : report.threadBody) : '内容快照缺失' }}</small><small v-if="report.detail" class="discussion-report-detail">补充：{{ report.detail }}</small></span>
+            <span>{{ discussionReportReasonLabel(report.reason) }}</span>
+            <span>{{ report.status === 'pending' ? '待处理' : report.status === 'handled' ? '已处理' : '不采纳' }}</span>
+            <span>{{ displayDate(report.updatedAt) }}</span>
+            <span class="discussion-report-actions">
+              <button v-if="report.status !== 'handled'" type="button" class="quiet" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'handled')">{{ discussionReportSavingId === report.id ? '处理中…' : '标记已处理' }}</button>
+              <button v-if="report.status !== 'dismissed'" type="button" class="quiet danger" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'dismissed')">不采纳</button>
+              <button v-if="report.status !== 'pending'" type="button" class="quiet" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'pending')">重新打开</button>
+            </span>
+          </div>
+          <p v-if="discussionReportLoading && !discussionReports.length" class="muted" role="status">正在读取内容举报…</p>
+          <p v-else-if="!discussionReportLoading && !discussionReports.length" class="muted">当前筛选下没有用户举报。</p>
+          <div v-if="discussionReportHasMore" class="table-actions"><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports(true)">{{ discussionReportLoading ? '加载中…' : '加载更多举报' }}</button></div>
+        </div>
+        </div>
         <div class="discussion-contribution-table" aria-live="polite">
           <div class="discussion-contribution-head"><span>期刊 / 回复对象</span><span>状态</span><span>更新时间</span><span>内容</span></div>
           <div v-for="record in discussionContributions" :key="record.id" class="discussion-contribution-row">

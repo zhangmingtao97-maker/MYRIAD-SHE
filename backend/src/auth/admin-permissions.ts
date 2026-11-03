@@ -91,11 +91,13 @@ export const adminModules: AdminModuleDefinition[] = [
   {
     id: 'contributions',
     label: '用户经历审核',
-    description: '本期讨论的用户经历列表、详情与审核状态',
+    description: '本期讨论的用户经历列表、详情与审核状态，以及用户举报内容处理',
     rules: [
       { method: 'GET', pattern: /^\/admin\/discussion-contributions$/ },
       { method: 'GET', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}$`) },
       { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}/status$`) },
+      { method: 'GET', pattern: /^\/admin\/discussion-reports$/ },
+      { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-reports/${uuid}/status$`) },
     ],
   },
   {

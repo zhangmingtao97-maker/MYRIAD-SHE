@@ -24,7 +24,9 @@ import { RedisService } from './cache/redis.service';
 import { AdminSystemController } from './admin/admin-system.controller';
 import { AdminManagementController } from './admin/admin-management.controller';
 import { DiscussionContributionController } from './discussion/discussion-contribution.controller';
+import { DiscussionReportController } from './discussion/discussion-report.controller';
 import { AdminDiscussionContributionController } from './admin/admin-discussion-contribution.controller';
+import { AdminDiscussionReportController } from './admin/admin-discussion-report.controller';
 
 @Module({
   imports: [
@@ -34,7 +36,7 @@ import { AdminDiscussionContributionController } from './admin/admin-discussion-
       useFactory: (config: ConfigService) => ({ secret: config.get('JWT_ACCESS_SECRET') }),
     }),
   ],
-  controllers: [HealthController, AuthController, ContentController, DiscussionPageController, LegalDocumentsController, ObservationController, DiscussionContributionController, UserController, AdminObservationController, AdminDiscussionContributionController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController],
+  controllers: [HealthController, AuthController, ContentController, DiscussionPageController, LegalDocumentsController, ObservationController, DiscussionContributionController, DiscussionReportController, UserController, AdminObservationController, AdminDiscussionContributionController, AdminDiscussionReportController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController],
   providers: [DatabaseService, AuthService, AdminAuthGuard, UserAuthGuard, StorageService, RedisService, AuditService, PrivacyService, DataEncryptionService],
 })
 export class AppModule {}

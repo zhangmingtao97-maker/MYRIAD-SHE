@@ -1,5 +1,16 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-03 本期讨论举报：改写提示文案并接入运营后台处理
+
+- 小程序「本期讨论」的举报不再只是本机标记：`reportThread` 先弹新文案「举报这条内容 / 举报会连同本期讨论一起提交到运营后台，由编辑团队核实处理；处理过程不会向对方公开你的身份」，确认后选择原因（不适当内容 / 垃圾信息 / 隐私问题 / 其他），再 `POST /discussion/reports` 提交；成功后按钮由「举报」变为「已举报」并 toast「已提交举报」，重复点击提示「这条内容已举报，编辑团队正在核实处理」。举报入口需要登录（`request` 的登录前缀新增 `/discussion/reports`），失败时弹「举报没有提交成功」并保留可重试状态，不再静默写入本机。
+- 相关文案同步：右上角「讨论说明」改为说明经历与举报都会进入运营后台；「清除本机发言」补充说明已提交的举报不会被撤回；`utils/discussion-storage.ts` 移除本地 `reports` 字段与 `reportLocalThread`（本机只保留草稿与本机发言），`loadReports()` 通过 `GET /discussion/reports/mine` 恢复「已举报」状态，未登录或网络异常时静默跳过、不影响浏览。
+- 后端：迁移 `062_discussion_reports.sql` 新增 `discussion_reports`（issue/thread 快照、reason、detail、status、revision、handled_by/at，`unique (user_id, issue_code, thread_id)`，同一条内容重复举报会 upsert 回 `pending` 并递增 revision）。`DiscussionReportController` 提供 `POST /discussion/reports`（按已发布期刊的讨论内容校验 `threadId`，快照作者与正文，拒绝伪造内容）与 `GET /discussion/reports/mine`；`AdminDiscussionReportController` 提供 `GET /admin/discussion-reports`（状态/期刊筛选、分页、按状态汇总）与 `PATCH /admin/discussion-reports/:id/status`（revision 乐观锁，冲突 409）。举报路由并入既有 `contributions` 模块授权，不新增模块；审计记录 `discussion_report.created`、`discussion_report.status.updated`（只记原因码与期刊，不记正文）。
+- 顺带抽出 `discussion/published-discussion.ts#loadPublishedDiscussion`，用户经历与举报共用「已发布期刊讨论内容」读取逻辑（经历行为不变）。
+- 后台：「用户经历审核」页新增「用户举报」区块（REPORTED CONTENT）：待处理数量、状态与期刊筛选、分页加载、行内展示被举报作者与正文摘要及补充说明、原因与状态、提交时间，可直接「标记已处理 / 不采纳 / 重新打开」；标题使用独立的 `subsection-heading`，因为页面内 `.section-heading` 会被「隐藏重复标题」规则整块隐藏。
+- 验证：后端 `tsc --noEmit` 通过，`test:unit` 177 项 176 通过（唯一失败仍是既有的 `observation.controller` 管理端解密查看案例），新增 5 条举报用例覆盖快照、越权、筛选、乐观锁；本机 API 集成 11 项断言全过（提交 201 / 本人列表 / 不存在内容 400 / 未登录 401 / 队列与汇总 / 处理 200 / 过期版本 409 / 审计动作）；后台 Playwright 11 项断言全过（区块标题、空态、全部筛选出行、作者与原因、重新打开后待处理、标记已处理后已处理、无控制台报错）；小程序改动用 tsc + 轻量垫片检查类型一致。
+- 发布：构建时发现生产源码落后于 main（缺 `discussion-page.controller.ts`，`up` 前 `build api` 直接失败），改为整目录同步 `backend/src`、`backend/sql`、`management/src` 后重建 `api admin`，顺带把已上线的讨论页编辑 API 补齐。线上 `061`、`062` 迁移均已应用（`discussion_reports` 15 列），`/api/discussion/reports`、`/api/admin/discussion-reports` 未登录 401，`/` 与 `/api/health/ready` 200，bundle `index-DYOtdilx.js` 含「用户举报」，样式 `index-BkZS-OLQ.css` 含 `subsection-heading`。备份 `source-pre-discussion-reports-20261103-115820.tar.gz`，镜像 `myriad-she-{api,admin}:pre-reports-20261103-115820`（回滚需连同源码目录一起回滚）。
+- 待办：小程序端需在微信开发者工具中上传并发布后生效（本次只改了 `miniprogram/pages/discussion/*` 与 `utils/discussion-storage.ts`、`utils/request.ts`）。
+
 ## 2026-11-03 后台首页重建为「工作台」，下线健康与迁移面板
 
 - 取消原有「健康与迁移」：删除总览里的 API STATUS（`/health` 状态与数据库/对象存储/缓存依赖）与 SCHEMA STATUS（迁移账本 `appliedCount/availableCount/pending`）两个面板，同时移除 `health`、`migrationStatus` 状态、`normalizeHealthResult`、`/health` 与 `/admin/system/migrations` 的请求与校验以及登出重置；后台不再展示迁移账本，迁移仍由启动日志与数据库账本维护（`/api/health/ready` 仍供运维与网关探活使用）。
