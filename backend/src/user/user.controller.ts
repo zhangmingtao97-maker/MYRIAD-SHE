@@ -1,7 +1,7 @@
-import { BadRequestException, Body, Controller, Delete, Get, Header, InternalServerErrorException, Optional, Patch, Post, Req, ServiceUnavailableException, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Header, InternalServerErrorException, Optional, Patch, Post, Req, Res, ServiceUnavailableException, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { IsBoolean, IsObject, IsString, MaxLength, MinLength, ValidateIf } from 'class-validator';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { UserAuthGuard } from '../auth/user-auth.guard';
@@ -445,9 +445,9 @@ export class UserController {
 
   @Get('deletion-request')
   @Header('Cache-Control', 'no-store')
-  async deletionRequest(@Req() request: Request & { user?: { sub: string } }) {
+  async deletionRequest(@Req() request: Request & { user?: { sub: string } }, @Res() response?: Response) {
     const userId = this.userId(request);
-    return this.database.withTransaction(async (client) => {
+    const row = await this.database.withTransaction(async (client) => {
       const user = await client.query(`select 1 from users where id = $1 for share`, [userId]);
       if (!user.rows[0]) throw accountDeletedException();
       const result = await client.query(
@@ -457,6 +457,14 @@ export class UserController {
       );
       return result.rows[0] ?? null;
     });
+    // Nest's default serializer drops `null` and emits an empty 200, which the
+    // mini program cannot distinguish from malformed data. Send an explicit
+    // JSON null so "no deletion request" remains a valid, parseable response.
+    if (response) {
+      response.json(row);
+      return;
+    }
+    return row;
   }
 
   @Post('deletion-request')

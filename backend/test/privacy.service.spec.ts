@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ConfigService } from '@nestjs/config';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type { PoolClient } from 'pg';
 import { AuditService } from '../src/admin/audit.service';
 import { DatabaseService } from '../src/database/database.service';
@@ -311,7 +311,10 @@ test('deletion request endpoints lock the account before touching request state'
   const audit = { record: async () => undefined } as unknown as AuditService;
   const controller = new UserController(database, audit, new ConfigService({}), {} as DataEncryptionService);
 
-  await controller.deletionRequest({ user: { sub: 'user:test' } } as Request & { user: { sub: string } });
+  let serialized: unknown = 'not-called';
+  const response = { json: (value: unknown) => { serialized = value; } } as unknown as Response;
+  await controller.deletionRequest({ user: { sub: 'user:test' } } as Request & { user: { sub: string } }, response);
+  assert.equal(serialized, null);
   assert.match(statements[0], /from users where id = \$1 for share/i);
   statements.length = 0;
   await controller.requestDeletion({ user: { sub: 'user:test' } } as Request & { user: { sub: string } });
