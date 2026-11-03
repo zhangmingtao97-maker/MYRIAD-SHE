@@ -1,5 +1,14 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-03 后台「用户经历审核」：留言与回复留言直接可见
+
+- 列表接口 `GET /api/admin/discussion-contributions` 增加 `kind` 筛选（`experience` / `reply` / 留空为全部）与 `bodyPreview`：读取时解密正文，压缩空白后截取 80 字返回，列表不再只显示「查看正文」按钮；接口仍不返回完整密文与 `body` 字段，非法 `kind` 返回 400。
+- 后台页面新增「类型」筛选（全部 / 经历 / 回复留言），表格改为「期刊 / 类型（经历、回复留言 · 作者）· 内容摘要 · 状态 · 更新时间 · 操作」，详情弹窗的元信息同步改成「回复留言 · 作者」，让运营不用逐个点开就能判断是经历还是对某条讨论的回复，以及内容大意；空态文案改为「当前筛选下没有用户经历或回复留言」。
+- 顺带修掉一个导航样式缺陷：侧边栏项是 `<button>`，全局 `button:hover` 会把当前项染成深棕底，而 `.dashboard-tab.active` 的文字也是深棕，悬停时文字与底色相同看不见；补了 `button.dashboard-tab(:hover/.active:hover)` 与 `button.dashboard-subtab:hover` 的高优先级规则。
+- 用户操作本身仍记录在「审计日志」：提交/修改走 `discussion_contribution.saved`、删除走 `discussion_contribution.deleted`、举报走 `discussion_report.created`，可在审计日志里按执行者 `user` 与操作名筛选查看。
+- 验证：本机 API 10 项断言通过（经历、回复各建一条后 `kind=reply` 仅 1 条、`kind=experience` 仅 1 条、`kind=all` 2 条、非法 kind 400、返回体不含 `body`、摘要解密正确）；后台 Playwright 通过（表头、两行类型与摘要、类型筛选后仅剩回复、详情弹窗元信息与正文、无控制台报错）；发布后线上 `/` 200、`/api/health/ready` 200、`/api/admin/discussion-contributions` 未登录 401，bundle `index-C59-muAq.js` 含「回复留言」「内容摘要」，样式 `index-CAeW3KVb.css` 含导航悬停修正。
+- 发布备份：`source-pre-contribution-preview-20261103-144938.tar.gz`（回滚需连同源码目录一起回滚后重建 api admin）。本次只改后端与后台，小程序无需重新上传。
+
 ## 2026-11-03 本期讨论举报：改写提示文案并接入运营后台处理
 
 - 小程序「本期讨论」的举报不再只是本机标记：`reportThread` 先弹新文案「举报这条内容 / 举报会连同本期讨论一起提交到运营后台，由编辑团队核实处理；处理过程不会向对方公开你的身份」，确认后选择原因（不适当内容 / 垃圾信息 / 隐私问题 / 其他），再 `POST /discussion/reports` 提交；成功后按钮由「举报」变为「已举报」并 toast「已提交举报」，重复点击提示「这条内容已举报，编辑团队正在核实处理」。举报入口需要登录（`request` 的登录前缀新增 `/discussion/reports`），失败时弹「举报没有提交成功」并保留可重试状态，不再静默写入本机。
