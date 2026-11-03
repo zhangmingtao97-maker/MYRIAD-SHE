@@ -55,7 +55,7 @@
 .story-text-link { display: inline-flex; align-items: center; gap: 36rpx; min-height: 88rpx; margin-top: 62rpx; color: #5c493c; font-size: 32rpx; font-weight: 400; line-height: 1.5; }
 .story-link-arrow { font-family: Garamond, "Times New Roman", serif; }
 .story-image-wrap { margin-top: 132rpx; }
-.story-image { display: block; width: 100%; height: 462rpx; object-fit: cover; object-position: 78% 74%; filter: saturate(.64) contrast(1.02); }
+.story-image { display: block; width: 100%; height: 462rpx; object-fit: cover; object-position: 78% 74%; }
 .story-caption { display: grid; grid-template-columns: 224rpx 1fr; align-items: start; gap: 36rpx; margin-top: 28rpx; color: #5c493c; font-size: 26rpx; line-height: 1.7; }
 .story-caption text { min-width: 0; }
 .story-caption text:first-child { color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.55; }
