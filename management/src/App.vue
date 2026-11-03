@@ -515,7 +515,8 @@ const auditLoadingMore = ref(false);
 const auditMoreError = ref('');
 const auditActorType = ref('');
 const auditAction = ref('');
-type Member = { id: string; status: 'active' | 'suspended'; createdAt: string; updatedAt: string; observationCount: number; nickname: string | null; avatarUrl: string | null; phoneMasked: string | null; phoneNumber?: string | null };
+type MemberAddress = { userName: string; telNumber: string; provinceName: string; cityName: string; countyName: string; detailInfo: string; postalCode?: string; nationalCode?: string };
+type Member = { id: string; status: 'active' | 'suspended'; createdAt: string; updatedAt: string; observationCount: number; nickname: string | null; avatarUrl: string | null; phoneMasked: string | null; phoneNumber?: string | null; birthMonth: number | null; birthDay: number | null; address?: MemberAddress | null };
 type MemberDetail = Member & { openId: string; maskedUnionId: string | null; phoneNumber?: string | null; privacyRequests: Array<{ id: string; status: string; requestedAt: string; scheduledFor: string }> };
 const members = ref<Member[]>([]);
 const memberTotal = ref(0);
@@ -1064,7 +1065,7 @@ const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'jour
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'privacy-page', 'about-history'];
 const practiceSections: PracticeSection[] = ['practice', 'directory', 'observation', 'shared-practice', 'daily-objects'];
 const operationsSections = ['contributions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
-const systemSections = ['members', 'settings', 'life-cards', 'life-card-views', 'employees'] as const;
+const systemSections = ['settings', 'life-cards', 'life-card-views', 'employees'] as const;
 type OperationsSection = typeof operationsSections[number];
 type SystemSection = typeof systemSections[number];
 const operationsSectionModules: Record<OperationsSection, AdminModuleId> = {
@@ -1241,6 +1242,16 @@ function openOperationsSubsection(section: OperationsSection) {
   journalNavigationExpanded.value = false;
   pageNavigationExpanded.value = false;
 }
+function openMembersNavigation() {
+  sidebarCollapsed.value = false;
+  activeSection.value = 'members';
+  systemNavigationExpanded.value = false;
+  operationsNavigationExpanded.value = false;
+  practiceNavigationExpanded.value = false;
+  journalNavigationExpanded.value = false;
+  pageNavigationExpanded.value = false;
+  void refreshMembers();
+}
 function openSystemNavigation() {
   const onSystem = isSystemSection(activeSection.value);
   const shouldCollapse = !sidebarCollapsed.value && onSystem && systemNavigationExpanded.value;
@@ -1266,7 +1277,6 @@ function openSystemSubsection(section: SystemSection) {
   practiceNavigationExpanded.value = false;
   journalNavigationExpanded.value = false;
   pageNavigationExpanded.value = false;
-  if (section === 'members') void refreshMembers();
   if (section === 'settings') void loadSystemSettings();
   if (section === 'life-cards') void loadLifeCards();
   if (section === 'life-card-views') void loadLifeCardViews();
@@ -1566,6 +1576,18 @@ function displayDate(value?: string | null) {
   if (!value) return '无';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function memberBirthday(member: Pick<Member, 'birthMonth' | 'birthDay'>) {
+  const month = member.birthMonth;
+  const day = member.birthDay;
+  if (!Number.isInteger(month) || !Number.isInteger(day) || !month || !day) return '未保存';
+  return `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function memberAddressLabel(address?: MemberAddress | null) {
+  if (!address) return '未保存';
+  return [address.provinceName, address.cityName, address.countyName, address.detailInfo].filter(Boolean).join(' ') || '未保存';
 }
 
 function displayFileSize(value?: number) {
@@ -4645,6 +4667,7 @@ onBeforeUnmount(() => {
                   <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-policy' }" :aria-current="activeContentSection === 'privacy-policy' ? 'page' : undefined" @click="activeContentSection = 'privacy-policy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>隐私政策</span></button>
                 </nav></Transition>
               </div>
+              <button v-if="canAccessModule('members')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'members' }" :aria-label="sidebarCollapsed ? '会员列表' : undefined" :title="sidebarCollapsed ? '会员列表' : undefined" :aria-current="activeSection === 'members' ? 'page' : undefined" aria-controls="member-directory" @click="openMembersNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
               <div v-if="canAccessModule('contributions') || canAccessModule('discussion-reports') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-group operations-nav-group" :class="{ expanded: isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: isOperationsSection(activeSection) }" :aria-label="sidebarCollapsed ? '运营管理' : undefined" :title="sidebarCollapsed ? '运营管理' : undefined" :aria-expanded="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" aria-controls="operations-navigation" @click.stop="openOperationsNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM8 7.5V5h8v2.5M8 12h8M8 16h5" /></svg><span>运营管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" id="operations-navigation" class="dashboard-subnav" aria-label="运营管理子菜单">
@@ -4655,10 +4678,9 @@ onBeforeUnmount(() => {
                   <button v-if="canAccessModule('audit')" class="dashboard-subtab" :class="{ active: activeSection === 'audit' }" :aria-current="activeSection === 'audit' ? 'page' : undefined" @click="openOperationsSubsection('audit')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
                 </nav></Transition>
               </div>
-              <div v-if="isSuperAdmin || canAccessModule('members') || canAccessModule('settings') || canAccessModule('life-cards') || canAccessModule('life-card-views')" class="dashboard-nav-group system-nav-group" :class="{ expanded: isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed }">
+              <div v-if="isSuperAdmin || canAccessModule('settings') || canAccessModule('life-cards') || canAccessModule('life-card-views')" class="dashboard-nav-group system-nav-group" :class="{ expanded: isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: isSystemSection(activeSection) }" :aria-label="sidebarCollapsed ? '系统管理' : undefined" :title="sidebarCollapsed ? '系统管理' : undefined" :aria-expanded="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" aria-controls="system-navigation" @click.stop="openSystemNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M8 14v6" /></svg><span>系统管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" id="system-navigation" class="dashboard-subnav" aria-label="系统管理子菜单">
-                  <button v-if="canAccessModule('members')" class="dashboard-subtab" :class="{ active: activeSection === 'members' }" :aria-current="activeSection === 'members' ? 'page' : undefined" @click="openSystemSubsection('members')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
                   <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" @click="openSystemSubsection('settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button>
                   <button v-if="canAccessModule('life-cards')" class="dashboard-subtab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" @click="openSystemSubsection('life-cards')"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button>
                   <button v-if="canAccessModule('life-card-views')" class="dashboard-subtab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" @click="openSystemSubsection('life-card-views')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
@@ -5517,14 +5539,14 @@ onBeforeUnmount(() => {
         <p v-if="memberError" class="error" role="alert">{{ memberError }}</p>
         <p class="muted">当前条件 {{ memberTotal }} 位会员</p>
         <div class="observation-table">
-          <div class="observation-head member-head"><span>会员资料</span><span>注册时间</span><span>手机号</span><span>观察记录</span><span>账号状态</span><span>详情 / 管理</span></div>
-          <div v-for="member in members" :key="member.id" class="observation-row member-head"><div class="member-summary"><img v-if="member.avatarUrl" class="member-avatar" :src="member.avatarUrl" :alt="member.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ member.nickname ? member.nickname.slice(0, 1) : 'M' }}</span><span class="member-summary-copy"><strong>{{ member.nickname || '未设置昵称' }}</strong><small class="mono">{{ member.id }}</small></span></div><span>{{ displayDate(member.createdAt) }}</span><span class="member-phone">{{ member.phoneNumber || member.phoneMasked || '未绑定' }}</span><span>{{ member.observationCount }}</span><span>{{ member.status === 'active' ? '正常' : '已停用' }}</span><span class="member-actions"><button class="quiet" @click="showMember(member.id)">详情</button><button v-if="isSuperAdmin" class="quiet" @click="toggleMemberStatus(member)">{{ member.status === 'active' ? '停用' : '恢复' }}</button></span></div>
+          <div class="observation-head member-head"><span>会员资料</span><span>生日</span><span>收货地址</span><span>注册时间</span><span>手机号</span><span>观察记录</span><span>账号状态</span><span>详情 / 管理</span></div>
+          <div v-for="member in members" :key="member.id" class="observation-row member-head"><div class="member-summary"><img v-if="member.avatarUrl" class="member-avatar" :src="member.avatarUrl" :alt="member.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ member.nickname ? member.nickname.slice(0, 1) : 'M' }}</span><span class="member-summary-copy"><strong>{{ member.nickname || '未设置昵称' }}</strong><small class="mono">{{ member.id }}</small></span></div><span class="member-birthday">{{ memberBirthday(member) }}</span><span class="member-address" :title="isSuperAdmin ? memberAddressLabel(member.address) : '仅超级管理员可见'">{{ isSuperAdmin ? memberAddressLabel(member.address) : '仅超级管理员可见' }}</span><span>{{ displayDate(member.createdAt) }}</span><span class="member-phone">{{ member.phoneNumber || member.phoneMasked || '未绑定' }}</span><span>{{ member.observationCount }}</span><span>{{ member.status === 'active' ? '正常' : '已停用' }}</span><span class="member-actions"><button class="quiet" @click="showMember(member.id)">详情</button><button v-if="isSuperAdmin" class="quiet" @click="toggleMemberStatus(member)">{{ member.status === 'active' ? '停用' : '恢复' }}</button></span></div>
           <p v-if="!members.length && !memberLoading" class="muted">没有找到会员记录。</p>
           <div v-if="memberOffset < memberTotal" class="table-actions"><button class="quiet" :disabled="memberLoading" @click="refreshMembers(true)">加载更多会员</button></div>
         </div>
         <Teleport to="body">
 <div v-if="memberDetail" class="observation-modal-backdrop" @click.self="memberDetail = null"><section class="observation-detail-panel" role="dialog" aria-modal="true" aria-labelledby="member-detail-title"><div class="section-heading"><div><p class="eyebrow">MEMBER ACCOUNT</p><h3 id="member-detail-title">会员详情</h3></div><button class="quiet" @click="memberDetail = null">关闭</button></div>
-          <div class="panel-body"><div class="member-detail-profile"><img v-if="memberDetail.avatarUrl" class="member-avatar" :src="memberDetail.avatarUrl" :alt="memberDetail.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ memberDetail.nickname ? memberDetail.nickname.slice(0, 1) : 'M' }}</span><strong>{{ memberDetail.nickname || '未设置昵称' }}</strong></div><p class="mono">{{ memberDetail.id }}</p><p>注册时间：{{ displayDate(memberDetail.createdAt) }}</p><p>手机号：{{ memberDetail.phoneNumber || memberDetail.phoneMasked || '未绑定' }}</p><p>微信 OpenID：{{ memberDetail.openId }}</p><p>微信 UnionID：{{ memberDetail.maskedUnionId || '未提供' }}</p><p>观察记录：{{ memberDetail.observationCount }} 条（详情内容不在此页读取）</p><h4>账户隐私申请</h4><p v-if="!memberDetail.privacyRequests?.length" class="muted">暂无隐私申请。</p><p v-for="item in memberDetail.privacyRequests" :key="item.id">{{ item.status }} · {{ displayDate(item.requestedAt) }} · 计划 {{ displayDate(item.scheduledFor) }}</p><p v-if="!isSuperAdmin" class="muted">客服仅查看申请状态；处理与删除操作由超级管理员执行。</p>
+          <div class="panel-body"><div class="member-detail-profile"><img v-if="memberDetail.avatarUrl" class="member-avatar" :src="memberDetail.avatarUrl" :alt="memberDetail.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ memberDetail.nickname ? memberDetail.nickname.slice(0, 1) : 'M' }}</span><strong>{{ memberDetail.nickname || '未设置昵称' }}</strong></div><p class="mono">{{ memberDetail.id }}</p><p>注册时间：{{ displayDate(memberDetail.createdAt) }}</p><p>生日：{{ memberBirthday(memberDetail) }}</p><p>收货地址：{{ isSuperAdmin ? memberAddressLabel(memberDetail.address) : '仅超级管理员可见' }}</p><p>手机号：{{ memberDetail.phoneNumber || memberDetail.phoneMasked || '未绑定' }}</p><p>微信 OpenID：{{ memberDetail.openId }}</p><p>微信 UnionID：{{ memberDetail.maskedUnionId || '未提供' }}</p><p>观察记录：{{ memberDetail.observationCount }} 条（详情内容不在此页读取）</p><h4>账户隐私申请</h4><p v-if="!memberDetail.privacyRequests?.length" class="muted">暂无隐私申请。</p><p v-for="item in memberDetail.privacyRequests" :key="item.id">{{ item.status }} · {{ displayDate(item.requestedAt) }} · 计划 {{ displayDate(item.scheduledFor) }}</p><p v-if="!isSuperAdmin" class="muted">客服仅查看申请状态；处理与删除操作由超级管理员执行。</p>
           </div>
         </section></div>
 </Teleport>

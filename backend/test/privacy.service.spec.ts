@@ -536,6 +536,50 @@ test('disabled account deletion performs no database writes', async () => {
   assert.equal(await service.retryFailedById('request:test', { actorType: 'admin', actorId: 'admin:test' }), false);
 });
 
+test('shipping address is encrypted at rest and returned with the member profile', async () => {
+  const address = {
+    userName: 'Mira',
+    telNumber: '13800138000',
+    provinceName: '浙江省',
+    cityName: '杭州市',
+    countyName: '西湖区',
+    detailInfo: '文三路 1 号',
+    postalCode: '310000',
+    nationalCode: '330106',
+  };
+  const encryption = new DataEncryptionService(new ConfigService({ DATA_ENCRYPTION_KEY: 'unit-test-member-profile-encryption-key' }));
+  const auditEntries: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
+  let storedAddress: unknown = null;
+  const client = {
+    query: async (sql: string, values: unknown[] = []) => {
+      if (sql.includes('update users set shipping_address_encrypted')) {
+        storedAddress = JSON.parse(String(values[0])) as unknown;
+        return { rows: [{ id: 'user:test' }] };
+      }
+      return { rows: [] };
+    },
+  } as unknown as PoolClient;
+  const database = {
+    withTransaction: async <T>(callback: (transactionClient: PoolClient) => Promise<T>) => callback(client),
+    query: async () => ({ rows: [{ nickname: 'Mira', avatarObjectKey: null, phoneEncrypted: null, addressEncrypted: storedAddress }] }),
+  } as unknown as DatabaseService;
+  const audit = {
+    record: async (entry: { action: string; metadata?: Record<string, unknown> }) => { auditEntries.push(entry); },
+  } as unknown as AuditService;
+  const controller = new UserController(database, audit, new ConfigService({}), encryption);
+
+  const profile = await controller.updateAddress(
+    { user: { sub: 'user:test' } } as Request & { user: { sub: string } },
+    { address },
+  );
+
+  assert.deepEqual(profile.address, address);
+  assert.deepEqual(encryption.decryptJson(storedAddress, 'user.address'), address);
+  assert.equal(JSON.stringify(storedAddress).includes('文三路'), false);
+  assert.equal(auditEntries[0]?.action, 'user.address.updated');
+  assert.deepEqual(auditEntries[0]?.metadata, { fields: ['shipping_address'] });
+});
+
 test('phone updates persist encrypted account data and audit only the last four digits', async () => {
   const phoneNumber = '+8613800138000';
   const encryption = new DataEncryptionService(new ConfigService({ DATA_ENCRYPTION_KEY: 'unit-test-member-profile-encryption-key' }));
@@ -568,7 +612,7 @@ test('phone updates persist encrypted account data and audit only the last four 
     { code: 'wechat-one-time-code' },
   );
 
-  assert.deepEqual(profile, { nickname: 'Mira', avatarUrl: null, phoneNumber });
+  assert.deepEqual(profile, { nickname: 'Mira', avatarUrl: null, phoneNumber, address: null });
   assert.equal(encryption.decryptJson(storedPhone, 'user.phone'), phoneNumber);
   assert.equal(JSON.stringify(storedPhone).includes(phoneNumber), false);
   assert.equal(auditEntries[0]?.action, 'user.phone_number.updated');

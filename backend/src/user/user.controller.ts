@@ -26,9 +26,54 @@ class PhoneNumberDto {
   @IsString() @MinLength(1) @MaxLength(256) code!: string;
 }
 
-type MemberProfileRow = { nickname: string | null; avatarObjectKey: string | null; phoneEncrypted: unknown };
+class UpdateAddressDto {
+  @IsObject() address!: Record<string, unknown>;
+}
+
+type MemberProfileRow = { nickname: string | null; avatarObjectKey: string | null; phoneEncrypted: unknown; addressEncrypted?: unknown };
+type ShippingAddress = {
+  userName: string;
+  telNumber: string;
+  provinceName: string;
+  cityName: string;
+  countyName: string;
+  detailInfo: string;
+  postalCode: string;
+  nationalCode: string;
+};
 type AvatarFile = { buffer: Buffer; mimetype: string };
 const phoneEncryptionPurpose: EncryptionPurpose = 'user.phone';
+const addressEncryptionPurpose: EncryptionPurpose = 'user.address';
+
+function addressText(value: unknown, label: string, maximum: number, required = true) {
+  if (typeof value !== 'string') throw new BadRequestException(`${label}无效`);
+  const normalized = value.trim();
+  if ((required && !normalized) || normalized.length > maximum || /[\u0000-\u001f\u007f]/.test(normalized)) {
+    throw new BadRequestException(`${label}无效`);
+  }
+  return normalized;
+}
+
+function normalizeShippingAddress(value: unknown): ShippingAddress {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException('收货地址格式无效');
+  const source = value as Record<string, unknown>;
+  const telNumber = addressText(source.telNumber, '收货人电话', 30);
+  if (!/^[0-9+\-\s()]{5,30}$/.test(telNumber)) throw new BadRequestException('收货人电话格式无效');
+  const postalCode = addressText(source.postalCode, '邮政编码', 10, false);
+  if (postalCode && !/^\d{5,10}$/.test(postalCode)) throw new BadRequestException('邮政编码格式无效');
+  const nationalCode = addressText(source.nationalCode, '地区编码', 10, false);
+  if (nationalCode && !/^\d{5,10}$/.test(nationalCode)) throw new BadRequestException('地区编码格式无效');
+  return {
+    userName: addressText(source.userName, '收货人姓名', 40),
+    telNumber,
+    provinceName: addressText(source.provinceName, '省份', 40),
+    cityName: addressText(source.cityName, '城市', 40),
+    countyName: addressText(source.countyName, '区县', 40, false),
+    detailInfo: addressText(source.detailInfo, '详细地址', 200),
+    postalCode,
+    nationalCode,
+  };
+}
 const avatarMaxBytes = 2 * 1024 * 1024;
 
 function avatarContentType(file?: AvatarFile): 'image/jpeg' | 'image/png' | 'image/webp' {
@@ -108,12 +153,20 @@ export class UserController {
         throw new InternalServerErrorException('账号资料暂时无法读取');
       }
     }
+    let address: ShippingAddress | null = null;
+    if (row.addressEncrypted) {
+      try {
+        address = normalizeShippingAddress(this.encryption.decryptJson(row.addressEncrypted, addressEncryptionPurpose));
+      } catch {
+        throw new InternalServerErrorException('账号资料暂时无法读取');
+      }
+    }
     let avatarUrl: string | null = null;
     if (row.avatarObjectKey && this.storage) {
       try { avatarUrl = (await this.storage.createDownloadUrl(row.avatarObjectKey)).url; }
       catch { avatarUrl = null; }
     }
-    return { nickname: row.nickname ?? '', avatarUrl, phoneNumber };
+    return { nickname: row.nickname ?? '', avatarUrl, phoneNumber, address };
   }
 
   @Get('profile')
@@ -124,7 +177,8 @@ export class UserController {
 
   private async readProfile(userId: string) {
     const result = await this.database.query<MemberProfileRow>(
-      `select nickname, avatar_object_key as "avatarObjectKey", phone_encrypted as "phoneEncrypted"
+      `select nickname, avatar_object_key as "avatarObjectKey", phone_encrypted as "phoneEncrypted",
+              shipping_address_encrypted as "addressEncrypted"
        from users where id = $1`, [userId],
     );
     if (!result.rows[0]) throw accountDeletedException();
@@ -143,6 +197,23 @@ export class UserController {
       );
       if (!update.rows[0]) throw accountDeletedException();
       await this.audit.record({ actorType: 'user', actorId: userId, action: 'user.profile.updated', resourceType: 'user_profile', resourceId: userId, metadata: { fields: ['nickname'] } }, client);
+    });
+    return this.readProfile(userId);
+  }
+
+  @Patch('profile/address')
+  @Header('Cache-Control', 'no-store')
+  async updateAddress(@Req() request: Request & { user?: { sub: string } }, @Body() body: UpdateAddressDto) {
+    const userId = this.userId(request);
+    const address = normalizeShippingAddress(body.address);
+    const encrypted = JSON.stringify(this.encryption.encryptJson(address, addressEncryptionPurpose));
+    await this.database.withTransaction(async (client) => {
+      const update = await client.query(
+        `update users set shipping_address_encrypted = $1::jsonb, updated_at = now()
+         where id = $2 returning id`, [encrypted, userId],
+      );
+      if (!update.rows[0]) throw accountDeletedException();
+      await this.audit.record({ actorType: 'user', actorId: userId, action: 'user.address.updated', resourceType: 'user_profile', resourceId: userId, metadata: { fields: ['shipping_address'] } }, client);
     });
     return this.readProfile(userId);
   }
@@ -252,9 +323,9 @@ export class UserController {
       // each read under separate READ COMMITTED snapshots while another
       // request may still be writing the same account.
       await client.query('set transaction isolation level repeatable read');
-      const user = await client.query<{ settings: Record<string, unknown>; createdAt: string; nickname: string | null; avatarObjectKey: string | null; phoneEncrypted: unknown }>(
+      const user = await client.query<{ settings: Record<string, unknown>; createdAt: string; nickname: string | null; avatarObjectKey: string | null; phoneEncrypted: unknown; addressEncrypted?: unknown }>(
         `select settings, created_at as "createdAt", nickname, avatar_object_key as "avatarObjectKey",
-                phone_encrypted as "phoneEncrypted" from users where id = $1 for share`, [userId],
+                phone_encrypted as "phoneEncrypted", shipping_address_encrypted as "addressEncrypted" from users where id = $1 for share`, [userId],
       );
       if (!user.rows[0]) throw accountDeletedException();
       const records = await client.query<{
@@ -342,10 +413,18 @@ export class UserController {
         try { accountAvatarUrl = (await this.storage.createDownloadUrl(user.rows[0].avatarObjectKey)).url; }
         catch { accountAvatarUrl = null; }
       }
+      let accountAddress: ShippingAddress | null = null;
+      if (user.rows[0].addressEncrypted) {
+        try {
+          accountAddress = normalizeShippingAddress(this.encryption.decryptJson(user.rows[0].addressEncrypted, addressEncryptionPurpose));
+        } catch {
+          throw new InternalServerErrorException('用户资料暂时无法导出，请稍后重试');
+        }
+      }
       return {
         exportVersion: 1,
         generatedAt: new Date().toISOString(),
-        account: { createdAt: user.rows[0].createdAt, nickname: user.rows[0].nickname ?? '', avatarUrl: accountAvatarUrl, phoneNumber: accountPhoneNumber },
+        account: { createdAt: user.rows[0].createdAt, nickname: user.rows[0].nickname ?? '', avatarUrl: accountAvatarUrl, phoneNumber: accountPhoneNumber, address: accountAddress },
         settings: this.publicSettings(user.rows[0].settings),
         observations,
         discussionContributions,

@@ -2,14 +2,29 @@ import { apiErrorMessage, request } from '../../utils/request';
 
 const app = getApp<IAppOption>();
 
-interface AccountProfile { nickname: string; avatarUrl: string | null; phoneNumber: string | null }
+interface ShippingAddress { userName: string; telNumber: string; provinceName: string; cityName: string; countyName: string; detailInfo: string; postalCode?: string; nationalCode?: string }
+interface AccountProfile { nickname: string; avatarUrl: string | null; phoneNumber: string | null; address?: ShippingAddress | null }
+
+function isShippingAddress(value: unknown): value is ShippingAddress {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const address = value as Record<string, unknown>;
+  return typeof address.userName === 'string'
+    && typeof address.telNumber === 'string'
+    && typeof address.provinceName === 'string'
+    && typeof address.cityName === 'string'
+    && typeof address.countyName === 'string'
+    && typeof address.detailInfo === 'string'
+    && (typeof address.postalCode === 'string' || address.postalCode === undefined)
+    && (typeof address.nationalCode === 'string' || address.nationalCode === undefined);
+}
 
 function isAccountProfile(value: unknown): value is AccountProfile {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const profile = value as Record<string, unknown>;
   return typeof profile.nickname === 'string'
     && (typeof profile.avatarUrl === 'string' || profile.avatarUrl === null)
-    && (typeof profile.phoneNumber === 'string' || profile.phoneNumber === null);
+    && (typeof profile.phoneNumber === 'string' || profile.phoneNumber === null)
+    && (profile.address === undefined || profile.address === null || isShippingAddress(profile.address));
 }
 
 Page({
@@ -26,7 +41,7 @@ Page({
       const profile = await request<AccountProfile>('/me/profile');
       if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
       this.nicknameDraft = profile.nickname;
-      this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null }, loading: false });
+      this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null }, loading: false });
     } catch (caught) {
       this.setData({ loading: false, loadError: apiErrorMessage(caught, '暂时无法读取个人资料') });
     }
@@ -47,7 +62,7 @@ Page({
     try {
       const profile = await request<AccountProfile>('/me/profile', { method: 'PATCH', data: { nickname } });
       if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
-      this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null }, saving: false });
+      this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null }, saving: false });
     } catch (caught) {
       this.setData({ saving: false });
       wx.showToast({ title: apiErrorMessage(caught, '昵称暂时无法保存'), icon: 'none' });
@@ -63,9 +78,31 @@ Page({
         if (result.statusCode < 200 || result.statusCode >= 300) throw new Error('头像暂时无法保存');
         const profile: unknown = JSON.parse(result.data);
         if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
-        this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null }, saving: false });
+        this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null }, saving: false });
       } catch (error) { this.setData({ saving: false }); wx.showToast({ title: apiErrorMessage(error, '头像暂时无法保存'), icon: 'none' }); }
     }, fail: (error) => { this.setData({ saving: false }); wx.showToast({ title: apiErrorMessage(error, '头像暂时无法保存'), icon: 'none' }); } });
+  },
+  chooseAddress() {
+    if (this.data.saving) return;
+    wx.chooseAddress({
+      success: (result) => { void this.saveAddress({ userName: result.userName, telNumber: result.telNumber, provinceName: result.provinceName, cityName: result.cityName, countyName: result.countyName, detailInfo: result.detailInfo, postalCode: result.postalCode || '', nationalCode: result.nationalCode || '' }); },
+      fail: (error) => {
+        if (String(error.errMsg || '').includes('cancel')) return;
+        wx.showToast({ title: '暂时无法读取微信收货地址', icon: 'none' });
+      },
+    });
+  },
+  async saveAddress(address: ShippingAddress) {
+    this.setData({ saving: true });
+    try {
+      const profile = await request<AccountProfile>('/me/profile/address', { method: 'PATCH', data: { address } });
+      if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
+      this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null }, saving: false });
+      wx.showToast({ title: '收货地址已保存', icon: 'success' });
+    } catch (caught) {
+      this.setData({ saving: false });
+      wx.showToast({ title: apiErrorMessage(caught, '收货地址暂时无法保存'), icon: 'none' });
+    }
   },
   showPhone() { wx.showToast({ title: this.data.profile.phoneNumber ? '手机号已绑定' : '请返回登录页绑定手机号', icon: 'none' }); },
   showUnavailable() { wx.showToast({ title: '该功能将逐步开放', icon: 'none' }); },

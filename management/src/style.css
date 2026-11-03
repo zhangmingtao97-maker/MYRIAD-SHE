@@ -290,7 +290,9 @@ input[type="file"] { padding: 8px; font-size: 13px; }
 .table-actions { min-width: 920px; padding: 14px 18px; border-top: 1px solid #e4dbd1; }
 #member-directory > .muted { margin: 10px 0 8px; }
 #member-directory .observation-table { margin-top: 12px; }
-#member-directory .member-head { min-width: 1040px; grid-template-columns: 260px 160px 150px 100px 110px 170px; gap: 12px; padding: 9px 14px; }
+#member-directory .member-head { min-width: 1080px; grid-template-columns: 190px 64px 190px 130px 100px 60px 70px 190px; gap: 10px; padding: 9px 14px; }
+#member-directory .member-birthday { color: #40362f; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#member-directory .member-address { overflow: hidden; color: #75675d; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 #member-directory .member-actions { flex-wrap: nowrap; }
 .discussion-contribution-table { margin-top: 20px; overflow-x: auto; border-top: 1px solid #ded3c5; }
 .discussion-contribution-head, .discussion-contribution-row { display: grid; grid-template-columns: minmax(200px, .9fr) minmax(240px, 1.5fr) 96px 150px 96px; align-items: center; gap: 16px; padding: 14px 18px; border-bottom: 1px solid #e4dbd1; font-size: 13px; }

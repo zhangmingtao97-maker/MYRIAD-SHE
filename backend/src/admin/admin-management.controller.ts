@@ -36,6 +36,33 @@ function optionalWecomUserId(value: unknown) {
 type AdminAvatarFile = { buffer: Buffer; mimetype: string };
 const adminAvatarMaxBytes = 2 * 1024 * 1024;
 
+type MemberShippingAddress = {
+  userName: string;
+  telNumber: string;
+  provinceName: string;
+  cityName: string;
+  countyName: string;
+  detailInfo: string;
+  postalCode: string;
+  nationalCode: string;
+};
+
+function memberShippingAddress(value: unknown): MemberShippingAddress | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const read = (key: keyof MemberShippingAddress) => typeof source[key] === 'string' ? source[key] as string : '';
+  return {
+    userName: read('userName'),
+    telNumber: read('telNumber'),
+    provinceName: read('provinceName'),
+    cityName: read('cityName'),
+    countyName: read('countyName'),
+    detailInfo: read('detailInfo'),
+    postalCode: read('postalCode'),
+    nationalCode: read('nationalCode'),
+  };
+}
+
 function adminAvatarContentType(file?: AdminAvatarFile): 'image/jpeg' | 'image/png' | 'image/webp' {
   const buffer = file?.buffer;
   if (!Buffer.isBuffer(buffer) || buffer.byteLength === 0 || buffer.byteLength > adminAvatarMaxBytes) {
@@ -190,6 +217,8 @@ export class AdminManagementController {
     const { limit, offset } = parsePagination(limitValue, offsetValue, { defaultLimit: 50, maxLimit: 100, label: '会员分页' });
     const revealPhones = request?.user?.role === 'super_admin';
     const phoneColumn = revealPhones ? 'u.phone_encrypted as "phoneEncrypted",' : '';
+    const revealAddresses = request?.user?.role === 'super_admin';
+    const addressColumn = revealAddresses ? 'u.shipping_address_encrypted as "addressEncrypted",' : '';
     const filters: string[] = [];
     const values: unknown[] = [];
     if (idValue?.trim()) {
@@ -221,6 +250,9 @@ export class AdminManagementController {
         `select u.id, u.status, u.created_at as "createdAt", u.updated_at as "updatedAt",
                 u.nickname, u.avatar_object_key as "avatarObjectKey", u.phone_last4 as "phoneLast4",
                 ${phoneColumn}
+                ${addressColumn}
+                (select v.month from life_card_views v where v.user_id = u.id order by v.viewed_at desc, v.id desc limit 1) as "birthMonth",
+                (select v.day from life_card_views v where v.user_id = u.id order by v.viewed_at desc, v.id desc limit 1) as "birthDay",
                 count(o.id) filter (where o.status <> 'deleted')::int as "observationCount"
          from users u left join observations o on o.user_id = u.id ${where}
          group by u.id order by u.created_at desc, u.id desc limit $${pageValues.length - 1} offset $${pageValues.length}`,
@@ -236,10 +268,16 @@ export class AdminManagementController {
           }
         }
       }
+      if (revealAddresses) {
+        const addressCount = (result.rows as Array<{ addressEncrypted?: unknown }>).filter((row) => row.addressEncrypted).length;
+        if (addressCount) {
+          await this.audit.record({ actorType: 'admin', actorId: request?.user?.sub, action: 'member.addresses.viewed', resourceType: 'users', metadata: { count: addressCount, source: 'member_list' } }, client);
+        }
+      }
       return { rows: result.rows, total };
     });
     const items = await Promise.all(rows.rows.map(async (row) => {
-      const { avatarObjectKey, phoneLast4, phoneEncrypted, ...member } = row as Record<string, unknown> & { avatarObjectKey?: string | null; phoneLast4?: string | null; phoneEncrypted?: unknown };
+      const { avatarObjectKey, phoneLast4, phoneEncrypted, addressEncrypted, ...member } = row as Record<string, unknown> & { avatarObjectKey?: string | null; phoneLast4?: string | null; phoneEncrypted?: unknown; addressEncrypted?: unknown };
       let avatarUrl: string | null = null;
       if (typeof avatarObjectKey === 'string' && this.storage) {
         try { avatarUrl = (await this.storage.createDownloadUrl(avatarObjectKey)).url; }
@@ -258,6 +296,16 @@ export class AdminManagementController {
           }
         } else profile.phoneNumber = null;
       } else profile.phoneMasked = last4 ? `***-****-${last4}` : null;
+      if (revealAddresses) {
+        if (addressEncrypted) {
+          if (!this.encryption) throw new ServiceUnavailableException('会员资料暂时无法解密');
+          try {
+            profile.address = memberShippingAddress(this.encryption.decryptJson(addressEncrypted, 'user.address'));
+          } catch {
+            throw new ServiceUnavailableException('会员资料暂时无法解密');
+          }
+        } else profile.address = null;
+      }
       return profile;
     }));
     return { items, total: parseDatabaseCount(rows.total, '会员总数'), limit, offset };
@@ -270,9 +318,11 @@ export class AdminManagementController {
       const result = await client.query(
       `select u.id, u.status, u.created_at as "createdAt", u.updated_at as "updatedAt",
               u.nickname, u.avatar_object_key as "avatarObjectKey", u.phone_encrypted as "phoneEncrypted",
-              u.phone_last4 as "phoneLast4",
+              u.phone_last4 as "phoneLast4", u.shipping_address_encrypted as "addressEncrypted",
               u.wechat_openid as "openId",
               case when u.wechat_unionid is null then null else '***' || right(u.wechat_unionid, 4) end as "maskedUnionId",
+              (select v.month from life_card_views v where v.user_id = u.id order by v.viewed_at desc, v.id desc limit 1) as "birthMonth",
+              (select v.day from life_card_views v where v.user_id = u.id order by v.viewed_at desc, v.id desc limit 1) as "birthDay",
               (select count(*)::int from observations o where o.user_id = u.id and o.status <> 'deleted') as "observationCount",
               (select jsonb_agg(jsonb_build_object('id', p.id, 'status', p.status, 'requestedAt', p.requested_at, 'scheduledFor', p.scheduled_for) order by p.requested_at desc)
                from privacy_requests p where p.user_id = u.id) as "privacyRequests"
@@ -283,12 +333,16 @@ export class AdminManagementController {
       if (request.user?.role === 'super_admin' && result.rows[0].phoneEncrypted) {
         await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'member.phone.viewed', resourceType: 'user', resourceId: id }, client);
       }
+      if (request.user?.role === 'super_admin' && result.rows[0].addressEncrypted) {
+        await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'member.address.viewed', resourceType: 'user', resourceId: id }, client);
+      }
       return result.rows[0];
     });
-    const { avatarObjectKey, phoneEncrypted, phoneLast4, ...member } = result as Record<string, unknown> & {
+    const { avatarObjectKey, phoneEncrypted, phoneLast4, addressEncrypted, ...member } = result as Record<string, unknown> & {
       avatarObjectKey?: string | null;
       phoneEncrypted?: unknown;
       phoneLast4?: string | null;
+      addressEncrypted?: unknown;
     };
     let avatarUrl: string | null = null;
     if (typeof avatarObjectKey === 'string' && this.storage) {
@@ -307,6 +361,14 @@ export class AdminManagementController {
           throw new ServiceUnavailableException('会员资料暂时无法解密');
         }
       } else profile.phoneNumber = null;
+      if (addressEncrypted) {
+        if (!this.encryption) throw new ServiceUnavailableException('会员资料暂时无法解密');
+        try {
+          profile.address = memberShippingAddress(this.encryption.decryptJson(addressEncrypted, 'user.address'));
+        } catch {
+          throw new ServiceUnavailableException('会员资料暂时无法解密');
+        }
+      } else profile.address = null;
     }
     return profile;
   }

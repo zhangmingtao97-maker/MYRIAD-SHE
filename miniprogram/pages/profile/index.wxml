@@ -64,8 +64,9 @@
             <text class="profile-row-value profile-link">完善信息</text>
             <text class="profile-row-arrow" aria-hidden="true">›</text>
           </view>
-          <view class="profile-row profile-action-row" bindtap="showUnavailable" role="button" tabindex="0">
+          <view class="profile-row profile-action-row" bindtap="chooseAddress" role="button" tabindex="0">
             <text class="profile-row-label">收货地址</text>
+            <text class="profile-row-value {{profile.address ? '' : 'profile-muted'}}">{{profile.address ? profile.address.cityName + ' ' + profile.address.countyName : '未保存'}}</text>
             <text class="profile-row-arrow" aria-hidden="true">›</text>
           </view>
         </view>

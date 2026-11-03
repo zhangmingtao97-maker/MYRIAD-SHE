@@ -9,7 +9,7 @@ const ivLength = 12;
 const authTagLength = 16;
 const keyIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/;
 const purpose = 'observation.answers';
-export type EncryptionPurpose = typeof purpose | 'user.phone';
+export type EncryptionPurpose = typeof purpose | 'user.phone' | 'user.address';
 const maxPlaintextBytes = 64 * 1024;
 const maxEncodedPayloadLength = 256 * 1024;
 
