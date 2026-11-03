@@ -6,8 +6,8 @@ import { accountDeletedException } from '../auth/auth-errors';
 import { UserAuthGuard } from '../auth/user-auth.guard';
 import { AuditService } from '../admin/audit.service';
 import { DatabaseService } from '../database/database.service';
-import { defaultDiscussionContent, DiscussionContent, validateDiscussionContent } from '../content/discussion-content';
 import { DataEncryptionService } from '../security/data-encryption.service';
+import { loadPublishedDiscussion } from './published-discussion';
 
 interface ContributionRow {
   id: string;
@@ -64,25 +64,6 @@ export class DiscussionContributionController {
     }
   }
 
-  private async publishedIssue(client: Pick<PoolClient, 'query'>, issueCode: string) {
-    const result = await client.query<{ issueCode: string; issueLabel: string; discussion: unknown }>(
-      `select coalesce(publication.snapshot->'issue'->>'code', issue.code) as "issueCode",
-              coalesce(publication.snapshot->'issue'->>'label', issue.label) as "issueLabel",
-              publication.snapshot->'discussion' as discussion
-       from content_issues issue
-       left join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version
-       where issue.status = 'published' and (issue.code = $1 or publication.snapshot->'issue'->>'code' = $1)`, [issueCode],
-    );
-    if (!result.rows[0]) throw new BadRequestException('只能保存已发布期刊中的经历');
-    let discussion: DiscussionContent;
-    try {
-      discussion = result.rows[0].discussion ? validateDiscussionContent(result.rows[0].discussion) : defaultDiscussionContent();
-    } catch {
-      throw new BadRequestException('本期讨论内容暂时无法使用');
-    }
-    return { ...result.rows[0], discussion };
-  }
-
   @Get()
   @Header('Cache-Control', 'no-store')
   async listMine(@Req() request: Request & { user?: { sub: string } }) {
@@ -126,7 +107,7 @@ export class DiscussionContributionController {
     }
     return this.database.withTransaction(async (client) => {
       await this.lockUser(client, userId);
-      const issue = await this.publishedIssue(client, issueCode);
+      const issue = await loadPublishedDiscussion(client, issueCode);
       const thread = threadId ? issue.discussion.threads.find((entry) => entry.id === threadId) : undefined;
       if (threadId && !thread) throw new BadRequestException('回复对象已不在本期讨论中');
       const result = await client.query<ContributionRow>(
