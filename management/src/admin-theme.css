@@ -430,6 +430,8 @@ button.dashboard-subtab:hover {
 }
 button.dashboard-tab:hover { background: var(--surface-2); color: var(--ink); }
 button.dashboard-tab.active:hover { background: var(--accent-soft); color: var(--accent-strong); }
+button.dashboard-subtab:hover { background: var(--surface-2); color: var(--ink); }
+button.dashboard-subtab.active:hover { background: var(--accent-soft); color: var(--accent-strong); }
 
 button.quiet,
 .quiet {
