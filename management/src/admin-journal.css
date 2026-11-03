@@ -710,18 +710,19 @@
   height: 16px;
 }
 
-.dashboard-subnav {
-  animation: subnav-in .24s var(--ease) both;
+.subnav-enter-active,
+.subnav-leave-active {
+  overflow: hidden;
+  transition:
+    height .24s var(--ease),
+    opacity .18s ease,
+    transform .22s var(--ease);
 }
-.dashboard-subnav .dashboard-subtab {
-  animation: subitem-in .28s var(--ease) both;
+.subnav-enter-from,
+.subnav-leave-to {
+  opacity: 0;
+  transform: translateY(-3px);
 }
-.dashboard-subnav .dashboard-subtab:nth-child(2) { animation-delay: .025s; }
-.dashboard-subnav .dashboard-subtab:nth-child(3) { animation-delay: .05s; }
-.dashboard-subnav .dashboard-subtab:nth-child(4) { animation-delay: .075s; }
-.dashboard-subnav .dashboard-subtab:nth-child(5) { animation-delay: .1s; }
-.dashboard-subnav .dashboard-subtab:nth-child(6) { animation-delay: .125s; }
-.dashboard-subnav .dashboard-subtab:nth-child(7) { animation-delay: .15s; }
 .nav-collapsed .dashboard-nav-tabs > * {
   animation: none;
 }
@@ -729,10 +730,6 @@
 @keyframes nav-item-in {
   from { opacity: 0; transform: translateX(-7px); }
   to { opacity: 1; transform: translateX(0); }
-}
-@keyframes subnav-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* 内容页：切换时整体上浮，内部卡片稍后跟进 */
@@ -799,7 +796,6 @@
 @media (prefers-reduced-motion: reduce) {
   .dashboard-nav-tabs > *,
   .dashboard-subnav,
-  .dashboard-subnav .dashboard-subtab,
   .content-area,
   .content-area > .panel,
   .content-area > .overview-metrics,
@@ -809,6 +805,8 @@
   .topbar::after {
     animation: none !important;
   }
+  .subnav-enter-active,
+  .subnav-leave-active,
   .dashboard-tab,
   .dashboard-subtab,
   .panel,
