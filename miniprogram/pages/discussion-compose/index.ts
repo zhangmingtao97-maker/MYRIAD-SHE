@@ -18,21 +18,26 @@ function decodeQueryValue(value: string) {
   try { return decodeURIComponent(value); } catch { return value; }
 }
 
+interface DraftChoice { body: string; updatedAt: string; source: 'local' | 'cloud' }
+
 Page({
-  data: { statusBarHeight: 0, issueCode: '', threadId: '', threadAuthor: '', title: '写下你的经历', fieldLabel: '你的经历', copy: fallbackCopy, body: '', previewOpen: false, previewConfirmed: false, restored: false, saving: false, error: '' },
+  data: { statusBarHeight: 0, issueCode: '', threadId: '', threadAuthor: '', title: '写下你的经历', fieldLabel: '你的经历', copy: fallbackCopy, body: '', previewOpen: false, previewConfirmed: false, restored: false, saving: false, error: '', draftNotice: false, draftSource: '' as '' | 'local' | 'cloud' },
   inputChanged: false,
+  pendingDraft: null as DraftChoice | null,
   onLoad(query: Record<string, string | undefined>) {
     this.inputChanged = false;
     const threadId = query.threadId || '';
     const threadAuthor = decodeQueryValue(query.threadAuthor || '');
     const issueCode = query.issueCode || '';
     const localDraft = issueCode ? readLocalDraftEntry(issueCode, threadId) : null;
+    this.pendingDraft = localDraft ? { body: localDraft.body, updatedAt: localDraft.updatedAt, source: 'local' } : null;
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, issueCode, threadId, threadAuthor,
       title: threadId ? `回复${threadAuthor || '这段经历'}` : fallbackCopy.composeTitle,
       fieldLabel: threadId ? '你的回应' : fallbackCopy.composeFieldLabel,
-      body: localDraft?.body || '', restored: Boolean(localDraft) });
+      body: '', restored: false, draftNotice: Boolean(this.pendingDraft), draftSource: this.pendingDraft?.source || '' });
+    if (query.resume === '1' && this.pendingDraft) this.continueDraft();
     void this.loadCopy();
-    if (issueCode) void this.restoreCloudDraft(localDraft?.updatedAt || '');
+    if (issueCode) void this.restoreCloudDraft();
   },
   async loadCopy() {
     if (!this.data.issueCode) return;
@@ -44,30 +49,44 @@ Page({
         fieldLabel: this.data.threadId ? '你的回应' : result.content.copy.composeFieldLabel });
     } catch { /* Keep the matching built-in copy when the content endpoint is unavailable. */ }
   },
-  async restoreCloudDraft(localUpdatedAt: string) {
+  async restoreCloudDraft() {
+    if (this.pendingDraft) return;
     const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(this.data.threadId)}`;
     try {
       const remote = await request<CloudContribution | null>(`/discussion/contributions/mine?${query}`);
       if (!remote || typeof remote.body !== 'string') return;
-      if (this.inputChanged) return;
-      const localTime = Date.parse(localUpdatedAt);
-      const remoteTime = Date.parse(remote.updatedAt);
-      if (localUpdatedAt && Number.isFinite(localTime) && Number.isFinite(remoteTime) && localTime > remoteTime) return;
-      if (this.data.restored && !localUpdatedAt) return;
-      this.setData({ body: remote.body, previewConfirmed: false, restored: true, error: '' });
-      saveLocalDraft({ issueCode: this.data.issueCode, threadId: this.data.threadId, body: remote.body, updatedAt: remote.updatedAt });
+      if (this.inputChanged || this.pendingDraft) return;
+      this.pendingDraft = { body: remote.body, updatedAt: remote.updatedAt, source: 'cloud' };
+      this.setData({ draftNotice: true, draftSource: 'cloud', error: '' });
     } catch {
-      if (!localUpdatedAt && !this.data.body) this.setData({ error: '暂时无法读取账户草稿，仍可继续编辑并稍后提交。' });
+      if (!this.data.body) this.setData({ error: '暂时无法读取账户草稿，仍可继续编辑并稍后提交。' });
     }
+  },
+  continueDraft() {
+    const draft = this.pendingDraft;
+    if (!draft) return;
+    this.pendingDraft = null;
+    this.inputChanged = true;
+    this.setData({ body: draft.body, draftNotice: false, draftSource: '', restored: true, previewConfirmed: false, error: '' });
+    if (draft.source === 'cloud') saveLocalDraft({ issueCode: this.data.issueCode, threadId: this.data.threadId, body: draft.body, updatedAt: draft.updatedAt });
+  },
+  startFresh() {
+    const draft = this.pendingDraft;
+    this.pendingDraft = null;
+    this.inputChanged = true;
+    this.setData({ body: '', draftNotice: false, draftSource: '', restored: false, previewConfirmed: false, error: '' });
+    if (draft?.source === 'local') removeLocalDraft(this.data.issueCode, this.data.threadId);
   },
   onInput(event: WechatMiniprogram.CustomEvent) {
     this.inputChanged = true;
     const body = String(event.detail.value || '').slice(0, 2000);
-    this.setData({ body, previewConfirmed: false, error: '', restored: false });
+    const notice = this.data.draftNotice;
+    this.pendingDraft = null;
+    this.setData({ body, previewConfirmed: false, error: '', restored: false, draftNotice: false, draftSource: '' });
     if (!this.data.issueCode) return;
     try {
       if (body.trim()) saveLocalDraft({ issueCode: this.data.issueCode, threadId: this.data.threadId, body, updatedAt: new Date().toISOString() });
-      else removeLocalDraft(this.data.issueCode, this.data.threadId);
+      else if (!notice) removeLocalDraft(this.data.issueCode, this.data.threadId);
     } catch (caught) {
       this.setData({ error: caught instanceof Error ? caught.message : '本机暂存失败，请先复制保留这段内容。' });
     }

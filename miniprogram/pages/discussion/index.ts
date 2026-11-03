@@ -79,10 +79,10 @@ Page({
     this.openComposer(String(event?.currentTarget.dataset.threadId || ''));
   },
   replyToThread(event: WechatMiniprogram.CustomEvent) { this.openComposer(String(event.currentTarget.dataset.threadId || '')); },
-  continueDraft() { if (this.data.draft) this.openComposer(this.data.draft.threadId); },
-  openComposer(threadId: string) {
+  continueDraft() { if (this.data.draft) this.openComposer(this.data.draft.threadId, true); },
+  openComposer(threadId: string, resume = false) {
     const thread = this.data.threads.find((item) => item.id === threadId);
-    const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}&threadAuthor=${encodeURIComponent(thread?.author || '')}`;
+    const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}&threadAuthor=${encodeURIComponent(thread?.author || '')}${resume ? '&resume=1' : ''}`;
     wx.navigateTo({ url: `/pages/discussion-compose/index?${query}` });
   },
   reportThread(event: WechatMiniprogram.CustomEvent) {

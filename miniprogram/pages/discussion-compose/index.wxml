@@ -9,6 +9,13 @@
       <view class="compose-meta"><text class="compose-number">{{copy.number}}</text><text>{{copy.composeTitle}}</text></view>
       <view class="compose-heading">{{copy.composeHeading}}</view>
       <view class="compose-intro">{{copy.intro}}</view>
+      <view wx:if="{{draftNotice}}" class="compose-draft-notice">
+        <view class="compose-draft-notice-text">{{draftSource === 'cloud' ? '你已经写过一段回应' : '你还有一份未完成的草稿'}}，已为你保留。可以继续原稿，或放弃后开始这次回应。</view>
+        <view class="compose-draft-notice-actions">
+          <view class="compose-draft-notice-action" role="button" aria-label="继续原草稿" tabindex="0" bindtap="continueDraft">继续原草稿</view>
+          <view class="compose-draft-notice-action" role="button" aria-label="放弃原稿并开始这次回应" tabindex="0" bindtap="startFresh">放弃原稿，开始这次</view>
+        </view>
+      </view>
       <view class="compose-field-label">{{fieldLabel}}</view>
       <textarea class="compose-input" maxlength="2000" value="{{body}}" placeholder="{{copy.composePlaceholder}}" placeholder-class="compose-placeholder" bindinput="onInput" aria-label="{{fieldLabel}}" />
       <view class="compose-count">{{body.length}} / 2000</view>
