@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
+import DatePickerField from './components/DatePickerField.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
 import PracticeLineEditor from './components/PracticeLineEditor.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
@@ -5540,7 +5541,7 @@ onBeforeUnmount(() => {
       </section>
       <section v-if="activeSection === 'members'" id="member-directory" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">MEMBER DIRECTORY</p><h2>会员列表</h2></div></div>
-        <div class="filters member-filters" aria-label="会员筛选"><label>昵称、ID 或手机号后四位<input v-model="memberQuery" maxlength="80" placeholder="搜索会员资料" @keyup.enter="refreshMembers()" /></label><label>注册自<input v-model="memberFrom" type="date" /></label><label>注册至<input v-model="memberTo" type="date" /></label><button class="quiet" :disabled="memberLoading" @click="refreshMembers()">{{ memberLoading ? '读取中…' : '筛选会员' }}</button></div>
+        <div class="filters member-filters" aria-label="会员筛选"><label>昵称、ID 或手机号后四位<input v-model="memberQuery" maxlength="80" placeholder="搜索会员资料" @keyup.enter="refreshMembers()" /></label><label>注册自<DatePickerField v-model="memberFrom" aria-label="注册自" clearable /></label><label>注册至<DatePickerField v-model="memberTo" aria-label="注册至" clearable /></label><button class="quiet" :disabled="memberLoading" @click="refreshMembers()">{{ memberLoading ? '读取中…' : '筛选会员' }}</button></div>
         <p v-if="memberError" class="error" role="alert">{{ memberError }}</p>
         <p class="muted">当前条件 {{ memberTotal }} 位会员</p>
         <div class="observation-table">
@@ -5560,8 +5561,8 @@ onBeforeUnmount(() => {
   <div class="section-heading"><div><p class="eyebrow">LIFE CARD VIEWS</p><h2>生命牌查看</h2></div></div>
   <p v-if="lifeCardViewsError" class="error" role="alert">{{ lifeCardViewsError }}</p>
   <div class="life-card-view-filters">
-    <label>开始日期<input v-model="lifeCardViewFilter.from" type="date" /></label>
-    <label>结束日期<input v-model="lifeCardViewFilter.to" type="date" /></label>
+    <label>开始日期<DatePickerField v-model="lifeCardViewFilter.from" aria-label="开始日期" clearable /></label>
+    <label>结束日期<DatePickerField v-model="lifeCardViewFilter.to" aria-label="结束日期" clearable /></label>
     <label>用户<input v-model="lifeCardViewFilter.user" maxlength="64" placeholder="昵称或用户 ID" @keyup.enter="loadLifeCardViews()" /></label>
     <label>花色<select v-model="lifeCardViewFilter.suit"><option value="">全部</option><option v-for="suit in lifeCardSuits" :key="suit.key" :value="suit.key">{{ suit.label }}</option></select></label>
     <label>牌面<select v-model="lifeCardViewFilter.rank"><option value="">全部</option><option v-for="rank in lifeCardRanks" :key="rank" :value="rank">{{ rank }}</option></select></label>
