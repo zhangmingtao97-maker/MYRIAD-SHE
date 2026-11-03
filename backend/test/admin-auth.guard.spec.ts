@@ -1,4 +1,4 @@
-import 'reflect-metadata';
+﻿import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
@@ -126,7 +126,7 @@ test('module overrides are validated and deduplicated', () => {
   assert.deepEqual(parseAdminModuleOverride(['audit', 'audit', 'members']), ['audit', 'members']);
   assert.throws(() => parseAdminModuleOverride(['unknown-module']));
   assert.throws(() => parseAdminModuleOverride('audit'));
-  assert.deepEqual(effectiveAdminModules('content_editor', null), ['journal', 'practice', 'pages', 'media', 'contributions']);
+  assert.deepEqual(effectiveAdminModules('content_editor', null), ['journal', 'practice', 'pages', 'media', 'contributions', 'discussion-reports']);
   assert.deepEqual(effectiveAdminModules('content_editor', []), []);
   assert.deepEqual(effectiveAdminModules('support_readonly', ['audit', 'not-a-module']), ['audit']);
   assert.deepEqual(effectiveAdminModules('super_admin', []), []);

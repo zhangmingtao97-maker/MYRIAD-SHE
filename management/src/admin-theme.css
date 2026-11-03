@@ -1828,3 +1828,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   padding-top: 18px;
   border-top: 1px solid var(--line);
 }
+
+/* 用户举报页：标题在顶栏，这里只放统计与刷新 */
+.reports-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; }
+.reports-toolbar small { color: var(--muted); font-size: 12px; }

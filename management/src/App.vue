@@ -698,7 +698,8 @@ const adminModules = [
   { id: 'practice', label: '实践页面与目录', description: '实践文案、目录设置、共同实践与日常之物' },
   { id: 'pages', label: '页面与协议', description: '隐私政策、用户协议、关于 MYRIAD SHE 与发布历史' },
   { id: 'media', label: '媒体库', description: '上传图片与音频、查询孤儿媒体与预览地址' },
-  { id: 'contributions', label: '用户经历审核', description: '本期讨论的用户经历列表、详情与审核状态' },
+  { id: 'contributions', label: '用户经历审核', description: '本期讨论的经历与回复留言列表、详情与审核状态' },
+  { id: 'discussion-reports', label: '用户举报', description: '用户举报的讨论内容、原因与处理状态' },
   { id: 'observations', label: '观察记录管理', description: '私密观察记录列表、生命周期统计与详情' },
   { id: 'privacy', label: '隐私申请', description: '账户删除申请的处理与重试' },
   { id: 'members', label: '会员列表', description: '会员目录与会员详情（停用仍仅超级管理员）' },
@@ -710,7 +711,7 @@ const adminModules = [
 type AdminModuleId = typeof adminModules[number]['id'];
 const adminRoleDefaultModules: Record<string, AdminModuleId[]> = {
   super_admin: adminModules.map((module) => module.id),
-  content_editor: ['journal', 'practice', 'pages', 'media', 'contributions'],
+  content_editor: ['journal', 'practice', 'pages', 'media', 'contributions', 'discussion-reports'],
   support_readonly: ['members', 'settings'],
 };
 const adminModulesById = new Map<string, { id: AdminModuleId; label: string; description: string }>(adminModules.map((module) => [module.id, module]));
@@ -1052,12 +1053,12 @@ const observationStatusBeforeStale = ref<string | null>(null);
 const dashboardLoading = ref(false);
 const overviewUpdatedAt = ref('');
 const currentPageRefreshing = ref(false);
-type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
+type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
 type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'privacy-page' | 'about-history';
 type PracticeSection = 'practice' | 'directory' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
-const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'privacy', 'audit', 'members', 'settings', 'employees', 'life-cards', 'life-card-views']);
+const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'employees', 'life-cards', 'life-card-views']);
 const contentSectionKeys = new Set<ContentSection>(['practice', 'directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'privacy-page', 'about-history'];
@@ -1089,6 +1090,7 @@ const staffLandingCandidates: Array<{ section: DashboardSection; contentSection:
   { section: 'content', contentSection: 'privacy-page', module: 'pages' },
   { section: 'content', contentSection: 'media', module: 'media' },
   { section: 'contributions', contentSection: 'practice', module: 'contributions' },
+  { section: 'discussion-reports', contentSection: 'practice', module: 'discussion-reports' },
   { section: 'observations', contentSection: 'practice', module: 'observations' },
   { section: 'privacy', contentSection: 'practice', module: 'privacy' },
   { section: 'audit', contentSection: 'practice', module: 'audit' },
@@ -1123,7 +1125,8 @@ async function enterDashboardByPermissions() {
   if (landing.section === 'settings') await loadSystemSettings();
   if (landing.section === 'life-cards') await loadLifeCards();
   if (landing.section === 'life-card-views') await loadLifeCardViews();
-  if (landing.section === 'contributions') { await refreshDiscussionContributions(); await refreshDiscussionReports(); }
+  if (landing.section === 'contributions') await refreshDiscussionContributions();
+  if (landing.section === 'discussion-reports') await refreshDiscussionReports();
 }
 const sidebarCollapsed = ref(false);
 // 回到顶部：滚动超过一屏后出现，避免长表格页无处可回去。
@@ -1194,7 +1197,8 @@ watch([activeSection, activeContentSection], ([section, contentSection]) => {
   localStorage.setItem('myriad_she_admin_location', JSON.stringify({ section, contentSection }));
 });
 watch(activeSection, (section) => {
-  if (section === 'contributions' && loggedIn.value) { void refreshDiscussionContributions(); void refreshDiscussionReports(); }
+  if (section === 'contributions' && loggedIn.value) void refreshDiscussionContributions();
+  if (section === 'discussion-reports' && loggedIn.value) void refreshDiscussionReports();
 });
 const currentView = computed(() => {
   if (activeSection.value === 'practice') {
@@ -1233,6 +1237,7 @@ const currentView = computed(() => {
     overview: { eyebrow: 'WORKSPACE / OVERVIEW', title: '工作台' },
     observations: { eyebrow: 'OBSERVATIONS / MANAGEMENT', title: '观察记录管理' },
     contributions: { eyebrow: 'DISCUSSION / MODERATION', title: '用户经历审核' },
+    'discussion-reports': { eyebrow: 'DISCUSSION / REPORTS', title: '用户举报' },
     privacy: { eyebrow: 'PRIVACY / REQUESTS', title: '隐私申请' },
     audit: { eyebrow: 'SECURITY / AUDIT LOG', title: '审计日志' },
     members: { eyebrow: 'MEMBERS / DIRECTORY', title: '会员列表' },
@@ -4535,8 +4540,9 @@ onBeforeUnmount(() => {
                   <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-policy' }" :aria-current="activeContentSection === 'privacy-policy' ? 'page' : undefined" @click="activeContentSection = 'privacy-policy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>隐私政策</span></button>
                 </nav></Transition>
               </div>
-              <p v-if="canAccessModule('contributions') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-label">运营</p>
+              <p v-if="canAccessModule('contributions') || canAccessModule('discussion-reports') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-label">运营</p>
               <button v-if="canAccessModule('contributions')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'contributions' }" :aria-label="sidebarCollapsed ? '用户经历审核' : undefined" :title="sidebarCollapsed ? '用户经历审核' : undefined" :aria-current="activeSection === 'contributions' ? 'page' : undefined" aria-controls="discussion-contributions" @click="activeSection = 'contributions'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>用户经历审核</span></button>
+              <button v-if="canAccessModule('discussion-reports')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'discussion-reports' }" :aria-label="sidebarCollapsed ? '用户举报' : undefined" :title="sidebarCollapsed ? '用户举报' : undefined" :aria-current="activeSection === 'discussion-reports' ? 'page' : undefined" aria-controls="discussion-reports" @click="activeSection = 'discussion-reports'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 20 6v6c0 4.3-3.2 7.2-8 8.2-4.8-1-8-3.9-8-8.2V6z"/><path d="M12 8v4.6"/><circle cx="12" cy="15.6" r=".7"/></svg><span>用户举报</span></button>
               <button v-if="canAccessModule('observations')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'observations' }" :aria-label="sidebarCollapsed ? '观察记录管理' : undefined" :title="sidebarCollapsed ? '观察记录管理' : undefined" :aria-current="activeSection === 'observations' ? 'page' : undefined" aria-controls="observations" @click="activeSection = 'observations'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
               <button v-if="canAccessModule('privacy')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'privacy' }" :aria-label="sidebarCollapsed ? '隐私申请' : undefined" :title="sidebarCollapsed ? '隐私申请' : undefined" :aria-current="activeSection === 'privacy' ? 'page' : undefined" aria-controls="privacy-requests" @click="activeSection = 'privacy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
               <button v-if="canAccessModule('audit')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'audit' }" :aria-label="sidebarCollapsed ? '审计日志' : undefined" :title="sidebarCollapsed ? '审计日志' : undefined" :aria-current="activeSection === 'audit' ? 'page' : undefined" aria-controls="audit-logs" @click="activeSection = 'audit'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
@@ -5309,29 +5315,6 @@ onBeforeUnmount(() => {
         <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
         <p v-if="discussionContributionError" class="error" role="alert">{{ discussionContributionError }}</p>
         <div class="filters" aria-label="用户经历筛选"><label>处理状态<select v-model="discussionContributionStatus" @change="refreshDiscussionContributions"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>类型<select v-model="discussionContributionKind" @change="refreshDiscussionContributions"><option value="">全部</option><option value="experience">经历</option><option value="reply">回复留言</option></select></label><label>期刊<select v-model="discussionContributionIssueCode" @change="refreshDiscussionContributions"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
-        <div class="discussion-report-block">
-        <div class="subsection-heading"><div><p class="eyebrow">REPORTED CONTENT</p><h3>用户举报</h3></div><div class="section-tools"><small v-if="discussionReportSummary.pending">待处理 {{ discussionReportSummary.pending }} 条</small><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button></div></div>
-        <p v-if="discussionReportActionMessage" class="status-message" role="status">{{ discussionReportActionMessage }}</p>
-        <p v-if="discussionReportError" class="error" role="alert">{{ discussionReportError }}</p>
-        <div class="filters" aria-label="内容举报筛选"><label>处理状态<select v-model="discussionReportStatus" @change="refreshDiscussionReports()"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionReportIssueCode" @change="refreshDiscussionReports()"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
-        <div class="discussion-report-table" aria-live="polite">
-          <div class="discussion-report-head"><span>期刊 / 被举报内容</span><span>原因</span><span>状态</span><span>提交时间</span><span>处理</span></div>
-          <div v-for="report in discussionReports" :key="report.id" class="discussion-report-row">
-            <span><strong>{{ report.issueLabel || report.issueCode }}</strong><small>{{ report.threadAuthor ? `作者 ${report.threadAuthor} · ` : '' }}{{ report.threadBody ? (report.threadBody.length > 60 ? `${report.threadBody.slice(0, 60)}…` : report.threadBody) : '内容快照缺失' }}</small><small v-if="report.detail" class="discussion-report-detail">补充：{{ report.detail }}</small></span>
-            <span>{{ discussionReportReasonLabel(report.reason) }}</span>
-            <span>{{ report.status === 'pending' ? '待处理' : report.status === 'handled' ? '已处理' : '不采纳' }}</span>
-            <span>{{ displayDate(report.updatedAt) }}</span>
-            <span class="discussion-report-actions">
-              <button v-if="report.status !== 'handled'" type="button" class="quiet" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'handled')">{{ discussionReportSavingId === report.id ? '处理中…' : '标记已处理' }}</button>
-              <button v-if="report.status !== 'dismissed'" type="button" class="quiet danger" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'dismissed')">不采纳</button>
-              <button v-if="report.status !== 'pending'" type="button" class="quiet" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'pending')">重新打开</button>
-            </span>
-          </div>
-          <p v-if="discussionReportLoading && !discussionReports.length" class="muted" role="status">正在读取内容举报…</p>
-          <p v-else-if="!discussionReportLoading && !discussionReports.length" class="muted">当前筛选下没有用户举报。</p>
-          <div v-if="discussionReportHasMore" class="table-actions"><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports(true)">{{ discussionReportLoading ? '加载中…' : '加载更多举报' }}</button></div>
-        </div>
-        </div>
         <div class="discussion-contribution-table" aria-live="polite">
           <div class="discussion-contribution-head"><span>期刊 / 类型</span><span>内容摘要</span><span>状态</span><span>更新时间</span><span>操作</span></div>
           <div v-for="record in discussionContributions" :key="record.id" class="discussion-contribution-row">
@@ -5366,6 +5349,30 @@ onBeforeUnmount(() => {
         </section>
         </div>
 </Teleport>
+      </section>
+      <section v-if="activeSection === 'discussion-reports'" id="discussion-reports" class="content-area">
+        <div class="reports-toolbar"><small v-if="discussionReportSummary.pending" class="muted">待处理 {{ discussionReportSummary.pending }} 条</small><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button></div>
+        <p class="muted">这里只处理用户提交的举报；经历与回复留言的审核在「用户经历审核」页面单独处理。</p>
+        <p v-if="discussionReportActionMessage" class="status-message" role="status">{{ discussionReportActionMessage }}</p>
+        <p v-if="discussionReportError" class="error" role="alert">{{ discussionReportError }}</p>
+        <div class="filters" aria-label="内容举报筛选"><label>处理状态<select v-model="discussionReportStatus" @change="refreshDiscussionReports()"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionReportIssueCode" @change="refreshDiscussionReports()"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
+        <div class="discussion-report-table" aria-live="polite">
+          <div class="discussion-report-head"><span>期刊 / 被举报内容</span><span>原因</span><span>状态</span><span>提交时间</span><span>处理</span></div>
+          <div v-for="report in discussionReports" :key="report.id" class="discussion-report-row">
+            <span><strong>{{ report.issueLabel || report.issueCode }}</strong><small>{{ report.threadAuthor ? `作者 ${report.threadAuthor} · ` : '' }}{{ report.threadBody ? (report.threadBody.length > 60 ? `${report.threadBody.slice(0, 60)}…` : report.threadBody) : '内容快照缺失' }}</small><small v-if="report.detail" class="discussion-report-detail">补充：{{ report.detail }}</small></span>
+            <span>{{ discussionReportReasonLabel(report.reason) }}</span>
+            <span>{{ report.status === 'pending' ? '待处理' : report.status === 'handled' ? '已处理' : '不采纳' }}</span>
+            <span>{{ displayDate(report.updatedAt) }}</span>
+            <span class="discussion-report-actions">
+              <button v-if="report.status !== 'handled'" type="button" class="quiet" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'handled')">{{ discussionReportSavingId === report.id ? '处理中…' : '标记已处理' }}</button>
+              <button v-if="report.status !== 'dismissed'" type="button" class="quiet danger" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'dismissed')">不采纳</button>
+              <button v-if="report.status !== 'pending'" type="button" class="quiet" :disabled="discussionReportSavingId === report.id" @click="updateDiscussionReportStatus(report, 'pending')">重新打开</button>
+            </span>
+          </div>
+          <p v-if="discussionReportLoading && !discussionReports.length" class="muted" role="status">正在读取内容举报…</p>
+          <p v-else-if="!discussionReportLoading && !discussionReports.length" class="muted">当前筛选下没有用户举报。</p>
+          <div v-if="discussionReportHasMore" class="table-actions"><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports(true)">{{ discussionReportLoading ? '加载中…' : '加载更多举报' }}</button></div>
+        </div>
       </section>
       <section v-if="activeSection === 'privacy'" id="privacy-requests" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRIVACY</p><h2>账户删除申请</h2></div><div class="section-tools"><button class="quiet" :disabled="privacyControlsBusy" @click="refreshPrivacy(true)">{{ privacyRefreshing ? '刷新中…' : '刷新申请' }}</button></div></div>

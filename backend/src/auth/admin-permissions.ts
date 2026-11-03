@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+﻿import { BadRequestException } from '@nestjs/common';
 
 export const adminModuleIds = [
   'journal',
@@ -6,6 +6,7 @@ export const adminModuleIds = [
   'pages',
   'media',
   'contributions',
+  'discussion-reports',
   'observations',
   'privacy',
   'members',
@@ -91,11 +92,18 @@ export const adminModules: AdminModuleDefinition[] = [
   {
     id: 'contributions',
     label: '用户经历审核',
-    description: '本期讨论的用户经历列表、详情与审核状态，以及用户举报内容处理',
+    description: '本期讨论的经历与回复留言列表、详情与审核状态',
     rules: [
       { method: 'GET', pattern: /^\/admin\/discussion-contributions$/ },
       { method: 'GET', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}$`) },
       { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}/status$`) },
+    ],
+  },
+  {
+    id: 'discussion-reports',
+    label: '用户举报',
+    description: '用户举报的讨论内容、原因与处理状态',
+    rules: [
       { method: 'GET', pattern: /^\/admin\/discussion-reports$/ },
       { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-reports/${uuid}/status$`) },
     ],
@@ -167,7 +175,7 @@ const adminModuleIdsSet = new Set<string>(adminModuleIds);
 
 export const adminRoleDefaultModules: Record<string, AdminModuleId[]> = {
   super_admin: [...adminModuleIds],
-  content_editor: ['journal', 'practice', 'pages', 'media', 'contributions'],
+  content_editor: ['journal', 'practice', 'pages', 'media', 'contributions', 'discussion-reports'],
   support_readonly: ['members', 'settings'],
 };
 
