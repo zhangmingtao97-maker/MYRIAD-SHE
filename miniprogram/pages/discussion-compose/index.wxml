@@ -21,6 +21,8 @@
       </view>
     </block>
     <view wx:else class="compose-preview-mode">
+      <view class="compose-preview-meta"><text class="compose-preview-number">{{copy.number}}</text><text>{{copy.composeTitle}}</text></view>
+      <view class="compose-preview-title">{{copy.composeHeading}}</view>
       <view class="compose-preview-question">{{copy.intro}}</view>
       <view class="compose-preview-local">预览内容仅在本机显示，其他人无法看到。</view>
       <view class="compose-preview-heading"><text class="compose-preview-heading-title">预览</text><text class="compose-preview-heading-hint">发布前，再读一遍</text></view>
