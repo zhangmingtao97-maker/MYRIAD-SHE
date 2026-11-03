@@ -97,7 +97,7 @@
         </view>
         <view wx:elif="{{item.type === 'archive'}}" class="archive-content" role="button" aria-label="打开策展档案" tabindex="0" bindtap="openArchive">
           <view class="archive-heading">{{item.title || '策展档案'}}</view>
-          <view class="archive-entry"><view class="archive-entry-label">{{item.entryLabel || 'ISSUE 01 · 往期精彩示意'}}</view><view class="archive-entry-title">{{item.entryTitle || '留住没有答案的时刻'}}<text aria-hidden="true">→</text></view></view>
+          <view class="archive-entry"><view class="archive-entry-label">{{item.entryLabel || 'ISSUE 01 · 往期策展'}}</view><view class="archive-entry-title">{{item.entryTitle || '留在没有答案的时刻'}}<text aria-hidden="true">→</text></view></view>
         </view>
         <view wx:elif="{{item.type === 'brandFooter'}}" class="footer-signature">
           <view class="footer-brand">MYRIAD SHE</view>
