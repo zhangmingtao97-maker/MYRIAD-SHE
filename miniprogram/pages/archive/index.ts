@@ -7,7 +7,24 @@ interface ArchiveListItem extends PublicArchiveIssue {
   statusLabel: string;
   subline: string;
   interactive: boolean;
+  demo?: boolean;
 }
+
+const demoIssue: ArchiveListItem = {
+  code: 'issue-01-demo',
+  label: '结构示意 · 尚未发布',
+  month: '结构示意 · 尚未发布',
+  theme: '留在没有答案的时刻',
+  question: '一个人如何不再急着证明自己已经好了？',
+  status: 'archived',
+  version: 1,
+  publishedAt: '',
+  number: '01',
+  statusLabel: '结构示意 · 尚未发布',
+  subline: '一个人如何不再急着证明自己已经好了？',
+  interactive: true,
+  demo: true,
+};
 
 Page({
   data: {
@@ -15,6 +32,7 @@ Page({
     loading: true,
     error: '',
     issues: [] as ArchiveListItem[],
+    showDemoNote: false,
   },
   requestGeneration: 0,
   onLoad() {
@@ -36,23 +54,33 @@ Page({
       const response = await request<{ issues: PublicArchiveIssue[] }>('/content/archive', { header: { 'Cache-Control': 'no-cache' } });
       if (generation !== this.requestGeneration) return;
       if (!isPublicArchive(response)) throw new Error('策展档案格式无效');
-      const issues = response.issues.map((issue, index) => ({
+      const published = response.issues.map((issue) => ({
         ...issue,
-        number: String(index + 1).padStart(2, '0'),
+        number: '',
         statusLabel: issue.status === 'published' ? '正在策展' : issue.month || issue.label,
         subline: issue.status === 'published' ? '当前这一期' : issue.question,
         interactive: issue.status === 'archived',
+        demo: false,
       }));
-      this.setData({ issues, loading: false });
+      const hasArchived = published.some((issue) => issue.status === 'archived');
+      const issues = (hasArchived ? published : [demoIssue, ...published]).map((issue, index) => ({
+        ...issue,
+        number: String(index + 1).padStart(2, '0'),
+      }));
+      this.setData({ issues, showDemoNote: issues.some((issue) => Boolean(issue.demo)), loading: false });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
-      this.setData({ issues: [], loading: false, error: apiErrorMessage(caught, '暂时无法读取策展档案') });
+      this.setData({ issues: [], showDemoNote: false, loading: false, error: apiErrorMessage(caught, '暂时无法读取策展档案') });
     }
   },
   openIssue(event: WechatMiniprogram.CustomEvent) {
     const code = String(event.currentTarget.dataset.code || '');
     const issue = this.data.issues.find((item) => item.code === code);
     if (!issue || !issue.interactive) return;
+    if (issue.demo) {
+      wx.navigateTo({ url: '/pages/archive-demo/index' });
+      return;
+    }
     wx.navigateTo({ url: `/pages/story-detail/index?issueCode=${encodeURIComponent(issue.code)}` });
   },
   handleBack() {

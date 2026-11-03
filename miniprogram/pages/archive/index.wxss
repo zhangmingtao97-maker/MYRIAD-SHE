@@ -28,4 +28,5 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .archive-empty { padding-top: 52rpx; }
 .archive-error { color: #8c4035; }
 .archive-retry { display: inline-flex; min-height: 80rpx; align-items: center; margin-top: 12rpx; color: #663124; border-bottom: 1rpx solid rgba(92, 73, 60, .28); }
+.archive-demo-note { padding: 44rpx 0 8rpx; color: #5c493c; font-size: 24rpx; line-height: 1.75; }
 @media (prefers-reduced-motion: reduce) { .archive-control, .archive-issue { transition: none; transform: none; } }

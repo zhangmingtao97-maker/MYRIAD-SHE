@@ -30,6 +30,7 @@
           </view>
         </view>
       </block>
+      <view wx:if="{{showDemoNote}}" class="archive-demo-note">第二期正式发布后，往期入口才会从结构示意变成真实档案。</view>
     </view>
   </view>
   <app-tab-bar />

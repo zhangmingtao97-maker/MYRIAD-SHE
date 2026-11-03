@@ -1,0 +1,23 @@
+<view class="archive-demo-page">
+  <view class="demo-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="demo-topbar-row">
+      <view class="demo-control demo-back" role="button" aria-label="返回往期策展" tabindex="0" bindtap="handleBack">‹</view>
+      <text class="demo-topbar-title">往期策展</text>
+    </view>
+  </view>
+
+  <view class="demo-meta"><text>结构示意</text><text>ISSUE 01 / DEMO</text></view>
+  <view class="demo-hero">
+    <view class="demo-title">留在没有答案的时刻</view>
+    <view class="demo-question">一个人如何不再急着证明自己已经好了？</view>
+  </view>
+
+  <view class="demo-image-wrap">
+    <image wx:if="{{coverUrl && !imageError}}" class="demo-image" src="{{coverUrl}}" mode="aspectFill" aria-label="往期策展图片示意" binderror="onImageError" />
+    <view wx:else class="demo-image demo-image-placeholder"><text>IMAGE DEMO</text><text>图片示意</text></view>
+    <view class="demo-image-caption"><text>图片 demo · 结构示意</text><text>ARCHIVE 01</text></view>
+  </view>
+
+  <view class="demo-copy">这里先用一张图片示意往期策展的阅读方式。真实的往期档案会在下一期正式发布后接入，记录那一期的问题、人物与回应。</view>
+  <view class="demo-return" role="button" aria-label="回到往期策展" tabindex="0" bindtap="handleBack"><text>回到往期策展</text><text>←</text></view>
+</view>

@@ -2,6 +2,7 @@
   "pages": [
     "pages/home/index",
     "pages/archive/index",
+    "pages/archive-demo/index",
     "pages/story-detail/index",
     "pages/audio/index",
     "pages/practice/index",
