@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
+import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
 import DatePickerField from './components/DatePickerField.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
 import PracticeLineEditor from './components/PracticeLineEditor.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
+import type { LegalContent, LegalKey } from './legal-document';
 import { isAdminLoginResult, isAuditPage, isIssueDashboardConsistent, isManagedIssueList, isManagedMediaKey, isManagedObservationDetail, isManagedObservationPage, isMediaAudioPage, isMediaDeleteResult, isMediaOrphanPage, isMediaUploadTarget, isMediaViewTarget, isObservationLifecycle, isPrivacyProcessResult, isPrivacyRequestPage, isPublicHome, isReencryptResult, isRetryResult } from './api-shapes';
 import type { AuditEntry, IssueLifecycle, ManagedAudioTrack, ManagedIssue, ManagedIssueModule, ManagedObservation, ManagedObservationDetail, MediaOrphan, ObservationLifecycle, PrivacyLifecycle, PrivacyRequest, PublicHome } from './api-shapes';
 
@@ -76,6 +78,7 @@ type AboutPageContent = { editVersion: number; brandIntro: string; contentSource
 type PublishedRevision = { version: number; publishedAt: string; publishedBy: string | null; content: Record<string, unknown> | null };
 const privacyDocumentManager = ref<InstanceType<typeof LegalDocumentManager> | null>(null);
 const agreementDocumentManager = ref<InstanceType<typeof LegalDocumentManager> | null>(null);
+const legalHistoryPanel = ref<InstanceType<typeof LegalHistoryPanel> | null>(null);
 const privacyPageContent = ref<AboutPageContent | null>(null);
 const privacyPagePublishedVersion = ref(1);
 const privacyPagePublishedAt = ref('');
@@ -1057,13 +1060,13 @@ const overviewUpdatedAt = ref('');
 const currentPageRefreshing = ref(false);
 type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
-type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'privacy-page' | 'about-history';
+type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'legal-history' | 'privacy-page' | 'about-history';
 type PracticeSection = 'practice' | 'directory' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
 const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'employees', 'life-cards', 'life-card-views']);
-const contentSectionKeys = new Set<ContentSection>(['practice', 'directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
+const contentSectionKeys = new Set<ContentSection>(['practice', 'directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
-const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'privacy-page', 'about-history'];
+const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'legal-history', 'privacy-page', 'about-history'];
 const practiceSections: PracticeSection[] = ['practice', 'directory', 'observation', 'shared-practice', 'daily-objects'];
 const operationsSections = ['contributions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
 const systemSections = ['settings', 'life-cards', 'life-card-views', 'employees'] as const;
@@ -1205,8 +1208,15 @@ function openPageNavigation() {
   systemNavigationExpanded.value = false;
   if (!shouldCollapse && !onPage) activeContentSection.value = 'mine';
 }
-function openPracticeNavigation() {
-  const shouldCollapse = !sidebarCollapsed.value
+async function restoreLegalVersion(payload: { key: LegalKey; content: LegalContent }) {
+  const target = payload.key === 'privacy-policy' ? privacyDocumentManager.value : agreementDocumentManager.value;
+  activeSection.value = 'content';
+  activeContentSection.value = payload.key;
+  pageNavigationExpanded.value = true;
+  await nextTick();
+  await target?.restore(payload.content);
+}
+function openPracticeNavigation() {  const shouldCollapse = !sidebarCollapsed.value
     && activeSection.value === 'practice'
     && practiceNavigationExpanded.value;
   sidebarCollapsed.value = false;
@@ -1348,6 +1358,7 @@ const currentView = computed(() => {
       'about-history': { eyebrow: 'PAGES / ABOUT / HISTORY', title: '关于发布历史' },
       'privacy-policy': { eyebrow: 'PAGES / PRIVACY / POLICY', title: '隐私政策' },
       'user-agreement': { eyebrow: 'PAGES / USER / AGREEMENT', title: '用户协议' },
+      'legal-history': { eyebrow: 'PAGES / LEGAL / HISTORY', title: '历史版本' },
     };
     return contentViews[activeContentSection.value];
   }
@@ -2672,6 +2683,7 @@ async function refreshCurrentPage() {
         case 'about-history': await loadPrivacyRevisions('about-page'); break;
         case 'privacy-policy': await privacyDocumentManager.value?.reload(); break;
         case 'user-agreement': await agreementDocumentManager.value?.reload(); break;
+        case 'legal-history': await legalHistoryPanel.value?.reload(); break;
         default: await loadDashboard(); break;
       }
     } else if (location.section === 'observations') {
@@ -4671,6 +4683,7 @@ onBeforeUnmount(() => {
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'about-history' }" :aria-current="activeContentSection === 'about-history' ? 'page' : undefined" @click="activeContentSection = 'about-history'; loadPrivacyRevisions('about-page')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2" /></svg><span>关于发布历史</span></button>
                   <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'user-agreement' }" :aria-current="activeContentSection === 'user-agreement' ? 'page' : undefined" @click="activeContentSection = 'user-agreement'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>用户协议</span></button>
                   <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-policy' }" :aria-current="activeContentSection === 'privacy-policy' ? 'page' : undefined" @click="activeContentSection = 'privacy-policy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>隐私政策</span></button>
+                  <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'legal-history' }" :aria-current="activeContentSection === 'legal-history' ? 'page' : undefined" @click="activeContentSection = 'legal-history'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2" /></svg><span>历史版本</span></button>
                 </nav></Transition>
               </div>
               <button v-if="canAccessModule('members')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'members' }" :aria-label="sidebarCollapsed ? '会员列表' : undefined" :title="sidebarCollapsed ? '会员列表' : undefined" :aria-current="activeSection === 'members' ? 'page' : undefined" aria-controls="member-directory" @click="openMembersNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
@@ -5368,6 +5381,7 @@ onBeforeUnmount(() => {
       </section>
       <LegalDocumentManager v-if="adminRole !== 'support_readonly'" ref="privacyDocumentManager" document-key="privacy-policy" :active="activeSection === 'content' && activeContentSection === 'privacy-policy'" :api-base="apiBase" :token="token" :can-publish="isSuperAdmin" :request="apiFetch" :response-message="responseMessage" @unauthorized="logout('后台登录已过期，请重新登录。')" />
       <LegalDocumentManager v-if="adminRole !== 'support_readonly'" ref="agreementDocumentManager" document-key="user-agreement" :active="activeSection === 'content' && activeContentSection === 'user-agreement'" :api-base="apiBase" :token="token" :can-publish="isSuperAdmin" :request="apiFetch" :response-message="responseMessage" @unauthorized="logout('后台登录已过期，请重新登录。')" />
+      <LegalHistoryPanel v-if="canAccessModule('pages')" ref="legalHistoryPanel" :active="activeSection === 'content' && activeContentSection === 'legal-history'" :api-base="apiBase" :token="token" :request="apiFetch" :response-message="responseMessage" @restore="restoreLegalVersion" @unauthorized="logout('后台登录已过期，请重新登录。')" />
       <section v-if="activeSection === 'content' && activeContentSection === 'mine'" id="mine-page-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">MY PAGE CONTENT</p><h2>我的页面设置</h2></div></div>
         <div v-if="!minePageContent" class="practice-empty">

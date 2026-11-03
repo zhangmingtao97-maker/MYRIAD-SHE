@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import RichTextEditor from './RichTextEditor.vue';
 import DatePickerField from './DatePickerField.vue';
-import { readLegalContent, readLegalState, safeLegalHtml } from '../legal-document';
+import { readLegalState, safeLegalHtml } from '../legal-document';
 import type { LegalContent, LegalKey } from '../legal-document';
 
 const props = defineProps<{
@@ -17,9 +17,6 @@ const busy = ref(''); const error = ref(''); const message = ref('');
 const dirty = ref(false); const conflict = ref(false); const hasDraft = ref(false);
 const publishedVersion = ref(0); const publishedAt = ref('');
 const imported = ref<{ html: string; warnings: string[]; fileName: string } | null>(null);
-const history = ref<Array<{ version: number; publishedAt: string; publishedBy: string; content: LegalContent }>>([]);
-const historyLoading = ref(false); const historyError = ref('');
-const historyPreview = ref<LegalContent | null>(null);
 const effectiveDateInput = ref<InstanceType<typeof DatePickerField> | null>(null);
 const missingEffectiveDate = computed(() => Boolean(content.value && !content.value.effectiveDate.trim()));
 const disabled = computed(() => Boolean(busy.value) || conflict.value);
@@ -164,25 +161,24 @@ async function publish() {
   try {
     apply(await call(`${base.value}/manage/publish`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ editVersion: content.value.editVersion }) }));
     message.value = `已发布第 ${publishedVersion.value} 版，小程序下次打开文档时会读取新版。`;
-    await loadHistory();
   } catch (caught) { if (alive) error.value = caught instanceof Error ? caught.message : '发布失败'; }
   finally { if (alive) busy.value = ''; }
 }
-async function loadHistory() {
-  if (historyLoading.value) return;
-  historyLoading.value = true; historyError.value = '';
-  try {
-    const rows = await call(`${props.apiBase}/content/privacy-revisions/${props.documentKey}`);
-    if (!Array.isArray(rows)) throw new Error('历史记录格式无效');
-    history.value = rows.map((row) => ({ version: Number(row.version), publishedAt: String(row.publishedAt), publishedBy: row.publishedBy || '系统', content: readLegalContent(row.content, content.value?.editVersion ?? 1) }));
-  } catch (caught) { if (alive) historyError.value = caught instanceof Error ? caught.message : '历史记录读取失败'; }
-  finally { if (alive) historyLoading.value = false; }
-}
-function restoreHistory() {
-  if (!historyPreview.value || !content.value || disabled.value) return;
-  if (!window.confirm('将此历史版本载入本地草稿？当前修改将被替换，保存并发布后才会更新线上内容。')) return;
-  content.value = { ...JSON.parse(JSON.stringify(historyPreview.value)), editVersion: content.value.editVersion };
-  historyPreview.value = null; imported.value = null; markDirty();
+async function restore(contentToRestore: LegalContent) {
+  if (!contentToRestore) return;
+  if (!content.value) {
+    await reload();
+    for (let attempt = 0; attempt < 40 && !content.value; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+    }
+    if (!content.value) return;
+  }
+  if (disabled.value) return;
+  if (!window.confirm('将此历史版本载入本地草稿？当前未保存的修改会被替换；保存并发布后才会更新线上内容。')) return;
+  content.value = { ...JSON.parse(JSON.stringify(contentToRestore)), editVersion: content.value.editVersion };
+  imported.value = null;
+  markDirty();
+  message.value = '历史版本已载入本地草稿；请核对后保存并发布。';
 }
 function beforeUnload(event: BeforeUnloadEvent) {
   if (dirty.value || imported.value || busy.value === '保存中…' || busy.value === '发布中…') { event.preventDefault(); event.returnValue = ''; }
@@ -190,7 +186,7 @@ function beforeUnload(event: BeforeUnloadEvent) {
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => { alive = false; window.removeEventListener('beforeunload', beforeUnload); });
 watch(() => props.active, (active) => { if (active && !content.value && !busy.value) void reload(); }, { immediate: true });
-defineExpose({ reload });
+defineExpose({ reload, restore });
 </script>
 
 <template>
@@ -210,11 +206,8 @@ defineExpose({ reload });
           <section class="observation-copy-group"><h3>正文编辑</h3><RichTextEditor v-model="content.body.richText" label="完整正文" basic :disabled="disabled" @change="markDirty" /><small>字号与颜色由小程序统一排版。{{ content.body.richText.length.toLocaleString() }} / 200,000 字符（含格式标记）。</small></section></div>
       </fieldset>
       <p v-if="dirty" class="muted" role="status">有未保存的修改。</p><p v-else-if="hasDraft" class="muted">云端有待发布草稿。</p>
-      <div class="form-actions"><button type="submit" :disabled="disabled || !dirty || Boolean(imported) || content.body.richText.length > 200000">保存草稿</button><button v-if="canPublish" type="button" class="quiet" :disabled="disabled || dirty || !hasDraft || Boolean(imported)" @click="publish">发布到小程序</button><span v-else class="muted">草稿保存后由超级管理员发布。</span></div>
-      <div class="legal-preview-action"><button type="button" class="quiet" :disabled="!content" @click="openDraftPreview">预览当前草稿</button><small>在新页面打开，按小程序阅读样式展示；不会保存或发布。</small></div>
+      <div class="form-actions"><button type="submit" :disabled="disabled || !dirty || Boolean(imported) || content.body.richText.length > 200000">保存草稿</button><button type="button" class="quiet" :disabled="!content" @click="openDraftPreview">预览当前草稿</button><button v-if="canPublish" type="button" class="quiet" :disabled="disabled || dirty || !hasDraft || Boolean(imported)" @click="publish">发布到小程序</button><span v-else class="muted">草稿保存后由超级管理员发布。</span></div>
     </form>
-    <details class="revision-list" @toggle="($event.target as HTMLDetailsElement).open && loadHistory()"><summary>查看发布历史与旧版正文</summary><p v-if="historyLoading" role="status">正在读取历史…</p><p v-if="historyError" class="error" role="alert">{{ historyError }}</p><p v-if="!historyLoading && !historyError && !history.length" class="muted">暂无发布记录。</p><div v-for="revision in history" :key="revision.version" class="legal-revision"><span>第 {{ revision.version }} 版 · {{ new Date(revision.publishedAt).toLocaleString() }} · {{ revision.publishedBy }}</span><button type="button" class="quiet" @click="historyPreview = revision.content">查看正文</button></div></details>
-    <section v-if="historyPreview" class="observation-copy-group"><div class="section-heading"><h3>历史版本 · {{ historyPreview.version }}</h3><button type="button" class="quiet" @click="historyPreview = null">关闭历史预览</button></div><article class="legal-preview"><h3 v-html="safeLegalHtml(historyPreview.title.richText)" /><p>生效日期：{{ historyPreview.effectiveDate }}</p><div v-html="safeLegalHtml(historyPreview.body.richText)" /></article><button type="button" class="quiet" :disabled="disabled || !content" @click="restoreHistory">将此版本载入草稿</button></section>
   </section>
 </template>
 
@@ -227,9 +220,6 @@ defineExpose({ reload });
 .legal-preview :deep(td), .legal-preview :deep(th) { border: 1px solid #d8cdbd; padding: 8px; }
 .legal-preview :deep(p) { margin: 0 0 1em; }
 .legal-preview :deep(h1), .legal-preview :deep(h2), .legal-preview :deep(h3) { line-height: 1.5; }
-.legal-revision { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; flex-wrap: wrap; }
-.legal-preview-action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; padding-top: 16px; border-top: 1px solid #e4dbd1; }
-.legal-preview-action small { color: #8a7b6f; font-size: 12px; line-height: 1.6; }
 .legal-manager :deep(.rich-text-toolbar) { flex-wrap: wrap; }
 .legal-manager :deep(.rich-text-canvas) { max-height: 700px; min-height: 320px; overflow: auto; }
 .legal-manager button { min-height: 44px; }
