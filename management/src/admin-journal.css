@@ -647,3 +647,196 @@
     flex-direction: column;
   }
 }
+
+/* =========================================================================
+   后台动效与无分类侧栏
+   侧栏只保留一级目录；所有分类信息由目录本身表达，不再插入标签行。
+   ========================================================================= */
+.dashboard-nav-empty {
+  margin: 10px 10px 2px;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dashboard-nav-tabs > * {
+  animation: nav-item-in .38s var(--ease) both;
+}
+.dashboard-nav-tabs > :nth-child(2) { animation-delay: .035s; }
+.dashboard-nav-tabs > :nth-child(3) { animation-delay: .07s; }
+.dashboard-nav-tabs > :nth-child(4) { animation-delay: .105s; }
+.dashboard-nav-tabs > :nth-child(5) { animation-delay: .14s; }
+.dashboard-nav-tabs > :nth-child(6) { animation-delay: .175s; }
+
+.dashboard-tab {
+  transition: color .2s var(--ease), background-color .2s var(--ease), transform .22s var(--ease);
+}
+.dashboard-tab > svg:first-child {
+  transition: transform .26s var(--ease);
+}
+.dashboard-tab:hover {
+  transform: translateX(3px);
+}
+.dashboard-tab:hover > svg:first-child {
+  transform: scale(1.08) rotate(-3deg);
+}
+.dashboard-tab:active {
+  transform: translateX(2px) scale(.985);
+}
+.dashboard-tab::before {
+  transition: height .22s var(--ease), width .22s var(--ease);
+}
+
+.dashboard-subtab {
+  position: relative;
+  transition: color .2s var(--ease), background-color .2s var(--ease), transform .22s var(--ease);
+}
+.dashboard-subtab::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 1px;
+  width: 2px;
+  height: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  transform: translateY(-50%);
+  transition: height .22s var(--ease);
+}
+.dashboard-subtab:hover {
+  transform: translateX(3px);
+}
+.dashboard-subtab.active::before {
+  height: 16px;
+}
+
+.dashboard-subnav {
+  animation: subnav-in .24s var(--ease) both;
+}
+.dashboard-subnav .dashboard-subtab {
+  animation: subitem-in .28s var(--ease) both;
+}
+.dashboard-subnav .dashboard-subtab:nth-child(2) { animation-delay: .025s; }
+.dashboard-subnav .dashboard-subtab:nth-child(3) { animation-delay: .05s; }
+.dashboard-subnav .dashboard-subtab:nth-child(4) { animation-delay: .075s; }
+.dashboard-subnav .dashboard-subtab:nth-child(5) { animation-delay: .1s; }
+.dashboard-subnav .dashboard-subtab:nth-child(6) { animation-delay: .125s; }
+.dashboard-subnav .dashboard-subtab:nth-child(7) { animation-delay: .15s; }
+.nav-collapsed .dashboard-nav-tabs > * {
+  animation: none;
+}
+
+@keyframes nav-item-in {
+  from { opacity: 0; transform: translateX(-7px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes subnav-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 内容页：切换时整体上浮，内部卡片稍后跟进 */
+.content-area {
+  animation: view-reveal .38s var(--ease) both;
+}
+.content-area > .panel,
+.content-area > .overview-metrics,
+.content-area > .journal-page-head,
+.content-area > .section-heading,
+.content-area > .journal-workspace {
+  animation: content-rise .42s var(--ease) both;
+}
+.content-area > :nth-child(2) { animation-delay: .045s; }
+.content-area > :nth-child(3) { animation-delay: .09s; }
+.content-area > :nth-child(4) { animation-delay: .135s; }
+
+@keyframes view-reveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes content-rise {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent 42%);
+  transform-origin: left;
+  animation: topbar-line .55s var(--ease) both;
+}
+@keyframes topbar-line {
+  from { opacity: 0; transform: scaleX(.35); }
+  to { opacity: .7; transform: scaleX(1); }
+}
+
+.panel {
+  transition: transform .24s var(--ease), box-shadow .24s var(--ease), border-color .24s var(--ease);
+}
+.panel:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+.overview-metric {
+  transition: transform .24s var(--ease), box-shadow .24s var(--ease), border-color .24s var(--ease);
+}
+.overview-metric:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-line);
+}
+.observation-row {
+  transition: background-color .2s var(--ease), transform .2s var(--ease);
+}
+.observation-row:hover {
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-nav-tabs > *,
+  .dashboard-subnav,
+  .content-area,
+  .content-area > .panel,
+  .content-area > .overview-metrics,
+  .content-area > .journal-page-head,
+  .content-area > .section-heading,
+  .content-area > .journal-workspace,
+  .topbar::after {
+    animation: none !important;
+  }
+  .dashboard-tab,
+  .dashboard-subtab,
+  .panel,
+  .overview-metric,
+  .observation-row {
+    transition: none !important;
+  }
+  .dashboard-tab:hover,
+  .dashboard-subtab:hover,
+  .panel:hover,
+  .overview-metric:hover,
+  .observation-row:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  /* 窄屏：一级目录横排，展开项单独占一行，避免子菜单挤进导航条。 */
+  .dashboard-nav-tabs {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 6px;
+    overflow-x: visible;
+  }
+  .dashboard-nav-group { display: contents; }
+  .dashboard-subnav {
+    flex: 1 0 100%;
+    width: 100%;
+    order: 99;
+    margin-top: 2px;
+  }
+}

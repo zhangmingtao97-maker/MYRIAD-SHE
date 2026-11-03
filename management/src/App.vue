@@ -1063,6 +1063,23 @@ const contentSectionKeys = new Set<ContentSection>(['practice', 'directory', 'ob
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'privacy-page', 'about-history'];
 const practiceSections: PracticeSection[] = ['practice', 'directory', 'observation', 'shared-practice', 'daily-objects'];
+const operationsSections = ['contributions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
+const systemSections = ['members', 'settings', 'life-cards', 'life-card-views', 'employees'] as const;
+type OperationsSection = typeof operationsSections[number];
+type SystemSection = typeof systemSections[number];
+const operationsSectionModules: Record<OperationsSection, AdminModuleId> = {
+  contributions: 'contributions',
+  'discussion-reports': 'discussion-reports',
+  observations: 'observations',
+  privacy: 'privacy',
+  audit: 'audit',
+};
+function isOperationsSection(section: DashboardSection | string): section is OperationsSection {
+  return (operationsSections as readonly string[]).includes(section);
+}
+function isSystemSection(section: DashboardSection | string): section is SystemSection {
+  return (systemSections as readonly string[]).includes(section);
+}
 const journalModuleSections = ['journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'] as const;
 function isJournalSection(section: ContentSection | string): section is JournalSection { return (journalSections as string[]).includes(section); }
 function isPageSection(section: ContentSection | string): section is PageSection { return (pageSections as string[]).includes(section); }
@@ -1142,6 +1159,8 @@ function scrollToTop() {
 const practiceNavigationExpanded = ref(initialDashboardLocation.section === 'practice');
 const journalNavigationExpanded = ref(initialDashboardLocation.section === 'content' && (isJournalSection(initialDashboardLocation.contentSection) || initialDashboardLocation.contentSection === 'media'));
 const pageNavigationExpanded = ref(initialDashboardLocation.section === 'content' && isPageSection(initialDashboardLocation.contentSection));
+const operationsNavigationExpanded = ref(isOperationsSection(initialDashboardLocation.section));
+const systemNavigationExpanded = ref(isSystemSection(initialDashboardLocation.section));
 function openJournalNavigation() {
   const onJournal = activeSection.value === 'content' && (isJournalSection(activeContentSection.value) || activeContentSection.value === 'media');
   const shouldCollapse = !sidebarCollapsed.value && onJournal && journalNavigationExpanded.value;
@@ -1149,6 +1168,8 @@ function openJournalNavigation() {
   activeSection.value = 'content';
   journalNavigationExpanded.value = !shouldCollapse;
   pageNavigationExpanded.value = false;
+  operationsNavigationExpanded.value = false;
+  systemNavigationExpanded.value = false;
   if (!shouldCollapse && !onJournal) activeContentSection.value = 'journal-list';
 }
 async function openJournalSubsection(section: JournalSection | 'media') {
@@ -1178,6 +1199,8 @@ function openPageNavigation() {
   activeSection.value = 'content';
   pageNavigationExpanded.value = !shouldCollapse;
   journalNavigationExpanded.value = false;
+  operationsNavigationExpanded.value = false;
+  systemNavigationExpanded.value = false;
   if (!shouldCollapse && !onPage) activeContentSection.value = 'mine';
 }
 function openPracticeNavigation() {
@@ -1189,14 +1212,72 @@ function openPracticeNavigation() {
   practiceNavigationExpanded.value = !shouldCollapse;
   journalNavigationExpanded.value = false;
   pageNavigationExpanded.value = false;
+  operationsNavigationExpanded.value = false;
+  systemNavigationExpanded.value = false;
   if (!shouldCollapse && !isPracticeSection(activeContentSection.value)) {
     activeContentSection.value = 'practice';
   }
+}
+function openOperationsNavigation() {
+  const onOperations = isOperationsSection(activeSection.value);
+  const shouldCollapse = !sidebarCollapsed.value && onOperations && operationsNavigationExpanded.value;
+  sidebarCollapsed.value = false;
+  if (!onOperations) {
+    const first = operationsSections.find((section) => canAccessModule(operationsSectionModules[section]));
+    if (first) activeSection.value = first;
+  }
+  operationsNavigationExpanded.value = !shouldCollapse;
+  systemNavigationExpanded.value = false;
+  practiceNavigationExpanded.value = false;
+  journalNavigationExpanded.value = false;
+  pageNavigationExpanded.value = false;
+}
+function openOperationsSubsection(section: OperationsSection) {
+  sidebarCollapsed.value = false;
+  activeSection.value = section;
+  operationsNavigationExpanded.value = true;
+  systemNavigationExpanded.value = false;
+  practiceNavigationExpanded.value = false;
+  journalNavigationExpanded.value = false;
+  pageNavigationExpanded.value = false;
+}
+function openSystemNavigation() {
+  const onSystem = isSystemSection(activeSection.value);
+  const shouldCollapse = !sidebarCollapsed.value && onSystem && systemNavigationExpanded.value;
+  sidebarCollapsed.value = false;
+  if (!onSystem) {
+    const first = systemSections.find((section) => {
+      if (section === 'employees') return isSuperAdmin.value;
+      return canAccessModule(section);
+    });
+    if (first) activeSection.value = first;
+  }
+  systemNavigationExpanded.value = !shouldCollapse;
+  operationsNavigationExpanded.value = false;
+  practiceNavigationExpanded.value = false;
+  journalNavigationExpanded.value = false;
+  pageNavigationExpanded.value = false;
+}
+function openSystemSubsection(section: SystemSection) {
+  sidebarCollapsed.value = false;
+  activeSection.value = section;
+  systemNavigationExpanded.value = true;
+  operationsNavigationExpanded.value = false;
+  practiceNavigationExpanded.value = false;
+  journalNavigationExpanded.value = false;
+  pageNavigationExpanded.value = false;
+  if (section === 'members') void refreshMembers();
+  if (section === 'settings') void loadSystemSettings();
+  if (section === 'life-cards') void loadLifeCards();
+  if (section === 'life-card-views') void loadLifeCardViews();
+  if (section === 'employees') void loadEmployees();
 }
 watch([activeSection, activeContentSection], ([section, contentSection]) => {
   localStorage.setItem('myriad_she_admin_location', JSON.stringify({ section, contentSection }));
 });
 watch(activeSection, (section) => {
+  if (isOperationsSection(section)) operationsNavigationExpanded.value = true;
+  if (isSystemSection(section)) systemNavigationExpanded.value = true;
   if (section === 'contributions' && loggedIn.value) void refreshDiscussionContributions();
   if (section === 'discussion-reports' && loggedIn.value) void refreshDiscussionReports();
 });
@@ -4506,16 +4587,14 @@ onBeforeUnmount(() => {
           </div>
           <nav class="dashboard-nav" aria-label="后台分区">
             <div class="dashboard-nav-tabs">
-              <p v-if="!isSuperAdmin && !canAccessAnyModule" class="dashboard-nav-label">暂无授权模块</p>
-              <p v-if="isSuperAdmin" class="dashboard-nav-label">总览</p>
+              <p v-if="!isSuperAdmin && !canAccessAnyModule" class="dashboard-nav-empty">暂无授权模块</p>
               <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'overview' }" :aria-label="sidebarCollapsed ? '工作台' : undefined" :title="sidebarCollapsed ? '工作台' : undefined" :aria-current="activeSection === 'overview' ? 'page' : undefined" aria-controls="overview-panel" @click="activeSection = 'overview'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h7v7H4zM13 4.5h7v4h-7zM13 10.5h7v9h-7zM4 13.5h7v6H4z" /></svg><span>工作台</span></button>
-              <p v-if="canAccessModule('practice') || canAccessModule('journal') || canAccessModule('media') || canAccessModule('pages')" class="dashboard-nav-label">内容</p>
               <div v-if="canAccessModule('practice')" class="dashboard-nav-group practice-nav-group" :class="{ expanded: activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'practice' }" :aria-label="sidebarCollapsed ? '实践' : undefined" :title="sidebarCollapsed ? '实践' : undefined" :aria-current="activeSection === 'practice' ? 'page' : undefined" :aria-expanded="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" aria-controls="practice-navigation" @click.stop="openPracticeNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 4.5c-7.7.2-12.8 2.3-13.8 7.1-.8 3.4 1.8 6.3 5 6.3 5.1 0 7.8-5.5 8.8-13.4ZM5 20c2.4-4.4 5.2-7.1 9.2-9.6" /></svg><span>实践</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav"><nav v-if="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" id="practice-navigation" class="dashboard-subnav" aria-label="实践子菜单">
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'practice' }" :aria-current="activeContentSection === 'practice' ? 'page' : undefined" @click="activeContentSection = 'practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12v14H6zM9 8h6m-6 4h6m-6 4h3" /></svg><span>实践页面</span></button>
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'directory' }" :aria-current="activeContentSection === 'directory' ? 'page' : undefined" @click="activeContentSection = 'directory'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2M4.5 6.5l1.6 1.2m11.8-1.2-1.6 1.2" /></svg><span>实践目录设置</span></button>
-                  <div class="dashboard-subnav-group" :class="{ expanded: ['observation', 'shared-practice', 'daily-objects'].includes(activeContentSection) }"><span class="dashboard-subnav-heading">内容管理</span><button class="dashboard-subtab dashboard-subtab-nested" :class="{ active: activeContentSection === 'observation' }" :aria-current="activeContentSection === 'observation' ? 'page' : undefined" @click="activeContentSection = 'observation'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.7l3.2 2" /></svg><span>此刻观察</span></button><button class="dashboard-subtab dashboard-subtab-nested" :class="{ active: activeContentSection === 'shared-practice' }" :aria-current="activeContentSection === 'shared-practice' ? 'page' : undefined" @click="activeContentSection = 'shared-practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM7 9h10M7 12h7M7 15h4" /></svg><span>共同实践目录</span></button><button class="dashboard-subtab dashboard-subtab-nested" :class="{ active: activeContentSection === 'daily-objects' }" :aria-current="activeContentSection === 'daily-objects' ? 'page' : undefined" @click="openDailyObjectsEditor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Zm4 0V6a3 3 0 0 1 6 0v2" /></svg><span>日常之物</span></button></div>
+                  <button class="dashboard-subtab" :class="{ active: activeContentSection === 'observation' }" :aria-current="activeContentSection === 'observation' ? 'page' : undefined" @click="activeContentSection = 'observation'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.7l3.2 2" /></svg><span>此刻观察</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'shared-practice' }" :aria-current="activeContentSection === 'shared-practice' ? 'page' : undefined" @click="activeContentSection = 'shared-practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM7 9h10M7 12h7M7 15h4" /></svg><span>共同实践目录</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'daily-objects' }" :aria-current="activeContentSection === 'daily-objects' ? 'page' : undefined" @click="openDailyObjectsEditor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Zm4 0V6a3 3 0 0 1 6 0v2" /></svg><span>日常之物</span></button>
                 </nav></Transition>
               </div>
               <div v-if="canAccessModule('journal') || canAccessModule('media')" class="dashboard-nav-group journal-nav-group" :class="{ expanded: activeSection === 'content' && (isJournalSection(activeContentSection) || activeContentSection === 'media') && journalNavigationExpanded && !sidebarCollapsed }">
@@ -4540,16 +4619,26 @@ onBeforeUnmount(() => {
                   <button v-if="canAccessModule('pages')" class="dashboard-subtab" :class="{ active: activeContentSection === 'privacy-policy' }" :aria-current="activeContentSection === 'privacy-policy' ? 'page' : undefined" @click="activeContentSection = 'privacy-policy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12v15H6zM9 8h6m-6 3.5h6m-6 3.5h4" /></svg><span>隐私政策</span></button>
                 </nav></Transition>
               </div>
-              <p v-if="canAccessModule('contributions') || canAccessModule('discussion-reports') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-label">运营</p>
-              <button v-if="canAccessModule('contributions')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'contributions' }" :aria-label="sidebarCollapsed ? '用户经历审核' : undefined" :title="sidebarCollapsed ? '用户经历审核' : undefined" :aria-current="activeSection === 'contributions' ? 'page' : undefined" aria-controls="discussion-contributions" @click="activeSection = 'contributions'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>用户经历审核</span></button>
-              <button v-if="canAccessModule('discussion-reports')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'discussion-reports' }" :aria-label="sidebarCollapsed ? '用户举报' : undefined" :title="sidebarCollapsed ? '用户举报' : undefined" :aria-current="activeSection === 'discussion-reports' ? 'page' : undefined" aria-controls="discussion-reports" @click="activeSection = 'discussion-reports'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 20 6v6c0 4.3-3.2 7.2-8 8.2-4.8-1-8-3.9-8-8.2V6z"/><path d="M12 8v4.6"/><circle cx="12" cy="15.6" r=".7"/></svg><span>用户举报</span></button>
-              <button v-if="canAccessModule('observations')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'observations' }" :aria-label="sidebarCollapsed ? '观察记录管理' : undefined" :title="sidebarCollapsed ? '观察记录管理' : undefined" :aria-current="activeSection === 'observations' ? 'page' : undefined" aria-controls="observations" @click="activeSection = 'observations'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
-              <button v-if="canAccessModule('privacy')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'privacy' }" :aria-label="sidebarCollapsed ? '隐私申请' : undefined" :title="sidebarCollapsed ? '隐私申请' : undefined" :aria-current="activeSection === 'privacy' ? 'page' : undefined" aria-controls="privacy-requests" @click="activeSection = 'privacy'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
-              <button v-if="canAccessModule('audit')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'audit' }" :aria-label="sidebarCollapsed ? '审计日志' : undefined" :title="sidebarCollapsed ? '审计日志' : undefined" :aria-current="activeSection === 'audit' ? 'page' : undefined" aria-controls="audit-logs" @click="activeSection = 'audit'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
-              <p v-if="isSuperAdmin || canAccessModule('members') || canAccessModule('settings') || canAccessModule('life-cards') || canAccessModule('life-card-views')" class="dashboard-nav-label">系统</p>
-              <button v-if="canAccessModule('members')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'members' }" :aria-current="activeSection === 'members' ? 'page' : undefined" aria-controls="member-directory" @click="activeSection = 'members'; refreshMembers()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
-              <button v-if="canAccessModule('settings')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" aria-controls="system-settings" @click="activeSection = 'settings'; loadSystemSettings()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button><button v-if="canAccessModule('life-cards')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" aria-controls="life-card-copy" @click="activeSection = 'life-cards'; loadLifeCards()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button><button v-if="canAccessModule('life-card-views')" type="button" class="dashboard-tab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" aria-controls="life-card-views" @click="activeSection = 'life-card-views'; loadLifeCardViews()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
-              <button v-if="isSuperAdmin" type="button" class="dashboard-tab" :class="{ active: activeSection === 'employees' }" :aria-current="activeSection === 'employees' ? 'page' : undefined" aria-controls="employee-access" @click="activeSection = 'employees'; loadEmployees()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>员工与权限</span></button>
+              <div v-if="canAccessModule('contributions') || canAccessModule('discussion-reports') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-group operations-nav-group" :class="{ expanded: isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed }">
+                <button type="button" class="dashboard-tab" :class="{ active: isOperationsSection(activeSection) }" :aria-label="sidebarCollapsed ? '运营管理' : undefined" :title="sidebarCollapsed ? '运营管理' : undefined" :aria-expanded="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" aria-controls="operations-navigation" @click.stop="openOperationsNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM8 7.5V5h8v2.5M8 12h8M8 16h5" /></svg><span>运营管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
+                <Transition name="subnav"><nav v-if="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" id="operations-navigation" class="dashboard-subnav" aria-label="运营管理子菜单">
+                  <button v-if="canAccessModule('contributions')" class="dashboard-subtab" :class="{ active: activeSection === 'contributions' }" :aria-current="activeSection === 'contributions' ? 'page' : undefined" @click="openOperationsSubsection('contributions')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>用户经历审核</span></button>
+                  <button v-if="canAccessModule('discussion-reports')" class="dashboard-subtab" :class="{ active: activeSection === 'discussion-reports' }" :aria-current="activeSection === 'discussion-reports' ? 'page' : undefined" @click="openOperationsSubsection('discussion-reports')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 20 6v6c0 4.3-3.2 7.2-8 8.2-4.8-1-8-3.9-8-8.2V6z"/><path d="M12 8v4.6"/><circle cx="12" cy="15.6" r=".7"/></svg><span>用户举报</span></button>
+                  <button v-if="canAccessModule('observations')" class="dashboard-subtab" :class="{ active: activeSection === 'observations' }" :aria-current="activeSection === 'observations' ? 'page' : undefined" @click="openOperationsSubsection('observations')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
+                  <button v-if="canAccessModule('privacy')" class="dashboard-subtab" :class="{ active: activeSection === 'privacy' }" :aria-current="activeSection === 'privacy' ? 'page' : undefined" @click="openOperationsSubsection('privacy')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
+                  <button v-if="canAccessModule('audit')" class="dashboard-subtab" :class="{ active: activeSection === 'audit' }" :aria-current="activeSection === 'audit' ? 'page' : undefined" @click="openOperationsSubsection('audit')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
+                </nav></Transition>
+              </div>
+              <div v-if="isSuperAdmin || canAccessModule('members') || canAccessModule('settings') || canAccessModule('life-cards') || canAccessModule('life-card-views')" class="dashboard-nav-group system-nav-group" :class="{ expanded: isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed }">
+                <button type="button" class="dashboard-tab" :class="{ active: isSystemSection(activeSection) }" :aria-label="sidebarCollapsed ? '系统管理' : undefined" :title="sidebarCollapsed ? '系统管理' : undefined" :aria-expanded="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" aria-controls="system-navigation" @click.stop="openSystemNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M8 14v6" /></svg><span>系统管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
+                <Transition name="subnav"><nav v-if="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" id="system-navigation" class="dashboard-subnav" aria-label="系统管理子菜单">
+                  <button v-if="canAccessModule('members')" class="dashboard-subtab" :class="{ active: activeSection === 'members' }" :aria-current="activeSection === 'members' ? 'page' : undefined" @click="openSystemSubsection('members')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>会员列表</span></button>
+                  <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" @click="openSystemSubsection('settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button>
+                  <button v-if="canAccessModule('life-cards')" class="dashboard-subtab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" @click="openSystemSubsection('life-cards')"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button>
+                  <button v-if="canAccessModule('life-card-views')" class="dashboard-subtab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" @click="openSystemSubsection('life-card-views')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
+                  <button v-if="isSuperAdmin" class="dashboard-subtab" :class="{ active: activeSection === 'employees' }" :aria-current="activeSection === 'employees' ? 'page' : undefined" @click="openSystemSubsection('employees')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>员工与权限</span></button>
+                </nav></Transition>
+              </div>
             </div>
           </nav>
         </aside>
