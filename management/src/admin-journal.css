@@ -799,6 +799,7 @@
 @media (prefers-reduced-motion: reduce) {
   .dashboard-nav-tabs > *,
   .dashboard-subnav,
+  .dashboard-subnav .dashboard-subtab,
   .content-area,
   .content-area > .panel,
   .content-area > .overview-metrics,
