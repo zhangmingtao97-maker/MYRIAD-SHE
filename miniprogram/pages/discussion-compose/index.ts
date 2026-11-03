@@ -14,13 +14,17 @@ const fallbackCopy: ComposeCopy = {
   composePreviewAction: '预览这段内容', composeSaveAction: '保存到后台并返回', composeDiscardAction: '放弃草稿',
 };
 
+function decodeQueryValue(value: string) {
+  try { return decodeURIComponent(value); } catch { return value; }
+}
+
 Page({
   data: { statusBarHeight: 0, issueCode: '', threadId: '', threadAuthor: '', title: '写下你的经历', fieldLabel: '你的经历', copy: fallbackCopy, body: '', previewOpen: false, previewConfirmed: false, restored: false, saving: false, error: '' },
   inputChanged: false,
   onLoad(query: Record<string, string | undefined>) {
     this.inputChanged = false;
     const threadId = query.threadId || '';
-    const threadAuthor = query.threadAuthor || '';
+    const threadAuthor = decodeQueryValue(query.threadAuthor || '');
     const issueCode = query.issueCode || '';
     const localDraft = issueCode ? readLocalDraftEntry(issueCode, threadId) : null;
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, issueCode, threadId, threadAuthor,
