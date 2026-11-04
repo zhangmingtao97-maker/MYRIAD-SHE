@@ -26,19 +26,21 @@ function onInput(slot: 'context' | 'title' | 'description', event: Event) {
         <strong>{{ practiceEntryText(entry.titleRichText) || '未命名目录' }}</strong>
         <small>{{ entry.enabled ? '首页可见' : '首页暂不显示' }}</small>
       </span>
-      <button type="button" class="practice-entry-delete" :disabled="disabled" :aria-label="`删除目录 ${practiceEntryText(entry.titleRichText)}`" @click="emit('delete')">删除</button>
-      <button
-        type="button"
-        class="practice-entry-status-toggle"
-        :class="{ enabled: entry.enabled }"
-        :disabled="disabled"
-        :aria-pressed="entry.enabled"
-        :aria-label="`${practiceEntryText(entry.titleRichText)}${entry.enabled ? '已开启' : '已关闭'}，点击切换入口状态`"
-        @click="emit('toggleEnabled')"
-      >
-        <span class="practice-entry-status-dot" aria-hidden="true"></span>
-        <span>{{ entry.enabled ? '开启' : '关闭' }}</span>
-      </button>
+      <span class="practice-entry-actions">
+        <button type="button" class="practice-entry-delete" :disabled="disabled" :aria-label="`删除目录 ${practiceEntryText(entry.titleRichText)}`" @click="emit('delete')">删除</button>
+        <button
+          type="button"
+          class="practice-entry-status-toggle"
+          :class="{ enabled: entry.enabled }"
+          :disabled="disabled"
+          :aria-pressed="entry.enabled"
+          :aria-label="`${practiceEntryText(entry.titleRichText)}${entry.enabled ? '已开启' : '已关闭'}，点击切换入口状态`"
+          @click="emit('toggleEnabled')"
+        >
+          <span class="practice-entry-status-dot" aria-hidden="true"></span>
+          <span>{{ entry.enabled ? '开启' : '关闭' }}</span>
+        </button>
+      </span>
     </header>
     <div class="practice-entry-fields">
       <label class="practice-entry-field">
