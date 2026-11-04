@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
@@ -9,6 +9,8 @@ import JournalHomePreview from './components/JournalHomePreview.vue';
 import PracticePagePreview from './components/PracticePagePreview.vue';
 import DailyObjectsPreview from './components/DailyObjectsPreview.vue';
 import AboutPagePreview from './components/AboutPagePreview.vue';
+import MinePagePreview from './components/MinePagePreview.vue';
+import CopyPagePreview from './components/CopyPagePreview.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
@@ -1887,6 +1889,47 @@ function focusAboutField(event: FocusEvent) {
   const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-page-field]');
   const key = holder?.dataset.pageField;
   if (key && key !== activeAboutKey.value) activeAboutKey.value = key;
+}
+
+// 我的页面预览：五个页签各对应一个区块。
+const activeMineKey = ref('');
+
+function pickMineKey(key: string) {
+  activeMineKey.value = key;
+  minePageEditorTab.value = key as MinePageEditorTab;
+  nextTick(() => {
+    const target = document.querySelector<HTMLElement>('[data-mine-field="' + key + '"]');
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('is-locating');
+    window.setTimeout(() => target.classList.remove('is-locating'), 1400);
+  });
+}
+
+function focusMineField(event: FocusEvent) {
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-mine-field]');
+  const key = holder?.dataset.mineField;
+  if (key && key !== activeMineKey.value) activeMineKey.value = key;
+}
+
+// 此刻观察预览：每个文案字段对应一个区块。
+const activeObservationKey = ref('');
+
+function pickObservationKey(key: string) {
+  activeObservationKey.value = key;
+  nextTick(() => {
+    const target = document.querySelector<HTMLElement>('[data-copy-field="' + key + '"]');
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('is-locating');
+    window.setTimeout(() => target.classList.remove('is-locating'), 1400);
+  });
+}
+
+function focusObservationField(event: FocusEvent) {
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-field]');
+  const key = holder?.dataset.copyField;
+  if (key && key !== activeObservationKey.value) activeObservationKey.value = key;
 }
 
 function togglePracticeEntryEnabled(entry: PracticeEntry) {
@@ -5385,16 +5428,27 @@ onBeforeUnmount(() => {
       <section v-if="activeSection === 'practice' && activeContentSection === 'observation'" id="practice-observation-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / OBSERVATION</p><h2>此刻观察</h2></div></div>
         <div v-if="!practiceContent" class="practice-empty"><p class="muted">此刻观察内容尚未读取。</p><button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button></div>
-        <form v-else class="practice-form" @submit.prevent="savePracticeContent">
-          <div class="observation-copy-groups"><section v-for="group in observationCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><label v-for="field in group.fields" :key="field.key" class="observation-copy-field"><span>{{ field.label }}</span><textarea :value="normalizeObservationCopyForEditor(practiceContent.observationCopy[field.key].richText)" rows="3" maxlength="240" :disabled="practiceContentSaving || practiceContentConflict" @input="updateObservationCopyText(field.key, $event)" /></label></section></div>
+        <div v-else-if="practiceContent" class="preview-layout has-preview">
+          <aside class="preview-rail" aria-label="小程序此刻观察页预览">
+            <CopyPagePreview title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="practiceContent.observationCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <p class="preview-hint">点预览里的文字 → 跳到右侧对应输入框；点输入框时这里也会同步高亮。</p>
+          </aside>
+          <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
+          <div class="observation-copy-groups"><section v-for="group in observationCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><label v-for="field in group.fields" :key="field.key" :data-copy-field="field.key" class="observation-copy-field"><span>{{ field.label }}</span><textarea :value="normalizeObservationCopyForEditor(practiceContent.observationCopy[field.key].richText)" rows="3" maxlength="240" :disabled="practiceContentSaving || practiceContentConflict" @input="updateObservationCopyText(field.key, $event)" /></label></section></div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
           <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
-        </form>
+          </form>
+        </div>
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'shared-practice'" id="practice-shared-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / SHARED PRACTICE</p><h2>共同实践目录</h2></div></div>
         <div v-if="!practiceContent" class="practice-empty"><p class="muted">共同实践内容尚未读取。</p><button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button></div>
-        <form v-else class="practice-form" @submit.prevent="savePracticeContent">
+        <div v-else-if="practiceContent" class="preview-layout has-preview">
+          <aside class="preview-rail" aria-label="小程序共同实践页预览">
+            <CopyPagePreview title="共同实践" subtitle="SHARED PRACTICE" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <p class="preview-hint">预览用全局默认文案渲染；点区块 → 跳到右侧对应字段，点字段时这里也会高亮。</p>
+          </aside>
+          <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
         <div class="practice-copy-panel">
           <div class="practice-copy-panel-head">
             <div>
@@ -5458,10 +5512,11 @@ onBeforeUnmount(() => {
           </template>
         </div>
 
-          <div class="observation-copy-groups"><section v-for="group in sharedPracticeCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><RichTextEditor v-for="field in group.fields" :key="field.key" v-model="practiceContent.sharedPracticeCopy[field.key].richText" v-model:font-size="practiceContent.sharedPracticeCopy[field.key].fontSize" v-model:color="practiceContent.sharedPracticeCopy[field.key].color" :label="field.label" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" /></section></div>
+          <div class="observation-copy-groups"><section v-for="group in sharedPracticeCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><div v-for="field in group.fields" :key="field.key" class="copy-field" :data-copy-field="field.key"><RichTextEditor v-model="practiceContent.sharedPracticeCopy[field.key].richText" v-model:font-size="practiceContent.sharedPracticeCopy[field.key].fontSize" v-model:color="practiceContent.sharedPracticeCopy[field.key].color" :label="field.label" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" /></div></section></div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
           <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
-        </form>
+          </form>
+        </div>
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'daily-objects'" id="practice-daily-objects-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / DAILY OBJECTS</p><h2>日常之物</h2></div></div>
@@ -5534,7 +5589,12 @@ onBeforeUnmount(() => {
           <p class="muted">我的页面设置尚未读取。</p>
           <button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button>
         </div>
-        <form v-else class="practice-form" @submit.prevent="saveMinePageContent">
+        <div v-else-if="minePageContent" class="preview-layout has-preview">
+          <aside class="preview-rail" aria-label="小程序我的页面预览">
+            <MinePagePreview :content="minePageContent" :active-key="activeMineKey" @pick="pickMineKey" />
+            <p class="preview-hint">点预览里的区块 → 切到对应页签并定位字段；点右侧字段时这里也会同步高亮。</p>
+          </aside>
+          <form class="practice-form" @submit.prevent="saveMinePageContent" @focusin="focusMineField">
           <div class="mine-settings-layout">
             <nav class="mine-editor-tabs" role="tablist" aria-label="我的页面设置模块" aria-orientation="vertical">
               <button id="mine-tab-intro" type="button" role="tab" class="mine-editor-tab" :class="{ active: minePageEditorTab === 'intro' }" :tabindex="minePageEditorTab === 'intro' ? 0 : -1" :aria-selected="minePageEditorTab === 'intro'" aria-controls="mine-panel-intro" @keydown="moveMinePageEditorTab" @click="minePageEditorTab = 'intro'">我的</button>
@@ -5544,33 +5604,33 @@ onBeforeUnmount(() => {
               <button id="mine-tab-privacy" type="button" role="tab" class="mine-editor-tab" :class="{ active: minePageEditorTab === 'privacy' }" :tabindex="minePageEditorTab === 'privacy' ? 0 : -1" :aria-selected="minePageEditorTab === 'privacy'" aria-controls="mine-panel-privacy" @keydown="moveMinePageEditorTab" @click="minePageEditorTab = 'privacy'">04. 选择与隐私</button>
             </nav>
             <div class="mine-page-fields">
-            <section v-show="minePageEditorTab === 'intro'" id="mine-panel-intro" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-intro" tabindex="0">
+            <section v-show="minePageEditorTab === 'intro'" id="mine-panel-intro" data-mine-field="intro" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-intro" tabindex="0">
               <div><p class="eyebrow">MY PAGE</p><h3 id="mine-copy-above">我的</h3></div>
               <RichTextEditor v-model="minePageContent.title" label="主标题" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.intro" label="说明文字" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
             </section>
-            <section v-show="minePageEditorTab === 'observations'" id="mine-panel-observations" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-observations" tabindex="0">
+            <section v-show="minePageEditorTab === 'observations'" id="mine-panel-observations" data-mine-field="observations" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-observations" tabindex="0">
               <div><p class="eyebrow">01 · MY OBSERVATIONS</p><h3 id="mine-copy-below">01.我的观察</h3></div>
               <RichTextEditor v-model="minePageContent.observationHeading" label="观察记录区标题" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.emptyTitle" label="空状态标题" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.emptyIntro" label="空状态说明" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.startButton" label="观察按钮文字" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
             </section>
-            <section v-show="minePageEditorTab === 'discussions'" id="mine-panel-discussions" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-discussions" tabindex="0">
+            <section v-show="minePageEditorTab === 'discussions'" id="mine-panel-discussions" data-mine-field="discussions" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-discussions" tabindex="0">
               <div><p class="eyebrow">DISCUSSIONS</p><h3 id="mine-copy-discussions">参与的讨论</h3></div>
               <RichTextEditor v-model="minePageContent.discussionHeading" label="模块标题" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.discussionCount" label="发言计数文字" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.discussionEmptyAction" label="空状态入口文字" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.discussionIntro" label="模块说明" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
             </section>
-            <section v-show="minePageEditorTab === 'practice'" id="mine-panel-practice" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-practice" tabindex="0">
+            <section v-show="minePageEditorTab === 'practice'" id="mine-panel-practice" data-mine-field="practice" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-practice" tabindex="0">
               <div><p class="eyebrow">OFFLINE PRACTICE</p><h3 id="mine-copy-practice">线下实践</h3></div>
               <RichTextEditor v-model="minePageContent.practiceHeading" label="模块标题" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.practiceCount" label="参与次数文字" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.practiceEmptyTitle" label="空状态标题" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.practiceIntro" label="空状态说明" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
             </section>
-            <section v-show="minePageEditorTab === 'privacy'" id="mine-panel-privacy" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-privacy" tabindex="0">
+            <section v-show="minePageEditorTab === 'privacy'" id="mine-panel-privacy" data-mine-field="privacy" class="mine-copy-group" role="tabpanel" aria-labelledby="mine-tab-privacy" tabindex="0">
               <div><p class="eyebrow">PRIVACY</p><h3 id="mine-copy-privacy">选择与隐私</h3></div>
               <RichTextEditor v-model="minePageContent.privacyHeading" label="模块标题" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
               <RichTextEditor v-model="minePageContent.privacyAction" label="入口文字" :disabled="minePageContentSaving || minePageContentConflict" @change="markMinePageContentDirty" />
@@ -5582,7 +5642,8 @@ onBeforeUnmount(() => {
           <p v-if="minePageContentError" class="error" role="alert">{{ minePageContentError }}</p>
           <p v-if="minePageContentMessage" class="status-message" role="status">{{ minePageContentMessage }}</p>
           <div class="form-actions"><button type="submit" :disabled="minePageContentSaving || minePageContentConflict">{{ minePageContentSaving ? '保存中…' : '保存我的页面设置' }}</button><button v-if="minePageContentConflict" type="button" class="quiet" :disabled="minePageContentSaving" @click="reloadMinePageContent">{{ minePageContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
-        </form>
+          </form>
+        </div>
       </section>
       <section v-if="activeSection === 'observations'" id="observations" class="content-area">
           <div class="section-heading"><div><p class="eyebrow">OBSERVATIONS</p><h2>观察记录管理</h2></div></div>

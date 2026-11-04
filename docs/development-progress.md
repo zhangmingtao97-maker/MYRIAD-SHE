@@ -1,5 +1,15 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-04 后台手机预览补齐：我的页面、此刻观察、共同实践
+
+- 我的页面（`MinePagePreview.vue`）：预览顶部「MYRIAD SHE / MINE / 我的」→ 账户卡片占位 → 主标题与说明 → 01 我的观察（空状态 + 按钮）→ 02 参与的讨论 → 03 线下实践 → 04 选择与隐私，五个区块分别对应右侧五个页签。点区块会自动切到那个页签、滚到面板并闪框；在任意面板里点进输入框，左侧同步高亮。
+- 此刻观察（`CopyPagePreview.vue`，通用文案页预览）：按「页眉与主说明 / 现实处境路径 / 四时气韵路径 / 隐私说明」四组、15 个字段渲染，每一项是一个可点区块，字号颜色直接取字段自身的 `fontSize` / `color`（按 0.55 缩放贴合手机比例），空字段显示「（空）」。点区块 → 滚到右侧对应的 textarea；点 textarea → 高亮对应区块。
+- 共同实践目录：同一套 `CopyPagePreview`，用全局默认文案（`sharedPracticeCopy`）渲染 31 个区块；右侧每个全局字段包在 `.copy-field` 里挂 `data-copy-field`，双向定位与此刻观察一致。按期文案面板保持原样（不改动按期编辑流程）。
+- 布局与交互都沿用同一套约定：`.preview-layout` / `.preview-rail` / `.preview-hint` + `data-preview-key` / `.is-preview-active` / `.is-locating`，预览块点击有 hover 底色与红框。
+- 验证：`vue-tsc + vite build` 通过；Playwright 实测 —— 我的页面 5 个区块（点「参与的讨论」切页签并闪框、点输入框反向高亮）、此刻观察 15 个区块、共同实践 31 个区块，双向定位均正常。
+- 已发布（仅重建 admin 容器，备份 `management-src-pre-preview-2-20261104-142812.tar.gz`），线上 bundle 含 `mine-phone-preview` / `copy-phone-preview` / `daily-phone-preview` / `about-phone-preview`。
+- 至此后台内容类页面都有常驻手机预览：期刊首页、实践页面/目录、此刻观察、共同实践、日常之物、我的页面、关于 MYRIAD SHE；用户协议与隐私政策沿用各自的草稿预览窗口。
+
 ## 2026-11-04 后台手机预览扩到实践、日常之物、关于页
 
 - 实践页（`PracticePagePreview.vue`）：左边常驻手机预览，按小程序实践页的顺序渲染「页眉 / 页面标题 / 页面说明 / 实践目录 + 每条目录（情境、名称、说明、箭头）」，没有开放的目录半透明并标「未开放」。点预览里的页眉、标题、说明会滚到右侧对应输入框并闪框；点某条目录会直接切到「实践目录设置」、展开那一条并定位。右侧点进任意字段，左侧同步高亮。

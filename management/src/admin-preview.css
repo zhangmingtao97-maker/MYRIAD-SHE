@@ -467,3 +467,187 @@
   width: 100%;
   margin: 0;
 }
+
+/* —— 我的页面预览 —— */
+.mine-preview-topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14px 0 10px;
+  color: #8b6b58;
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+
+.mine-preview-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #efe7da;
+}
+
+.mine-preview-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #c8553d;
+  color: #fdf9f3;
+  font-family: Georgia, serif;
+  font-size: 13px;
+}
+
+.mine-preview-profile strong {
+  display: block;
+  color: #40362f;
+  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mine-preview-profile small {
+  color: #8b6b58;
+  font-size: 9px;
+}
+
+.mine-preview-intro {
+  padding: 14px 0 16px;
+  border-bottom: 1px solid #cdbbae;
+}
+
+.mine-preview-intro h3 {
+  margin: 0 0 6px;
+  color: #40362f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 19px;
+  font-weight: 400;
+}
+
+.mine-preview-intro p {
+  margin: 0;
+  color: #5c493c;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.mine-preview-section {
+  padding: 14px 0 16px;
+  border-bottom: 1px solid #cdbbae;
+}
+
+.mine-preview-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mine-preview-section-head strong {
+  color: #40362f;
+  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mine-preview-section-head small {
+  color: #8b6b58;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.mine-preview-empty {
+  padding: 12px;
+  background: #efe7da;
+  text-align: center;
+}
+
+.mine-preview-empty strong {
+  display: block;
+  color: #5c493c;
+  font-size: 11px;
+}
+
+.mine-preview-empty p {
+  margin: 4px 0 8px;
+  color: #8b6b58;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.mine-preview-button {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #c8553d;
+  color: #fdf9f3;
+  font-size: 10px;
+}
+
+.mine-preview-copy {
+  margin: 0 0 6px;
+  color: #5c493c;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.mine-preview-link {
+  color: #663124;
+  font-size: 10px;
+}
+
+/* —— 此刻观察 / 文案类页面预览 —— */
+.copy-preview-hero {
+  padding: 18px 0 12px;
+  border-bottom: 1px solid #cdbbae;
+  text-align: center;
+}
+
+.copy-preview-hero small {
+  color: #8b6b58;
+  font-size: 9px;
+  letter-spacing: .18em;
+}
+
+.copy-preview-hero h3 {
+  margin: 6px 0 0;
+  color: #40362f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.copy-preview-group {
+  padding: 12px 0 8px;
+  border-bottom: 1px solid rgba(205, 187, 174, .55);
+}
+
+.copy-preview-group-title {
+  margin: 0 0 6px;
+  color: #663124;
+  font-size: 10px;
+  letter-spacing: .1em;
+}
+
+.copy-preview-line {
+  padding: 8px 6px 8px 0;
+  border-bottom: 1px dashed rgba(92, 73, 60, .14);
+}
+
+.copy-preview-line p {
+  margin: 0;
+  font-family: "Source Han Serif CN", "Songti SC", serif;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.copy-field {
+  border-radius: 10px;
+}
+
+.copy-phone-preview .preview-block-tag {
+  max-width: 60%;
+}
