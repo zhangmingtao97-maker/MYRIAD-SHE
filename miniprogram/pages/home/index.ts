@@ -51,13 +51,10 @@ function presentHomeModules(modules: PublicHomeModule[]) {
       ...track,
       playbackId: `${module.id}:${track.id}`,
     }));
-    const extraTrackCount = Math.max(0, preparedTracks.length - 1);
     return {
       ...module,
       tracks: preparedTracks,
       primaryTrack: preparedTracks[0],
-      extraTrackCount,
-      moreLabel: `更多微声音 · ${extraTrackCount} 段`,
       displayTitle: String(module.title || '微声音').replace(/\s+0?\d+$/, ''),
     };
   });
@@ -122,7 +119,7 @@ function buildIssueHeader(modules: PublicHomeModule[], issue: HomeIssue) {
 }
 
 Page({
-  data: { loading: true, statusBarHeight: 0, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', expandedAudio: {} as Record<string, boolean>, audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
+  data: { loading: true, statusBarHeight: 0, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
   requestGeneration: 0,
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   audioContextModuleId: '',
@@ -152,7 +149,7 @@ Page({
   },
   async loadContent() {
     const generation = ++this.requestGeneration;
-    this.setData({ loading: true, error: '', issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, expandedAudio: {}, audioSeeking: false });
+    this.setData({ loading: true, error: '', issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, audioSeeking: false });
     try {
       const data = await request<PublicHomeContent>('/content/home');
       if (generation !== this.requestGeneration) return;
@@ -217,18 +214,6 @@ Page({
         wx.navigateTo({ url: path, fail });
       }
     }
-  },
-  toggleAudioMore(event: WechatMiniprogram.CustomEvent) {
-    const moduleId = String(event.currentTarget.dataset.moduleId || '');
-    const audio = this.data.modules.find((module) => module.id === moduleId && module.type === 'audio');
-    if (!audio) return;
-    const expanded = Boolean(this.data.expandedAudio[moduleId]);
-    const tracks = Array.isArray(audio.tracks) ? audio.tracks as Array<Record<string, unknown>> : [];
-    if (expanded && tracks.slice(1).some((track) => track.playbackId === this.data.playingAudioId)) {
-      wx.showToast({ title: '正在播放，暂停后可收起', icon: 'none' });
-      return;
-    }
-    this.setData({ expandedAudio: { ...this.data.expandedAudio, [moduleId]: !expanded } });
   },
   startAudioSeek(event: WechatMiniprogram.TouchEvent) {
     const moduleId = String(event.currentTarget.dataset.moduleId || '');

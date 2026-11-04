@@ -38,10 +38,6 @@
             <text class="audio-label">{{item.displayTitle || item.title || '微声音'}}</text>
             <view class="audio-kicker-meta">
               <text wx:if="{{activeAudioId != item.primaryTrack.playbackId}}" class="audio-duration">{{item.primaryTrack.duration || item.duration}}</text>
-              <view wx:if="{{item.tracks.length > 1}}" class="audio-more-toggle" role="button" tabindex="0" aria-expanded="{{expandedAudio[item.id] ? 'true' : 'false'}}" aria-label="{{expandedAudio[item.id] ? '收起更多声音' : item.moreLabel}}" data-module-id="{{item.id}}" bindtap="toggleAudioMore">
-                <text>{{expandedAudio[item.id] ? '收起' : '更多声音'}}</text>
-                <text class="audio-more-toggle-icon" aria-hidden="true">{{expandedAudio[item.id] ? '−' : '+'}}</text>
-              </view>
             </view>
           </view>
           <view wx:if="{{activeAudioId === item.primaryTrack.playbackId}}" class="audio-progress {{audioSeeking ? 'audio-seek-active' : ''}}" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{audioProgressPercent}}" aria-valuetext="{{audioCurrentTimeLabel}} / {{audioDurationLabel}}">
@@ -57,26 +53,6 @@
           </view>
           <view wx:if="{{item.primaryTrack.transcript}}" class="audio-transcript">{{item.primaryTrack.transcript}}</view>
           <view class="audio-enter" role="button" tabindex="0" aria-label="进入本期微声音" bindtap="openAudioIndex"><text>{{item.tracks.length > 1 ? '查看全部微声音' : '进入这段微声音'}}</text><text>→</text></view>
-          <view wx:if="{{item.tracks.length > 1 && expandedAudio[item.id]}}" class="audio-more" id="home-audio-more-{{item.id}}">
-            <view wx:for="{{item.tracks}}" wx:for-item="track" wx:for-index="trackIndex" wx:key="id">
-              <view wx:if="{{trackIndex > 0}}" class="audio-more-item">
-                <view class="audio-more-row">
-                  <view wx:if="{{track.mediaType === 'video'}}" class="audio-more-play" role="button" tabindex="0" aria-label="观看视频{{track.title}}" data-track-id="{{track.id}}" bindtap="openAudioDetail">▶</view>
-                  <view wx:else class="audio-more-play" role="button" tabindex="0" aria-label="{{playingAudioId === track.playbackId ? '暂停' : '播放'}}{{track.title}}" data-module-id="{{item.id}}" data-track-id="{{track.id}}" bindtap="toggleAudio">{{playingAudioId === track.playbackId ? 'Ⅱ' : '▶'}}</view>
-                  <view class="audio-more-copy"><view class="audio-more-title">{{track.title}}</view><view wx:if="{{track.subtitle}}" class="audio-more-subtitle">{{track.subtitle}}</view></view>
-                  <text class="audio-more-duration">{{activeAudioId === track.playbackId ? audioDurationLabel : track.duration}}</text>
-                </view>
-                <view wx:if="{{activeAudioId === track.playbackId}}" class="audio-progress audio-more-progress {{audioSeeking ? 'audio-seek-active' : ''}}" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{audioProgressPercent}}" aria-valuetext="{{audioCurrentTimeLabel}} / {{audioDurationLabel}}">
-                  <view class="audio-progress-hit" id="audio-seek-{{item.id}}-{{track.id}}" data-module-id="{{item.id}}" data-track-id="{{track.id}}" catchtouchstart="startAudioSeek" catchtouchmove="moveAudioSeek" catchtouchend="endAudioSeek" catchtouchcancel="endAudioSeek">
-                    <view class="audio-progress-track"><view class="audio-progress-fill" style="width: {{audioProgressPercent}}%"></view><view class="audio-progress-thumb" style="left: {{audioProgressPercent}}%"></view></view>
-                  </view>
-                  <view class="audio-progress-times"><text>{{audioCurrentTimeLabel}}</text><text>{{audioDurationLabel}}</text></view>
-                </view>
-                <view wx:if="{{track.quote}}" class="audio-more-quote">{{track.quote}}</view>
-                <view wx:if="{{track.transcript}}" class="audio-more-transcript">{{track.transcript}}</view>
-              </view>
-            </view>
-          </view>
         </view>
         <view wx:elif="{{item.type === 'question'}}" class="module-question">
           <view class="question-kicker"><text class="question-number">03</text><text class="question-label">本期问题</text></view>
