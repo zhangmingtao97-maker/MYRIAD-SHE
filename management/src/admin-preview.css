@@ -1536,3 +1536,32 @@
   justify-self: start;
   margin-top: 2px;
 }
+/* 期刊各页：提示条整条去掉后，返回入口收进上下文行 */
+.journal-context {
+  gap: 12px;
+}
+
+.journal-section-back {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin-bottom: 1px;
+  font-size: 12px;
+}
+
+.issue-list-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.issue-list-heading-actions button {
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 提示条已移除，内容区与顶栏之间留一点呼吸 */
+#journal-module-workspace .journal-preview-layout,
+#journal-list .journal-list-layout {
+  margin-top: 4px;
+}

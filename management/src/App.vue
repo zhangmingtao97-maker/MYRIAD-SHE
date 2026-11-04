@@ -5250,13 +5250,9 @@ onBeforeUnmount(() => {
         </div>
       </section>
       <section v-if="activeSection === 'content' && activeContentSection === 'journal-list'" id="journal-list" class="content-area">
-        <div class="journal-page-head">
-          <div class="journal-page-head-copy"><p class="eyebrow">JOURNAL WORKSPACE</p><small>{{ journalSectionDescription }}</small></div>
-          <button type="button" @click="startNewIssue">＋ 新建期刊</button>
-        </div>
         <div class="journal-list-layout">
           <aside class="panel issue-list-panel">
-            <div class="section-heading"><h3>全部期次</h3><small>{{ issues.length }} 期</small></div>
+            <div class="section-heading"><h3>全部期次</h3><div class="issue-list-heading-actions"><small>{{ issues.length }} 期</small><button type="button" class="quiet" @click="startNewIssue">＋ 新建期刊</button></div></div>
             <button v-for="item in issues" :key="item.id" type="button" class="issue-list-item" :class="{ active: editingIssueId === item.id }" @click="editIssue(item)"><strong>{{ item.label }} · {{ item.theme }}</strong><small>{{ item.month }} · {{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</small></button>
             <p v-if="!issues.length" class="muted">还没有期刊。先新建一份草稿。</p>
             <details class="issue-live-home"><summary>当前线上首页 <span>v{{ home?.publishedVersion || 0 }}</span></summary>
@@ -5306,10 +5302,6 @@ onBeforeUnmount(() => {
         </div>
       </section>
       <section v-if="activeSection === 'content' && ['journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'].includes(activeContentSection)" id="journal-module-workspace" class="content-area">
-        <div class="journal-page-head">
-          <div class="journal-page-head-copy"><p class="eyebrow">{{ currentView.eyebrow }}</p><small>{{ journalSectionDescription }}</small></div>
-          <button type="button" class="quiet" @click="goToJournalSection('journal-list')">返回期刊列表</button>
-        </div>
         <div class="journal-preview-layout" :class="{ 'has-preview': showJournalPreview }">
           <aside v-if="showJournalPreview" class="journal-preview-rail" aria-label="小程序预览">
             <template v-if="activeContentSection === 'journal-audio'">
@@ -5375,6 +5367,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <label class="journal-context-select">切换期刊<select :value="editingIssueId" @change="selectJournalIssue"><option value="" disabled>请选择期刊</option><option v-for="item in issues" :key="item.id" :value="item.id">{{ item.label }} · {{ item.month }} · {{ journalIssueStatusLabel(item.status) }}</option></select></label>
+            <button type="button" class="quiet journal-section-back" @click="goToJournalSection('journal-list')">返回期刊列表</button>
           </div>
           <div v-if="!editingIssueId" class="journal-empty-state"><strong>还没有选择期刊</strong><p>从上方选择一份期刊，或先到「期刊列表」新建草稿，再回来编辑这个模块。</p><button type="button" @click="goToJournalSection('journal-list')">去期刊列表</button></div>
           <template v-else>
