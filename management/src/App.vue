@@ -3047,9 +3047,24 @@ async function refreshCurrentPage() {
   }
 }
 
+// 后端返回的 PracticeContent 多了两处「派生字段」：顶层 draft 标记，以及
+// sharedPracticeCopy 里由 onlineCopy / rule1..4 归并出来的 onlineParagraphs、rules。
+// DTO 开了 whitelist，把这些原样发回去会 400（property ... should not exist），
+// 所以保存前先剥掉，保存后再把本地这两段合并回内存，界面不会闪。
+function practiceContentPayload(content: PracticeContent) {
+  const { draft: _draft, sharedPracticeCopy, ...rest } = content;
+  const shared = sharedPracticeCopy
+    ? Object.fromEntries(Object.entries(sharedPracticeCopy).filter(([key]) => key !== 'onlineParagraphs' && key !== 'rules'))
+    : sharedPracticeCopy;
+  return { ...rest, sharedPracticeCopy: shared };
+}
+
 async function savePracticeContent() {
   const content = practiceContent.value;
   if (!content || practiceContentSaving.value || practiceContentConflict.value) return;
+  const derivedCopy = content.sharedPracticeCopy
+    ? { onlineParagraphs: (content.sharedPracticeCopy as Record<string, unknown>).onlineParagraphs, rules: (content.sharedPracticeCopy as Record<string, unknown>).rules }
+    : null;
   practiceContentSaving.value = true;
   const session = sessionGeneration;
   practiceContentRequestGeneration += 1;
@@ -3059,7 +3074,7 @@ async function savePracticeContent() {
     const response = await apiFetch(`${apiBase}/content/practice/manage`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
-      body: JSON.stringify(content),
+      body: JSON.stringify(practiceContentPayload(content)),
     });
     if (handleAdminUnauthorized(response, session)) return;
     assertSession(session);
@@ -3070,7 +3085,9 @@ async function savePracticeContent() {
     if (!response.ok) throw new Error(await responseMessage(response, '实践内容保存失败'));
     const updated = await response.json();
     if (!isPracticeContent(updated)) throw new Error('服务器返回的实践页面配置无法确认');
-    practiceContent.value = updated;
+    practiceContent.value = derivedCopy && updated.sharedPracticeCopy
+      ? { ...updated, sharedPracticeCopy: { ...updated.sharedPracticeCopy, ...derivedCopy } }
+      : updated;
     practiceContentDirty.value = false;
     practiceContentConflict.value = false;
     practiceContentMessage.value = '实践内容已保存到云端。';
@@ -3331,6 +3348,36 @@ function addDailyObjectsProduct() {
   markDailyObjectsDirty();
 }
 
+// 后台读回来的是「已发布内容 + draft 标记」，后端 DTO 只收可写字段，
+// 直接 JSON.stringify(content) 会被 whitelist 校验拒掉（property draft should not exist）。
+function dailyObjectsPayload(content: DailyObjectsContent) {
+  return {
+    editVersion: content.editVersion,
+    brandName: content.brandName,
+    brandSubtitle: content.brandSubtitle,
+    bagLabel: content.bagLabel,
+    bagCount: content.bagCount,
+    eyebrow: content.eyebrow,
+    title: content.title,
+    intro: content.intro,
+    previewNote: content.previewNote,
+    supportLabel: content.supportLabel,
+    products: content.products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      english: product.english,
+      image: product.image,
+      price: product.price,
+      priceLabel: product.priceLabel,
+      description: product.description,
+      optionDetails: product.optionDetails,
+      dailyUseDetails: product.dailyUseDetails,
+      deliveryDetails: product.deliveryDetails,
+      enabled: product.enabled,
+    })),
+  };
+}
+
 async function saveDailyObjectsContent() {
   const content = dailyObjectsContent.value;
   if (!content || dailyObjectsSaving.value || dailyObjectsConflict.value) return;
@@ -3339,7 +3386,7 @@ async function saveDailyObjectsContent() {
   dailyObjectsMessage.value = '';
   const session = sessionGeneration;
   try {
-    const response = await apiFetch(`${apiBase}/content/daily-objects/manage`, { method: 'PATCH', headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` }, body: JSON.stringify(content) });
+    const response = await apiFetch(`${apiBase}/content/daily-objects/manage`, { method: 'PATCH', headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` }, body: JSON.stringify(dailyObjectsPayload(content)) });
     if (handleAdminUnauthorized(response, session)) return;
     assertSession(session);
     if (response.status === 409) {
@@ -5610,7 +5657,6 @@ onBeforeUnmount(() => {
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序实践页预览">
             <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
-            <p class="preview-hint">点预览里的区块 → 跳到右侧对应字段；点右侧字段时这里也会同步高亮。</p>
           </aside>
           <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
             <div class="practice-page-fields">
@@ -5628,10 +5674,15 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <p v-if="practiceContentConflict" class="error full" role="alert">实践页面已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
-            <p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
+                      <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
+            <div class="practice-savebar-copy">
+              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
+              <small>实践页面 · 标题、页眉与说明</small>
+            </div>
             <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存实践页面' }}</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
+          </footer>
           </form>
         </div>
       </section>
@@ -5644,7 +5695,6 @@ onBeforeUnmount(() => {
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序实践页预览">
             <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
-            <p class="preview-hint">点预览里的目录条目 → 直接跳到右侧那一条并展开；点右侧条目时这里同步高亮。</p>
           </aside>
           <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
           <div class="directory-toolbar"><p class="muted field-help">拖动暂不开放，目录按此处顺序显示。每个目录都可在标题行右侧直接切换入口状态。</p><button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || practiceContent.entries.length >= 100" @click="addPracticeEntry">＋ 新增目录</button></div>
@@ -5670,10 +5720,15 @@ onBeforeUnmount(() => {
             </article>
           </div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
-          <p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的目录修改。</p>
           <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
           <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-          <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
+                    <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
+            <div class="practice-savebar-copy">
+              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
+              <small>实践目录 · 条目文案与入口状态</small>
+            </div>
+            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
+          </footer>
           </form>
         </div>
       </section>
@@ -5683,12 +5738,17 @@ onBeforeUnmount(() => {
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序此刻观察页预览">
             <CopyPagePreview title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="practiceContent.observationCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
-            <p class="preview-hint">点预览里的文字 → 跳到右侧对应输入框；点输入框时这里也会同步高亮。</p>
           </aside>
           <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
           <div class="observation-copy-groups"><section v-for="group in observationCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><label v-for="field in group.fields" :key="field.key" :data-copy-field="field.key" class="observation-copy-field"><span>{{ field.label }}</span><textarea :value="normalizeObservationCopyForEditor(practiceContent.observationCopy[field.key].richText)" rows="3" maxlength="240" :disabled="practiceContentSaving || practiceContentConflict" @input="updateObservationCopyText(field.key, $event)" /></label></section></div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-          <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
+                    <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
+            <div class="practice-savebar-copy">
+              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
+              <small>此刻观察 · 文案字段</small>
+            </div>
+            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
+          </footer>
           </form>
         </div>
       </section>
@@ -5698,7 +5758,6 @@ onBeforeUnmount(() => {
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序共同实践页预览">
             <CopyPagePreview :title="practiceCopyIssueCode ? `共同实践 · 按期` : `共同实践`" :subtitle="practiceCopyIssueCode ? practiceCopyIssueCode : `SHARED PRACTICE`" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :extra-sections="sharedPracticeExtraSections" :active-key="activeObservationKey" @pick="pickObservationKey" />
-            <p class="preview-hint">未选期刊时用全局默认文案；选定期刊后，末尾会追加该期的讨论段落与线下活动条目。点区块 → 跳到右侧对应字段。</p>
           </aside>
           <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
         <div class="practice-copy-panel">
@@ -5766,7 +5825,13 @@ onBeforeUnmount(() => {
 
           <div class="observation-copy-groups"><section v-for="group in sharedPracticeCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><div v-for="field in group.fields" :key="field.key" class="copy-field" :data-copy-field="field.key"><RichTextEditor v-model="practiceContent.sharedPracticeCopy[field.key].richText" v-model:font-size="practiceContent.sharedPracticeCopy[field.key].fontSize" v-model:color="practiceContent.sharedPracticeCopy[field.key].color" :label="field.label" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" /></div></section></div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-          <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
+                    <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
+            <div class="practice-savebar-copy">
+              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
+              <small>共同实践 · 按期文案</small>
+            </div>
+            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
+          </footer>
           </form>
         </div>
       </section>
@@ -5776,7 +5841,6 @@ onBeforeUnmount(() => {
         <div v-else-if="dailyObjectsContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序日常之物预览">
             <DailyObjectsPreview :content="dailyObjectsContent" :image-urls="dailyObjectPreviewUrls" :active-key="activeDailyKey" @pick="pickDailyKey" />
-            <p class="preview-hint">点预览里的区块 → 跳到右侧对应字段；点右侧字段时这里也会同步高亮。</p>
           </aside>
           <form class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent" @focusin="focusDailyField">
           <section class="daily-shop-gate"><div><h3>商城入口</h3><p>商城功能暂未开放。准备好商品内容后，可在入口状态中一键开启。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置商城开启状态</button></section>
@@ -5802,7 +5866,13 @@ onBeforeUnmount(() => {
             </article>
           </section>
           <p v-if="dailyObjectsConflict" class="error full" role="alert">日常之物已被其他管理员更新。本地修改已保留，请重新读取后再保存。</p><p v-if="dailyObjectsDirty && !dailyObjectsSaving" class="muted" role="status">有未保存的修改。</p><p v-if="dailyObjectsError" class="error" role="alert">{{ dailyObjectsError }}</p><p v-if="dailyObjectsMessage" class="status-message" role="status">{{ dailyObjectsMessage }}</p>
-          <div class="form-actions"><button type="submit" :disabled="dailyObjectsSaving || dailyObjectsConflict">{{ dailyObjectsSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="dailyObjectsSaving || dailyObjectsDirty || dailyObjectsConflict || !dailyObjectsContent.draft" @click="publishDailyObjectsContent">发布到小程序</button><button v-if="dailyObjectsConflict" type="button" class="quiet" @click="loadDailyObjectsContent">重新读取</button></div>
+                    <footer class="practice-savebar" :class="{ 'is-dirty': dailyObjectsDirty, 'is-conflict': dailyObjectsConflict }">
+            <div class="practice-savebar-copy">
+              <strong>{{ dailyObjectsConflict ? '云端版本已更新' : dailyObjectsDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
+              <small>日常之物 · 首屏与商品文案</small>
+            </div>
+            <div class="form-actions"><button type="submit" :disabled="dailyObjectsSaving || dailyObjectsConflict">{{ dailyObjectsSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="dailyObjectsSaving || dailyObjectsDirty || dailyObjectsConflict || !dailyObjectsContent.draft" @click="publishDailyObjectsContent">发布到小程序</button><button v-if="dailyObjectsConflict" type="button" class="quiet" @click="loadDailyObjectsContent">重新读取</button></div>
+          </footer>
           </form>
         </div>
       </section>
@@ -5813,7 +5883,7 @@ onBeforeUnmount(() => {
         <form v-else class="practice-form about-editor-form" @submit.prevent="savePrivacyPageContent">
           <div class="about-editor-layout">
             <section class="observation-copy-group about-fields" @focusin="focusAboutField"><h3>页面内容</h3><label data-page-field="brand-intro">品牌介绍<textarea v-model="privacyPageContent.brandIntro" rows="6" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label><label data-page-field="sources">内容来源<textarea v-model="privacyPageContent.contentSources" rows="5" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label><label data-page-field="contact">联系方式<textarea v-model="privacyPageContent.contactInfo" rows="3" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label></section>
-            <aside class="about-draft-preview" aria-label="当前草稿预览"><div class="about-draft-preview-heading"><div><p class="eyebrow">DRAFT PREVIEW</p><h3>预览当前草稿</h3></div><span v-if="privacyPageDirty" class="draft-state">未保存</span><span v-else class="draft-state">草稿预览</span></div><AboutPagePreview :content="privacyPageContent" :active-key="activeAboutKey" @pick="pickAboutKey" /><p class="preview-hint">点预览里的段落 → 左侧跳到对应输入框；点输入框时这里也会高亮。</p></aside>
+            <aside class="about-draft-preview" aria-label="当前草稿预览"><div class="about-draft-preview-heading"><div><p class="eyebrow">DRAFT PREVIEW</p><h3>预览当前草稿</h3></div><span v-if="privacyPageDirty" class="draft-state">未保存</span><span v-else class="draft-state">草稿预览</span></div><AboutPagePreview :content="privacyPageContent" :active-key="activeAboutKey" @pick="pickAboutKey" /></aside>
           </div>
           <p v-if="privacyPageConflict" class="error full" role="alert">关于内容已被其他管理员更新，本地修改已保留；重新载入最新版本后再保存。</p><p v-if="privacyPageDirty && !privacyPageSaving" class="muted" role="status">有未保存的修改。</p><p v-if="privacyPageError" class="error" role="alert">{{ privacyPageError }}</p><p v-if="privacyPageMessage" class="status-message" role="status">{{ privacyPageMessage }}</p><div class="form-actions"><button type="submit" :disabled="privacyPageSaving || privacyPageConflict">{{ privacyPageSaving ? '保存中…' : '保存草稿' }}</button><button type="button" class="quiet" :disabled="privacyPageSaving || privacyPageDirty || privacyPageConflict" @click="publishPrivacyPageContent">发布到小程序</button><button v-if="privacyPageConflict" type="button" class="quiet" :disabled="privacyPageSaving" @click="reloadPrivacyPageContent">载入最新版本</button></div>
         </form>
@@ -5844,7 +5914,6 @@ onBeforeUnmount(() => {
         <div v-else-if="minePageContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序我的页面预览">
             <MinePagePreview :content="minePageContent" :active-key="activeMineKey" @pick="pickMineKey" />
-            <p class="preview-hint">点预览里的区块 → 切到对应页签并定位字段；点右侧字段时这里也会同步高亮。</p>
           </aside>
           <form class="practice-form" @submit.prevent="saveMinePageContent" @focusin="focusMineField">
           <div class="mine-settings-layout">

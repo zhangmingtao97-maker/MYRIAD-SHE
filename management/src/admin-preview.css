@@ -1560,3 +1560,128 @@
 #journal-list .journal-list-layout {
   margin-top: 4px;
 }
+/* —— 实践各页：与期刊统一的卡片容器、两列字段与吸底保存条 —— */
+.practice-form {
+  margin: 0;
+  padding: 16px 18px 18px;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 253, 249, .9);
+}
+
+.practice-page-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.practice-entry-list {
+  display: grid;
+  gap: 8px;
+  border-top: 0;
+}
+
+.practice-entry-row {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 253, 249, .72);
+  overflow: hidden;
+}
+
+.practice-entry-row:hover,
+.practice-entry-row.expanded {
+  border-color: var(--line-strong);
+  background: rgba(255, 253, 249, .96);
+}
+
+.practice-entry-header {
+  min-height: 64px;
+  padding: 8px 12px;
+}
+
+.directory-toolbar {
+  margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.observation-copy-group {
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+/* 保存条：与 .journal-savebar 同一套视觉 */
+.practice-savebar,
+.journal-savebar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 12px 36px rgba(23, 24, 26, .14);
+  backdrop-filter: blur(10px);
+}
+
+.practice-savebar-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.practice-savebar-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.practice-savebar-copy strong::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+
+.practice-savebar.is-dirty .practice-savebar-copy strong::before {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px var(--warn-soft);
+}
+
+.practice-savebar.is-conflict .practice-savebar-copy strong::before {
+  background: var(--danger, #b23b2e);
+  box-shadow: 0 0 0 3px rgba(178, 59, 46, .16);
+}
+
+.practice-savebar-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.practice-savebar .form-actions {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.practice-savebar .form-actions button {
+  min-height: 38px;
+  padding: 8px 13px;
+  font-size: 12.5px;
+}
+
+@media (max-width: 1240px) {
+  .practice-page-fields {
+    grid-template-columns: 1fr;
+  }
+}
