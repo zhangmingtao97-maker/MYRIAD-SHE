@@ -3993,6 +3993,14 @@ function setIssueModuleText(module: ManagedIssueModule, field: string, event: Ev
     module[field] = field.endsWith('FontSize') ? Number(target.value) : target.value;
   }
 }
+function setIssueModuleLinkType(module: ManagedIssueModule, event: Event) {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  module.linkType = target.value;
+  if (target.value !== 'page') module.linkPath = '';
+  if (target.value !== 'web') module.linkUrl = '';
+  if (target.value === 'none') module.linkLabel = '';
+}
 
 async function previewIssueModules() {
   const session = sessionGeneration;
@@ -5292,6 +5300,7 @@ onBeforeUnmount(() => {
                 </div>
               </details>
             </details>
+            <datalist id="issue-module-page-presets"><option value="/pages/home/index">首页</option><option value="/pages/story-detail/index?id=story">人物故事</option><option value="/pages/audio/index">本期微声音</option><option value="/pages/practice/index">实践</option><option value="/pages/about/index">关于</option><option value="/pages/archive/index">往期档案</option><option value="/pages/daily-objects/index">日常之物</option><option value="/pages/shared-practice/index">共同实践</option><option value="/pages/contact-support/index">联系客服</option></datalist>
             <div v-if="activeContentSection !== 'journal-discussion'" class="issue-module-list"><article v-for="(module, index) in issueForm.draftContent.sections" v-show="selectedIssueModuleId === module.id && isIssueModuleVisibleInJournalSection(module)" :key="module.id" :data-issue-module="module.id" class="issue-module-card">
               <header><span>{{ String(index + 1).padStart(2, '0') }} · {{ issueModuleLabel(module) }}</span><label class="issue-module-toggle"><input v-model="module.enabled" type="checkbox" />启用</label><button type="button" class="quiet" :disabled="index === 0" aria-label="上移栏目" @click="moveIssueModule(index, -1)">↑</button><button type="button" class="quiet" :disabled="index === issueForm.draftContent.sections.length - 1" aria-label="下移栏目" @click="moveIssueModule(index, 1)">↓</button><button v-if="!['issueMeta','coverStory','cover','opener','question','observationAction','sharedPracticeAction'].includes(module.type)" type="button" class="quiet danger" aria-label="删除栏目" @click="removeIssueModule(index)">删除</button></header>
               <div v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'" class="form-grid"><label v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'">上传 / 替换图片<input type="file" accept="image/jpeg,image/png,image/webp" @change="selectIssueModuleFile(module, $event)" /></label><label>图片对象路径<input :value="String(module.imageObjectKey || '')" placeholder="content/image/..." @input="setIssueModuleText(module, 'imageObjectKey', $event)" /></label><label>图片替代文本<input :value="String(module.altText || '')" @input="setIssueModuleText(module, 'altText', $event)" /></label></div>
@@ -5334,6 +5343,16 @@ onBeforeUnmount(() => {
               <label v-if="module.text !== undefined">引言内容<textarea :value="String(module.text || '')" rows="3" maxlength="1000" @input="setIssueModuleText(module, 'text', $event)" /></label>
               <label v-if="module.attribution !== undefined">引言署名<input :value="String(module.attribution || '')" @input="setIssueModuleText(module, 'attribution', $event)" /></label>
               <label v-if="module.caption !== undefined">图片说明<input :value="String(module.caption || '')" @input="setIssueModuleText(module, 'caption', $event)" /></label>
+              <details class="issue-module-details issue-module-link-editor">
+                <summary>模块跳转（小程序页面 / 网站）</summary>
+                <div class="form-grid">
+                  <label>跳转类型<select :value="String(module.linkType || 'none')" @change="setIssueModuleLinkType(module, $event)"><option value="none">不跳转</option><option value="page">小程序页面</option><option value="web">网站</option></select></label>
+                  <label>入口文字<input :value="String(module.linkLabel || '')" maxlength="40" placeholder="了解更多" @input="setIssueModuleText(module, 'linkLabel', $event)" /></label>
+                </div>
+                <label v-if="module.linkType === 'page'">小程序页面路径<input list="issue-module-page-presets" :value="String(module.linkPath || '')" maxlength="512" placeholder="/pages/story-detail/index?id=story" @input="setIssueModuleText(module, 'linkPath', $event)" /></label>
+                <label v-if="module.linkType === 'web'">网站链接（HTTPS）<input type="url" :value="String(module.linkUrl || '')" maxlength="2048" placeholder="https://example.com/article" @input="setIssueModuleText(module, 'linkUrl', $event)" /></label>
+                <p class="field-help">配置后，该栏目底部会出现入口。小程序页面须以 /pages/ 开头；网站须为 HTTPS，并先在小程序后台配置业务域名。</p>
+              </details>
             </article></div>
             <section v-if="activeContentSection === 'journal-archive'" class="panel journal-past-panel">
               <div class="section-heading"><div><p class="eyebrow">PAST ISSUES</p><h3>往期与归档期次</h3></div><small>由期刊状态自动生成，不能手工新增</small></div>

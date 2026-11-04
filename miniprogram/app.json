@@ -24,7 +24,8 @@
     "pages/observation-detail/index",
     "pages/privacy/index",
     "pages/privacy-policy/index",
-    "pages/about/index"
+    "pages/about/index",
+    "pages/webview/index"
   ],
   "lazyCodeLoading": "requiredComponents",
   "requiredPrivateInfos": ["chooseAddress"],

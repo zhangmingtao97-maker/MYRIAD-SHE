@@ -146,3 +146,7 @@
 .footer-flower view:nth-child(3) { top: 74rpx; left: 46rpx; transform: rotate(180deg); }
 .footer-flower view:nth-child(4) { top: 37rpx; left: 9rpx; transform: rotate(270deg); }
 .text-button::after, .contents-row::after { border: 0; }
+
+.module-link { display: flex; min-height: 72rpx; align-items: center; justify-content: space-between; gap: 20rpx; margin: 22rpx 8rpx 0; padding: 16rpx 0 4rpx; border-top: 1rpx solid rgba(92, 73, 60, .24); color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.5; letter-spacing: .06em; box-sizing: border-box; }
+.module-link:active { opacity: .62; }
+.module-link-arrow { flex: 0 0 auto; font-size: 30rpx; line-height: 1.2; }

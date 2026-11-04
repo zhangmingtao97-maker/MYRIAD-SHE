@@ -1,0 +1,5 @@
+<web-view wx:if="{{url}}" src="{{url}}" binderror="handleError"></web-view>
+<view wx:else class="webview-state">
+  <view class="webview-error">{{error || '网页暂时无法打开'}}</view>
+  <view class="webview-back" role="button" tabindex="0" bindtap="handleBack">返回上一页</view>
+</view>

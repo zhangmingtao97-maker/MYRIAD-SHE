@@ -189,6 +189,35 @@ Page({
   openArchive() {
     wx.navigateTo({ url: '/pages/archive/index' });
   },
+  openModuleLink(event: WechatMiniprogram.CustomEvent) {
+    const type = String(event.currentTarget.dataset.linkType || '');
+    const path = String(event.currentTarget.dataset.linkPath || '').trim();
+    const url = String(event.currentTarget.dataset.linkUrl || '').trim();
+    const fail = () => wx.showToast({ title: '暂时无法打开这个入口', icon: 'none' });
+    if (type === 'web') {
+      if (!/^https:\/\/[^\s<>]+$/i.test(url)) {
+        wx.showToast({ title: '网站链接无效', icon: 'none' });
+        return;
+      }
+      wx.navigateTo({
+        url: `/pages/webview/index?url=${encodeURIComponent(url)}`,
+        fail,
+      });
+      return;
+    }
+    if (type === 'page') {
+      const route = path.split('?')[0];
+      if (!route.startsWith('/pages/') || !path.startsWith('/pages/')) {
+        wx.showToast({ title: '页面路径无效', icon: 'none' });
+        return;
+      }
+      if (['/pages/home/index', '/pages/practice/index', '/pages/mine/index'].includes(route)) {
+        wx.switchTab({ url: route, fail });
+      } else {
+        wx.navigateTo({ url: path, fail });
+      }
+    }
+  },
   toggleAudioMore(event: WechatMiniprogram.CustomEvent) {
     const moduleId = String(event.currentTarget.dataset.moduleId || '');
     const audio = this.data.modules.find((module) => module.id === moduleId && module.type === 'audio');

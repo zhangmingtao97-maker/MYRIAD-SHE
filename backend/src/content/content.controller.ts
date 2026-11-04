@@ -707,8 +707,25 @@ export class ContentController {
       if (typeof type !== 'string' || !issueModuleTypes.includes(type as IssueModuleType)) throw new BadRequestException('栏目类型不受支持');
       if (!Number.isSafeInteger(order) || Number(order) < 0 || Number(order) >= sections.length) throw new BadRequestException('栏目顺序无效');
       if (typeof item.enabled !== 'boolean') throw new BadRequestException('栏目启用状态无效');
-      const allowed = new Set(['id', 'type', 'order', 'enabled', ...allowedFields[type as IssueModuleType]]);
+      const allowed = new Set(['id', 'type', 'order', 'enabled', 'linkType', 'linkPath', 'linkUrl', 'linkLabel', ...allowedFields[type as IssueModuleType]]);
       if (Object.keys(item).some((key) => !allowed.has(key))) throw new BadRequestException('栏目包含未登记字段');
+      const linkType = item.linkType === undefined || item.linkType === '' ? 'none' : item.linkType;
+      if (linkType !== 'none' && linkType !== 'page' && linkType !== 'web') throw new BadRequestException('栏目跳转类型无效');
+      const linkPath = typeof item.linkPath === 'string' ? item.linkPath.trim() : '';
+      const linkUrl = typeof item.linkUrl === 'string' ? item.linkUrl.trim() : '';
+      const linkLabel = typeof item.linkLabel === 'string' ? item.linkLabel.trim() : '';
+      if (linkType === 'page') {
+        if (!linkPath || linkPath.length > 512 || linkPath.includes('..') || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(linkPath)) throw new BadRequestException('小程序页面路径无效');
+      }
+      if (linkType === 'web') {
+        if (!linkUrl || linkUrl.length > 2048 || !/^https:\/\/[^\s<>]+$/i.test(linkUrl)) throw new BadRequestException('网站链接须为 HTTPS 地址');
+        try {
+          if (new URL(linkUrl).protocol !== 'https:') throw new Error('invalid protocol');
+        } catch {
+          throw new BadRequestException('网站链接须为 HTTPS 地址');
+        }
+      }
+      if (linkLabel !== '' && (linkLabel.length > 40 || /[\r\n]/.test(linkLabel) || /<\/?[a-z][^>]*>/i.test(linkLabel))) throw new BadRequestException('栏目跳转文字须为长度有效的纯文本');
       let normalizedTracks: IssueAudioTrack[] | undefined;
       for (const key of allowedFields[type as IssueModuleType]) {
         const field = item[key];
@@ -769,6 +786,18 @@ export class ContentController {
       }
       ids.add(id);
       const normalizedItem = { ...item, id, type: type as IssueModuleType, order: Number(order), enabled: item.enabled } as IssueModule;
+      delete normalizedItem.linkType;
+      delete normalizedItem.linkPath;
+      delete normalizedItem.linkUrl;
+      delete normalizedItem.linkLabel;
+      if (linkType === 'page') {
+        normalizedItem.linkType = 'page';
+        normalizedItem.linkPath = linkPath;
+      } else if (linkType === 'web') {
+        normalizedItem.linkType = 'web';
+        normalizedItem.linkUrl = linkUrl;
+      }
+      if (linkType !== 'none' && linkLabel) normalizedItem.linkLabel = linkLabel;
       if (normalizedTracks) {
         normalizedItem.tracks = normalizedTracks;
         const firstTrack = normalizedTracks[0];

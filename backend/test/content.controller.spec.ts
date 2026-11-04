@@ -1102,6 +1102,32 @@ test('story modules accept detail-page fields and story actions must target an e
   ]), BadRequestException);
 });
 
+test('every homepage module can link to a mini-program page or an HTTPS website', () => {
+  const { controller } = issueEditHarness(1);
+  const validate = (sections: unknown[]) => (controller as unknown as { validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> } }).validateIssueDraft({ sections });
+  const draft = validate([
+    { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, linkType: 'page', linkPath: '/pages/story-detail/index?id=story', linkLabel: '读人物故事' },
+    { id: 'quote', type: 'quote', order: 1, enabled: true, text: '一句引言', linkType: 'web', linkUrl: 'https://example.com/essay', linkLabel: '阅读全文' },
+    { id: 'brand-footer', type: 'brandFooter', order: 2, enabled: true, body: '页脚', linkType: 'none', linkPath: '/pages/ignored/index', linkLabel: '忽略' },
+  ]);
+  assert.equal(draft.sections[0].linkType, 'page');
+  assert.equal(draft.sections[0].linkPath, '/pages/story-detail/index?id=story');
+  assert.equal(draft.sections[0].linkLabel, '读人物故事');
+  assert.equal(draft.sections[1].linkType, 'web');
+  assert.equal(draft.sections[1].linkUrl, 'https://example.com/essay');
+  assert.equal(draft.sections[2].linkType, undefined);
+  assert.equal(draft.sections[2].linkPath, undefined);
+  assert.throws(() => validate([
+    { id: 'story', type: 'story', order: 0, enabled: true, linkType: 'page', linkPath: '/pages/../admin' },
+  ]), BadRequestException);
+  assert.throws(() => validate([
+    { id: 'story', type: 'story', order: 0, enabled: true, linkType: 'web', linkUrl: 'http://example.com/essay' },
+  ]), BadRequestException);
+  assert.throws(() => validate([
+    { id: 'story', type: 'story', order: 0, enabled: true, linkType: 'web', linkUrl: 'https://example.com/essay', linkLabel: '<b>阅读</b>' },
+  ]), BadRequestException);
+});
+
 test('audio and question modules accept the editorial copy fields used by the mobile layout', () => {
   const { controller } = issueEditHarness(1);
   const validate = (sections: unknown[]) => (controller as unknown as { validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> } }).validateIssueDraft({ sections });
@@ -1246,6 +1272,7 @@ test('home signs every published audio track and strips storage object keys', as
     modules: [{
       id: 'audio', type: 'audio', order: 0, enabled: true,
       audioObjectKey: 'content/audio/voice-01.mp3',
+      linkType: 'page', linkPath: '/pages/audio/index', linkLabel: '听更多',
       tracks: [
         { id: 'voice-01', title: '微声音 01', duration: '01:12', audioObjectKey: 'content/audio/voice-01.mp3', quote: '', subtitle: '', transcript: '' },
         { id: 'voice-02', title: '微声音 02', duration: '00:45', audioObjectKey: 'content/audio/voice-02.mp3', quote: '', subtitle: '', transcript: '' },
@@ -1264,6 +1291,9 @@ test('home signs every published audio track and strips storage object keys', as
   assert.equal(module.audioUrl, 'https://media.example/content/audio/voice-01.mp3');
   assert.equal(tracks[1].audioUrl, 'https://media.example/content/audio/voice-02.mp3');
   assert.equal('audioObjectKey' in module, false);
+  assert.equal(module.linkType, 'page');
+  assert.equal(module.linkPath, '/pages/audio/index');
+  assert.equal(module.linkLabel, '听更多');
   assert.equal('audioObjectKey' in tracks[0], false);
 });
 

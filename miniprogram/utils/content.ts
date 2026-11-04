@@ -197,6 +197,10 @@ function isPublicHomeModule(value: unknown): value is PublicHomeModule {
     && typeof value.enabled === 'boolean'
     && Object.entries(value).every(([key, field]) => ['id', 'type', 'order', 'enabled'].includes(key)
       || (key === 'tracks' ? isPublicAudioTracks(field)
+        : key === 'linkType' ? field === 'none' || field === 'page' || field === 'web'
+          : key === 'linkPath' ? isBoundedText(field, 512) && /^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(field)
+            : key === 'linkUrl' ? isBoundedText(field, 2048) && /^https:\/\/[^\s<>]+$/i.test(field)
+              : key === 'linkLabel' ? isBoundedText(field, 40) && !/[\r\n]/.test(field)
         : key.endsWith('Url') ? isPublicMediaUrl(field)
         : key.endsWith('FontSize') ? Number.isSafeInteger(field) && Number(field) >= 20 && Number(field) <= 120
           : key.endsWith('Color') ? typeof field === 'string' && /^#[0-9a-f]{6}$/i.test(field)

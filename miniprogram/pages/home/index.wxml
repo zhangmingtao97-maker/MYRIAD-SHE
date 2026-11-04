@@ -108,6 +108,9 @@
           <view class="footer-copy">{{item.body}}</view>
           <view class="footer-flower" aria-hidden="true"><view></view><view></view><view></view><view></view></view>
         </view>
+        <view wx:if="{{item.linkType === 'page' || item.linkType === 'web'}}" class="module-link" role="button" tabindex="0" aria-label="{{item.linkLabel || '了解更多'}}" data-link-type="{{item.linkType}}" data-link-path="{{item.linkPath || ''}}" data-link-url="{{item.linkUrl || ''}}" bindtap="openModuleLink">
+          <text>{{item.linkLabel || '了解更多'}}</text><text class="module-link-arrow" aria-hidden="true">→</text>
+        </view>
       </view>
     </block>
     <block wx:else>
