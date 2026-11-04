@@ -5,13 +5,16 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 const DESIGN_WIDTH = 375;
 const DESIGN_HEIGHT = 812;
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   title: string;
   caption?: string;
   activeKey?: string;
   /** 没有可点区块时隐藏「点击区块」提示 */
   interactive?: boolean;
-}>();
+}>(), {
+  // 布尔 prop 缺省会被 Vue 转成 false，这里显式默认 true，否则提示文案永远不显示。
+  interactive: true,
+});
 
 const wrap = ref<HTMLElement | null>(null);
 const screen = ref<HTMLElement | null>(null);
@@ -27,7 +30,7 @@ function measure() {
   const available = el.clientWidth;
   if (!available) return;
   const widthScale = available / DESIGN_WIDTH;
-  const heightScale = (window.innerHeight - 210) / DESIGN_HEIGHT;
+  const heightScale = (window.innerHeight - 262) / DESIGN_HEIGHT;
   scale.value = Math.min(1, Math.max(0.55, Math.min(widthScale, heightScale || 1)));
 }
 
@@ -66,7 +69,10 @@ defineExpose({ reveal });
   <section class="phone-preview">
     <div class="phone-preview-head">
       <span>{{ title }}</span>
-      <small v-if="caption">{{ caption }}</small>
+      <div class="phone-preview-head-right">
+        <small v-if="caption">{{ caption }}</small>
+        <slot name="head-actions" />
+      </div>
     </div>
     <div
       ref="wrap"

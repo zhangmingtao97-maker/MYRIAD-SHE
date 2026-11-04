@@ -1114,3 +1114,166 @@
 .audio-preview-track .preview-block-tag {
   display: none;
 }
+/* ---------- 期刊工作区：居中、收紧层级、用满横向空间 ---------- */
+.dashboard-workspace {
+  max-width: 1520px;
+  margin-inline: auto;
+}
+
+#journal-module-workspace {
+  max-width: 1480px;
+}
+
+/* 页头说明改成一条细提示条，去掉与顶栏重复的眉题和卡片投影 */
+.journal-page-head {
+  margin-bottom: 14px;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.journal-page-head .eyebrow {
+  display: none;
+}
+
+.journal-page-head-copy {
+  gap: 0;
+}
+
+.journal-page-head small {
+  font-size: 12px;
+}
+
+.journal-preview-layout.has-preview {
+  gap: 16px;
+}
+
+.journal-module-form {
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.journal-context {
+  padding-bottom: 12px;
+}
+
+/* 「选择一个栏目」那张卡片只留标题 + 栏目胶囊，去掉重复的说明 */
+.journal-module-toolbar-wrap {
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.journal-module-toolbar-wrap > .field-help {
+  display: none;
+}
+
+.journal-module-toolbar-wrap .issue-module-picker {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.journal-module-form .issue-module-card {
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.journal-module-form .issue-module-card .field-help {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* 表单：宽屏两列，长文本框跨列 */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px 18px;
+}
+
+.form-grid > label:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1240px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 微声音详情字段：两列，文字稿占满 */
+.audio-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px 18px;
+  margin-top: 10px;
+}
+
+.audio-field-grid > .audio-field-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1240px) {
+  .audio-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* 微声音编辑区：与卡片头贴紧，去掉多余的空行 */
+.issue-audio-editor {
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.issue-audio-editor > .audio-field-grid {
+  margin-top: 12px;
+}
+
+.issue-audio-track {
+  margin-top: 12px;
+}
+
+.issue-audio-track > header {
+  margin-bottom: 10px;
+}
+/* 预览页头右侧：说明文字 + 页面切换按钮同一行 */
+.phone-preview-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.phone-preview-head-right small {
+  white-space: nowrap;
+}
+
+.audio-preview-switch {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.audio-preview-switch button {
+  padding: 2px 9px;
+  border: 1px solid rgba(92, 73, 60, .26);
+  border-radius: 999px;
+  background: transparent;
+  color: #6e594a;
+  font-size: 11px;
+  line-height: 1.7;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.audio-preview-switch button:hover {
+  border-color: rgba(200, 85, 61, .5);
+  color: #a8432f;
+}
+
+.audio-preview-switch button.is-active {
+  border-color: #c8553d;
+  background: rgba(200, 85, 61, .12);
+  color: #a8432f;
+}

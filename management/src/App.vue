@@ -5264,10 +5264,6 @@ onBeforeUnmount(() => {
         <div class="journal-preview-layout" :class="{ 'has-preview': showJournalPreview }">
           <aside v-if="showJournalPreview" class="journal-preview-rail" aria-label="小程序预览">
             <template v-if="activeContentSection === 'journal-audio'">
-              <div class="audio-preview-switch" role="tablist" aria-label="微声音预览页面">
-                <button type="button" :class="{ 'is-active': audioPreviewView === 'list' }" :aria-selected="audioPreviewView === 'list'" @click="setAudioPreviewView('list')">列表页</button>
-                <button type="button" :class="{ 'is-active': audioPreviewView === 'detail' }" :aria-selected="audioPreviewView === 'detail'" @click="setAudioPreviewView('detail')">详情页</button>
-              </div>
               <AudioPagePreview
                 :view="audioPreviewView"
                 :active-key="activeAudioKey"
@@ -5279,6 +5275,7 @@ onBeforeUnmount(() => {
                 :media-urls="audioPreviewMediaUrls"
                 @pick="pickAudioKey"
                 @open-detail="openAudioTrackDetail"
+                @switch-view="setAudioPreviewView"
               />
               <p class="journal-preview-hint">小程序里只有 1 段声音时，列表页会直接跳进详情页。点「详情页」切换二级页面；点任意区块 → 右侧滚到对应字段并闪框。</p>
             </template>
@@ -5449,11 +5446,13 @@ onBeforeUnmount(() => {
                   </div>
                   <video v-if="track.mediaType === 'video' && issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-video" controls preload="metadata" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持视频预览</video>
                   <audio v-else-if="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-audio" controls preload="none" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持音频试听</audio>
-                  <label :data-audio-field="`track:${track.id}:detailTitle`">详情页标题<input :value="track.detailTitle" maxlength="120" placeholder="留空时使用列表标题" @input="setIssueAudioTrackText(track, 'detailTitle', $event)" /></label>
-                  <label :data-audio-field="`track:${track.id}:description`">这段声音 / 视频的解释<textarea :value="track.description" rows="4" maxlength="6000" placeholder="进入详情页后，显示在声音或视频下方" @input="setIssueAudioTrackText(track, 'description', $event)" /></label>
-                  <label :data-audio-field="`track:${track.id}:subtitle`">引言说明<textarea :value="track.subtitle" rows="2" maxlength="500" placeholder="显示在播放器标题下方" @input="setIssueAudioTrackText(track, 'subtitle', $event)" /></label>
-                  <label :data-audio-field="`track:${track.id}:quote`">引言<textarea :value="track.quote" rows="2" maxlength="500" @input="setIssueAudioTrackText(track, 'quote', $event)" /></label>
-                  <label :data-audio-field="`track:${track.id}:transcript`">音频文字稿<textarea :value="track.transcript" rows="3" maxlength="6000" @input="setIssueAudioTrackText(track, 'transcript', $event)" /></label>
+                  <div class="audio-field-grid">
+                    <label :data-audio-field="`track:${track.id}:detailTitle`">详情页标题<input :value="track.detailTitle" maxlength="120" placeholder="留空时使用列表标题" @input="setIssueAudioTrackText(track, 'detailTitle', $event)" /></label>
+                    <label :data-audio-field="`track:${track.id}:subtitle`">引言说明<textarea :value="track.subtitle" rows="2" maxlength="500" placeholder="显示在播放器标题下方" @input="setIssueAudioTrackText(track, 'subtitle', $event)" /></label>
+                    <label :data-audio-field="`track:${track.id}:description`">这段声音 / 视频的解释<textarea :value="track.description" rows="3" maxlength="6000" placeholder="进入详情页后，显示在声音或视频下方" @input="setIssueAudioTrackText(track, 'description', $event)" /></label>
+                    <label :data-audio-field="`track:${track.id}:quote`">引言<textarea :value="track.quote" rows="3" maxlength="500" @input="setIssueAudioTrackText(track, 'quote', $event)" /></label>
+                    <label class="audio-field-wide" :data-audio-field="`track:${track.id}:transcript`">音频文字稿<textarea :value="track.transcript" rows="3" maxlength="6000" @input="setIssueAudioTrackText(track, 'transcript', $event)" /></label>
+                  </div>
                 </article>
                 <button v-if="issueAudioTracks(module).length < 3" type="button" class="secondary" :disabled="uploading" @click="addIssueAudioTrack(module)">＋ 添加微声音</button>
               </section>
