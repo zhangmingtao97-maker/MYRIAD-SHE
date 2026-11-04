@@ -4,7 +4,6 @@ import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
 import DatePickerField from './components/DatePickerField.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
-import PracticeLineEditor from './components/PracticeLineEditor.vue';
 import JournalHomePreview from './components/JournalHomePreview.vue';
 import PracticePagePreview from './components/PracticePagePreview.vue';
 import DailyObjectsPreview from './components/DailyObjectsPreview.vue';
@@ -124,7 +123,6 @@ const practiceContentSaving = ref(false);
 const practiceContentConflict = ref(false);
 const practiceContentMessage = ref('');
 const practiceContentError = ref('');
-const expandedPracticeEntries = ref<Record<string, boolean>>({});
 type MinePageContent = {
   editVersion: number;
   title: string;
@@ -1805,15 +1803,6 @@ function markPracticeContentDirty() {
   }
 }
 
-function isPracticeEntryExpanded(key: string) {
-  return expandedPracticeEntries.value[key] === true;
-}
-
-function togglePracticeEntry(key: string) {
-  expandedPracticeEntries.value = { ...expandedPracticeEntries.value, [key]: !isPracticeEntryExpanded(key) };
-  if (expandedPracticeEntries.value[key]) activePracticeKey.value = `entry:${key}`;
-}
-
 // 实践页预览的当前高亮项：meta / title / intro / directory，或 entry:<key>。
 const activePracticeKey = ref('');
 
@@ -1826,10 +1815,6 @@ function pickPracticeKey(key: string) {
   activePracticeKey.value = key;
   activeSection.value = 'practice';
   activeContentSection.value = key.startsWith('entry:') || key === 'directory' ? 'directory' : 'practice';
-  if (key.startsWith('entry:')) {
-    const entryKey = key.slice('entry:'.length);
-    expandedPracticeEntries.value = { ...expandedPracticeEntries.value, [entryKey]: true };
-  }
   nextTick(() => {
     const target = practiceFieldElement(key);
     if (!target) return;
@@ -2100,31 +2085,43 @@ function editStoryHeadlineFromHome() {
   goToJournalSection('journal-home');
 }
 
-function togglePracticeEntryEnabled(entry: PracticeEntry) {
-  if (!practiceContent.value || practiceContentSaving.value || practiceContentConflict.value) return;
-  entry.enabled = !entry.enabled;
+// 实践目录的三行文案在真机上是固定排版（字号、颜色、行位置都写死），
+// 后台只改文字，不再逐个字段暴露字号 / 颜色 / 富文本。
+const practiceEntryFixedStyle = {
+  context: { fontSize: 12, color: '#8b6b58' },
+  title: { fontSize: 16, color: '#40362f' },
+  description: { fontSize: 13, color: '#40362f' },
+} as const;
+
+function practiceEntryText(html: string) {
+  return String(html || '').replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
+function setPracticeEntryText(entry: PracticeEntry, slot: 'context' | 'title' | 'description', value: string) {
+  const style = practiceEntryFixedStyle[slot];
+  if (slot === 'title') {
+    entry.titleRichText = value; entry.titleFontSize = style.fontSize; entry.titleColor = style.color;
+    entry.title = value;
+  } else if (slot === 'description') {
+    entry.descriptionRichText = value; entry.descriptionFontSize = style.fontSize; entry.descriptionColor = style.color;
+    entry.description = value;
+  } else {
+    entry.contextRichText = value; entry.contextFontSize = style.fontSize; entry.contextColor = style.color;
+  }
   markPracticeContentDirty();
 }
 
-function addPracticeEntry() {
+function togglePracticeEntryEnabled(entry: PracticeEntry) {
   if (!practiceContent.value || practiceContentSaving.value || practiceContentConflict.value) return;
-  if (practiceContent.value.entries.length >= 100) {
-    practiceContentError.value = '最多可设置 100 个目录。';
-    return;
-  }
-  const uuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID().replaceAll('-', '')
-    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
-  const entry: PracticeEntry = {
-    key: `directory-${uuid}`,
-    contextRichText: '新的实践情境', contextFontSize: 12, contextColor: '#8b6b58',
-    title: '新实践目录', titleRichText: '新实践目录', titleFontSize: 16, titleColor: '#40362f',
-    description: '请填写目录说明', descriptionRichText: '请填写目录说明', descriptionFontSize: 13, descriptionColor: '#40362f',
-    enabled: false,
-  };
-  practiceContent.value.entries.push(entry);
-  expandedPracticeEntries.value = { ...expandedPracticeEntries.value, [entry.key]: true };
-  practiceContentError.value = '';
+  entry.enabled = !entry.enabled;
   markPracticeContentDirty();
 }
 
@@ -3053,10 +3050,21 @@ async function refreshCurrentPage() {
 // 所以保存前先剥掉，保存后再把本地这两段合并回内存，界面不会闪。
 function practiceContentPayload(content: PracticeContent) {
   const { draft: _draft, sharedPracticeCopy, ...rest } = content;
+  const entries = rest.entries.map((entry) => {
+    const context = practiceEntryText(entry.contextRichText);
+    const title = practiceEntryText(entry.titleRichText);
+    const description = practiceEntryText(entry.descriptionRichText);
+    return {
+      ...entry,
+      contextRichText: context, contextFontSize: practiceEntryFixedStyle.context.fontSize, contextColor: practiceEntryFixedStyle.context.color,
+      titleRichText: title, titleFontSize: practiceEntryFixedStyle.title.fontSize, titleColor: practiceEntryFixedStyle.title.color, title,
+      descriptionRichText: description, descriptionFontSize: practiceEntryFixedStyle.description.fontSize, descriptionColor: practiceEntryFixedStyle.description.color, description,
+    };
+  });
   const shared = sharedPracticeCopy
     ? Object.fromEntries(Object.entries(sharedPracticeCopy).filter(([key]) => key !== 'onlineParagraphs' && key !== 'rules'))
     : sharedPracticeCopy;
-  return { ...rest, sharedPracticeCopy: shared };
+  return { ...rest, entries, sharedPracticeCopy: shared };
 }
 
 async function savePracticeContent() {
@@ -5697,26 +5705,27 @@ onBeforeUnmount(() => {
             <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
           </aside>
           <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
-          <div class="directory-toolbar"><p class="muted field-help">拖动暂不开放，目录按此处顺序显示。每个目录都可在标题行右侧直接切换入口状态。</p><button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || practiceContent.entries.length >= 100" @click="addPracticeEntry">＋ 新增目录</button></div>
           <div class="practice-entry-list">
-            <article v-for="(entry, index) in practiceContent.entries" :key="entry.key" :data-practice-field="`entry:${entry.key}`" class="practice-entry-row" :class="{ expanded: isPracticeEntryExpanded(entry.key) }">
-              <div class="practice-entry-header">
-                <button type="button" class="practice-entry-toggle" :aria-expanded="isPracticeEntryExpanded(entry.key)" :aria-controls="`practice-entry-panel-${entry.key}`" @click="togglePracticeEntry(entry.key)">
-                  <span class="practice-entry-index">{{ String(index + 1).padStart(2, '0') }}</span>
-                  <span class="practice-entry-summary"><strong>{{ entry.title }}</strong><small>实践目录 · 可管理开放状态</small></span>
-                  <svg class="practice-entry-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-                </button>
-                <span class="practice-entry-status"><span class="practice-entry-status-label">入口状态</span><button type="button" class="practice-entry-status-toggle" :class="{ enabled: entry.enabled }" :disabled="practiceContentSaving || practiceContentConflict" :aria-pressed="entry.enabled" :aria-label="`${entry.title}${entry.enabled ? '已开启' : '已关闭'}，点击切换`" @click.stop="togglePracticeEntryEnabled(entry)"><span class="practice-entry-status-dot" aria-hidden="true"></span><span>{{ entry.enabled ? '开启' : '关闭' }}</span></button></span>
+            <article v-for="(entry, index) in practiceContent.entries" :key="entry.key" :data-practice-field="`entry:${entry.key}`" class="practice-entry-row">
+              <header class="practice-entry-header">
+                <span class="practice-entry-index">{{ String(index + 1).padStart(2, '0') }}</span>
+                <span class="practice-entry-summary"><strong>{{ practiceEntryText(entry.titleRichText) }}</strong><small>{{ entry.enabled ? '首页可见' : '首页暂不显示' }}</small></span>
+                <button type="button" class="practice-entry-status-toggle" :class="{ enabled: entry.enabled }" :disabled="practiceContentSaving || practiceContentConflict" :aria-pressed="entry.enabled" :aria-label="`${practiceEntryText(entry.titleRichText)}${entry.enabled ? '已开启' : '已关闭'}，点击切换入口状态`" @click="togglePracticeEntryEnabled(entry)"><span class="practice-entry-status-dot" aria-hidden="true"></span><span>{{ entry.enabled ? '开启' : '关闭' }}</span></button>
+              </header>
+              <div class="practice-entry-fields">
+                <label class="practice-entry-field">
+                  <span>第一行 · 情境文案</span>
+                  <input type="text" :value="practiceEntryText(entry.contextRichText)" :disabled="practiceContentSaving || practiceContentConflict" @input="setPracticeEntryText(entry, 'context', ($event.target as HTMLInputElement).value)" />
+                </label>
+                <label class="practice-entry-field">
+                  <span>第二行 · 目录名称</span>
+                  <input type="text" :value="practiceEntryText(entry.titleRichText)" :disabled="practiceContentSaving || practiceContentConflict" @input="setPracticeEntryText(entry, 'title', ($event.target as HTMLInputElement).value)" />
+                </label>
+                <label class="practice-entry-field full">
+                  <span>第三行 · 补充说明</span>
+                  <input type="text" :value="practiceEntryText(entry.descriptionRichText)" :disabled="practiceContentSaving || practiceContentConflict" @input="setPracticeEntryText(entry, 'description', ($event.target as HTMLInputElement).value)" />
+                </label>
               </div>
-              <Transition name="directory-panel">
-                <div v-if="isPracticeEntryExpanded(entry.key)" :id="`practice-entry-panel-${entry.key}`" class="practice-entry-panel">
-                  <div class="practice-entry-lines">
-                    <PracticeLineEditor v-model="entry.contextRichText" v-model:font-size="entry.contextFontSize" v-model:color="entry.contextColor" label="第一行 · 情境文案" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
-                    <PracticeLineEditor v-model="entry.titleRichText" v-model:font-size="entry.titleFontSize" v-model:color="entry.titleColor" label="第二行 · 目录名称" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
-                    <PracticeLineEditor v-model="entry.descriptionRichText" v-model:font-size="entry.descriptionFontSize" v-model:color="entry.descriptionColor" label="第三行 · 补充说明" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
-                  </div>
-                </div>
-              </Transition>
             </article>
           </div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
