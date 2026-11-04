@@ -1770,3 +1770,38 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* —— 每个实践目录：首页入口 / 详情页 切换 —— */
+.practice-entry-tabs {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+  margin: 0 0 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, .78);
+}
+
+.practice-entry-tabs button {
+  min-height: 32px;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8b6b58;
+  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-size: 12.5px;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease;
+}
+
+.practice-entry-tabs button:hover:not(.active) {
+  color: #49392f;
+}
+
+.practice-entry-tabs button.active {
+  background: #c8553d;
+  color: #fff8ee;
+}

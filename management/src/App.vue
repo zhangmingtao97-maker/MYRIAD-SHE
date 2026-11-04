@@ -12,6 +12,9 @@ import MinePagePreview from './components/MinePagePreview.vue';
 import CopyPagePreview from './components/CopyPagePreview.vue';
 import AudioPagePreview from './components/AudioPagePreview.vue';
 import StoryDetailPreview from './components/StoryDetailPreview.vue';
+import PracticeEntryEditor from './components/PracticeEntryEditor.vue';
+import PracticeSaveBar from './components/PracticeSaveBar.vue';
+import { practiceEntryFixedStyle, practiceEntryText } from './practiceEntry';
 import { createDefaultDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
@@ -1079,13 +1082,13 @@ const currentPageRefreshing = ref(false);
 type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
 type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'legal-history' | 'privacy-page' | 'about-history';
-type PracticeSection = 'practice' | 'directory' | 'observation' | 'shared-practice' | 'daily-objects';
+type PracticeSection = 'practice' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
 const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'employees', 'life-cards', 'life-card-views']);
-const contentSectionKeys = new Set<ContentSection>(['practice', 'directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
+const contentSectionKeys = new Set<ContentSection>(['practice', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'legal-history', 'privacy-page', 'about-history'];
-const practiceSections: PracticeSection[] = ['practice', 'directory', 'observation', 'shared-practice', 'daily-objects'];
+const practiceSections: PracticeSection[] = ['practice', 'observation', 'shared-practice', 'daily-objects'];
 const operationsSections = ['contributions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
 const systemSections = ['settings', 'life-cards', 'life-card-views', 'employees'] as const;
 type OperationsSection = typeof operationsSections[number];
@@ -1348,9 +1351,8 @@ watch(activeSection, (section) => {
 });
 const currentView = computed(() => {
   if (activeSection.value === 'practice') {
-    if (activeContentSection.value === 'directory') return { eyebrow: 'PRACTICE / DIRECTORY', title: '实践目录设置' };
     if (activeContentSection.value === 'observation') return { eyebrow: 'PRACTICE / CONTENT / OBSERVATION', title: '此刻观察' };
-    if (activeContentSection.value === 'shared-practice') return { eyebrow: 'PRACTICE / CONTENT / SHARED PRACTICE', title: '共同实践目录' };
+    if (activeContentSection.value === 'shared-practice') return { eyebrow: 'PRACTICE / CONTENT / SHARED PRACTICE', title: '共同实践' };
     if (activeContentSection.value === 'daily-objects') return { eyebrow: 'PRACTICE / DAILY OBJECTS', title: '日常之物' };
     if (activeContentSection.value === 'privacy-page') return { eyebrow: 'PRIVACY / ABOUT', title: '关于 MYRIAD SHE' };
     if (activeContentSection.value === 'about-history') return { eyebrow: 'PRIVACY / ABOUT / HISTORY', title: '关于发布历史' };
@@ -1360,9 +1362,8 @@ const currentView = computed(() => {
   if (activeSection.value === 'content') {
     const contentViews: Record<ContentSection, { eyebrow: string; title: string }> = {
       practice: { eyebrow: 'PRACTICE / PAGE COPY', title: '实践页面' },
-      directory: { eyebrow: 'PRACTICE / DIRECTORY', title: '实践目录设置' },
       observation: { eyebrow: 'PRACTICE / CONTENT / OBSERVATION', title: '此刻观察' },
-      'shared-practice': { eyebrow: 'PRACTICE / CONTENT / SHARED PRACTICE', title: '共同实践目录' },
+      'shared-practice': { eyebrow: 'PRACTICE / CONTENT / SHARED PRACTICE', title: '共同实践' },
       'daily-objects': { eyebrow: 'PRACTICE / DAILY OBJECTS', title: '日常之物' },
       mine: { eyebrow: 'PAGES / MINE', title: '我的页面设置' },
       media: { eyebrow: 'EDITORIAL / MEDIA', title: '媒体库' },
@@ -1803,6 +1804,33 @@ function markPracticeContentDirty() {
   }
 }
 
+// 每个实践目录都有两页：首页里那一行入口，和点进去之后的详情页。
+const practiceEntryTabs = ref<Record<string, 'home' | 'detail'>>({});
+const practiceEntrySectionByKey: Record<string, PracticeSection> = {
+  observation: 'observation',
+  'shared-practice': 'shared-practice',
+  'daily-goods': 'daily-objects',
+};
+
+function practiceEntryTab(section: string) {
+  return practiceEntryTabs.value[section] ?? 'detail';
+}
+
+function setPracticeEntryTab(section: string, tab: 'home' | 'detail') {
+  practiceEntryTabs.value = { ...practiceEntryTabs.value, [section]: tab };
+}
+
+function practiceEntryFor(section: string) {
+  const key = Object.keys(practiceEntrySectionByKey).find((entryKey) => practiceEntrySectionByKey[entryKey] === section);
+  return practiceContent.value?.entries.find((entry) => entry.key === key) ?? null;
+}
+
+function practiceEntryIndex(section: string) {
+  const key = Object.keys(practiceEntrySectionByKey).find((entryKey) => practiceEntrySectionByKey[entryKey] === section);
+  const index = practiceContent.value?.entries.findIndex((entry) => entry.key === key) ?? -1;
+  return index + 1;
+}
+
 // 实践页预览的当前高亮项：meta / title / intro / directory，或 entry:<key>。
 const activePracticeKey = ref('');
 
@@ -1814,7 +1842,16 @@ function practiceFieldElement(key: string) {
 function pickPracticeKey(key: string) {
   activePracticeKey.value = key;
   activeSection.value = 'practice';
-  activeContentSection.value = key.startsWith('entry:') || key === 'directory' ? 'directory' : 'practice';
+  if (key.startsWith('entry:')) {
+    const entryKey = key.slice('entry:'.length);
+    const section = practiceEntrySectionByKey[entryKey];
+    if (section) {
+      activeContentSection.value = section;
+      setPracticeEntryTab(section, 'home');
+    }
+  } else {
+    activeContentSection.value = 'practice';
+  }
   nextTick(() => {
     const target = practiceFieldElement(key);
     if (!target) return;
@@ -2085,41 +2122,8 @@ function editStoryHeadlineFromHome() {
   goToJournalSection('journal-home');
 }
 
-// 实践目录的三行文案在真机上是固定排版（字号、颜色、行位置都写死），
-// 后台只改文字，不再逐个字段暴露字号 / 颜色 / 富文本。
-const practiceEntryFixedStyle = {
-  context: { fontSize: 12, color: '#8b6b58' },
-  title: { fontSize: 16, color: '#40362f' },
-  description: { fontSize: 13, color: '#40362f' },
-} as const;
-
-function practiceEntryText(html: string) {
-  return String(html || '').replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
-}
-
-function setPracticeEntryText(entry: PracticeEntry, slot: 'context' | 'title' | 'description', value: string) {
-  const style = practiceEntryFixedStyle[slot];
-  if (slot === 'title') {
-    entry.titleRichText = value; entry.titleFontSize = style.fontSize; entry.titleColor = style.color;
-    entry.title = value;
-  } else if (slot === 'description') {
-    entry.descriptionRichText = value; entry.descriptionFontSize = style.fontSize; entry.descriptionColor = style.color;
-    entry.description = value;
-  } else {
-    entry.contextRichText = value; entry.contextFontSize = style.fontSize; entry.contextColor = style.color;
-  }
-  markPracticeContentDirty();
-}
-
-function togglePracticeEntryEnabled(entry: PracticeEntry) {
+function togglePracticeEntryEnabled(entry: PracticeEntry | null) {
+  if (!entry) return;
   if (!practiceContent.value || practiceContentSaving.value || practiceContentConflict.value) return;
   entry.enabled = !entry.enabled;
   markPracticeContentDirty();
@@ -3265,7 +3269,8 @@ function openDailyObjectsEditor() {
 
 function openDailyObjectsEntrySettings() {
   activeSection.value = 'practice';
-  activeContentSection.value = 'directory';
+  activeContentSection.value = 'daily-objects';
+  setPracticeEntryTab('daily-objects', 'home');
   if (!practiceContent.value) void loadDashboard();
 }
 
@@ -5087,8 +5092,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'practice' }" :aria-label="sidebarCollapsed ? '实践' : undefined" :title="sidebarCollapsed ? '实践' : undefined" :aria-current="activeSection === 'practice' ? 'page' : undefined" :aria-expanded="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" aria-controls="practice-navigation" @click.stop="openPracticeNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 4.5c-7.7.2-12.8 2.3-13.8 7.1-.8 3.4 1.8 6.3 5 6.3 5.1 0 7.8-5.5 8.8-13.4ZM5 20c2.4-4.4 5.2-7.1 9.2-9.6" /></svg><span>实践</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" id="practice-navigation" class="dashboard-subnav" aria-label="实践子菜单">
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'practice' }" :aria-current="activeContentSection === 'practice' ? 'page' : undefined" @click="activeContentSection = 'practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12v14H6zM9 8h6m-6 4h6m-6 4h3" /></svg><span>实践页面</span></button>
-                  <button class="dashboard-subtab" :class="{ active: activeContentSection === 'directory' }" :aria-current="activeContentSection === 'directory' ? 'page' : undefined" @click="activeContentSection = 'directory'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2M4.5 6.5l1.6 1.2m11.8-1.2-1.6 1.2" /></svg><span>实践目录设置</span></button>
-                  <button class="dashboard-subtab" :class="{ active: activeContentSection === 'observation' }" :aria-current="activeContentSection === 'observation' ? 'page' : undefined" @click="activeContentSection = 'observation'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.7l3.2 2" /></svg><span>此刻观察</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'shared-practice' }" :aria-current="activeContentSection === 'shared-practice' ? 'page' : undefined" @click="activeContentSection = 'shared-practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM7 9h10M7 12h7M7 15h4" /></svg><span>共同实践目录</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'daily-objects' }" :aria-current="activeContentSection === 'daily-objects' ? 'page' : undefined" @click="openDailyObjectsEditor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Zm4 0V6a3 3 0 0 1 6 0v2" /></svg><span>日常之物</span></button>
+                  <button class="dashboard-subtab" :class="{ active: activeContentSection === 'observation' }" :aria-current="activeContentSection === 'observation' ? 'page' : undefined" @click="activeContentSection = 'observation'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.7l3.2 2" /></svg><span>此刻观察</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'shared-practice' }" :aria-current="activeContentSection === 'shared-practice' ? 'page' : undefined" @click="activeContentSection = 'shared-practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM7 9h10M7 12h7M7 15h4" /></svg><span>共同实践</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'daily-objects' }" :aria-current="activeContentSection === 'daily-objects' ? 'page' : undefined" @click="openDailyObjectsEditor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Zm4 0V6a3 3 0 0 1 6 0v2" /></svg><span>日常之物</span></button>
                 </nav></Transition>
               </div>
               <div v-if="canAccessModule('journal') || canAccessModule('media')" class="dashboard-nav-group journal-nav-group" :class="{ expanded: activeSection === 'content' && (isJournalSection(activeContentSection) || activeContentSection === 'media') && journalNavigationExpanded && !sidebarCollapsed }">
@@ -5684,91 +5688,73 @@ onBeforeUnmount(() => {
             <p v-if="practiceContentConflict" class="error full" role="alert">实践页面已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-                      <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
-            <div class="practice-savebar-copy">
-              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
-              <small>实践页面 · 标题、页眉与说明</small>
-            </div>
-            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存实践页面' }}</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
-          </footer>
-          </form>
-        </div>
-      </section>
-      <section v-if="activeSection === 'practice' && activeContentSection === 'directory'" id="practice-directory-settings" class="content-area">
-        <div class="section-heading"><div><p class="eyebrow">PRACTICE DIRECTORY</p><h2>实践目录设置</h2></div></div>
-        <div v-if="!practiceContent" class="practice-empty">
-          <p class="muted">实践目录配置尚未读取。</p>
-          <button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button>
-        </div>
-        <div v-else-if="practiceContent" class="preview-layout has-preview">
-          <aside class="preview-rail" aria-label="小程序实践页预览">
-            <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
-          </aside>
-          <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
-          <div class="practice-entry-list">
-            <article v-for="(entry, index) in practiceContent.entries" :key="entry.key" :data-practice-field="`entry:${entry.key}`" class="practice-entry-row">
-              <header class="practice-entry-header">
-                <span class="practice-entry-index">{{ String(index + 1).padStart(2, '0') }}</span>
-                <span class="practice-entry-summary"><strong>{{ practiceEntryText(entry.titleRichText) }}</strong><small>{{ entry.enabled ? '首页可见' : '首页暂不显示' }}</small></span>
-                <button type="button" class="practice-entry-status-toggle" :class="{ enabled: entry.enabled }" :disabled="practiceContentSaving || practiceContentConflict" :aria-pressed="entry.enabled" :aria-label="`${practiceEntryText(entry.titleRichText)}${entry.enabled ? '已开启' : '已关闭'}，点击切换入口状态`" @click="togglePracticeEntryEnabled(entry)"><span class="practice-entry-status-dot" aria-hidden="true"></span><span>{{ entry.enabled ? '开启' : '关闭' }}</span></button>
-              </header>
-              <div class="practice-entry-fields">
-                <label class="practice-entry-field">
-                  <span>第一行 · 情境文案</span>
-                  <input type="text" :value="practiceEntryText(entry.contextRichText)" :disabled="practiceContentSaving || practiceContentConflict" @input="setPracticeEntryText(entry, 'context', ($event.target as HTMLInputElement).value)" />
-                </label>
-                <label class="practice-entry-field">
-                  <span>第二行 · 目录名称</span>
-                  <input type="text" :value="practiceEntryText(entry.titleRichText)" :disabled="practiceContentSaving || practiceContentConflict" @input="setPracticeEntryText(entry, 'title', ($event.target as HTMLInputElement).value)" />
-                </label>
-                <label class="practice-entry-field full">
-                  <span>第三行 · 补充说明</span>
-                  <input type="text" :value="practiceEntryText(entry.descriptionRichText)" :disabled="practiceContentSaving || practiceContentConflict" @input="setPracticeEntryText(entry, 'description', ($event.target as HTMLInputElement).value)" />
-                </label>
-              </div>
-            </article>
-          </div>
-          <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
-          <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
-          <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-                    <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
-            <div class="practice-savebar-copy">
-              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
-              <small>实践目录 · 条目文案与入口状态</small>
-            </div>
-            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
-          </footer>
+          <PracticeSaveBar
+            :dirty="practiceContentDirty"
+            :conflict="practiceContentConflict"
+            :saving="practiceContentSaving"
+            label="实践页面 · 标题、页眉与说明"
+            :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
+            reload-label="放弃修改并载入最新版本"
+            @publish="publishPracticeContent"
+            @reload="reloadPracticeContent"
+          />
           </form>
         </div>
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'observation'" id="practice-observation-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / OBSERVATION</p><h2>此刻观察</h2></div></div>
+        <div class="practice-entry-tabs" role="tablist" :aria-label="`此刻观察：首页入口或详情页`">
+          <button type="button" role="tab" :class="{ active: practiceEntryTab('observation') === 'home' }" :aria-selected="practiceEntryTab('observation') === 'home'" @click="setPracticeEntryTab('observation', 'home')">首页入口</button>
+          <button type="button" role="tab" :class="{ active: practiceEntryTab('observation') === 'detail' }" :aria-selected="practiceEntryTab('observation') === 'detail'" @click="setPracticeEntryTab('observation', 'detail')">详情页</button>
+        </div>
         <div v-if="!practiceContent" class="practice-empty"><p class="muted">此刻观察内容尚未读取。</p><button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button></div>
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序此刻观察页预览">
-            <CopyPagePreview title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="practiceContent.observationCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <PracticePagePreview v-if="practiceEntryTab('observation') === 'home'" :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
+            <CopyPagePreview v-else title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="practiceContent.observationCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
           </aside>
-          <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
+          <form v-if="practiceEntryTab('observation') === 'home'" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
+            <PracticeEntryEditor :entry="practiceEntryFor('observation')" :index="practiceEntryIndex('observation')" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(practiceEntryFor('observation'))" />
+            <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
+            <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
+            <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
+            <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="此刻观察 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
+          </form>
+          <form v-else class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
           <div class="observation-copy-groups"><section v-for="group in observationCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><label v-for="field in group.fields" :key="field.key" :data-copy-field="field.key" class="observation-copy-field"><span>{{ field.label }}</span><textarea :value="normalizeObservationCopyForEditor(practiceContent.observationCopy[field.key].richText)" rows="3" maxlength="240" :disabled="practiceContentSaving || practiceContentConflict" @input="updateObservationCopyText(field.key, $event)" /></label></section></div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-                    <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
-            <div class="practice-savebar-copy">
-              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
-              <small>此刻观察 · 文案字段</small>
-            </div>
-            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
-          </footer>
+          <PracticeSaveBar
+            :dirty="practiceContentDirty"
+            :conflict="practiceContentConflict"
+            :saving="practiceContentSaving"
+            label="此刻观察 · 详情页"
+            :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
+            @publish="publishPracticeContent"
+            @reload="reloadPracticeContent"
+          />
           </form>
         </div>
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'shared-practice'" id="practice-shared-content" class="content-area">
-        <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / SHARED PRACTICE</p><h2>共同实践目录</h2></div></div>
+        <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / SHARED PRACTICE</p><h2>共同实践</h2></div></div>
+        <div class="practice-entry-tabs" role="tablist" :aria-label="`共同实践：首页入口或详情页`">
+          <button type="button" role="tab" :class="{ active: practiceEntryTab('shared-practice') === 'home' }" :aria-selected="practiceEntryTab('shared-practice') === 'home'" @click="setPracticeEntryTab('shared-practice', 'home')">首页入口</button>
+          <button type="button" role="tab" :class="{ active: practiceEntryTab('shared-practice') === 'detail' }" :aria-selected="practiceEntryTab('shared-practice') === 'detail'" @click="setPracticeEntryTab('shared-practice', 'detail')">详情页</button>
+        </div>
         <div v-if="!practiceContent" class="practice-empty"><p class="muted">共同实践内容尚未读取。</p><button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button></div>
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序共同实践页预览">
-            <CopyPagePreview :title="practiceCopyIssueCode ? `共同实践 · 按期` : `共同实践`" :subtitle="practiceCopyIssueCode ? practiceCopyIssueCode : `SHARED PRACTICE`" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :extra-sections="sharedPracticeExtraSections" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <PracticePagePreview v-if="practiceEntryTab('shared-practice') === 'home'" :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
+            <CopyPagePreview v-else :title="practiceCopyIssueCode ? `共同实践 · 按期` : `共同实践`" :subtitle="practiceCopyIssueCode ? practiceCopyIssueCode : `SHARED PRACTICE`" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :extra-sections="sharedPracticeExtraSections" :active-key="activeObservationKey" @pick="pickObservationKey" />
           </aside>
-          <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
+          <form v-if="practiceEntryTab('shared-practice') === 'home'" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
+            <PracticeEntryEditor :entry="practiceEntryFor('shared-practice')" :index="practiceEntryIndex('shared-practice')" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(practiceEntryFor('shared-practice'))" />
+            <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
+            <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
+            <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
+            <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="共同实践 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
+          </form>
+          <form v-else class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
         <div class="practice-copy-panel">
           <div class="practice-copy-panel-head">
             <div>
@@ -5834,24 +5820,38 @@ onBeforeUnmount(() => {
 
           <div class="observation-copy-groups"><section v-for="group in sharedPracticeCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><div v-for="field in group.fields" :key="field.key" class="copy-field" :data-copy-field="field.key"><RichTextEditor v-model="practiceContent.sharedPracticeCopy[field.key].richText" v-model:font-size="practiceContent.sharedPracticeCopy[field.key].fontSize" v-model:color="practiceContent.sharedPracticeCopy[field.key].color" :label="field.label" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" /></div></section></div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-                    <footer class="practice-savebar" :class="{ 'is-dirty': practiceContentDirty, 'is-conflict': practiceContentConflict }">
-            <div class="practice-savebar-copy">
-              <strong>{{ practiceContentConflict ? '云端版本已更新' : practiceContentDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
-              <small>共同实践 · 按期文案</small>
-            </div>
-            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">载入最新版本</button></div>
-          </footer>
+          <PracticeSaveBar
+            :dirty="practiceContentDirty"
+            :conflict="practiceContentConflict"
+            :saving="practiceContentSaving"
+            label="共同实践 · 详情页"
+            :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
+            @publish="publishPracticeContent"
+            @reload="reloadPracticeContent"
+          />
           </form>
         </div>
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'daily-objects'" id="practice-daily-objects-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / DAILY OBJECTS</p><h2>日常之物</h2></div></div>
+        <div class="practice-entry-tabs" role="tablist" :aria-label="`日常之物：首页入口或详情页`">
+          <button type="button" role="tab" :class="{ active: practiceEntryTab('daily-objects') === 'home' }" :aria-selected="practiceEntryTab('daily-objects') === 'home'" @click="setPracticeEntryTab('daily-objects', 'home')">首页入口</button>
+          <button type="button" role="tab" :class="{ active: practiceEntryTab('daily-objects') === 'detail' }" :aria-selected="practiceEntryTab('daily-objects') === 'detail'" @click="setPracticeEntryTab('daily-objects', 'detail')">详情页</button>
+        </div>
         <div v-if="!dailyObjectsContent" class="practice-empty"><p class="muted">日常之物设置尚未读取。</p><button class="quiet" :disabled="dashboardLoading" @click="loadDailyObjectsContent">重新读取</button></div>
         <div v-else-if="dailyObjectsContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序日常之物预览">
-            <DailyObjectsPreview :content="dailyObjectsContent" :image-urls="dailyObjectPreviewUrls" :active-key="activeDailyKey" @pick="pickDailyKey" />
+            <PracticePagePreview v-if="practiceEntryTab('daily-objects') === 'home' && practiceContent" :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
+            <DailyObjectsPreview v-else :content="dailyObjectsContent" :image-urls="dailyObjectPreviewUrls" :active-key="activeDailyKey" @pick="pickDailyKey" />
           </aside>
-          <form class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent" @focusin="focusDailyField">
+          <form v-if="practiceEntryTab('daily-objects') === 'home' && practiceContent" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
+            <PracticeEntryEditor :entry="practiceEntryFor('daily-objects')" :index="practiceEntryIndex('daily-objects')" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(practiceEntryFor('daily-objects'))" />
+            <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
+            <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
+            <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
+            <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="日常之物 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
+          </form>
+          <form v-else class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent" @focusin="focusDailyField">
           <section class="daily-shop-gate"><div><h3>商城入口</h3><p>商城功能暂未开放。准备好商品内容后，可在入口状态中一键开启。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置商城开启状态</button></section>
           <section class="observation-copy-group"><h3>商品页首屏</h3><div class="daily-objects-fields">
             <div class="daily-field" data-daily-field="brand"><label>品牌英文<input v-model="dailyObjectsContent.brandName" maxlength="80" @input="markDailyObjectsDirty" /></label><label>品牌中文<input v-model="dailyObjectsContent.brandSubtitle" maxlength="80" @input="markDailyObjectsDirty" /></label></div>
@@ -5875,13 +5875,15 @@ onBeforeUnmount(() => {
             </article>
           </section>
           <p v-if="dailyObjectsConflict" class="error full" role="alert">日常之物已被其他管理员更新。本地修改已保留，请重新读取后再保存。</p><p v-if="dailyObjectsDirty && !dailyObjectsSaving" class="muted" role="status">有未保存的修改。</p><p v-if="dailyObjectsError" class="error" role="alert">{{ dailyObjectsError }}</p><p v-if="dailyObjectsMessage" class="status-message" role="status">{{ dailyObjectsMessage }}</p>
-                    <footer class="practice-savebar" :class="{ 'is-dirty': dailyObjectsDirty, 'is-conflict': dailyObjectsConflict }">
-            <div class="practice-savebar-copy">
-              <strong>{{ dailyObjectsConflict ? '云端版本已更新' : dailyObjectsDirty ? '有未保存的修改' : '已与云端同步' }}</strong>
-              <small>日常之物 · 首屏与商品文案</small>
-            </div>
-            <div class="form-actions"><button type="submit" :disabled="dailyObjectsSaving || dailyObjectsConflict">{{ dailyObjectsSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="dailyObjectsSaving || dailyObjectsDirty || dailyObjectsConflict || !dailyObjectsContent.draft" @click="publishDailyObjectsContent">发布到小程序</button><button v-if="dailyObjectsConflict" type="button" class="quiet" @click="loadDailyObjectsContent">重新读取</button></div>
-          </footer>
+          <PracticeSaveBar
+            :dirty="dailyObjectsDirty"
+            :conflict="dailyObjectsConflict"
+            :saving="dailyObjectsSaving"
+            label="日常之物 · 首屏与商品文案"
+            :can-publish="isSuperAdmin"
+            @publish="publishDailyObjectsContent"
+            @reload="loadDailyObjectsContent"
+          />
           </form>
         </div>
       </section>
@@ -6175,7 +6177,7 @@ onBeforeUnmount(() => {
 <section v-if="activeSection === 'settings'" id="system-settings" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">BUSINESS SETTINGS</p><h2>系统设置</h2></div></div>
         <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p><p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>总开关：关闭时小程序不展示「日常之物」的商品与价格；开启后还需在「实践 → 实践目录设置」启用「日常之物」入口才会展示。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
+        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>总开关：关闭时小程序不展示「日常之物」的商品与价格；开启后还需在「实践 → 日常之物 → 首页入口」启用「日常之物」入口才会展示。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
       </section>
       <section v-if="activeSection === 'employees' && isSuperAdmin" id="employee-access" class="content-area employee-page">
         <div class="employee-hero">
