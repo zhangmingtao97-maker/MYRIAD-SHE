@@ -5493,7 +5493,6 @@ onBeforeUnmount(() => {
                   <label data-story-field="paragraph2">故事正文第二段<textarea :value="String(storyDetailModule.detailParagraph2 || '')" rows="5" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailParagraph2', $event)" /></label>
                   <label data-story-field="quote">结尾引言<textarea :value="String(storyDetailModule.detailQuote || '')" rows="3" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailQuote', $event)" /></label>
                 </div>
-                <p class="field-help">标题与导语沿用「首页策展」的本期主题（封面标题 + 封面正文），这里只管点进去之后的正文。<strong>这 7 项要么一起填完，要么先都留空</strong>：小程序只要检测到其中任意一项，就不再使用 ISSUE 02 的内置文案。</p>
               </template>
               <p v-else class="field-help">这一期还没有「人物纪实」栏目，先到「首页策展」补一个再回来。</p>
             </section>
