@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
@@ -11,6 +11,7 @@ import DailyObjectsPreview from './components/DailyObjectsPreview.vue';
 import AboutPagePreview from './components/AboutPagePreview.vue';
 import MinePagePreview from './components/MinePagePreview.vue';
 import CopyPagePreview from './components/CopyPagePreview.vue';
+import AudioPagePreview from './components/AudioPagePreview.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
@@ -1965,6 +1966,98 @@ function focusObservationField(event: FocusEvent) {
   const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-field]');
   const key = holder?.dataset.copyField;
   if (key && key !== activeObservationKey.value) activeObservationKey.value = key;
+}
+
+// —— 微声音二级页（列表 / 详情）预览 ——
+const audioPreviewView = ref<'list' | 'detail'>('list');
+const audioPreviewTrackId = ref('');
+const activeAudioKey = ref('');
+
+const journalAudioModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'audio') || null);
+const journalAudioTracks = computed(() => journalAudioModule.value?.tracks || []);
+
+const audioPreviewMediaUrls = computed<Record<string, string>>(() => {
+  const module = journalAudioModule.value;
+  const urls: Record<string, string> = {};
+  if (!module) return urls;
+  for (const track of journalAudioTracks.value) {
+    const url = issueModulePreviewUrls.value[issueAudioTrackPreviewKey(module.id, track.id)];
+    if (url) urls[track.id] = url;
+  }
+  return urls;
+});
+
+const audioPreviewTrack = computed(() => journalAudioTracks.value.find((track) => track.id === audioPreviewTrackId.value) || journalAudioTracks.value[0] || null);
+
+// 详情页区块 → 右侧字段名（声音/视频块对应「引言说明」）
+const audioDetailFieldMap: Record<string, string> = {
+  media: 'subtitle',
+  heading: 'detailTitle',
+  description: 'description',
+  quote: 'quote',
+  transcript: 'transcript',
+};
+
+function setAudioPreviewView(view: 'list' | 'detail') {
+  audioPreviewView.value = view;
+  if (!audioPreviewTrackId.value) audioPreviewTrackId.value = journalAudioTracks.value[0]?.id || '';
+  activeAudioKey.value = view === 'detail' ? 'detail:media' : 'hero';
+}
+
+function locateInAudioPanel(selector: string) {
+  nextTick(() => {
+    const target = document.querySelector<HTMLElement>(selector);
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('is-locating');
+    window.setTimeout(() => target.classList.remove('is-locating'), 1400);
+  });
+}
+
+function pickAudioKey(key: string) {
+  activeAudioKey.value = key;
+  if (key.startsWith('track:')) {
+    const trackId = key.slice('track:'.length);
+    audioPreviewTrackId.value = trackId;
+    audioPreviewView.value = 'detail';
+    locateInAudioPanel(`[data-audio-track="${trackId}"]`);
+    return;
+  }
+  if (key.startsWith('detail:')) {
+    const field = audioDetailFieldMap[key.slice('detail:'.length)] || 'detailTitle';
+    const trackId = audioPreviewTrackId.value || journalAudioTracks.value[0]?.id || '';
+    if (trackId) locateInAudioPanel(`[data-audio-field="track:${trackId}:${field}"]`);
+    return;
+  }
+  locateInAudioPanel('[data-audio-field="hero:title"]');
+}
+
+function openAudioTrackDetail(trackId: string) {
+  audioPreviewTrackId.value = trackId;
+  audioPreviewView.value = 'detail';
+  activeAudioKey.value = 'detail:media';
+}
+
+function focusAudioField(event: FocusEvent) {
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-audio-field]');
+  const value = holder?.dataset.audioField;
+  if (!value) return;
+  if (value.startsWith('hero:')) {
+    activeAudioKey.value = 'hero';
+    return;
+  }
+  const match = /^track:([^:]+):(.+)$/.exec(value);
+  if (!match) return;
+  const trackId = match[1];
+  const field = match[2];
+  const detailKey = Object.keys(audioDetailFieldMap).find((key) => audioDetailFieldMap[key] === field);
+  if (detailKey) {
+    audioPreviewTrackId.value = trackId;
+    audioPreviewView.value = 'detail';
+    activeAudioKey.value = `detail:${detailKey}`;
+    return;
+  }
+  activeAudioKey.value = `track:${trackId}`;
 }
 
 function togglePracticeEntryEnabled(entry: PracticeEntry) {
@@ -5169,18 +5262,39 @@ onBeforeUnmount(() => {
           <button type="button" class="quiet" @click="goToJournalSection('journal-list')">返回期刊列表</button>
         </div>
         <div class="journal-preview-layout" :class="{ 'has-preview': showJournalPreview }">
-          <aside v-if="showJournalPreview" class="journal-preview-rail" aria-label="小程序首页预览">
-            <JournalHomePreview
-              :modules="issueForm.draftContent.sections"
-              :image-urls="issueModulePreviewUrls"
-              :active-key="selectedIssueModuleId"
-              :issue-number="journalPreviewIssueNumber"
-              :issue-edition="journalPreviewIssueEdition"
-              :question-fallback="issueForm.question"
-              :theme-fallback="issueForm.theme"
-              @pick="focusIssueModule"
-            />
-            <p class="journal-preview-hint">点预览里的任意区块 → 右侧自动切到对应栏目；在右侧选中栏目时，这里会同步高亮。</p>
+          <aside v-if="showJournalPreview" class="journal-preview-rail" aria-label="小程序预览">
+            <template v-if="activeContentSection === 'journal-audio'">
+              <div class="audio-preview-switch" role="tablist" aria-label="微声音预览页面">
+                <button type="button" :class="{ 'is-active': audioPreviewView === 'list' }" :aria-selected="audioPreviewView === 'list'" @click="setAudioPreviewView('list')">列表页</button>
+                <button type="button" :class="{ 'is-active': audioPreviewView === 'detail' }" :aria-selected="audioPreviewView === 'detail'" @click="setAudioPreviewView('detail')">详情页</button>
+              </div>
+              <AudioPagePreview
+                :view="audioPreviewView"
+                :active-key="activeAudioKey"
+                :track-id="audioPreviewTrack?.id || ''"
+                :tracks="journalAudioTracks"
+                :title="String(journalAudioModule?.title || '')"
+                :subtitle="String(journalAudioModule?.subtitle || '')"
+                :issue-code="String(issueForm.code || '')"
+                :media-urls="audioPreviewMediaUrls"
+                @pick="pickAudioKey"
+                @open-detail="openAudioTrackDetail"
+              />
+              <p class="journal-preview-hint">小程序里只有 1 段声音时，列表页会直接跳进详情页。点「详情页」切换二级页面；点任意区块 → 右侧滚到对应字段并闪框。</p>
+            </template>
+            <template v-else>
+              <JournalHomePreview
+                :modules="issueForm.draftContent.sections"
+                :image-urls="issueModulePreviewUrls"
+                :active-key="selectedIssueModuleId"
+                :issue-number="journalPreviewIssueNumber"
+                :issue-edition="journalPreviewIssueEdition"
+                :question-fallback="issueForm.question"
+                :theme-fallback="issueForm.theme"
+                @pick="focusIssueModule"
+              />
+              <p class="journal-preview-hint">点预览里的任意区块 → 右侧自动切到对应栏目；在右侧选中栏目时，这里会同步高亮。</p>
+            </template>
           </aside>
           <form class="panel issue-editor-form journal-module-form" @submit.prevent="saveIssue" @focusin="focusModuleFromEditor">
           <div class="journal-context">
@@ -5318,24 +5432,28 @@ onBeforeUnmount(() => {
               <details v-if="module.type === 'archive'" class="issue-module-details"><summary>编辑策展条目</summary><div class="form-grid"><label>刊期说明<input :value="String(module.entryLabel || '')" maxlength="160" @input="setIssueModuleText(module, 'entryLabel', $event)" /></label><label>档案标题<input :value="String(module.entryTitle || '')" maxlength="160" @input="setIssueModuleText(module, 'entryTitle', $event)" /></label></div><p class="field-help">当前只展示档案预告；旧期详情入口尚未开放。</p></details>
               <div v-if="module.type === 'coverStory'" class="form-grid cover-story-typography"><label>主题标题字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.titleFontSize || 72)" @input="setIssueModuleText(module, 'titleFontSize', $event)" /></label><label>主题标题颜色<input type="color" :value="String(module.titleColor || '#59483d')" @input="setIssueModuleText(module, 'titleColor', $event)" /></label><label>主题说明字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.bodyFontSize || 30)" @input="setIssueModuleText(module, 'bodyFontSize', $event)" /></label><label>主题说明颜色<input type="color" :value="String(module.bodyColor || '#40362f')" @input="setIssueModuleText(module, 'bodyColor', $event)" /></label></div>
               <div v-if="module.type === 'coverStory'" class="form-grid"><label>封面左侧说明<input :value="String(module.captionLeft || '')" @input="setIssueModuleText(module, 'captionLeft', $event)" /></label><label>封面右侧说明<input :value="String(module.captionRight || '')" @input="setIssueModuleText(module, 'captionRight', $event)" /></label><label>策展署名<input :value="String(module.byline || '')" @input="setIssueModuleText(module, 'byline', $event)" /></label></div>
-              <section v-if="module.type === 'audio'" class="issue-audio-editor">
+              <section v-if="module.type === 'audio'" class="issue-audio-editor" @focusin="focusAudioField">
                 <p class="field-help">可添加 1–3 段，每段可以是声音或视频；至少 1 段有可播放文件即可。视频建议使用 MP4（H.264），单个文件不超过 200 MB。发布后小程序才会显示更新。</p>
-                <article v-for="(track, trackIndex) in issueAudioTracks(module)" :key="track.id" class="issue-audio-track">
+                <div class="form-grid">
+                  <label data-audio-field="hero:title">列表页标题<input :value="String(module.title || '')" maxlength="120" placeholder="默认显示「微声音」" @input="setIssueModuleText(module, 'title', $event)" /></label>
+                  <label data-audio-field="hero:subtitle">列表页副标题<input :value="String(module.subtitle || '')" maxlength="160" placeholder="留空时使用第一段的副标题" @input="setIssueModuleText(module, 'subtitle', $event)" /></label>
+                </div>
+                <article v-for="(track, trackIndex) in issueAudioTracks(module)" :key="track.id" :data-audio-track="track.id" class="issue-audio-track">
                   <header><strong>{{ trackIndex === 0 ? '主微声音' : `更多微声音 ${String(trackIndex + 1).padStart(2, '0')}` }}</strong><span class="issue-audio-kind">{{ track.mediaType === 'video' ? '视频' : '声音' }}</span><button v-if="trackIndex > 0" type="button" class="quiet danger" :disabled="uploading" @click="removeIssueAudioTrack(module, trackIndex)">移除</button></header>
                   <div class="form-grid">
-                    <label>媒体类型<select :value="track.mediaType" :disabled="uploading" @change="setIssueAudioTrackMediaType(track, module, $event)"><option value="audio">声音</option><option value="video">视频</option></select></label>
-                    <label>列表标题<input :value="track.title" maxlength="120" @input="setIssueAudioTrackText(track, 'title', $event)" /></label>
-                    <label>时长文字<input :value="track.duration" maxlength="20" placeholder="01:12" @input="setIssueAudioTrackText(track, 'duration', $event)" /></label>
-                    <label>上传 / 替换{{ track.mediaType === 'video' ? '视频' : '音频' }}<input type="file" :accept="track.mediaType === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'audio/mpeg,audio/mp4,audio/wav,audio/x-m4a'" :disabled="uploading" @change="selectIssueAudioTrackFile(module, track, $event)" /></label>
-                    <label>媒体对象路径<input :value="track.mediaType === 'video' ? String(track.videoObjectKey || '') : String(track.audioObjectKey || '')" :placeholder="track.mediaType === 'video' ? 'content/video/...' : 'content/audio/...'" readonly /></label>
+                    <label :data-audio-field="`track:${track.id}:type`">媒体类型<select :value="track.mediaType" :disabled="uploading" @change="setIssueAudioTrackMediaType(track, module, $event)"><option value="audio">声音</option><option value="video">视频</option></select></label>
+                    <label :data-audio-field="`track:${track.id}:title`">列表标题<input :value="track.title" maxlength="120" @input="setIssueAudioTrackText(track, 'title', $event)" /></label>
+                    <label :data-audio-field="`track:${track.id}:duration`">时长文字<input :value="track.duration" maxlength="20" placeholder="01:12" @input="setIssueAudioTrackText(track, 'duration', $event)" /></label>
+                    <label :data-audio-field="`track:${track.id}:file`">上传 / 替换{{ track.mediaType === 'video' ? '视频' : '音频' }}<input type="file" :accept="track.mediaType === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'audio/mpeg,audio/mp4,audio/wav,audio/x-m4a'" :disabled="uploading" @change="selectIssueAudioTrackFile(module, track, $event)" /></label>
+                    <label :data-audio-field="`track:${track.id}:file`">媒体对象路径<input :value="track.mediaType === 'video' ? String(track.videoObjectKey || '') : String(track.audioObjectKey || '')" :placeholder="track.mediaType === 'video' ? 'content/video/...' : 'content/audio/...'" readonly /></label>
                   </div>
                   <video v-if="track.mediaType === 'video' && issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-video" controls preload="metadata" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持视频预览</video>
                   <audio v-else-if="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-audio" controls preload="none" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持音频试听</audio>
-                  <label>详情页标题<input :value="track.detailTitle" maxlength="120" placeholder="留空时使用列表标题" @input="setIssueAudioTrackText(track, 'detailTitle', $event)" /></label>
-                  <label>这段声音 / 视频的解释<textarea :value="track.description" rows="4" maxlength="6000" placeholder="进入详情页后，显示在声音或视频下方" @input="setIssueAudioTrackText(track, 'description', $event)" /></label>
-                  <label>引言<textarea :value="track.quote" rows="2" maxlength="500" @input="setIssueAudioTrackText(track, 'quote', $event)" /></label>
-                  <label>引言说明<textarea :value="track.subtitle" rows="2" maxlength="500" @input="setIssueAudioTrackText(track, 'subtitle', $event)" /></label>
-                  <label>音频文字稿<textarea :value="track.transcript" rows="3" maxlength="6000" @input="setIssueAudioTrackText(track, 'transcript', $event)" /></label>
+                  <label :data-audio-field="`track:${track.id}:detailTitle`">详情页标题<input :value="track.detailTitle" maxlength="120" placeholder="留空时使用列表标题" @input="setIssueAudioTrackText(track, 'detailTitle', $event)" /></label>
+                  <label :data-audio-field="`track:${track.id}:description`">这段声音 / 视频的解释<textarea :value="track.description" rows="4" maxlength="6000" placeholder="进入详情页后，显示在声音或视频下方" @input="setIssueAudioTrackText(track, 'description', $event)" /></label>
+                  <label :data-audio-field="`track:${track.id}:subtitle`">引言说明<textarea :value="track.subtitle" rows="2" maxlength="500" placeholder="显示在播放器标题下方" @input="setIssueAudioTrackText(track, 'subtitle', $event)" /></label>
+                  <label :data-audio-field="`track:${track.id}:quote`">引言<textarea :value="track.quote" rows="2" maxlength="500" @input="setIssueAudioTrackText(track, 'quote', $event)" /></label>
+                  <label :data-audio-field="`track:${track.id}:transcript`">音频文字稿<textarea :value="track.transcript" rows="3" maxlength="6000" @input="setIssueAudioTrackText(track, 'transcript', $event)" /></label>
                 </article>
                 <button v-if="issueAudioTracks(module).length < 3" type="button" class="secondary" :disabled="uploading" @click="addIssueAudioTrack(module)">＋ 添加微声音</button>
               </section>
