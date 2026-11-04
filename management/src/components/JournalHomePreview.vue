@@ -1,6 +1,7 @@
 ﻿<script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed } from 'vue';
 import type { ManagedIssueModule } from '../api-shapes';
+import PhonePreview from './PhonePreview.vue';
 
 const props = defineProps<{
   modules: ManagedIssueModule[];
@@ -60,26 +61,10 @@ function storyActionTitle(module: ManagedIssueModule) {
   return text(action?.title) || '进入本期人物';
 }
 
-const bodyRef = ref<HTMLElement | null>(null);
-
-function revealActiveBlock(key: string) {
-  const body = bodyRef.value;
-  if (!body || !key) return;
-  const node = body.querySelector<HTMLElement>(`[data-preview-key="${key}"]`);
-  if (!node) return;
-  const top = node.offsetTop - Math.max((body.clientHeight - node.clientHeight) / 2, 0);
-  body.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
-}
-
-watch(() => props.activeKey, (key) => {
-  nextTick(() => revealActiveBlock(key));
-}, { immediate: true });
 </script>
 
 <template>
-  <section class="issue-phone-preview" aria-label="小程序首页草稿预览">
-    <div class="issue-phone-preview-head"><span>MYRIAD SHE</span><small>草稿预览 · 点击区块可定位到右侧栏目</small></div>
-    <div ref="bodyRef" class="issue-phone-preview-body">
+  <PhonePreview title="期刊首页" caption="MYRIAD SHE" :active-key="activeKey">
       <article
         v-for="module in rows"
         :key="module.id"
@@ -98,8 +83,8 @@ watch(() => props.activeKey, (key) => {
           <div v-if="imageUrls[module.id]" class="preview-cover-caption"><span>{{ text(module.captionLeft) }}</span><span>{{ text(module.captionRight) }}</span></div>
           <div class="preview-cover-copy">
             <small>{{ text(module.eyebrow) || '本期主题' }}</small>
-            <h3 :style="{ fontSize: `${Number(module.titleFontSize || 72) * 0.42}px`, color: text(module.titleColor) || '#59483d', whiteSpace: 'pre-wrap' }">{{ text(module.title) }}</h3>
-            <p :style="{ fontSize: `${Number(module.bodyFontSize || 30) * 0.42}px`, color: text(module.bodyColor) || '#40362f' }">{{ text(module.body) }}</p>
+            <h3 :style="{ fontSize: `${Number(module.titleFontSize || 44)}px`, color: text(module.titleColor) || '#59483d', whiteSpace: 'pre-wrap' }">{{ text(module.title) }}</h3>
+            <p :style="{ fontSize: `${Number(module.bodyFontSize || 16)}px`, color: text(module.bodyColor) || '#40362f' }">{{ text(module.body) }}</p>
             <footer>{{ text(module.byline) }}</footer>
           </div>
         </template>
@@ -179,6 +164,5 @@ watch(() => props.activeKey, (key) => {
         </template>
       </article>
       <p v-if="!rows.length" class="preview-empty">这一期还没有可预览的栏目。</p>
-    </div>
-  </section>
+  </PhonePreview>
 </template>

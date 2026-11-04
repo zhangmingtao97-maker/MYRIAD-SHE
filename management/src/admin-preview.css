@@ -1,4 +1,4 @@
-/* 后台「手机预览」：左侧锁定的手机预览 + 双向定位高亮。 */
+﻿/* 后台「手机预览」：左侧锁定的手机预览 + 双向定位高亮。 */
 
 .journal-preview-layout,
 .preview-layout {
@@ -9,7 +9,7 @@
 
 .journal-preview-layout.has-preview,
 .preview-layout.has-preview {
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: 372px minmax(0, 1fr);
 }
 
 .journal-preview-rail,
@@ -20,15 +20,119 @@
   gap: 10px;
 }
 
-.journal-preview-rail .issue-phone-preview,
-.preview-rail .issue-phone-preview {
-  width: 100%;
-  margin: 0;
+.phone-preview {
+  display: grid;
+  gap: 8px;
 }
 
-.journal-preview-rail .issue-phone-preview-body,
-.preview-rail .issue-phone-preview-body {
-  max-height: min(62vh, 560px);
+.phone-preview-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: #49392f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 12px;
+  letter-spacing: .06em;
+}
+
+.phone-preview-head small {
+  color: #8b6b58;
+  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-size: 10px;
+  letter-spacing: .04em;
+}
+
+/* 手机内基础排版：期刊首页各栏目沿用原来的 article 结构 */
+.phone-screen-inner article {
+  padding: 22px 0;
+  border-bottom: 1px solid #cdbbae;
+}
+
+.phone-screen-inner article small {
+  color: #8b6b58;
+  font-size: 11px;
+}
+
+.phone-screen-inner article h3 {
+  margin: 10px 0;
+  color: #40362f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.phone-screen-inner article p {
+  margin: 0;
+  color: #5e5045;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+/* 手机外壳：内部按 375×812 设计稿排版，整体等比缩放到预览栏宽度 */
+.phone-frame-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.phone-screen {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  margin-left: -187.5px;
+  overflow: hidden;
+  border: 1px solid #2f231b;
+  border-radius: 28px;
+  background: #f4ece0;
+  box-shadow: 0 10px 30px rgba(62, 44, 32, .18), inset 0 0 0 1px rgba(255, 255, 255, .35);
+}
+
+.phone-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 20px;
+  color: #40362f;
+  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-size: 11px;
+}
+
+.phone-statusbar-notch {
+  width: 78px;
+  height: 16px;
+  border-radius: 0 0 12px 12px;
+  background: #2f231b;
+}
+
+.phone-statusbar-icons {
+  color: #6b5a4c;
+  font-size: 10px;
+}
+
+.phone-screen-inner {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 8px 20px 30px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #f4ece0;
+  scrollbar-width: thin;
+}
+
+.phone-frame-caption {
+  margin: 6px 0 0;
+  color: var(--muted, #8b6b58);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .journal-preview-hint,
@@ -40,26 +144,26 @@
 }
 
 /* 预览里的每一个可编辑区块：整块可点，hover / 选中都有明确的红框反馈。 */
-.issue-phone-preview-body {
+.phone-screen-inner {
   position: relative;
 }
 
-.issue-phone-preview-body .preview-block {
+.phone-screen-inner .preview-block {
   position: relative;
   cursor: pointer;
   transition: background .12s ease, box-shadow .12s ease;
 }
 
-.issue-phone-preview-body .preview-block:hover {
+.phone-screen-inner .preview-block:hover {
   background: rgba(200, 85, 61, .06);
 }
 
-.issue-phone-preview-body .preview-block.is-preview-active {
+.phone-screen-inner .preview-block.is-preview-active {
   background: rgba(200, 85, 61, .1);
   box-shadow: inset 0 0 0 2px #c8553d;
 }
 
-.issue-phone-preview-body .preview-block.is-preview-off {
+.phone-screen-inner .preview-block.is-preview-off {
   opacity: .5;
 }
 
@@ -119,24 +223,24 @@
   border-radius: 12px;
 }
 
-/* —— 实践页预览 —— */
+/* —— 实践页预览（375 宽设计稿） —— */
 .practice-preview-meta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 0 12px;
+  padding: 14px 0 10px;
   border-bottom: 1px solid #cdbbae;
   font-family: Georgia, "Songti SC", serif;
   letter-spacing: .08em;
 }
 
-.practice-preview-title {
-  padding: 22px 0 8px;
+.practice-preview-meta .preview-block {
+  padding: 4px 2px;
 }
 
-.practice-preview-title h3 {
-  margin: 0;
+.practice-preview-kicker {
+  margin: 18px 0 10px;
   font-family: Georgia, "Songti SC", serif;
   font-weight: 400;
   line-height: 1.35;
@@ -144,24 +248,22 @@
 }
 
 .practice-preview-intro {
-  padding: 8px 0 20px;
-}
-
-.practice-preview-intro p {
   margin: 0;
   font-family: Georgia, "Songti SC", serif;
   line-height: 1.8;
   white-space: pre-wrap;
 }
 
-.practice-preview-intro .practice-preview-fixed {
-  margin-top: 10px;
+.practice-preview-fixed {
+  margin: 12px 0 0;
   color: #8b6b58;
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.75;
 }
 
 .practice-preview-directory {
-  padding: 16px 0 18px;
+  margin-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid #cdbbae;
 }
 
@@ -169,7 +271,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #8b6b58;
   font-size: 11px;
   letter-spacing: .1em;
@@ -181,83 +283,77 @@
 }
 
 .practice-preview-entry {
-  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 16px;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(92, 73, 60, .18);
+}
+
+.practice-preview-number {
+  color: #8b6b58;
+  font-family: Georgia, serif;
+  font-size: 12px;
+}
+
+.practice-preview-entry-copy {
   display: grid;
   gap: 3px;
-  padding: 10px 22px 10px 0;
-  border-bottom: 1px solid rgba(92, 73, 60, .2);
 }
 
-.practice-preview-entry small {
+.practice-preview-entry-copy small {
   color: #8b6b58;
+  letter-spacing: .04em;
 }
 
-.practice-preview-entry strong {
+.practice-preview-entry-copy strong {
   font-weight: 500;
 }
 
-.practice-preview-entry > span:not(.preview-block-tag) {
+.practice-preview-entry-copy span {
   color: #5c493c;
   line-height: 1.6;
 }
 
 .practice-preview-arrow {
-  position: absolute;
-  top: 50%;
-  right: 4px;
+  padding-top: 2px;
   color: #663124;
-  font-style: normal;
-  transform: translateY(-50%);
+  font-size: 12px;
+}
+
+.practice-preview-off-tag {
+  grid-column: 2 / span 2;
+  color: #9c8371;
+  font-size: 10px;
 }
 
 .practice-preview-signature {
-  padding: 18px 0 24px;
+  padding: 20px 0 8px;
   color: #8b6b58;
 }
 
+.practice-preview-signature small {
+  font-size: 9px;
+  letter-spacing: .16em;
+}
+
 .practice-preview-signature p {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 11px;
-  line-height: 1.7;
+  line-height: 1.8;
 }
 
 .practice-preview-empty {
   color: #8b6b58;
   font-size: 11px;
 }
-
-@media (max-width: 1280px) {
-  .journal-preview-layout.has-preview,
-  .preview-layout.has-preview {
-    grid-template-columns: 300px minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 1080px) {
-  .journal-preview-layout.has-preview,
-  .preview-layout.has-preview {
-    display: block;
-  }
-
-  .journal-preview-rail,
-  .preview-rail {
-    position: static;
-    margin-bottom: 18px;
-  }
-
-  .journal-preview-rail .issue-phone-preview-body,
-  .preview-rail .issue-phone-preview-body {
-    max-height: 420px;
-  }
-}
-
-/* —— 日常之物预览 —— */
+/* —— 日常之物预览（375 宽设计稿） —— */
 .daily-preview-brand {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 0 12px;
+  padding: 14px 0 12px;
   border-bottom: 1px solid #cdbbae;
 }
 
@@ -265,12 +361,14 @@
   display: block;
   color: #40362f;
   font-family: Georgia, "Songti SC", serif;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 400;
   letter-spacing: .06em;
 }
 
 .daily-preview-brand small {
+  display: block;
+  margin-top: 2px;
   color: #8b6b58;
   font-size: 10px;
   letter-spacing: .12em;
@@ -280,6 +378,7 @@
   color: #8b6b58;
   font-size: 10px;
   letter-spacing: .06em;
+  white-space: nowrap;
 }
 
 .daily-preview-bag em {
@@ -293,7 +392,7 @@
 
 .daily-preview-header small {
   color: #8b6b58;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: .16em;
 }
 
@@ -301,9 +400,9 @@
   margin: 10px 0 8px;
   color: #40362f;
   font-family: Georgia, "Songti SC", serif;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 1.35;
   white-space: pre-wrap;
 }
 
@@ -311,7 +410,7 @@
   margin: 0;
   color: #5c493c;
   font-family: "Source Han Serif CN", "Songti SC", serif;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.8;
 }
 
@@ -323,17 +422,17 @@
 .daily-preview-note p {
   margin: 0 0 8px;
   color: #8b6b58;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
 }
 
 .daily-preview-support {
   color: #663124;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .daily-preview-catalog {
-  padding: 14px 0 20px;
+  padding: 16px 0 8px;
 }
 
 .daily-preview-catalog-head {
@@ -342,14 +441,14 @@
   justify-content: space-between;
   margin-bottom: 10px;
   color: #8b6b58;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: .1em;
 }
 
 .daily-preview-object {
   position: relative;
   padding: 10px 10px 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   background: #efe7da;
   border-radius: 2px;
 }
@@ -357,7 +456,7 @@
 .daily-preview-image {
   display: block;
   width: 100%;
-  height: 120px;
+  height: 150px;
   margin-bottom: 8px;
   background: #ddd1c3;
   object-fit: cover;
@@ -367,13 +466,13 @@
   display: grid;
   place-items: center;
   color: #806854;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .daily-preview-caption small {
   display: block;
   color: #8b6b58;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: .1em;
 }
 
@@ -382,7 +481,7 @@
   margin: 2px 0 4px;
   color: #40362f;
   font-family: "Source Han Serif CN", "Songti SC", serif;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -390,7 +489,7 @@
 .daily-preview-caption p {
   margin: 0 0 6px;
   color: #6b5a4c;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -401,15 +500,26 @@
 .daily-preview-price {
   color: #40362f;
   font-family: Georgia, serif;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .daily-preview-price em {
   margin-left: 4px;
   color: #8b6b58;
   font-family: inherit;
-  font-size: 9px;
+  font-size: 10px;
   font-style: normal;
+}
+
+.daily-preview-off-tag {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(89, 72, 61, .6);
+  color: #fdf9f3;
+  font-size: 9px;
 }
 
 .daily-preview-empty {
@@ -423,14 +533,14 @@
 
 /* —— 关于页预览 —— */
 .about-preview-hero {
-  padding: 20px 0 14px;
+  padding: 16px 0 14px;
   border-bottom: 1px solid #cdbbae;
   text-align: center;
 }
 
 .about-preview-hero small {
   color: #8b6b58;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: .2em;
 }
 
@@ -438,7 +548,7 @@
   margin: 8px 0 0;
   color: #40362f;
   font-family: Georgia, "Songti SC", serif;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 400;
 }
 
@@ -450,7 +560,7 @@
 .about-preview-section h4 {
   margin: 0 0 8px;
   color: #663124;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: .1em;
 }
 
@@ -458,14 +568,19 @@
   margin: 0;
   color: #5c493c;
   font-family: "Source Han Serif CN", "Songti SC", serif;
-  font-size: 11px;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.85;
   white-space: pre-wrap;
 }
 
-.about-draft-preview .issue-phone-preview {
+.about-draft-preview .phone-preview {
   width: 100%;
   margin: 0;
+}
+
+.about-draft-preview .phone-frame-wrap {
+  max-width: 375px;
+  margin: 0 auto;
 }
 
 /* —— 我的页面预览 —— */
@@ -473,9 +588,9 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 14px 0 10px;
+  padding: 10px 0;
   color: #8b6b58;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: .14em;
 }
 
@@ -484,37 +599,43 @@
   align-items: center;
   gap: 10px;
   padding: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   background: #efe7da;
 }
 
 .mine-preview-avatar {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #c8553d;
   color: #fdf9f3;
   font-family: Georgia, serif;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .mine-preview-profile strong {
   display: block;
   color: #40362f;
   font-family: "Source Han Serif CN", "Songti SC", serif;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .mine-preview-profile small {
   color: #8b6b58;
-  font-size: 9px;
+  font-size: 10px;
+}
+
+.mine-preview-enter {
+  margin-left: auto;
+  color: #8b6b58;
+  font-size: 16px;
 }
 
 .mine-preview-intro {
-  padding: 14px 0 16px;
+  padding: 12px 0 16px;
   border-bottom: 1px solid #cdbbae;
 }
 
@@ -522,19 +643,19 @@
   margin: 0 0 6px;
   color: #40362f;
   font-family: Georgia, "Songti SC", serif;
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 400;
 }
 
 .mine-preview-intro p {
   margin: 0;
   color: #5c493c;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.8;
 }
 
 .mine-preview-section {
-  padding: 14px 0 16px;
+  padding: 16px 0 18px;
   border-bottom: 1px solid #cdbbae;
 }
 
@@ -549,18 +670,18 @@
 .mine-preview-section-head strong {
   color: #40362f;
   font-family: "Source Han Serif CN", "Songti SC", serif;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .mine-preview-section-head small {
   color: #8b6b58;
-  font-size: 9px;
+  font-size: 10px;
   white-space: nowrap;
 }
 
 .mine-preview-empty {
-  padding: 12px;
+  padding: 14px 12px;
   background: #efe7da;
   text-align: center;
 }
@@ -568,79 +689,59 @@
 .mine-preview-empty strong {
   display: block;
   color: #5c493c;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .mine-preview-empty p {
-  margin: 4px 0 8px;
+  margin: 5px 0 10px;
   color: #8b6b58;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
 }
 
 .mine-preview-button {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 999px;
   background: #c8553d;
   color: #fdf9f3;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .mine-preview-copy {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   color: #5c493c;
-  font-size: 10px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.75;
 }
 
 .mine-preview-link {
   color: #663124;
-  font-size: 10px;
+  font-size: 12px;
 }
 
-/* —— 此刻观察 / 文案类页面预览 —— */
-.copy-preview-hero {
-  padding: 18px 0 12px;
-  border-bottom: 1px solid #cdbbae;
-  text-align: center;
-}
-
-.copy-preview-hero small {
-  color: #8b6b58;
-  font-size: 9px;
-  letter-spacing: .18em;
-}
-
-.copy-preview-hero h3 {
-  margin: 6px 0 0;
-  color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
-  font-size: 18px;
-  font-weight: 400;
-}
-
+/* —— 此刻观察 / 共同实践（文案类页面） —— */
 .copy-preview-group {
-  padding: 12px 0 8px;
+  padding: 14px 0 10px;
   border-bottom: 1px solid rgba(205, 187, 174, .55);
 }
 
 .copy-preview-group-title {
   margin: 0 0 6px;
   color: #663124;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: .1em;
 }
 
 .copy-preview-line {
-  padding: 8px 6px 8px 0;
+  padding: 10px 4px;
   border-bottom: 1px dashed rgba(92, 73, 60, .14);
 }
 
 .copy-preview-line p {
   margin: 0;
   font-family: "Source Han Serif CN", "Songti SC", serif;
-  line-height: 1.7;
+  line-height: 1.75;
   white-space: pre-wrap;
 }
 
@@ -648,6 +749,40 @@
   border-radius: 10px;
 }
 
-.copy-phone-preview .preview-block-tag {
-  max-width: 60%;
+/* 关于页：右侧草稿预览改成手机栏，去掉原来的卡片外壳 */
+.about-editor-layout {
+  grid-template-columns: minmax(0, 1fr) 372px;
+}
+
+.about-draft-preview {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: #5c493c;
+}
+
+.about-draft-preview-heading {
+  padding: 0 0 8px;
+  border-bottom: 0;
+}
+
+.about-draft-preview .phone-preview-head {
+  display: none;
+}
+.copy-preview-line .preview-block-tag {
+  position: static;
+  display: inline-block;
+  margin-bottom: 2px;
+  padding: 0;
+  background: none;
+  color: #9c8371;
+  font-size: 9px;
+  opacity: .85;
+}
+
+.copy-preview-line:hover .preview-block-tag,
+.copy-preview-line.is-preview-active .preview-block-tag {
+  background: none;
+  color: #c8553d;
+  opacity: 1;
 }
