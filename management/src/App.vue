@@ -1912,6 +1912,41 @@ function focusMineField(event: FocusEvent) {
   if (key && key !== activeMineKey.value) activeMineKey.value = key;
 }
 
+// 共同实践：选定期刊时，把该期的讨论段落与线下活动条目追加到预览末尾。
+const plainCopy = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+const sharedPracticeExtraSections = computed(() => {
+  if (!practiceCopyIssueCode.value) return [];
+  const sections: Array<{ key: string; title: string; blocks: Array<{ key: string; label: string; richText: string; fontSize: number; color: string }> }> = [];
+  if (practiceCopyParagraphs.value.length) {
+    sections.push({
+      key: 'issue-paragraphs',
+      title: '线上 · 讨论说明段落（' + practiceCopyIssueCode.value + '）',
+      blocks: practiceCopyParagraphs.value.map((paragraph, index) => ({
+        key: 'paragraph:' + index,
+        label: '段落 ' + (index + 1),
+        richText: paragraph.richText,
+        fontSize: paragraph.fontSize,
+        color: paragraph.color,
+      })),
+    });
+  }
+  if (practiceCopyRules.value.length) {
+    sections.push({
+      key: 'issue-rules',
+      title: '线下活动说明条目（' + practiceCopyIssueCode.value + '）',
+      blocks: practiceCopyRules.value.map((rule, index) => ({
+        key: 'rule:' + index,
+        label: '第 ' + (index + 1) + ' 项 · ' + (plainCopy(rule.title.richText) || '未命名'),
+        richText: rule.copy.richText,
+        fontSize: rule.copy.fontSize,
+        color: rule.copy.color,
+      })),
+    });
+  }
+  return sections;
+});
+
 // 此刻观察预览：每个文案字段对应一个区块。
 const activeObservationKey = ref('');
 
@@ -5445,8 +5480,8 @@ onBeforeUnmount(() => {
         <div v-if="!practiceContent" class="practice-empty"><p class="muted">共同实践内容尚未读取。</p><button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button></div>
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序共同实践页预览">
-            <CopyPagePreview title="共同实践" subtitle="SHARED PRACTICE" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
-            <p class="preview-hint">预览用全局默认文案渲染；点区块 → 跳到右侧对应字段，点字段时这里也会高亮。</p>
+            <CopyPagePreview :title="practiceCopyIssueCode ? `共同实践 · 按期` : `共同实践`" :subtitle="practiceCopyIssueCode ? practiceCopyIssueCode : `SHARED PRACTICE`" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :extra-sections="sharedPracticeExtraSections" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <p class="preview-hint">未选期刊时用全局默认文案；选定期刊后，末尾会追加该期的讨论段落与线下活动条目。点区块 → 跳到右侧对应字段。</p>
           </aside>
           <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
         <div class="practice-copy-panel">
@@ -5476,7 +5511,7 @@ onBeforeUnmount(() => {
             <section class="practice-copy-block">
               <header><h4>线上 · 讨论说明段落</h4><button type="button" class="quiet" @click="addParagraph">+ 添加段落</button></header>
               <p v-if="!practiceCopyParagraphs.length" class="muted">还没有段落，点击「添加段落」开始。</p>
-              <div v-for="(paragraph, index) in practiceCopyParagraphs" :key="`p-${index}`" class="practice-copy-row">
+              <div v-for="(paragraph, index) in practiceCopyParagraphs" :key="`p-${index}`" :data-copy-field="`paragraph:${index}`" class="practice-copy-row">
                 <span class="practice-copy-order">{{ index + 1 }}</span>
                 <RichTextEditor v-model="paragraph.richText" v-model:font-size="paragraph.fontSize" v-model:color="paragraph.color" label="段落内容" />
                 <div class="practice-copy-row-actions">
@@ -5490,7 +5525,7 @@ onBeforeUnmount(() => {
             <section class="practice-copy-block">
               <header><h4>线下活动说明条目</h4><button type="button" class="quiet" @click="addRule">+ 添加条目</button></header>
               <p v-if="!practiceCopyRules.length" class="muted">还没有条目，点击「添加条目」开始。</p>
-              <div v-for="(rule, index) in practiceCopyRules" :key="`r-${index}`" class="practice-copy-rule">
+              <div v-for="(rule, index) in practiceCopyRules" :key="`r-${index}`" :data-copy-field="`rule:${index}`" class="practice-copy-rule">
                 <div class="practice-copy-rule-head">
                   <span class="practice-copy-order">{{ index + 1 }}</span>
                   <div class="practice-copy-row-actions">

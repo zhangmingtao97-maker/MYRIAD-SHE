@@ -17,12 +17,27 @@ interface CopyValue {
   color?: string;
 }
 
+interface ExtraBlock {
+  key: string;
+  label: string;
+  richText?: string;
+  fontSize?: number;
+  color?: string;
+}
+
+interface ExtraSection {
+  key: string;
+  title: string;
+  blocks: ExtraBlock[];
+}
+
 const props = defineProps<{
   title: string;
   subtitle?: string;
   groups: CopyGroup[];
   copy: Record<string, CopyValue>;
   activeKey: string;
+  extraSections?: ExtraSection[];
 }>();
 
 const emit = defineEmits<{ (event: 'pick', key: string): void }>();
@@ -43,10 +58,14 @@ const plain = (html: unknown) => (typeof html === 'string'
 
 const allFields = () => props.groups.flatMap((group) => group.fields);
 
-function orderOf(key: string) {
+const extraBlocks = () => (props.extraSections || []).flatMap((section) => section.blocks);
+
+const orderOf = (key: string) => {
   const index = allFields().findIndex((field) => field.key === key);
-  return String(index + 1).padStart(2, '0');
-}
+  if (index >= 0) return String(index + 1).padStart(2, '0');
+  const extraIndex = extraBlocks().findIndex((block) => block.key === key);
+  return String(allFields().length + extraIndex + 1).padStart(2, '0');
+};
 
 const bodyRef = ref<HTMLElement | null>(null);
 
@@ -89,6 +108,26 @@ watch(() => props.activeKey, (key) => {
                 color: copy[field.key]?.color || '#40362f',
               }"
             >{{ plain(copy[field.key]?.richText) || '（空）' }}</p>
+          </div>
+        </article>
+      </template>
+      <template v-for="section in extraSections || []" :key="section.key">
+        <article class="copy-preview-group copy-preview-group--extra">
+          <p class="copy-preview-group-title">{{ section.title }}</p>
+          <div
+            v-for="block in section.blocks"
+            :key="block.key"
+            :data-preview-key="block.key"
+            :class="['preview-block', 'copy-preview-line', { 'is-preview-active': activeKey === block.key }]"
+            @click="emit('pick', block.key)"
+          >
+            <span class="preview-block-tag">{{ orderOf(block.key) }} · {{ block.label }}</span>
+            <p
+              :style="{
+                fontSize: `${((block.fontSize || 14) * 0.55).toFixed(1)}px`,
+                color: block.color || '#40362f',
+              }"
+            >{{ plain(block.richText) || '（空）' }}</p>
           </div>
         </article>
       </template>
