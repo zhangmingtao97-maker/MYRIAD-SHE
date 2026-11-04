@@ -1,4 +1,4 @@
-﻿/* 后台「手机预览」：左侧锁定的手机预览 + 双向定位高亮。 */
+/* 后台「手机预览」：左侧锁定的手机预览 + 双向定位高亮。 */
 
 .journal-preview-layout,
 .preview-layout {
@@ -73,7 +73,7 @@
   white-space: pre-wrap;
 }
 
-/* 手机外壳：内部按 375×812 设计稿排版，整体等比缩放到预览栏宽度 */
+/* 手机外壳：外框按 iPhone 12/13 的 390×844 显示，内部按 375×812（rpx/2）绘制后整体放大 1.04 */
 .phone-frame-wrap {
   position: relative;
   width: 100%;

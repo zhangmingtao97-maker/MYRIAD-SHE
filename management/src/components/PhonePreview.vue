@@ -1,9 +1,15 @@
 ﻿<script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-// 小程序设计稿宽度：iPhone 6/7/8 逻辑宽度 375pt，预览按这个宽度等比缩放。
+// 后台预览按 iPhone 12/13 的外框显示（390×844 逻辑像素，与微信开发者工具的模拟器一致）。
+const DEVICE_WIDTH = 390;
+const DEVICE_HEIGHT = 844;
+// 画面内部仍按 375×812 绘制：小程序 750rpx = 375pt 时 1rpx = 0.5px，
+// 这套 px 值已经散落在各预览组件里；外层再整体放大 390/375 = 1.04，
+// 换算下来正好等于真机 1rpx = 0.52px，字号与间距不会偏小。
 const DESIGN_WIDTH = 375;
 const DESIGN_HEIGHT = 812;
+const CONTENT_SCALE = DEVICE_WIDTH / DESIGN_WIDTH;
 
 const props = defineProps<{
   title: string;
@@ -26,8 +32,8 @@ function measure() {
   if (!el) return;
   const available = el.clientWidth;
   if (!available) return;
-  const widthScale = available / DESIGN_WIDTH;
-  const heightScale = (window.innerHeight - 236) / DESIGN_HEIGHT;
+  const widthScale = available / DEVICE_WIDTH;
+  const heightScale = (window.innerHeight - 236) / DEVICE_HEIGHT;
   scale.value = Math.min(1, Math.max(0.55, Math.min(widthScale, heightScale || 1)));
 }
 
@@ -74,12 +80,12 @@ defineExpose({ reveal });
     <div
       ref="wrap"
       class="phone-frame-wrap"
-      :style="{ height: `${Math.round(DESIGN_HEIGHT * scale + 8)}px` }"
+      :style="{ height: `${Math.round(DEVICE_HEIGHT * scale + 8)}px` }"
     >
       <div
         ref="screen"
         class="phone-screen"
-        :style="{ width: `${DESIGN_WIDTH}px`, height: `${DESIGN_HEIGHT}px`, transform: `scale(${scale})` }"
+        :style="{ width: `${DESIGN_WIDTH}px`, height: `${DESIGN_HEIGHT}px`, transform: `scale(${scale * CONTENT_SCALE})` }"
       >
         <div class="phone-statusbar" aria-hidden="true">
           <span>{{ '9:41' }}</span>
