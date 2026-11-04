@@ -37,19 +37,27 @@
             <text class="audio-number">02</text>
             <text class="audio-label">{{item.displayTitle || item.title || '微声音'}}</text>
             <view class="audio-kicker-meta">
-              <text wx:if="{{activeAudioId != item.primaryTrack.playbackId}}" class="audio-duration">{{item.primaryTrack.duration || item.duration}}</text>
+              <text class="audio-media-kind">{{item.primaryTrack.mediaType === 'video' ? '视频' : '声音'}}</text>
             </view>
           </view>
-          <view wx:if="{{activeAudioId === item.primaryTrack.playbackId}}" class="audio-progress {{audioSeeking ? 'audio-seek-active' : ''}}" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{audioProgressPercent}}" aria-valuetext="{{audioCurrentTimeLabel}} / {{audioDurationLabel}}">
-            <view class="audio-progress-hit" id="audio-seek-{{item.id}}-{{item.primaryTrack.id}}" data-module-id="{{item.id}}" data-track-id="{{item.primaryTrack.id}}" catchtouchstart="startAudioSeek" catchtouchmove="moveAudioSeek" catchtouchend="endAudioSeek" catchtouchcancel="endAudioSeek">
-              <view class="audio-progress-track"><view class="audio-progress-fill" style="width: {{audioProgressPercent}}%"></view><view class="audio-progress-thumb" style="left: {{audioProgressPercent}}%"></view></view>
-            </view>
-            <view class="audio-progress-times"><text>{{audioCurrentTimeLabel}}</text><text>{{audioDurationLabel}}</text></view>
-          </view>
-          <view class="{{activeAudioId === item.primaryTrack.playbackId ? 'audio-feature audio-feature-with-progress' : 'audio-feature'}}">
+          <view class="audio-player">
             <view wx:if="{{item.primaryTrack.mediaType === 'video'}}" class="audio-play" role="button" tabindex="0" aria-label="观看视频{{item.primaryTrack.title}}" data-track-id="{{item.primaryTrack.id}}" bindtap="openAudioDetail">▶</view>
             <view wx:else class="audio-play" role="button" tabindex="0" aria-label="{{playingAudioId === item.primaryTrack.playbackId ? '暂停' : '播放'}}{{item.primaryTrack.title}}" data-module-id="{{item.id}}" data-track-id="{{item.primaryTrack.id}}" bindtap="toggleAudio">{{playingAudioId === item.primaryTrack.playbackId ? 'Ⅱ' : '▶'}}</view>
-            <view class="audio-copy"><view class="audio-media-kind">{{item.primaryTrack.mediaType === 'video' ? '视频' : '声音'}}</view><view wx:if="{{item.primaryTrack.quote}}" class="audio-quote">{{item.primaryTrack.quote}}</view><view wx:if="{{item.primaryTrack.subtitle}}" class="audio-subtitle">{{item.primaryTrack.subtitle}}</view></view>
+            <view class="audio-player-main">
+              <block wx:if="{{item.primaryTrack.mediaType !== 'video'}}">
+                <view class="audio-progress {{audioSeeking ? 'audio-seek-active' : ''}}" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{activeAudioId === item.primaryTrack.playbackId ? audioProgressPercent : 0}}" aria-valuetext="{{activeAudioId === item.primaryTrack.playbackId ? audioCurrentTimeLabel : '00:00'}} / {{item.primaryTrack.duration || item.duration}}">
+                  <view class="audio-progress-hit" id="audio-seek-{{item.id}}-{{item.primaryTrack.id}}" data-module-id="{{item.id}}" data-track-id="{{item.primaryTrack.id}}" catchtouchstart="startAudioSeek" catchtouchmove="moveAudioSeek" catchtouchend="endAudioSeek" catchtouchcancel="endAudioSeek">
+                    <view class="audio-progress-track"><view class="audio-progress-fill" style="width: {{activeAudioId === item.primaryTrack.playbackId ? audioProgressPercent : 0}}%"></view><view wx:if="{{activeAudioId === item.primaryTrack.playbackId}}" class="audio-progress-thumb" style="left: {{audioProgressPercent}}%"></view></view>
+                  </view>
+                </view>
+                <view class="audio-progress-times"><text>{{activeAudioId === item.primaryTrack.playbackId ? audioCurrentTimeLabel : '00:00'}}</text><text>{{activeAudioId === item.primaryTrack.playbackId && audioDurationLabel !== '00:00' ? audioDurationLabel : (item.primaryTrack.duration || item.duration)}}</text></view>
+              </block>
+              <view wx:else class="audio-player-hint">观看视频 · {{item.primaryTrack.duration || item.duration}}</view>
+            </view>
+          </view>
+          <view class="audio-copy">
+            <view wx:if="{{item.primaryTrack.quote}}" class="audio-quote">{{item.primaryTrack.quote}}</view>
+            <view wx:if="{{item.primaryTrack.subtitle}}" class="audio-subtitle">{{item.primaryTrack.subtitle}}</view>
           </view>
           <view wx:if="{{item.primaryTrack.transcript}}" class="audio-transcript">{{item.primaryTrack.transcript}}</view>
           <view class="audio-enter" role="button" tabindex="0" aria-label="进入本期微声音" bindtap="openAudioIndex"><text>{{item.tracks.length > 1 ? '查看全部微声音' : '进入这段微声音'}}</text><text>→</text></view>
