@@ -1,5 +1,15 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-04 后台手机预览扩到实践、日常之物、关于页
+
+- 实践页（`PracticePagePreview.vue`）：左边常驻手机预览，按小程序实践页的顺序渲染「页眉 / 页面标题 / 页面说明 / 实践目录 + 每条目录（情境、名称、说明、箭头）」，没有开放的目录半透明并标「未开放」。点预览里的页眉、标题、说明会滚到右侧对应输入框并闪框；点某条目录会直接切到「实践目录设置」、展开那一条并定位。右侧点进任意字段，左侧同步高亮。
+- 日常之物（`DailyObjectsPreview.vue`）：预览品牌行（品牌英文/中文 + 购物袋）、首屏文案（眉题/标题/说明）、预览说明与支持文字、商品卡片（图片、英文标识、名称、详情、价格与价格说明），下架商品半透明标「已下架」。左侧字段用 `daily-field`（`display: contents`，不打乱两列栅格）挂 `data-daily-field`，商品卡片挂 `data-daily-field="product:<id>"`，两侧互点互跳。
+- 关于 MYRIAD SHE（`AboutPagePreview.vue`）：把原来的文字版草稿预览换成手机版，三段（品牌介绍 / 内容来源 / 联系方式）各自可点，点段落定位到左侧输入框，点输入框高亮对应段落。
+- 交互约定统一成一套：预览块 `data-preview-key` + `.preview-block` / `.is-preview-active` / `.is-preview-off`，编辑区 `data-practice-field` / `data-daily-field` / `data-page-field`，右栏定位后加 `.is-locating` 闪一次红框；布局统一用 `admin-preview.css` 里的 `.preview-layout` / `.preview-rail` / `.preview-hint`（期刊那几个 `journal-preview-*` 类名保留为别名）。
+- 验证：`vue-tsc + vite build` 通过；Playwright 实测 —— 实践页 7 个区块、点「此刻观察」目录自动切到「实践目录设置」并展开该条；日常之物 5 个区块、点商品卡片右侧对应商品卡片闪框；关于页 3 个区块、点「内容来源」左侧输入框闪框。
+- 已发布（仅重建 admin 容器，备份 `management-src-pre-preview-2-20261104-142014.tar.gz`），线上 bundle 含 `practice-phone-preview` / `daily-phone-preview` / `about-phone-preview`。
+- 待接：我的页面设置、此刻观察、共同实践目录（用户协议/隐私政策已有独立的草稿预览，不在这里接）。
+
 ## 2026-11-04 后台「手机预览 + 双向定位」：期刊首页先上线
 
 - 目标：后台编辑内容时，左边常驻一个手机预览，点预览里的区块就知道在改哪里，反过来在右边点字段预览也跟着高亮（对标商城后台那种「左预览右配置」）。

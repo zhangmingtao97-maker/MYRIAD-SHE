@@ -1,32 +1,38 @@
 /* 后台「手机预览」：左侧锁定的手机预览 + 双向定位高亮。 */
 
-.journal-preview-layout {
+.journal-preview-layout,
+.preview-layout {
   display: grid;
   gap: 20px;
   align-items: start;
 }
 
-.journal-preview-layout.has-preview {
+.journal-preview-layout.has-preview,
+.preview-layout.has-preview {
   grid-template-columns: 340px minmax(0, 1fr);
 }
 
-.journal-preview-rail {
+.journal-preview-rail,
+.preview-rail {
   position: sticky;
   top: 12px;
   display: grid;
   gap: 10px;
 }
 
-.journal-preview-rail .issue-phone-preview {
+.journal-preview-rail .issue-phone-preview,
+.preview-rail .issue-phone-preview {
   width: 100%;
   margin: 0;
 }
 
-.journal-preview-rail .issue-phone-preview-body {
+.journal-preview-rail .issue-phone-preview-body,
+.preview-rail .issue-phone-preview-body {
   max-height: min(62vh, 560px);
 }
 
-.journal-preview-hint {
+.journal-preview-hint,
+.preview-hint {
   margin: 0;
   color: var(--muted, #8b6b58);
   font-size: 12px;
@@ -102,28 +108,362 @@
   text-align: center;
 }
 
-/* 右侧被定位到的栏目卡片：闪一下边框，提示「就是这一块」。 */
-.issue-module-card.is-locating {
+/* 右侧被定位到的字段 / 栏目卡片：闪一下边框，提示「就是这一块」。 */
+.issue-module-card.is-locating,
+.practice-field.is-locating,
+.practice-entry-row.is-locating {
   box-shadow: 0 0 0 2px #c8553d, 0 10px 24px rgba(200, 85, 61, .16);
 }
 
+.practice-field {
+  border-radius: 12px;
+}
+
+/* —— 实践页预览 —— */
+.practice-preview-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 0 12px;
+  border-bottom: 1px solid #cdbbae;
+  font-family: Georgia, "Songti SC", serif;
+  letter-spacing: .08em;
+}
+
+.practice-preview-title {
+  padding: 22px 0 8px;
+}
+
+.practice-preview-title h3 {
+  margin: 0;
+  font-family: Georgia, "Songti SC", serif;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+.practice-preview-intro {
+  padding: 8px 0 20px;
+}
+
+.practice-preview-intro p {
+  margin: 0;
+  font-family: Georgia, "Songti SC", serif;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.practice-preview-intro .practice-preview-fixed {
+  margin-top: 10px;
+  color: #8b6b58;
+  font-size: 11px;
+}
+
+.practice-preview-directory {
+  padding: 16px 0 18px;
+  border-top: 1px solid #cdbbae;
+}
+
+.practice-preview-dir-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #8b6b58;
+  font-size: 11px;
+  letter-spacing: .1em;
+}
+
+.practice-preview-dir-head small {
+  color: #663124;
+  font-size: 9px;
+}
+
+.practice-preview-entry {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  padding: 10px 22px 10px 0;
+  border-bottom: 1px solid rgba(92, 73, 60, .2);
+}
+
+.practice-preview-entry small {
+  color: #8b6b58;
+}
+
+.practice-preview-entry strong {
+  font-weight: 500;
+}
+
+.practice-preview-entry > span:not(.preview-block-tag) {
+  color: #5c493c;
+  line-height: 1.6;
+}
+
+.practice-preview-arrow {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  color: #663124;
+  font-style: normal;
+  transform: translateY(-50%);
+}
+
+.practice-preview-signature {
+  padding: 18px 0 24px;
+  color: #8b6b58;
+}
+
+.practice-preview-signature p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.practice-preview-empty {
+  color: #8b6b58;
+  font-size: 11px;
+}
+
 @media (max-width: 1280px) {
-  .journal-preview-layout.has-preview {
+  .journal-preview-layout.has-preview,
+  .preview-layout.has-preview {
     grid-template-columns: 300px minmax(0, 1fr);
   }
 }
 
 @media (max-width: 1080px) {
-  .journal-preview-layout.has-preview {
+  .journal-preview-layout.has-preview,
+  .preview-layout.has-preview {
     display: block;
   }
 
-  .journal-preview-rail {
+  .journal-preview-rail,
+  .preview-rail {
     position: static;
     margin-bottom: 18px;
   }
 
-  .journal-preview-rail .issue-phone-preview-body {
+  .journal-preview-rail .issue-phone-preview-body,
+  .preview-rail .issue-phone-preview-body {
     max-height: 420px;
   }
+}
+
+/* —— 日常之物预览 —— */
+.daily-preview-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0 12px;
+  border-bottom: 1px solid #cdbbae;
+}
+
+.daily-preview-brand strong {
+  display: block;
+  color: #40362f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: .06em;
+}
+
+.daily-preview-brand small {
+  color: #8b6b58;
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+
+.daily-preview-bag {
+  color: #8b6b58;
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+
+.daily-preview-bag em {
+  color: #663124;
+  font-style: normal;
+}
+
+.daily-preview-header {
+  padding: 20px 0 14px;
+}
+
+.daily-preview-header small {
+  color: #8b6b58;
+  font-size: 9px;
+  letter-spacing: .16em;
+}
+
+.daily-preview-header h3 {
+  margin: 10px 0 8px;
+  color: #40362f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.daily-preview-header p {
+  margin: 0;
+  color: #5c493c;
+  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.daily-preview-note {
+  padding: 10px 0 16px;
+  border-bottom: 1px solid #cdbbae;
+}
+
+.daily-preview-note p {
+  margin: 0 0 8px;
+  color: #8b6b58;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.daily-preview-support {
+  color: #663124;
+  font-size: 10px;
+}
+
+.daily-preview-catalog {
+  padding: 14px 0 20px;
+}
+
+.daily-preview-catalog-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #8b6b58;
+  font-size: 10px;
+  letter-spacing: .1em;
+}
+
+.daily-preview-object {
+  position: relative;
+  padding: 10px 10px 12px;
+  margin-bottom: 12px;
+  background: #efe7da;
+  border-radius: 2px;
+}
+
+.daily-preview-image {
+  display: block;
+  width: 100%;
+  height: 120px;
+  margin-bottom: 8px;
+  background: #ddd1c3;
+  object-fit: cover;
+}
+
+.daily-preview-image.is-empty {
+  display: grid;
+  place-items: center;
+  color: #806854;
+  font-size: 10px;
+}
+
+.daily-preview-caption small {
+  display: block;
+  color: #8b6b58;
+  font-size: 9px;
+  letter-spacing: .1em;
+}
+
+.daily-preview-caption strong {
+  display: block;
+  margin: 2px 0 4px;
+  color: #40362f;
+  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.daily-preview-caption p {
+  margin: 0 0 6px;
+  color: #6b5a4c;
+  font-size: 10px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.daily-preview-price {
+  color: #40362f;
+  font-family: Georgia, serif;
+  font-size: 12px;
+}
+
+.daily-preview-price em {
+  margin-left: 4px;
+  color: #8b6b58;
+  font-family: inherit;
+  font-size: 9px;
+  font-style: normal;
+}
+
+.daily-preview-empty {
+  color: #8b6b58;
+  font-size: 11px;
+}
+
+.daily-field {
+  display: contents;
+}
+
+/* —— 关于页预览 —— */
+.about-preview-hero {
+  padding: 20px 0 14px;
+  border-bottom: 1px solid #cdbbae;
+  text-align: center;
+}
+
+.about-preview-hero small {
+  color: #8b6b58;
+  font-size: 9px;
+  letter-spacing: .2em;
+}
+
+.about-preview-hero h3 {
+  margin: 8px 0 0;
+  color: #40362f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.about-preview-section {
+  padding: 16px 0 18px;
+  border-bottom: 1px solid #cdbbae;
+}
+
+.about-preview-section h4 {
+  margin: 0 0 8px;
+  color: #663124;
+  font-size: 11px;
+  letter-spacing: .1em;
+}
+
+.about-preview-section p {
+  margin: 0;
+  color: #5c493c;
+  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-size: 11px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.about-draft-preview .issue-phone-preview {
+  width: 100%;
+  margin: 0;
 }

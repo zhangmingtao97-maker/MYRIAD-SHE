@@ -6,6 +6,9 @@ import DatePickerField from './components/DatePickerField.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
 import PracticeLineEditor from './components/PracticeLineEditor.vue';
 import JournalHomePreview from './components/JournalHomePreview.vue';
+import PracticePagePreview from './components/PracticePagePreview.vue';
+import DailyObjectsPreview from './components/DailyObjectsPreview.vue';
+import AboutPagePreview from './components/AboutPagePreview.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
@@ -1804,6 +1807,86 @@ function isPracticeEntryExpanded(key: string) {
 
 function togglePracticeEntry(key: string) {
   expandedPracticeEntries.value = { ...expandedPracticeEntries.value, [key]: !isPracticeEntryExpanded(key) };
+  if (expandedPracticeEntries.value[key]) activePracticeKey.value = `entry:${key}`;
+}
+
+// 实践页预览的当前高亮项：meta / title / intro / directory，或 entry:<key>。
+const activePracticeKey = ref('');
+
+function practiceFieldElement(key: string) {
+  return document.querySelector<HTMLElement>(`[data-practice-field="${key}"]`);
+}
+
+// 点预览里的区块：切到对应的编辑子页、滚到那个字段并闪一下。
+function pickPracticeKey(key: string) {
+  activePracticeKey.value = key;
+  activeSection.value = 'practice';
+  activeContentSection.value = key.startsWith('entry:') || key === 'directory' ? 'directory' : 'practice';
+  if (key.startsWith('entry:')) {
+    const entryKey = key.slice('entry:'.length);
+    expandedPracticeEntries.value = { ...expandedPracticeEntries.value, [entryKey]: true };
+  }
+  nextTick(() => {
+    const target = practiceFieldElement(key);
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('is-locating');
+    window.setTimeout(() => target.classList.remove('is-locating'), 1400);
+  });
+}
+
+// 右侧点进某个字段时，左侧预览同步高亮到同一块。
+function focusPracticeField(event: FocusEvent) {
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-practice-field]');
+  const key = holder?.dataset.practiceField;
+  if (key && key !== activePracticeKey.value) activePracticeKey.value = key;
+}
+
+// 日常之物预览的当前高亮项：brand / header / note / product:<id>。
+const activeDailyKey = ref('');
+
+function dailyFieldTarget(key: string) {
+  const holder = document.querySelector<HTMLElement>('[data-daily-field="' + key + '"]');
+  if (!holder) return null;
+  return holder.querySelector<HTMLElement>('input, textarea') || holder;
+}
+
+function pickDailyKey(key: string) {
+  activeDailyKey.value = key;
+  nextTick(() => {
+    const target = dailyFieldTarget(key);
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const card = target.closest<HTMLElement>('.daily-product-editor') || target;
+    card.classList.add('is-locating');
+    window.setTimeout(() => card.classList.remove('is-locating'), 1400);
+  });
+}
+
+function focusDailyField(event: FocusEvent) {
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-daily-field]');
+  const key = holder?.dataset.dailyField;
+  if (key && key !== activeDailyKey.value) activeDailyKey.value = key;
+}
+
+// 关于页预览：三段正文与左侧输入框互相对应。
+const activeAboutKey = ref('');
+
+function pickAboutKey(key: string) {
+  activeAboutKey.value = key;
+  nextTick(() => {
+    const target = document.querySelector<HTMLElement>('[data-page-field="' + key + '"]');
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('is-locating');
+    window.setTimeout(() => target.classList.remove('is-locating'), 1400);
+  });
+}
+
+function focusAboutField(event: FocusEvent) {
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-page-field]');
+  const key = holder?.dataset.pageField;
+  if (key && key !== activeAboutKey.value) activeAboutKey.value = key;
 }
 
 function togglePracticeEntryEnabled(entry: PracticeEntry) {
@@ -3665,7 +3748,7 @@ function syncIssueFieldsToModules() {
     issueForm.value.microVoiceObjectKey = String(firstTrack?.audioObjectKey || '');
     issueForm.value.microVoiceTitle = String(firstTrack?.title || '');
     issueForm.value.microVoiceDuration = String(firstTrack?.duration || '');
-    audio.enabled = Boolean(audio.tracks?.some((track) => track.audioObjectKey || track.videoObjectKey));
+    audio.enabled = Boolean(audio.tracks?.some((track) => track.mediaType === 'video' ? track.videoObjectKey : track.audioObjectKey));
   }
   if (question) {
     const nextQuestion = String(question.title || '').trim();
@@ -5229,19 +5312,33 @@ onBeforeUnmount(() => {
           <p class="muted">实践页面配置尚未读取。</p>
           <button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button>
         </div>
-        <form v-else class="practice-form" @submit.prevent="savePracticeContent">
-          <div class="practice-page-fields">
-            <RichTextEditor v-model="practiceContent.titleRichText" v-model:font-size="practiceContent.titleFontSize" v-model:color="practiceContent.titleColor" label="页面标题" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
-            <RichTextEditor v-model="practiceContent.metaLeftRichText" v-model:font-size="practiceContent.metaLeftFontSize" v-model:color="practiceContent.metaLeftColor" label="左侧页眉（默认：实践）" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
-            <RichTextEditor v-model="practiceContent.metaRightRichText" v-model:font-size="practiceContent.metaRightFontSize" v-model:color="practiceContent.metaRightColor" label="右侧页眉（默认：此刻归安）" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
-            <RichTextEditor v-model="practiceContent.introRichText" v-model:font-size="practiceContent.introFontSize" v-model:color="practiceContent.introColor" label="页面说明" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
-          </div>
-          <p v-if="practiceContentConflict" class="error full" role="alert">实践页面已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
-          <p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p>
-          <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
-          <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-          <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存实践页面' }}</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
-        </form>
+        <div v-else-if="practiceContent" class="preview-layout has-preview">
+          <aside class="preview-rail" aria-label="小程序实践页预览">
+            <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
+            <p class="preview-hint">点预览里的区块 → 跳到右侧对应字段；点右侧字段时这里也会同步高亮。</p>
+          </aside>
+          <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
+            <div class="practice-page-fields">
+              <div class="practice-field" data-practice-field="title">
+                <RichTextEditor v-model="practiceContent.titleRichText" v-model:font-size="practiceContent.titleFontSize" v-model:color="practiceContent.titleColor" label="页面标题" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+              <div class="practice-field" data-practice-field="meta">
+                <RichTextEditor v-model="practiceContent.metaLeftRichText" v-model:font-size="practiceContent.metaLeftFontSize" v-model:color="practiceContent.metaLeftColor" label="左侧页眉（默认：实践）" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+              <div class="practice-field" data-practice-field="meta">
+                <RichTextEditor v-model="practiceContent.metaRightRichText" v-model:font-size="practiceContent.metaRightFontSize" v-model:color="practiceContent.metaRightColor" label="右侧页眉（默认：此刻归安）" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+              <div class="practice-field" data-practice-field="intro">
+                <RichTextEditor v-model="practiceContent.introRichText" v-model:font-size="practiceContent.introFontSize" v-model:color="practiceContent.introColor" label="页面说明" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+            </div>
+            <p v-if="practiceContentConflict" class="error full" role="alert">实践页面已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
+            <p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p>
+            <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
+            <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
+            <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存实践页面' }}</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
+          </form>
+        </div>
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'directory'" id="practice-directory-settings" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE DIRECTORY</p><h2>实践目录设置</h2></div></div>
@@ -5249,10 +5346,15 @@ onBeforeUnmount(() => {
           <p class="muted">实践目录配置尚未读取。</p>
           <button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button>
         </div>
-        <form v-else class="practice-form" @submit.prevent="savePracticeContent">
+        <div v-else-if="practiceContent" class="preview-layout has-preview">
+          <aside class="preview-rail" aria-label="小程序实践页预览">
+            <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
+            <p class="preview-hint">点预览里的目录条目 → 直接跳到右侧那一条并展开；点右侧条目时这里同步高亮。</p>
+          </aside>
+          <form class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
           <div class="directory-toolbar"><p class="muted field-help">拖动暂不开放，目录按此处顺序显示。每个目录都可在标题行右侧直接切换入口状态。</p><button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || practiceContent.entries.length >= 100" @click="addPracticeEntry">＋ 新增目录</button></div>
           <div class="practice-entry-list">
-            <article v-for="(entry, index) in practiceContent.entries" :key="entry.key" class="practice-entry-row" :class="{ expanded: isPracticeEntryExpanded(entry.key) }">
+            <article v-for="(entry, index) in practiceContent.entries" :key="entry.key" :data-practice-field="`entry:${entry.key}`" class="practice-entry-row" :class="{ expanded: isPracticeEntryExpanded(entry.key) }">
               <div class="practice-entry-header">
                 <button type="button" class="practice-entry-toggle" :aria-expanded="isPracticeEntryExpanded(entry.key)" :aria-controls="`practice-entry-panel-${entry.key}`" @click="togglePracticeEntry(entry.key)">
                   <span class="practice-entry-index">{{ String(index + 1).padStart(2, '0') }}</span>
@@ -5277,7 +5379,8 @@ onBeforeUnmount(() => {
           <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
           <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
           <div class="form-actions"><button type="submit" :disabled="practiceContentSaving || practiceContentConflict">{{ practiceContentSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="practiceContentSaving || practiceContentDirty || practiceContentConflict || !practiceContent.draft" @click="publishPracticeContent">发布到小程序</button><button v-if="practiceContentConflict" type="button" class="quiet" :disabled="practiceContentSaving" @click="reloadPracticeContent">{{ practiceContentSaving ? '读取中…' : '放弃修改并载入最新版本' }}</button></div>
-        </form>
+          </form>
+        </div>
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'observation'" id="practice-observation-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / OBSERVATION</p><h2>此刻观察</h2></div></div>
@@ -5363,16 +5466,21 @@ onBeforeUnmount(() => {
       <section v-if="activeSection === 'practice' && activeContentSection === 'daily-objects'" id="practice-daily-objects-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / DAILY OBJECTS</p><h2>日常之物</h2></div></div>
         <div v-if="!dailyObjectsContent" class="practice-empty"><p class="muted">日常之物设置尚未读取。</p><button class="quiet" :disabled="dashboardLoading" @click="loadDailyObjectsContent">重新读取</button></div>
-        <form v-else class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent">
+        <div v-else-if="dailyObjectsContent" class="preview-layout has-preview">
+          <aside class="preview-rail" aria-label="小程序日常之物预览">
+            <DailyObjectsPreview :content="dailyObjectsContent" :image-urls="dailyObjectPreviewUrls" :active-key="activeDailyKey" @pick="pickDailyKey" />
+            <p class="preview-hint">点预览里的区块 → 跳到右侧对应字段；点右侧字段时这里也会同步高亮。</p>
+          </aside>
+          <form class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent" @focusin="focusDailyField">
           <section class="daily-shop-gate"><div><h3>商城入口</h3><p>商城功能暂未开放。准备好商品内容后，可在入口状态中一键开启。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置商城开启状态</button></section>
           <section class="observation-copy-group"><h3>商品页首屏</h3><div class="daily-objects-fields">
-            <label>品牌英文<input v-model="dailyObjectsContent.brandName" maxlength="80" @input="markDailyObjectsDirty" /></label><label>品牌中文<input v-model="dailyObjectsContent.brandSubtitle" maxlength="80" @input="markDailyObjectsDirty" /></label>
-            <label>英文眉题<input v-model="dailyObjectsContent.eyebrow" maxlength="80" @input="markDailyObjectsDirty" /></label><label>页面标题<input v-model="dailyObjectsContent.title" maxlength="120" @input="markDailyObjectsDirty" /></label>
-            <label class="full">页面说明<textarea v-model="dailyObjectsContent.intro" rows="3" maxlength="500" @input="markDailyObjectsDirty"></textarea></label>
-            <label>预览说明<input v-model="dailyObjectsContent.previewNote" maxlength="300" @input="markDailyObjectsDirty" /></label><label>联系支持文字<input v-model="dailyObjectsContent.supportLabel" maxlength="120" @input="markDailyObjectsDirty" /></label>
+            <div class="daily-field" data-daily-field="brand"><label>品牌英文<input v-model="dailyObjectsContent.brandName" maxlength="80" @input="markDailyObjectsDirty" /></label><label>品牌中文<input v-model="dailyObjectsContent.brandSubtitle" maxlength="80" @input="markDailyObjectsDirty" /></label></div>
+            <div class="daily-field" data-daily-field="header"><label>英文眉题<input v-model="dailyObjectsContent.eyebrow" maxlength="80" @input="markDailyObjectsDirty" /></label><label>页面标题<input v-model="dailyObjectsContent.title" maxlength="120" @input="markDailyObjectsDirty" /></label>
+            <label class="full">页面说明<textarea v-model="dailyObjectsContent.intro" rows="3" maxlength="500" @input="markDailyObjectsDirty"></textarea></label></div>
+            <div class="daily-field" data-daily-field="note"><label>预览说明<input v-model="dailyObjectsContent.previewNote" maxlength="300" @input="markDailyObjectsDirty" /></label><label>联系支持文字<input v-model="dailyObjectsContent.supportLabel" maxlength="120" @input="markDailyObjectsDirty" /></label></div>
           </div></section>
           <section class="observation-copy-group"><div class="daily-products-heading"><h3>商品与详情</h3><button class="quiet" type="button" :disabled="dailyObjectsSaving || dailyObjectsConflict || dailyObjectsContent.products.length >= 50" @click="addDailyObjectsProduct">＋ 新增商品</button></div>
-            <article v-for="(product, index) in dailyObjectsContent.products" :key="product.id" class="daily-product-editor">
+            <article v-for="(product, index) in dailyObjectsContent.products" :key="product.id" :data-daily-field="`product:${product.id}`" class="daily-product-editor">
               <div class="daily-product-editor-heading"><strong>{{ product.id }} · 商品 {{ String(index + 1).padStart(2, '0') }}</strong><label class="daily-product-enabled"><input v-model="product.enabled" type="checkbox" @change="markDailyObjectsDirty" />在商品页显示</label></div>
               <div class="daily-objects-fields">
                 <label>商品编号<input v-model="product.id" maxlength="32" @input="markDailyObjectsDirty" /></label><label>中文名称<input v-model="product.name" maxlength="80" @input="markDailyObjectsDirty" /></label>
@@ -5388,7 +5496,8 @@ onBeforeUnmount(() => {
           </section>
           <p v-if="dailyObjectsConflict" class="error full" role="alert">日常之物已被其他管理员更新。本地修改已保留，请重新读取后再保存。</p><p v-if="dailyObjectsDirty && !dailyObjectsSaving" class="muted" role="status">有未保存的修改。</p><p v-if="dailyObjectsError" class="error" role="alert">{{ dailyObjectsError }}</p><p v-if="dailyObjectsMessage" class="status-message" role="status">{{ dailyObjectsMessage }}</p>
           <div class="form-actions"><button type="submit" :disabled="dailyObjectsSaving || dailyObjectsConflict">{{ dailyObjectsSaving ? '保存中…' : '保存草稿' }}</button><button v-if="isSuperAdmin" type="button" class="quiet" :disabled="dailyObjectsSaving || dailyObjectsDirty || dailyObjectsConflict || !dailyObjectsContent.draft" @click="publishDailyObjectsContent">发布到小程序</button><button v-if="dailyObjectsConflict" type="button" class="quiet" @click="loadDailyObjectsContent">重新读取</button></div>
-        </form>
+          </form>
+        </div>
       </section>
       <section v-if="activeSection === 'content' && activeContentSection === 'privacy-page'" id="privacy-page-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRIVACY / ABOUT</p><h2>关于 MYRIAD SHE</h2></div></div>
@@ -5396,8 +5505,8 @@ onBeforeUnmount(() => {
         <div v-if="!privacyPageContent" class="practice-empty"><p class="muted">关于 MYRIAD SHE 内容尚未读取。</p><button class="quiet" :disabled="privacyPageSaving" @click="reloadPrivacyPageContent">重新读取</button></div>
         <form v-else class="practice-form about-editor-form" @submit.prevent="savePrivacyPageContent">
           <div class="about-editor-layout">
-            <section class="observation-copy-group about-fields"><h3>页面内容</h3><label>品牌介绍<textarea v-model="privacyPageContent.brandIntro" rows="6" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label><label>内容来源<textarea v-model="privacyPageContent.contentSources" rows="5" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label><label>联系方式<textarea v-model="privacyPageContent.contactInfo" rows="3" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label></section>
-            <aside class="about-draft-preview" aria-label="当前草稿预览"><div class="about-draft-preview-heading"><div><p class="eyebrow">DRAFT PREVIEW</p><h3>预览当前草稿</h3></div><span v-if="privacyPageDirty" class="draft-state">未保存</span><span v-else class="draft-state">草稿预览</span></div><div class="about-preview-content"><p class="about-preview-brand">MYRIAD SHE</p><h4>关于 MYRIAD SHE</h4><section><h5>品牌介绍</h5><p>{{ privacyPageContent.brandIntro }}</p></section><section><h5>内容来源</h5><p>{{ privacyPageContent.contentSources }}</p></section><section><h5>联系方式</h5><p>{{ privacyPageContent.contactInfo }}</p></section></div></aside>
+            <section class="observation-copy-group about-fields" @focusin="focusAboutField"><h3>页面内容</h3><label data-page-field="brand-intro">品牌介绍<textarea v-model="privacyPageContent.brandIntro" rows="6" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label><label data-page-field="sources">内容来源<textarea v-model="privacyPageContent.contentSources" rows="5" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label><label data-page-field="contact">联系方式<textarea v-model="privacyPageContent.contactInfo" rows="3" maxlength="6000" :disabled="privacyPageSaving || privacyPageConflict" @input="markPrivacyPageDirty" /></label></section>
+            <aside class="about-draft-preview" aria-label="当前草稿预览"><div class="about-draft-preview-heading"><div><p class="eyebrow">DRAFT PREVIEW</p><h3>预览当前草稿</h3></div><span v-if="privacyPageDirty" class="draft-state">未保存</span><span v-else class="draft-state">草稿预览</span></div><AboutPagePreview :content="privacyPageContent" :active-key="activeAboutKey" @pick="pickAboutKey" /><p class="preview-hint">点预览里的段落 → 左侧跳到对应输入框；点输入框时这里也会高亮。</p></aside>
           </div>
           <p v-if="privacyPageConflict" class="error full" role="alert">关于内容已被其他管理员更新，本地修改已保留；重新载入最新版本后再保存。</p><p v-if="privacyPageDirty && !privacyPageSaving" class="muted" role="status">有未保存的修改。</p><p v-if="privacyPageError" class="error" role="alert">{{ privacyPageError }}</p><p v-if="privacyPageMessage" class="status-message" role="status">{{ privacyPageMessage }}</p><div class="form-actions"><button type="submit" :disabled="privacyPageSaving || privacyPageConflict">{{ privacyPageSaving ? '保存中…' : '保存草稿' }}</button><button type="button" class="quiet" :disabled="privacyPageSaving || privacyPageDirty || privacyPageConflict" @click="publishPrivacyPageContent">发布到小程序</button><button v-if="privacyPageConflict" type="button" class="quiet" :disabled="privacyPageSaving" @click="reloadPrivacyPageContent">载入最新版本</button></div>
         </form>
