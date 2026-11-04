@@ -20,12 +20,15 @@ const scale = ref(1);
 
 let observer: ResizeObserver | null = null;
 
+// 除了宽度，还要让整块手机（含页头与说明）落在一屏里，滚到页面下方时不会被页头切掉。
 function measure() {
   const el = wrap.value;
   if (!el) return;
   const available = el.clientWidth;
   if (!available) return;
-  scale.value = Math.min(1, Math.max(0.55, available / DESIGN_WIDTH));
+  const widthScale = available / DESIGN_WIDTH;
+  const heightScale = (window.innerHeight - 210) / DESIGN_HEIGHT;
+  scale.value = Math.min(1, Math.max(0.55, Math.min(widthScale, heightScale || 1)));
 }
 
 onMounted(() => {
@@ -34,11 +37,13 @@ onMounted(() => {
     observer = new ResizeObserver(() => measure());
     if (wrap.value) observer.observe(wrap.value);
   }
+  window.addEventListener('resize', measure);
 });
 
 onBeforeUnmount(() => {
   observer?.disconnect();
   observer = null;
+  window.removeEventListener('resize', measure);
 });
 
 function reveal(key?: string) {

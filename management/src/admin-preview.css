@@ -15,7 +15,8 @@
 .journal-preview-rail,
 .preview-rail {
   position: sticky;
-  top: 12px;
+  /* 后台页头是 sticky 且高 98px，预览栏要停在它下面，否则会被盖住 */
+  top: 108px;
   display: grid;
   gap: 10px;
 }
@@ -144,10 +145,6 @@
 }
 
 /* 预览里的每一个可编辑区块：整块可点，hover / 选中都有明确的红框反馈。 */
-.phone-screen-inner {
-  position: relative;
-}
-
 .phone-screen-inner .preview-block {
   position: relative;
   cursor: pointer;
@@ -755,6 +752,7 @@
 }
 
 .about-draft-preview {
+  top: 108px;
   overflow: visible;
   border: 0;
   background: transparent;

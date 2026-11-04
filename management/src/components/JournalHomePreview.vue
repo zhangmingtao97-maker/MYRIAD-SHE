@@ -61,10 +61,26 @@ function storyActionTitle(module: ManagedIssueModule) {
   return text(action?.title) || '进入本期人物';
 }
 
+// 右侧栏目选择器选中的是「编辑项」，个别编辑项在首页并不单独成块：
+// 人物入口指向它所属的「人物纪实」，被「本期问题」吸收的观察/实践入口指向「本期问题」，
+// 这样选中它们时左侧也能跳到真正显示的位置。
+const resolvedKey = computed(() => {
+  const active = props.modules.find((module) => module.id === props.activeKey);
+  if (!active) return props.activeKey;
+  if (active.type === 'storyAction') {
+    const target = text(active.targetId) || 'story';
+    if (rows.value.some((module) => module.id === target)) return target;
+  }
+  if (active.type === 'observationAction' || active.type === 'sharedPracticeAction') {
+    const question = props.modules.find((module) => module.type === 'question' && module.enabled);
+    if (question && rows.value.some((module) => module.id === question.id)) return question.id;
+  }
+  return props.activeKey;
+});
 </script>
 
 <template>
-  <PhonePreview title="期刊首页" caption="MYRIAD SHE" :active-key="activeKey">
+  <PhonePreview title="期刊首页" caption="MYRIAD SHE" :active-key="resolvedKey">
       <article
         v-for="module in rows"
         :key="module.id"
@@ -72,7 +88,7 @@ function storyActionTitle(module: ManagedIssueModule) {
         :class="[
           `preview-${module.type}`,
           'preview-block',
-          { 'is-preview-active': module.id === activeKey, 'is-preview-off': !module.enabled },
+          { 'is-preview-active': module.id === resolvedKey, 'is-preview-off': !module.enabled },
         ]"
         :title="`${label(module)}：点击定位到右侧编辑区`"
         @click="emit('pick', module.id)"
