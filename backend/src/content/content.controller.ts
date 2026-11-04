@@ -16,6 +16,7 @@ import { defaultDiscussionContent, DiscussionContent, validateDiscussionContent 
 
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const allowedAudioTypes = ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-m4a'];
+const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
 type PracticeEntryKey = string;
 
 interface PublicHomeResponse {
@@ -53,7 +54,19 @@ interface PublicHomeCache {
 
 const issueModuleTypes = ['issueMeta', 'coverStory', 'cover', 'opener', 'story', 'storyAction', 'image', 'quote', 'audio', 'question', 'observationAction', 'sharedPracticeAction', 'contents', 'archive', 'brandFooter'] as const;
 type IssueModuleType = typeof issueModuleTypes[number];
-interface IssueAudioTrack { id: string; title: string; duration: string; audioObjectKey: string; quote: string; subtitle: string; transcript: string }
+interface IssueAudioTrack {
+  id: string;
+  title: string;
+  duration: string;
+  mediaType: 'audio' | 'video';
+  audioObjectKey: string;
+  videoObjectKey: string;
+  detailTitle: string;
+  description: string;
+  quote: string;
+  subtitle: string;
+  transcript: string;
+}
 interface IssueModule { id: string; type: IssueModuleType; order: number; enabled: boolean; tracks?: IssueAudioTrack[]; [key: string]: unknown }
 interface IssueDraftContent { sections: IssueModule[]; discussion: DiscussionContent }
 
@@ -98,7 +111,7 @@ class MediaUploadDto {
   @IsString() @MinLength(1) @MaxLength(200) fileName!: string;
   @IsString() @MinLength(1) @MaxLength(100) contentType!: string;
   @IsInt() @Min(1) fileSize!: number;
-  @IsIn(['image', 'audio']) kind!: 'image' | 'audio';
+  @IsIn(['image', 'audio', 'video']) kind!: 'image' | 'audio' | 'video';
 }
 
 class MediaDeleteDto {
@@ -679,7 +692,7 @@ export class ContentController {
     const allowedFields: Record<IssueModuleType, string[]> = {
       issueMeta: ['eyebrow', 'month'], coverStory: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'eyebrow', 'title', 'titleFontSize', 'titleColor', 'body', 'bodyFontSize', 'bodyColor', 'byline'], cover: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight'],
       opener: ['eyebrow', 'title', 'body'], story: ['eyebrow', 'title', 'body', 'imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'detailCaptionLeft', 'detailCaptionRight', 'detailSource', 'detailParagraph1', 'detailParagraph2', 'detailQuote', 'officialArticleUrl'], storyAction: ['title', 'body', 'targetId'], image: ['imageObjectKey', 'altText', 'caption'],
-      quote: ['text', 'attribution'], audio: ['title', 'duration', 'audioObjectKey', 'transcript', 'quote', 'subtitle', 'tracks'], question: ['eyebrow', 'title', 'body'],
+      quote: ['text', 'attribution'], audio: ['title', 'duration', 'mediaType', 'audioObjectKey', 'videoObjectKey', 'detailTitle', 'description', 'transcript', 'quote', 'subtitle', 'tracks'], question: ['eyebrow', 'title', 'body'],
       observationAction: ['title', 'body'], sharedPracticeAction: ['title', 'body'],
       contents: ['title', 'entry1Label', 'entry1Summary', 'entry2Label', 'entry2Summary', 'entry3Label', 'entry3Summary', 'entry4Label', 'entry4Summary'],
       archive: ['title', 'entryLabel', 'entryTitle'], brandFooter: ['title', 'body'],
@@ -706,19 +719,25 @@ export class ContentController {
           normalizedTracks = field.map((rawTrack) => {
             if (!rawTrack || typeof rawTrack !== 'object' || Array.isArray(rawTrack)) throw new BadRequestException('微声音条目格式无效');
             const track = rawTrack as Record<string, unknown>;
-            const trackFields = ['id', 'title', 'duration', 'audioObjectKey', 'quote', 'subtitle', 'transcript'];
+            const trackFields = ['id', 'title', 'duration', 'mediaType', 'audioObjectKey', 'videoObjectKey', 'detailTitle', 'description', 'quote', 'subtitle', 'transcript'];
             if (Object.keys(track).some((trackField) => !trackFields.includes(trackField))) throw new BadRequestException('微声音条目包含未登记字段');
             if (typeof track.id !== 'string' || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(track.id) || trackIds.has(track.id)) throw new BadRequestException('微声音条目编号无效或重复');
             trackIds.add(track.id);
-            const limits: Record<string, number> = { title: 120, duration: 20, quote: 500, subtitle: 500, transcript: 6000 };
+            const limits: Record<string, number> = { title: 120, detailTitle: 120, duration: 20, quote: 500, subtitle: 500, transcript: 6000, description: 6000 };
             for (const [trackField, maximum] of Object.entries(limits)) {
-              const text = track[trackField] ?? '';
-              if (typeof text !== 'string' || text.length > maximum || /<\/?[a-z][^>]*>/i.test(text)) throw new BadRequestException('微声音文案须为长度有效的纯文本');
+              const value = track[trackField] ?? '';
+              if (typeof value !== 'string' || value.length > maximum || /<\/?[a-z][^>]*>/i.test(value)) throw new BadRequestException('微声音文案须为长度有效的纯文本');
             }
-            const objectKey = track.audioObjectKey ?? '';
-            if (objectKey !== '' && (typeof objectKey !== 'string' || !this.isManagedMediaObjectKey(objectKey) || !objectKey.startsWith('content/audio/'))) throw new BadRequestException('栏目媒体路径无效');
+            const audioObjectKey = track.audioObjectKey ?? '';
+            const videoObjectKey = track.videoObjectKey ?? '';
+            if (audioObjectKey !== '' && (typeof audioObjectKey !== 'string' || !this.isManagedMediaObjectKey(audioObjectKey) || !audioObjectKey.startsWith('content/audio/'))) throw new BadRequestException('栏目媒体路径无效');
+            if (videoObjectKey !== '' && (typeof videoObjectKey !== 'string' || !this.isManagedMediaObjectKey(videoObjectKey) || !videoObjectKey.startsWith('content/video/'))) throw new BadRequestException('栏目媒体路径无效');
+            if (track.mediaType !== undefined && track.mediaType !== 'audio' && track.mediaType !== 'video') throw new BadRequestException('微声音媒体类型无效');
+            const mediaType = track.mediaType === 'video' || (!track.mediaType && videoObjectKey && !audioObjectKey) ? 'video' : 'audio';
             return {
-              id: track.id, title: String(track.title ?? ''), duration: String(track.duration ?? ''), audioObjectKey: String(objectKey),
+              id: track.id, title: String(track.title ?? ''), duration: String(track.duration ?? ''), mediaType,
+              audioObjectKey: String(audioObjectKey), videoObjectKey: String(videoObjectKey),
+              detailTitle: String(track.detailTitle ?? ''), description: String(track.description ?? ''),
               quote: String(track.quote ?? ''), subtitle: String(track.subtitle ?? ''), transcript: String(track.transcript ?? ''),
             };
           });
@@ -742,8 +761,9 @@ export class ContentController {
         } else if (key.endsWith('ObjectKey')) {
           if (field !== undefined && field !== null && field !== '' && (typeof field !== 'string' || !this.isManagedMediaObjectKey(field)
             || (key === 'imageObjectKey' && !field.startsWith('content/image/'))
-            || (key === 'audioObjectKey' && !field.startsWith('content/audio/')))) throw new BadRequestException('栏目媒体路径无效');
-        } else if (field !== undefined && (typeof field !== 'string' || field.length > (['body', 'transcript', 'detailParagraph1', 'detailParagraph2', 'detailQuote'].includes(key) ? 6000 : 500) || /<\/?[a-z][^>]*>/i.test(field))) {
+            || (key === 'audioObjectKey' && !field.startsWith('content/audio/'))
+            || (key === 'videoObjectKey' && !field.startsWith('content/video/')))) throw new BadRequestException('栏目媒体路径无效');
+        } else if (field !== undefined && (typeof field !== 'string' || field.length > (['body', 'transcript', 'description', 'detailParagraph1', 'detailParagraph2', 'detailQuote'].includes(key) ? 6000 : 500) || /<\/?[a-z][^>]*>/i.test(field))) {
           throw new BadRequestException('栏目文字须为不含 HTML 的纯文本且长度有效');
         }
       }
@@ -820,9 +840,11 @@ export class ContentController {
       return record.type === 'audio' && Array.isArray(record.tracks) && record.tracks.length <= 3 && record.tracks.every((track) => {
         if (!track || typeof track !== 'object' || Array.isArray(track)) return false;
         const audioTrack = track as Record<string, unknown>;
+        const mediaType = audioTrack.mediaType === 'video' ? 'video' : 'audio';
+        const objectKey = mediaType === 'video' ? audioTrack.videoObjectKey : audioTrack.audioObjectKey;
         return typeof audioTrack.id === 'string' && /^[a-z0-9][a-z0-9-]{1,63}$/.test(audioTrack.id)
-          && typeof audioTrack.audioObjectKey === 'string' && this.isManagedMediaObjectKey(audioTrack.audioObjectKey)
-          && audioTrack.audioObjectKey.startsWith('content/audio/');
+          && typeof objectKey === 'string' && this.isManagedMediaObjectKey(objectKey)
+          && objectKey.startsWith(mediaType === 'video' ? 'content/video/' : 'content/audio/');
       });
     }));
     return this.boundedText(root.question, 500)
@@ -841,16 +863,26 @@ export class ContentController {
       const publicModule = { ...module };
       const imageKey = typeof module.imageObjectKey === 'string' ? module.imageObjectKey : undefined;
       const audioKey = typeof module.audioObjectKey === 'string' ? module.audioObjectKey : undefined;
+      const videoKey = typeof module.videoObjectKey === 'string' ? module.videoObjectKey : undefined;
       delete publicModule.imageObjectKey;
       delete publicModule.audioObjectKey;
+      delete publicModule.videoObjectKey;
       if (imageKey) publicModule.imageUrl = (await this.createDownloadUrlIfAvailable(imageKey))?.url ?? '';
       if (audioKey) publicModule.audioUrl = (await this.createDownloadUrlIfAvailable(audioKey))?.url ?? '';
+      if (videoKey) publicModule.videoUrl = (await this.createDownloadUrlIfAvailable(videoKey))?.url ?? '';
       if (Array.isArray(module.tracks)) {
         publicModule.tracks = await Promise.all((module.tracks as Array<Record<string, unknown>>).map(async (track) => {
           const publicTrack = { ...track };
-          const trackKey = typeof track.audioObjectKey === 'string' ? track.audioObjectKey : undefined;
+          const mediaType = track.mediaType === 'video' ? 'video' : 'audio';
+          const trackAudioKey = typeof track.audioObjectKey === 'string' ? track.audioObjectKey : undefined;
+          const trackVideoKey = typeof track.videoObjectKey === 'string' ? track.videoObjectKey : undefined;
           delete publicTrack.audioObjectKey;
-          publicTrack.audioUrl = trackKey ? (await this.createDownloadUrlIfAvailable(trackKey))?.url ?? '' : '';
+          delete publicTrack.videoObjectKey;
+          publicTrack.mediaType = mediaType;
+          publicTrack.audioUrl = trackAudioKey ? (await this.createDownloadUrlIfAvailable(trackAudioKey))?.url ?? '' : '';
+          publicTrack.videoUrl = trackVideoKey ? (await this.createDownloadUrlIfAvailable(trackVideoKey))?.url ?? '' : '';
+          publicTrack.detailTitle = typeof track.detailTitle === 'string' ? track.detailTitle : '';
+          publicTrack.description = typeof track.description === 'string' ? track.description : '';
           return publicTrack;
         }));
       }
@@ -994,10 +1026,11 @@ export class ContentController {
     return new ConflictException({ code: 'content_issue_conflict', message: '期刊保存发生并发冲突，请刷新后重试' });
   }
 
-  private async validateMediaKeys(input: { coverObjectKey?: string; microVoiceObjectKey?: string }) {
+  private async validateMediaKeys(input: { coverObjectKey?: string; microVoiceObjectKey?: string; videoObjectKey?: string }) {
     if (input.coverObjectKey && (!this.isManagedMediaObjectKey(input.coverObjectKey) || !input.coverObjectKey.startsWith('content/image/'))) throw new BadRequestException('封面媒体路径无效');
     if (input.microVoiceObjectKey && (!this.isManagedMediaObjectKey(input.microVoiceObjectKey) || !input.microVoiceObjectKey.startsWith('content/audio/'))) throw new BadRequestException('音频媒体路径无效');
-    const mediaKeys = [input.coverObjectKey, input.microVoiceObjectKey].filter((key): key is string => Boolean(key));
+    if (input.videoObjectKey && (!this.isManagedMediaObjectKey(input.videoObjectKey) || !input.videoObjectKey.startsWith('content/video/'))) throw new BadRequestException('视频媒体路径无效');
+    const mediaKeys = [input.coverObjectKey, input.microVoiceObjectKey, input.videoObjectKey].filter((key): key is string => Boolean(key));
     const metadata = await Promise.all(mediaKeys.map((key) => this.storage.objectMetadata(key)));
     if (metadata.some((value) => !value?.contentType)) throw new BadRequestException('期刊引用的媒体对象不存在');
     if (metadata.some((value) => typeof value?.contentLength !== 'number' || value.contentLength <= 0)) throw new BadRequestException('无法读取有效的期刊媒体大小');
@@ -1007,7 +1040,9 @@ export class ContentController {
     }
     const invalidType = mediaKeys.some((key, index) => key.startsWith('content/image/')
       ? !allowedImageTypes.includes(metadata[index]?.contentType || '')
-      : !allowedAudioTypes.includes(metadata[index]?.contentType || ''));
+      : key.startsWith('content/video/')
+        ? !allowedVideoTypes.includes(metadata[index]?.contentType || '')
+        : !allowedAudioTypes.includes(metadata[index]?.contentType || ''));
     if (invalidType) throw new BadRequestException('期刊媒体类型与对象路径不匹配');
   }
 
@@ -1026,17 +1061,19 @@ export class ContentController {
     if (!metadata?.contentType || typeof metadata.contentLength !== 'number' || metadata.contentLength <= 0 || metadata.contentLength > this.storage.maxUploadBytes()) return false;
     if (objectKey.startsWith('content/image/')) return allowedImageTypes.includes(metadata.contentType);
     if (objectKey.startsWith('content/audio/')) return allowedAudioTypes.includes(metadata.contentType);
+    if (objectKey.startsWith('content/video/')) return allowedVideoTypes.includes(metadata.contentType);
     return false;
   }
 
   private isManagedMediaObjectKey(objectKey: string) {
-    const isImage = objectKey.startsWith('content/image/');
-    const isAudio = objectKey.startsWith('content/audio/');
+    const prefixes = ['content/image/', 'content/audio/', 'content/video/'];
+    const prefix = prefixes.find((candidate) => objectKey.startsWith(candidate));
     const segments = objectKey.split('/');
-    return objectKey.length <= 512
+    return Boolean(prefix)
+      && objectKey.length <= 512
       && !/[\\\s\u0000-\u001F\u007F?#]/.test(objectKey)
       && segments.every((segment) => segment.length > 0 && segment !== '.' && segment !== '..')
-      && (isImage ? objectKey.length > 'content/image/'.length : isAudio && objectKey.length > 'content/audio/'.length);
+      && objectKey.length > (prefix?.length ?? 0);
   }
 
   private async archiveOtherPublishedIssues(client: PoolClient, actorId: string, exceptId?: string) {
@@ -1062,7 +1099,7 @@ export class ContentController {
   @UseGuards(AdminAuthGuard)
   @Header('Cache-Control', 'no-store')
   async mediaUploadUrl(@Req() request: Request & { user?: { sub: string } }, @Body() body: MediaUploadDto) {
-    const allowed = body.kind === 'image' ? allowedImageTypes : allowedAudioTypes;
+    const allowed = body.kind === 'image' ? allowedImageTypes : body.kind === 'video' ? allowedVideoTypes : allowedAudioTypes;
     if (!allowed.includes(body.contentType)) throw new BadRequestException('不支持的媒体类型');
     const maxBytes = Math.max(1, Math.floor(Number(this.storage.maxUploadBytes())));
     if (body.fileSize > maxBytes) throw new BadRequestException(`媒体文件不能超过 ${Math.floor(maxBytes / 1024 / 1024)} MB`);
@@ -1078,8 +1115,8 @@ export class ContentController {
   @Header('Cache-Control', 'no-store')
   async deleteUnusedMedia(@Req() request: Request & { user?: { sub: string } }, @Body() body: MediaDeleteDto) {
     if (!this.isManagedMediaObjectKey(body.objectKey)) throw new BadRequestException('无效的媒体对象');
-    if (body.objectKey.startsWith('content/audio/')) {
-      throw new ConflictException({ code: 'audio_media_retained', message: '已上传的音频按保留策略存档，不支持回收' });
+    if (body.objectKey.startsWith('content/audio/') || body.objectKey.startsWith('content/video/')) {
+      throw new ConflictException({ code: 'media_retained', message: '已上传的音频或视频按保留策略存档，不支持回收' });
     }
     if (body.purpose === 'temporary') {
       let claims: { sub?: string; scope?: string; objectKey?: string };
@@ -1350,8 +1387,8 @@ export class ContentController {
       `select 1 from content_issues issue
        join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version,
          jsonb_array_elements(coalesce(publication.snapshot->'sections', '[]'::jsonb)) module
-       where issue.status = 'published' and (module->>'imageObjectKey' = $1 or module->>'audioObjectKey' = $1
-         or exists (select 1 from jsonb_array_elements(coalesce(module->'tracks', '[]'::jsonb)) track where track->>'audioObjectKey' = $1))
+       where issue.status = 'published' and (module->>'imageObjectKey' = $1 or module->>'audioObjectKey' = $1 or module->>'videoObjectKey' = $1
+         or exists (select 1 from jsonb_array_elements(coalesce(module->'tracks', '[]'::jsonb)) track where track->>'audioObjectKey' = $1 or track->>'videoObjectKey' = $1))
        union all
        select 1 from content_issues issue
        join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version
@@ -1529,16 +1566,25 @@ export class ContentController {
   }
 
   /** 草稿可以保留未上传音频的条目；发布时只保留有音频的条目，1–3 段均可。 */
+  private isPlayableAudioTrack(track: Partial<IssueAudioTrack>) {
+    const key = track.mediaType === 'video' ? track.videoObjectKey : track.audioObjectKey;
+    return typeof key === 'string' && key.trim().length > 0;
+  }
+
   private normalizePublishAudioTracks(sections: IssueModule[]) {
     for (const module of sections) {
       if (module.type !== 'audio' || !Array.isArray(module.tracks) || module.tracks.length === 0) continue;
-      const playableTracks = module.tracks.filter((track) => typeof track.audioObjectKey === 'string' && track.audioObjectKey.trim().length > 0);
+      const playableTracks = module.tracks.filter((track) => this.isPlayableAudioTrack(track));
       if (playableTracks.length === 0) continue;
       module.tracks = playableTracks;
       const first = playableTracks[0];
-      module.audioObjectKey = first.audioObjectKey;
+      module.mediaType = first.mediaType === 'video' ? 'video' : 'audio';
+      module.audioObjectKey = first.audioObjectKey || '';
+      module.videoObjectKey = first.videoObjectKey || '';
       module.title = first.title;
       module.duration = first.duration;
+      module.detailTitle = first.detailTitle;
+      module.description = first.description;
       module.quote = first.quote;
       module.subtitle = first.subtitle;
       module.transcript = first.transcript;
@@ -1583,16 +1629,17 @@ export class ContentController {
           if (module.type === 'story' && module.imageObjectKey && (!module.altText || typeof module.altText !== 'string')) throw new BadRequestException('人物图文栏目上传图片后必须填写替代文本');
       if (module.type === 'audio') {
         const tracks = module.tracks?.length ? module.tracks : [module as IssueModule & Partial<IssueAudioTrack>];
-        if (!tracks.some((track) => typeof track.audioObjectKey === 'string' && track.audioObjectKey.trim().length > 0)) throw new BadRequestException('启用的微声音至少需要上传 1 段音频');
+        if (!tracks.some((track) => this.isPlayableAudioTrack(track))) throw new BadRequestException('启用的微声音至少需要上传 1 段音频或视频');
       }
         }
         for (const module of draft.sections) {
           if (typeof module.imageObjectKey === 'string' && module.imageObjectKey) await this.validateMediaKeys({ coverObjectKey: module.imageObjectKey });
-          const audioKeys = module.type === 'audio' && module.tracks?.length
-            ? module.tracks.map((track) => track.audioObjectKey)
-            : [module.audioObjectKey];
-          for (const key of audioKeys) {
-            if (typeof key === 'string' && key) await this.validateMediaKeys({ microVoiceObjectKey: key });
+          const tracks = module.type === 'audio' && module.tracks?.length
+            ? module.tracks
+            : [{ audioObjectKey: module.audioObjectKey, videoObjectKey: module.videoObjectKey }];
+          for (const track of tracks) {
+            if (typeof track.audioObjectKey === 'string' && track.audioObjectKey) await this.validateMediaKeys({ microVoiceObjectKey: track.audioObjectKey });
+            if (typeof track.videoObjectKey === 'string' && track.videoObjectKey) await this.validateMediaKeys({ videoObjectKey: track.videoObjectKey });
           }
         }
         const coverSection = draft.sections.find((item) => item.type === 'coverStory' || item.type === 'cover');

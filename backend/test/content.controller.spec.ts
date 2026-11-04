@@ -1133,6 +1133,83 @@ test('audio modules support up to three validated tracks and keep first-track le
   assert.throws(() => validate([{ id: 'audio', type: 'audio', order: 0, enabled: true, tracks: [{ ...tracks[0], audioObjectKey: 'content/image/not-audio.webp' }] }]), BadRequestException);
 });
 
+test('micro voice tracks accept video media and detail-page copy', () => {
+  const { controller } = issueEditHarness(1);
+  const validate = (sections: unknown[]) => (controller as unknown as { validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> } }).validateIssueDraft({ sections });
+  const [audio] = validate([{
+    id: 'audio', type: 'audio', order: 0, enabled: true,
+    tracks: [{
+      id: 'voice-video', title: '一段影像', duration: '00:42', mediaType: 'video',
+      videoObjectKey: 'content/video/2026-01-01/voice-video.mp4',
+      detailTitle: '她说的第一句话', description: '这段影像记录了一个普通的下午。',
+      quote: '先坐下来。', subtitle: '影像说明', transcript: '文字稿',
+    }],
+  }]).sections;
+  const track = (audio.tracks as Array<Record<string, unknown>>)[0];
+  assert.equal(track.mediaType, 'video');
+  assert.equal(track.videoObjectKey, 'content/video/2026-01-01/voice-video.mp4');
+  assert.equal(track.detailTitle, '她说的第一句话');
+  assert.equal(track.description, '这段影像记录了一个普通的下午。');
+  assert.equal(audio.mediaType, 'video');
+  assert.throws(() => validate([{
+    id: 'audio', type: 'audio', order: 0, enabled: true,
+    tracks: [{ id: 'voice-bad', title: '错误路径', mediaType: 'video', videoObjectKey: 'content/audio/not-video.mp3' }],
+  }]), BadRequestException);
+});
+
+test('publishing keeps playable micro voice videos and synchronizes the first media', () => {
+  const { controller } = issueEditHarness(1);
+  const normalize = (sections: unknown[]) => (controller as unknown as { normalizePublishAudioTracks: (value: unknown[]) => void }).normalizePublishAudioTracks(sections);
+  const audio = {
+    id: 'audio', type: 'audio', order: 0, enabled: true, title: '草稿标题', duration: '00:01',
+    audioObjectKey: 'content/audio/voice-01.mp3', mediaType: 'audio', videoObjectKey: '', detailTitle: '', description: '', quote: '', subtitle: '', transcript: '',
+    tracks: [
+      { id: 'voice-empty', title: '未完成', duration: '00:01', mediaType: 'audio', audioObjectKey: '', videoObjectKey: '', detailTitle: '', description: '', quote: '', subtitle: '', transcript: '' },
+      { id: 'voice-mismatch', title: '类型不匹配', duration: '00:02', mediaType: 'audio', audioObjectKey: '', videoObjectKey: 'content/video/ignored.mp4', detailTitle: '', description: '', quote: '', subtitle: '', transcript: '' },
+      { id: 'voice-video', title: '视频标题', duration: '00:42', mediaType: 'video', audioObjectKey: '', videoObjectKey: 'content/video/voice-video.mp4', detailTitle: '详情标题', description: '详情解释', quote: '引言', subtitle: '说明', transcript: '文字稿' },
+    ],
+  };
+  normalize([audio]);
+  assert.equal(audio.tracks.length, 1);
+  assert.equal(audio.mediaType, 'video');
+  assert.equal(audio.videoObjectKey, 'content/video/voice-video.mp4');
+  assert.equal(audio.audioObjectKey, '');
+  assert.equal(audio.detailTitle, '详情标题');
+  assert.equal(audio.description, '详情解释');
+});
+
+test('home signs published micro voice video tracks and strips storage object keys', async () => {
+  const cached = {
+    issue: null,
+    question: '',
+    sections: [],
+    publishedVersion: 1,
+    modules: [{
+      id: 'audio', type: 'audio', order: 0, enabled: true,
+      audioObjectKey: '', videoObjectKey: 'content/video/voice-video.mp4',
+      tracks: [{
+        id: 'voice-video', title: '视频标题', duration: '00:42', mediaType: 'video',
+        audioObjectKey: '', videoObjectKey: 'content/video/voice-video.mp4',
+        detailTitle: '详情标题', description: '详情解释', quote: '', subtitle: '', transcript: '',
+      }],
+    }],
+  };
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async (key: string) => ({ contentType: key.startsWith('content/video/') ? 'video/mp4' : 'audio/mpeg', contentLength: 1 }),
+    createDownloadUrl: async (key: string) => ({ url: `https://media.example/${key}`, expiresIn: 3600 }),
+  } as unknown as StorageService;
+  const controller = new ContentController({} as DatabaseService, storage, {} as AuditService, new ConfigService({}), { getJson: async () => cached } as unknown as RedisService, {} as JwtService);
+  const result = await controller.home();
+  const module = result.modules[0] as Record<string, unknown>;
+  const track = (module.tracks as Array<Record<string, unknown>>)[0];
+  assert.equal(track.mediaType, 'video');
+  assert.equal(track.videoUrl, 'https://media.example/content/video/voice-video.mp4');
+  assert.equal(track.detailTitle, '详情标题');
+  assert.equal(track.description, '详情解释');
+  assert.equal('videoObjectKey' in track, false);
+});
+
 test('publishing audio keeps any uploaded subset and drops unfinished drafts', () => {
   const { controller } = issueEditHarness(1);
   const normalize = (sections: unknown[]) => (controller as unknown as { normalizePublishAudioTracks: (value: unknown[]) => void }).normalizePublishAudioTracks(sections);

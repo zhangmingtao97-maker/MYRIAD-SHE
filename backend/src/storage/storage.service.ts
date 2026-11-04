@@ -73,12 +73,12 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
   }
 
   maxUploadBytes() {
-    const configuredMb = Number(this.config.get('UPLOAD_MAX_FILE_SIZE_MB', 10));
+    const configuredMb = Number(this.config.get('UPLOAD_MAX_FILE_SIZE_MB', 200));
     const megabytes = Number.isInteger(configuredMb) && configuredMb > 0 ? Math.min(configuredMb, 512) : 10;
     return megabytes * 1024 * 1024;
   }
 
-  async createUploadUrl(fileName: string, contentType: string, kind: 'image' | 'audio', fileSize: number) {
+  async createUploadUrl(fileName: string, contentType: string, kind: 'image' | 'audio' | 'video', fileSize: number) {
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-80);
     const objectKey = `content/${kind}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}-${safeName}`;
     const command = new PutObjectCommand({ Bucket: this.bucket, Key: objectKey, ContentType: contentType, ContentLength: fileSize });

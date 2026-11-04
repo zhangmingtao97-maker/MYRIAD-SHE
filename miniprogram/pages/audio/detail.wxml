@@ -1,0 +1,57 @@
+<view class="voice-page">
+  <view class="voice-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="voice-topbar-row">
+      <view class="voice-control" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">‹</view>
+      <text class="voice-nav-title">微声音</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="voice-state" role="status">正在读取这段微声音…</view>
+  <view wx:elif="{{error}}" class="voice-state voice-error" role="alert">
+    <text>{{error}}</text>
+    <view class="voice-retry" role="button" aria-label="重新读取这段微声音" tabindex="0" bindtap="loadContent">重新读取</view>
+  </view>
+  <block wx:else>
+    <view class="voice-meta"><text>02 · 微声音</text><text>{{issueCode}}</text></view>
+
+    <view class="voice-media">
+      <block wx:if="{{track.mediaType === 'video'}}">
+        <video
+          class="voice-video"
+          src="{{track.videoUrl}}"
+          controls
+          show-center-play-btn
+          enable-progress-gesture
+          object-fit="contain"
+          aria-label="{{track.title}}视频"
+        ></video>
+      </block>
+      <block wx:else>
+        <view class="voice-audio-card {{playing ? 'is-playing' : ''}}">
+          <view class="voice-audio-kicker">LISTEN / 声音</view>
+          <view class="voice-audio-main">
+            <view class="voice-play" role="button" tabindex="0" aria-label="{{playing ? '暂停' : '播放'}}{{track.title}}" bindtap="toggleAudio">{{playing ? 'Ⅱ' : '▶'}}</view>
+            <view class="voice-audio-copy">
+              <view class="voice-audio-title">{{track.title}}</view>
+              <view wx:if="{{track.subtitle}}" class="voice-audio-subtitle">{{track.subtitle}}</view>
+            </view>
+          </view>
+          <view class="voice-progress">
+            <view class="voice-progress-track"><view class="voice-progress-fill" style="width: {{progress}}%"></view></view>
+            <view class="voice-progress-times"><text>{{currentLabel}}</text><text>{{durationLabel}}</text></view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="voice-article">
+      <view class="voice-article-kicker">{{track.mediaType === 'video' ? 'WATCH / 本期影像' : 'LISTEN / 本期声音'}}</view>
+      <view class="voice-heading">{{heading}}</view>
+      <view wx:if="{{description}}" class="voice-description">{{description}}</view>
+      <view wx:if="{{track.quote}}" class="voice-quote">{{track.quote}}</view>
+      <view wx:if="{{track.transcript && track.transcript !== description}}" class="voice-transcript">{{track.transcript}}</view>
+    </view>
+
+    <view class="voice-return" role="button" aria-label="回到当期策展" tabindex="0" bindtap="handleBack"><text>回到当期策展</text><text>←</text></view>
+  </block>
+</view>

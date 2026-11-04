@@ -29,7 +29,11 @@ export interface ManagedAudioTrack {
   id: string;
   title: string;
   duration: string;
+  mediaType: 'audio' | 'video';
   audioObjectKey?: string;
+  videoObjectKey?: string;
+  detailTitle: string;
+  description: string;
   quote: string;
   subtitle: string;
   transcript: string;
@@ -231,7 +235,7 @@ function isHttpUrl(value: unknown, maximum: number) {
   return isBoundedText(value, maximum, 1) && /^https?:\/\/[^\s]+$/i.test(value);
 }
 
-export function isManagedMediaKey(value: unknown, prefix: 'content/image/' | 'content/audio/') {
+export function isManagedMediaKey(value: unknown, prefix: 'content/image/' | 'content/audio/' | 'content/video/') {
   if (!isBoundedText(value, 512, prefix.length + 1) || !value.startsWith(prefix)) return false;
   const segments = value.split('/');
   return !/[\\\s\u0000-\u001F\u007F?#]/.test(value)
@@ -344,7 +348,7 @@ export function isMediaAudioPage(value: unknown): value is MediaAudioPage {
 
 export function isMediaUploadTarget(value: unknown): value is MediaUploadTarget {
   return isRecord(value)
-    && (isManagedMediaKey(value.objectKey, 'content/image/') || isManagedMediaKey(value.objectKey, 'content/audio/'))
+    && (isManagedMediaKey(value.objectKey, 'content/image/') || isManagedMediaKey(value.objectKey, 'content/audio/') || isManagedMediaKey(value.objectKey, 'content/video/'))
     && isHttpUrl(value.uploadUrl, 4096)
     && isPositiveInteger(value.expiresIn) && isBoundedText(value.cleanupToken, 4096, 1);
 }

@@ -20,7 +20,11 @@ interface PublicAudioTrack {
   id: string;
   title: string;
   duration: string;
+  mediaType: 'audio' | 'video';
   audioUrl: string;
+  videoUrl: string;
+  detailTitle: string;
+  description: string;
   quote: string;
   subtitle: string;
   transcript: string;
@@ -202,10 +206,20 @@ function isPublicHomeModule(value: unknown): value is PublicHomeModule {
 function isPublicAudioTracks(value: unknown): value is PublicAudioTrack[] {
   if (!Array.isArray(value) || value.length > 3) return false;
   const ids = new Set<string>();
-  return value.every((track) => isRecord(track)
-    && isBoundedText(track.id, 64, 2) && /^[a-z0-9][a-z0-9-]{1,63}$/.test(track.id) && !ids.has(track.id) && Boolean(ids.add(track.id))
-    && isBoundedText(track.title, 120) && isBoundedText(track.duration, 20) && isPublicMediaUrl(track.audioUrl)
-    && isBoundedText(track.quote, 500) && isBoundedText(track.subtitle, 500) && isBoundedText(track.transcript, 6000));
+  return value.every((track) => {
+    if (!isRecord(track)
+      || !isBoundedText(track.id, 64, 2) || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(track.id) || ids.has(track.id) || !ids.add(track.id)
+      || !isBoundedText(track.title, 120) || !isBoundedText(track.duration, 20)
+      || (track.mediaType !== 'audio' && track.mediaType !== 'video')
+      || !isOptionalPublicMediaUrl(track.audioUrl) || !isOptionalPublicMediaUrl(track.videoUrl)
+      || !isBoundedText(track.detailTitle, 120) || !isBoundedText(track.description, 6000)
+      || !isBoundedText(track.quote, 500) || !isBoundedText(track.subtitle, 500) || !isBoundedText(track.transcript, 6000)) return false;
+    return track.mediaType === 'video' ? isPublicMediaUrl(track.videoUrl) : isPublicMediaUrl(track.audioUrl);
+  });
+}
+
+function isOptionalPublicMediaUrl(value: unknown) {
+  return value === '' || isPublicMediaUrl(value);
 }
 
 function isCopyItem(value: unknown): value is { richText: string; fontSize: number; color: string } {

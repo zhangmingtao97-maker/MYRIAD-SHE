@@ -149,6 +149,8 @@ h2 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
 .field-help { line-height: 1.5; }
 .media-preview-image { display: block; width: min(100%, 280px); max-height: 180px; object-fit: contain; object-position: left center; border: 1px solid #ded3c5; background: #f5f0e8; }
 .media-preview-audio { display: block; width: min(100%, 360px); }
+.media-preview-video { display: block; width: min(100%, 420px); max-height: 260px; margin: 12px 0 18px; border: 1px solid #ded3c5; background: #171310; }
+.issue-audio-kind { padding: 3px 10px; border: 1px solid rgba(102, 49, 36, .28); border-radius: 999px; color: #663124; font-size: 12px; line-height: 1.5; }
 .issue-audio-editor { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(92, 73, 60, .2); }
 .issue-audio-track { margin-top: 14px; padding: 14px 0 18px; border-top: 1px solid rgba(92, 73, 60, .16); }
 .issue-audio-track > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; color: #5c493c; }

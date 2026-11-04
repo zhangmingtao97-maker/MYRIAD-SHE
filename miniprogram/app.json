@@ -5,6 +5,7 @@
     "pages/archive-demo/index",
     "pages/story-detail/index",
     "pages/audio/index",
+    "pages/audio/detail",
     "pages/practice/index",
     "pages/season-intro/index",
     "pages/daily-objects/index",

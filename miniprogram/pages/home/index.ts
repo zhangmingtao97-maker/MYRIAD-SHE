@@ -2,6 +2,7 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent, PublicHomeModule } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { buildMicroVoice } from '../../utils/micro-voice';
 
 type HomeIssue = NonNullable<PublicHomeContent['issue']>;
 type HomeContentsDestination = 'story' | 'audio' | 'observation' | 'discussion';
@@ -44,21 +45,11 @@ function combineCoverAndOpener(modules: PublicHomeModule[]) {
 function presentHomeModules(modules: PublicHomeModule[]) {
   const prepared = modules.map((module) => {
     if (module.type !== 'audio') return module;
-    const rawTracks = Array.isArray(module.tracks) ? module.tracks as Array<Record<string, unknown>> : [];
-    const tracks = rawTracks.length ? rawTracks : [{
-      id: 'voice-01', title: module.title || '微声音 01', duration: module.duration || '', audioUrl: module.audioUrl || '',
-      quote: module.quote || '', subtitle: module.subtitle || '', transcript: module.transcript || '',
-    }];
-    const preparedTracks = tracks.map((track, index) => ({
+    const voice = buildMicroVoice(module);
+    if (!voice) return module;
+    const preparedTracks = voice.tracks.map((track) => ({
       ...track,
-      id: String(track.id || `voice-${String(index + 1).padStart(2, '0')}`),
-      title: String(track.title || `微声音 ${String(index + 1).padStart(2, '0')}`),
-      duration: String(track.duration || ''),
-      audioUrl: String(track.audioUrl || (index === 0 ? module.audioUrl || '' : '')),
-      quote: String(track.quote || ''),
-      subtitle: String(track.subtitle || ''),
-      transcript: String(track.transcript || ''),
-      playbackId: `${module.id}:${String(track.id || `voice-${String(index + 1).padStart(2, '0')}`)}`,
+      playbackId: `${module.id}:${track.id}`,
     }));
     const extraTrackCount = Math.max(0, preparedTracks.length - 1);
     return {
@@ -66,7 +57,7 @@ function presentHomeModules(modules: PublicHomeModule[]) {
       tracks: preparedTracks,
       primaryTrack: preparedTracks[0],
       extraTrackCount,
-      moreLabel: `更多声音 · ${extraTrackCount} 段`,
+      moreLabel: `更多微声音 · ${extraTrackCount} 段`,
       displayTitle: String(module.title || '微声音').replace(/\s+0?\d+$/, ''),
     };
   });
@@ -84,7 +75,9 @@ function presentHomeModules(modules: PublicHomeModule[]) {
     actions.forEach((action) => embeddedActions.add(action.id));
     return { ...module, questionActions: actions, eyebrow: module.eyebrow || '从她的经验，回到你的此刻' };
   });
-  return withQuestionActions.filter((module) => !embeddedActions.has(module.id));
+  return withQuestionActions
+    .filter((module) => !embeddedActions.has(module.id))
+    .filter((module) => module.type !== 'audio' || Boolean((module as PublicHomeModule & { primaryTrack?: unknown }).primaryTrack));
 }
 
 function buildContentsEntries(modules: PublicHomeModule[], issue: HomeIssue): HomeContentsEntry[] {
@@ -285,6 +278,15 @@ Page({
       this.audioContext.play();
       this.setData({ playingAudioId: playbackId });
     }
+  },
+  openAudioIndex() {
+    wx.navigateTo({ url: '/pages/audio/index' });
+  },
+  openAudioDetail(event: WechatMiniprogram.CustomEvent) {
+    const trackId = String(event.currentTarget.dataset.trackId || '');
+    if (!trackId) return;
+    this.stopAudioPlayback();
+    wx.navigateTo({ url: `/pages/audio/detail?id=${encodeURIComponent(trackId)}` });
   },
   toggleAudio(event: WechatMiniprogram.CustomEvent) {
     const moduleId = String(event.currentTarget.dataset.moduleId || '');
