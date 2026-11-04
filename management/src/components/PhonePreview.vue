@@ -5,16 +5,11 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 const DESIGN_WIDTH = 375;
 const DESIGN_HEIGHT = 812;
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   title: string;
   caption?: string;
   activeKey?: string;
-  /** 没有可点区块时隐藏「点击区块」提示 */
-  interactive?: boolean;
-}>(), {
-  // 布尔 prop 缺省会被 Vue 转成 false，这里显式默认 true，否则提示文案永远不显示。
-  interactive: true,
-});
+}>();
 
 const wrap = ref<HTMLElement | null>(null);
 const screen = ref<HTMLElement | null>(null);
@@ -23,14 +18,16 @@ const scale = ref(1);
 
 let observer: ResizeObserver | null = null;
 
-// 除了宽度，还要让整块手机（含页头与说明）落在一屏里，滚到页面下方时不会被页头切掉。
+// 除了宽度，还要让整块手机（含页头）落在一屏里，滚到页面下方时不会被页头切掉。
+// 236 = 固定页头 98 + 预览标题行 34 + 内容上边距 14 + 底部保存条 82 + 余量 8；
+// 实测 1440×900 / 1912×948 / 1440×780 三种窗口都刚好整机落在首屏内。
 function measure() {
   const el = wrap.value;
   if (!el) return;
   const available = el.clientWidth;
   if (!available) return;
   const widthScale = available / DESIGN_WIDTH;
-  const heightScale = (window.innerHeight - 262) / DESIGN_HEIGHT;
+  const heightScale = (window.innerHeight - 236) / DESIGN_HEIGHT;
   scale.value = Math.min(1, Math.max(0.55, Math.min(widthScale, heightScale || 1)));
 }
 
@@ -94,6 +91,5 @@ defineExpose({ reveal });
         </div>
       </div>
     </div>
-    <p v-if="interactive !== false" class="phone-frame-caption">点击预览中的区块可定位到右侧对应字段</p>
   </section>
 </template>

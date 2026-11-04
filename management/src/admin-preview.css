@@ -80,7 +80,10 @@
   overflow: hidden;
 }
 
+/* 屏幕按 scale 缩放，容器高度写死为 812*scale：原点必须放在顶部，
+   否则默认居中会让画面整体下沉 (1-scale)/2 高度并溢出容器下沿。 */
 .phone-screen {
+  transform-origin: top center;
   position: absolute;
   top: 0;
   left: 50%;
@@ -128,15 +131,7 @@
   scrollbar-width: thin;
 }
 
-.phone-frame-caption {
-  margin: 6px 0 0;
-  color: var(--muted, #8b6b58);
-  font-size: 11px;
-  line-height: 1.6;
-  text-align: center;
-}
 
-.journal-preview-hint,
 .preview-hint {
   margin: 0;
   color: var(--muted, #8b6b58);

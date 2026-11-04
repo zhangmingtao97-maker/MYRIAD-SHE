@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
@@ -5318,7 +5318,6 @@ onBeforeUnmount(() => {
                 @open-detail="openAudioTrackDetail"
                 @switch-view="setAudioPreviewView"
               />
-              <p class="journal-preview-hint">小程序里只有 1 段声音时，列表页会直接跳进详情页。点「详情页」切换二级页面；点任意区块 → 右侧滚到对应字段并闪框。</p>
             </template>
             <template v-else-if="activeContentSection === 'journal-story' && storyEditorTab === 'detail'">
               <StoryDetailPreview
@@ -5338,7 +5337,6 @@ onBeforeUnmount(() => {
                 @pick="pickStoryDetailKey"
                 @pick-from-home="editStoryHeadlineFromHome"
               />
-              <p class="journal-preview-hint">点预览里的任意区块 → 右侧滚到对应字段并闪框；标题和导语来自首页策展，点它可以直接跳过去改。</p>
             </template>
             <template v-else>
               <JournalHomePreview
@@ -5351,7 +5349,6 @@ onBeforeUnmount(() => {
                 :theme-fallback="issueForm.theme"
                 @pick="focusIssueModule"
               />
-              <p class="journal-preview-hint">点预览里的任意区块 → 右侧自动切到对应栏目；在右侧选中栏目时，这里会同步高亮。</p>
             </template>
           </aside>
           <form class="panel issue-editor-form journal-module-form" @submit.prevent="saveIssue" @focusin="focusModuleFromEditor">
