@@ -2,6 +2,7 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { discussionStorageKey } from '../../utils/discussion-storage';
 import { isDeletionState, isDeletionStateOrNull, isUserExport, isUserSettings } from '../../utils/privacy';
 import type { DeletionState, UserExport, UserSettings } from '../../utils/privacy';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const app = getApp<IAppOption>();
 
@@ -12,7 +13,7 @@ Page({
   knownAuthGeneration: 0,
   loadInFlight: false,
   deletionConfirmationOpen: false,
-  onLoad() { this.knownAuthGeneration = app.globalData.authGeneration; this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
+  onLoad() { enableShareMenu(); this.knownAuthGeneration = app.globalData.authGeneration; this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
   onShow() {
     if (app.globalData.accountDeleted) {
       this.showAccountDeleted();
@@ -246,5 +247,18 @@ Page({
       }
       this.setData({ cancellingDeletion: false, error: apiErrorMessage(caught, '取消失败，请检查网络后重试。') });
     }
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
   },
 });

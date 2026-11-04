@@ -1,6 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent, PublicHomeModule } from '../../utils/content';
+import { enableShareMenu } from '../../utils/share';
 
 const issueTwoCopy = {
   source: '原载于 MYRIAD SHE 公众号·小程序策展节选',
@@ -53,6 +54,7 @@ Page({
   moduleId: 'story',
   requestedIssueCode: '',
   onLoad(query: Record<string, string | undefined>) {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     this.moduleId = query.moduleId || 'story';
     this.requestedIssueCode = query.issueCode || '';

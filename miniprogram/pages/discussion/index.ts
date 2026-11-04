@@ -3,6 +3,7 @@ import { isPublicDiscussion } from '../../utils/discussion-content';
 import type { DiscussionThread, PublicDiscussion } from '../../utils/discussion-content';
 import { discussionStorageKey, readLocalDiscussion } from '../../utils/discussion-storage';
 import type { LocalContribution, LocalDiscussionDraft } from '../../utils/discussion-storage';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 type DisplayThread = DiscussionThread & { reported: boolean };
 interface CloudReport { threadId: string; status: 'pending' | 'handled' | 'dismissed' }
@@ -18,6 +19,7 @@ Page({
   requestGeneration: 0,
   reportedThreads: {} as Record<string, boolean>,
   onLoad(query: Record<string, string | undefined>) {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, issueCode: query.issueCode || '' });
     void this.load();
   },
@@ -137,5 +139,18 @@ Page({
     const paths = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
     const path = paths[Number(event.currentTarget.dataset.index)];
     if (path) wx.switchTab({ url: path });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: this.data.issueLabel ? `${this.data.issueLabel} · 本期讨论` : '本期讨论｜MYRIAD SHE',
+      path: '/pages/discussion/index',
+      query: { issueCode: this.data.issueCode },
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: this.data.issueLabel ? `${this.data.issueLabel} · 本期讨论` : '本期讨论｜MYRIAD SHE',
+      query: { issueCode: this.data.issueCode },
+    });
   },
 });

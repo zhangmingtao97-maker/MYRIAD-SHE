@@ -4,6 +4,7 @@ import { isMinePageContent } from '../../utils/content';
 import type { MinePageContent } from '../../utils/content';
 import { readLocalDiscussion, removeLocalContribution } from '../../utils/discussion-storage';
 import type { LocalContribution } from '../../utils/discussion-storage';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const app = getApp<IAppOption>();
 
@@ -105,7 +106,7 @@ Page({
   accountProfileSavedNickname: '',
   nicknameDraft: '',
   nicknameDirty: false,
-  onLoad() { this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
+  onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
   onShow() {
     this.syncLocalDiscussions();
     void this.loadMinePageContent();
@@ -435,4 +436,17 @@ Page({
   },
   startObservation() { wx.navigateTo({ url: '/pages/observation/index' }); },
   openPrivacy() { wx.navigateTo({ url: '/pages/privacy/index' }); },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
+  },
 });

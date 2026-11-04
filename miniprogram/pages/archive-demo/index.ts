@@ -1,6 +1,7 @@
 import { request } from '../../utils/request';
 import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent } from '../../utils/content';
+import { enableShareMenu } from '../../utils/share';
 
 Page({
   data: {
@@ -11,6 +12,7 @@ Page({
   },
   requestGeneration: 0,
   onLoad() {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadImage();
   },

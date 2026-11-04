@@ -1,6 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isDailyObjectsContent, isPracticeContent, isStoreStatus } from '../../utils/content';
 import type { DailyObjectsContent, PracticeContent, StoreStatus } from '../../utils/content';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const tabs = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
 
@@ -8,6 +9,7 @@ Page({
   data: { statusBarHeight: 0, coverImageHeight: 394, products: [] as DailyObjectsContent['products'], content: null as DailyObjectsContent | null, loading: true, error: '', accessAvailable: false, shopOpen: false },
   requestGeneration: 0,
   onLoad() {
+    enableShareMenu();
     const windowInfo = wx.getWindowInfo();
     this.setData({ statusBarHeight: windowInfo.statusBarHeight, coverImageHeight: Math.round(windowInfo.windowWidth * 0.9) });
     void this.loadPreviewAccess();
@@ -65,5 +67,18 @@ Page({
   switchTab(event: WechatMiniprogram.CustomEvent) {
     const url = tabs[Number(event.currentTarget.dataset.index)];
     if (url) wx.switchTab({ url });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: '日常之物｜MYRIAD SHE',
+      path: '/pages/daily-objects/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: '日常之物｜MYRIAD SHE',
+      query: {},
+    });
   },
 });

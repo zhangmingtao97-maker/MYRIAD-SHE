@@ -3,6 +3,7 @@ import { isPublicDiscussion } from '../../utils/discussion-content';
 import type { DiscussionReply, PublicDiscussion } from '../../utils/discussion-content';
 import { readLocalDiscussion } from '../../utils/discussion-storage';
 import type { LocalContribution } from '../../utils/discussion-storage';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 interface ConversationThread { author: string; body: string; replies: DiscussionReply[] }
 interface CloudReport { threadId: string; status: 'pending' | 'handled' | 'dismissed' }
@@ -25,6 +26,7 @@ Page({
   },
   requestGeneration: 0,
   onLoad(query: Record<string, string | undefined>) {
+    enableShareMenu();
     this.setData({
       statusBarHeight: wx.getWindowInfo().statusBarHeight,
       issueCode: decodeQueryValue(query.issueCode || ''),
@@ -134,5 +136,18 @@ Page({
     const paths = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
     const path = paths[Number(event.currentTarget.dataset.index)];
     if (path) wx.switchTab({ url: path });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: this.data.thread ? `${this.data.thread.author}｜一段对话` : '一段对话｜MYRIAD SHE',
+      path: '/pages/discussion-thread/index',
+      query: { issueCode: this.data.issueCode, threadId: this.data.threadId },
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: this.data.thread ? `${this.data.thread.author}｜一段对话` : '一段对话｜MYRIAD SHE',
+      query: { issueCode: this.data.issueCode, threadId: this.data.threadId },
+    });
   },
 });

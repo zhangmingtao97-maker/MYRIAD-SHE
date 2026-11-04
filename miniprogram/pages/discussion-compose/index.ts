@@ -2,6 +2,7 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicDiscussion } from '../../utils/discussion-content';
 import type { DiscussionCopy, PublicDiscussion } from '../../utils/discussion-content';
 import { readLocalDraftEntry, removeLocalDraft, saveLocalDraft } from '../../utils/discussion-storage';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 type ComposeCopy = Pick<DiscussionCopy, 'number' | 'intro' | 'composeTitle' | 'composeHeading' | 'composeFieldLabel' | 'composePlaceholder' | 'composePreviewAction' | 'composeSaveAction' | 'composeDiscardAction'>;
 interface CloudContribution { id: string; revision: number; issueCode: string; issueLabel: string; threadId: string; threadAuthor: string | null; body: string; status: 'pending' | 'handled' | 'dismissed'; createdAt: string; updatedAt: string }
@@ -25,6 +26,7 @@ Page({
   inputChanged: false,
   pendingDraft: null as DraftChoice | null,
   onLoad(query: Record<string, string | undefined>) {
+    enableShareMenu();
     this.inputChanged = false;
     const threadId = query.threadId || '';
     const threadAuthor = decodeQueryValue(query.threadAuthor || '');
@@ -145,5 +147,18 @@ Page({
     const paths = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
     const path = paths[Number(event.currentTarget.dataset.index)];
     if (path) wx.switchTab({ url: path });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: this.data.threadId ? `回复${this.data.threadAuthor || '这段经历'}` : '写下你的经历｜MYRIAD SHE',
+      path: '/pages/discussion-compose/index',
+      query: { issueCode: this.data.issueCode, threadId: this.data.threadId, threadAuthor: this.data.threadAuthor },
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: this.data.threadId ? `回复${this.data.threadAuthor || '这段经历'}` : '写下你的经历｜MYRIAD SHE',
+      query: { issueCode: this.data.issueCode, threadId: this.data.threadId, threadAuthor: this.data.threadAuthor },
+    });
   },
 });

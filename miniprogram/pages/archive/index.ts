@@ -1,6 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicArchive } from '../../utils/content';
 import type { PublicArchiveIssue } from '../../utils/content';
+import { enableShareMenu } from '../../utils/share';
 
 interface ArchiveListItem extends PublicArchiveIssue {
   number: string;
@@ -36,6 +37,7 @@ Page({
   },
   requestGeneration: 0,
   onLoad() {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadArchive();
   },

@@ -1,6 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent, PublicHomeModule } from '../../utils/content';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 type HomeIssue = NonNullable<PublicHomeContent['issue']>;
 type HomeContentsDestination = 'story' | 'audio' | 'observation' | 'discussion';
@@ -139,6 +140,7 @@ Page({
   audioSeekPendingX: null as number | null,
   audioSeekEnded: false,
   onLoad() {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadContent();
   },
@@ -423,5 +425,18 @@ Page({
   },
   startPractice() {
     wx.switchTab({ url: '/pages/practice/index' });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
   },
 });

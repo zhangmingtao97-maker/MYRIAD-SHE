@@ -1,11 +1,12 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPracticeContent } from '../../utils/content';
 import type { PracticeContent } from '../../utils/content';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 Page({
   data: { statusBarHeight: 0, fromMine: false, entries: [] as PracticeContent['entries'], issueCode: 'ISSUE 02', issueTheme: '', issueQuestion: '最近，有什么是你已经不想再握紧的？', copy: {} as PracticeContent['sharedPracticeCopy'], rules: [] as Array<{ number: PracticeContent['sharedPracticeCopy'][string]; title: PracticeContent['sharedPracticeCopy'][string]; description: PracticeContent['sharedPracticeCopy'][string] }>, loading: true, error: '' },
   requestGeneration: 0,
-  onLoad(query: Record<string, string | undefined>) { this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, fromMine: query.from === 'mine' }); void this.load(); },
+  onLoad(query: Record<string, string | undefined>) { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, fromMine: query.from === 'mine' }); void this.load(); },
   onHide() { this.requestGeneration += 1; if (this.data.loading) this.setData({ loading: false }); },
   async load() {
     const generation = ++this.requestGeneration;
@@ -36,5 +37,18 @@ Page({
     const paths = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
     const path = paths[index];
     if (path) wx.switchTab({ url: path });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: '共同实践｜MYRIAD SHE',
+      path: '/pages/shared-practice/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: '共同实践｜MYRIAD SHE',
+      query: {},
+    });
   },
 });

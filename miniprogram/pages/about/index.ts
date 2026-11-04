@@ -1,10 +1,11 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { DEFAULT_ABOUT_CONTENT, isAboutContent } from '../../utils/content';
 import type { AboutContent } from '../../utils/content';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 Page({
   data: { statusBarHeight: 0, loading: true, error: '', content: DEFAULT_ABOUT_CONTENT as AboutContent },
-  onLoad() { this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
+  onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
   onShow() { void this.load(); },
   async load() {
     this.setData({ loading: true, error: '' });
@@ -20,5 +21,18 @@ Page({
   switchTab(event: WechatMiniprogram.CustomEvent) {
     const path = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'][Number(event.currentTarget.dataset.index)];
     if (path) wx.switchTab({ url: path });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: '关于 MYRIAD SHE',
+      path: '/pages/about/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: '关于 MYRIAD SHE',
+      query: {},
+    });
   },
 });

@@ -3,6 +3,7 @@ import { isLifeCard, isPracticeContent, isPublishedIssue } from '../../utils/con
 import type { LifeCard, PracticeContent, PublishedIssue } from '../../utils/content';
 import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation, ObservationMethod } from '../../utils/observation';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const app = getApp<IAppOption>();
 const SEASON_PAUSED_KEY = 'myriad_she_season_paused';
@@ -73,6 +74,7 @@ Page({
       && !app.globalData.accountDeleted;
   },
   onLoad(options: Record<string, string>) {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     this.knownAuthGeneration = app.globalData.authGeneration;
     void this.loadObservationCopy();
@@ -780,5 +782,18 @@ Page({
     this.restoreGeneration += 1;
     this.setData({ phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', advancing: false, conflict: false, syncState: 'idle', error: '', validationError: '', navTitle: '此刻观察', seasonGuideOpen: false, answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' } });
     wx.setNavigationBarTitle({ title: '此刻观察' });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
   },
 });

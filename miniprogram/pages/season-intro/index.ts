@@ -1,3 +1,4 @@
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 const STORAGE_KEY = 'myriad_she_season_birthday';
 const SEASON_PAUSED_KEY = 'myriad_she_season_paused';
 const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -20,6 +21,7 @@ Page({
     guideOpen: false,
   },
   onLoad() {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     try {
       const saved = wx.getStorageSync(STORAGE_KEY);
@@ -111,6 +113,19 @@ Page({
     const pages = getCurrentPages();
     if (pages.length > 1) wx.navigateBack({ delta: 1 });
     else wx.switchTab({ url: '/pages/practice/index' });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: '四时气韵｜MYRIAD SHE',
+      path: '/pages/season-intro/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: '四时气韵｜MYRIAD SHE',
+      query: {},
+    });
   },
 });
 

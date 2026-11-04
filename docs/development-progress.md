@@ -1,5 +1,13 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-04 小程序全站开启分享（好友 + 朋友圈）
+
+- 新增 `miniprogram/utils/share.ts`：`shareCard`（转发给朋友，自动拼接并编码 query）、`shareTimelineCard`（分享到朋友圈，只带 query）、`enableShareMenu`（在 `onLoad` 里开启 `shareAppMessage` / `shareTimeline` 菜单，否则右上角没有「分享到朋友圈」）。
+- `app.json` 里 24 个页面全部接入：公共内容页分享自身 —— 首页、实践、四时气韵、日常之物、每日抽取、共同实践、本期讨论、一段对话、写下经历、关于 MYRIAD SHE、协议与说明、往期策展、人物故事、微声音、联系与支持，其中带参数的页面把 `issueCode` / `threadId` / `id` 一并带上（如一段对话分享出去仍指向同一段对话）。
+- 私密页面统一分享到首页的品牌文案「MYRIAD SHE｜写给自己的私人档案馆」，避免把观察记录、会员资料、设置等私密内容或登录墙分享给别人：我的、个人资料、登录、设置与隐私、此刻观察、观察记录列表、观察记录详情、通知。
+- 校验：脚本确认 24 个页面都含 import、`enableShareMenu()`、`onShareAppMessage`、`onShareTimeline`，TypeScript 转译无语法错误；分享工具用 node 跑过拼 query 的用例（中文与空格会 `encodeURIComponent`，空值被过滤，无参数时不加 `?`）。
+- 生效条件：需要在小程序开发者工具里上传并发布新版本后，分享菜单才会在小程序端出现。
+
 ## 2026-11-03 后台侧栏点击「卡顿」排查：切页整页淡入是主因
 
 - 测量（dev 后台，Playwright + Event Timing + CPU Profile）：点击侧栏按钮的处理耗时 0–1ms，Event Timing 16–32ms，没有 longtask；即使登录后立刻点击、6 倍 CPU 降速也不到 30ms。JS、布局和接口请求都不是瓶颈（多数栏目切换不发请求，会员列表/用户举报各只发 1 条）。

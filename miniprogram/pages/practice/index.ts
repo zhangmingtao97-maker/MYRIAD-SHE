@@ -1,11 +1,12 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPracticeContent } from '../../utils/content';
 import type { PracticeContent } from '../../utils/content';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 Page({
   data: { statusBarHeight: 0, title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 28, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', entries: [] as PracticeContent['entries'], loading: true, error: '' },
   requestGeneration: 0,
-  onLoad() { this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); void this.load(); },
+  onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); void this.load(); },
   onShow() { if (!this.data.loading) void this.load(); },
   onHide() {
     this.requestGeneration += 1;
@@ -52,5 +53,18 @@ Page({
       return;
     }
     if (!entry.enabled) wx.showToast({ title: '该实践尚未开放', icon: 'none' });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: '实践｜MYRIAD SHE',
+      path: '/pages/practice/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: '实践｜MYRIAD SHE',
+      query: {},
+    });
   },
 });

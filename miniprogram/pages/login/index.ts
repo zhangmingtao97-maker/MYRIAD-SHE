@@ -1,4 +1,5 @@
 import { apiErrorMessage, request } from '../../utils/request';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const app = getApp<IAppOption>();
 
@@ -9,6 +10,7 @@ interface AccountProfile {
 }
 
 Page({
+  onLoad() { enableShareMenu(); },
   data: { consentAgreed: false, loggingIn: false, error: '' },
   onConsentChange(event: WechatMiniprogram.CustomEvent<{ value?: string[] }>) {
     const value = event.detail.value;
@@ -39,5 +41,18 @@ Page({
   },
   returnToMine() {
     wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/mine/index' }) });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
   },
 });

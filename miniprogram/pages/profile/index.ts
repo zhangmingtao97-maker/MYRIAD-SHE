@@ -1,4 +1,5 @@
 import { apiErrorMessage, request } from '../../utils/request';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const app = getApp<IAppOption>();
 
@@ -30,7 +31,7 @@ function isAccountProfile(value: unknown): value is AccountProfile {
 Page({
   data: { statusBarHeight: 0, loading: true, saving: false, editingNickname: false, loadError: '', profile: { nickname: '', avatarUrl: '', phoneNumber: '' } as AccountProfile },
   nicknameDraft: '',
-  onLoad() { this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
+  onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
   onShow() {
     if (app.globalData.accountDeleted || !app.globalData.accessToken) { wx.navigateBack({ delta: 1 }); return; }
     void this.loadProfile();
@@ -118,4 +119,17 @@ Page({
     } });
   },
   handleBack() { wx.navigateBack({ delta: 1 }); },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
+  },
 });

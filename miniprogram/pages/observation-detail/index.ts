@@ -1,6 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation } from '../../utils/observation';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const app = getApp<IAppOption>();
 
@@ -34,6 +35,7 @@ Page({
   knownAuthGeneration: 0,
   deleteConfirmationOpen: false,
   onLoad(options: Record<string, string>) {
+    enableShareMenu();
     this.knownAuthGeneration = app.globalData.authGeneration;
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, recordId: options.id || '' });
   },
@@ -184,6 +186,19 @@ Page({
         this.setData({ deleting: false, error: apiErrorMessage(caught, '删除失败，请检查网络后重试。') });
       }
     }, fail: () => { this.deleteConfirmationOpen = false; } });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
   },
 });
 

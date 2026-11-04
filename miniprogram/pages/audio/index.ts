@@ -1,6 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent, PublicHomeModule } from '../../utils/content';
+import { enableShareMenu } from '../../utils/share';
 
 type AudioTrackView = {
   id: string;
@@ -84,6 +85,7 @@ Page({
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   audioTrackId: '',
   onLoad() {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadContent();
   },

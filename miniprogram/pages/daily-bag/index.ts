@@ -1,6 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPracticeContent } from '../../utils/content';
 import type { PracticeContent } from '../../utils/content';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 const bagCopy = {
   bagTopbarTitle: { richText: '购物袋', fontSize: 16, color: '#5c493c' },
@@ -19,6 +20,7 @@ Page({
   data: { statusBarHeight: 0, loading: true, error: '', accessAvailable: false, copy: bagCopy },
   requestGeneration: 0,
   onLoad() {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadBagContent();
   },
@@ -56,5 +58,18 @@ Page({
   switchTab(event: WechatMiniprogram.CustomEvent) {
     const url = tabs[Number(event.currentTarget.dataset.index)];
     if (url) wx.switchTab({ url });
+  },
+  onShareAppMessage() {
+    return shareCard({
+      title: '每日抽取｜MYRIAD SHE',
+      path: '/pages/daily-bag/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: '每日抽取｜MYRIAD SHE',
+      query: {},
+    });
   },
 });

@@ -1,5 +1,6 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isObservationListResponse, ObservationListItem } from '../../utils/observation';
+import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 function observationDateLabel(value: string) {
   const date = new Date(value);
@@ -10,6 +11,7 @@ Page({
   data: { statusBarHeight: 0, observations: [] as ObservationListItem[], loading: true, loadingMore: false, hasMore: false, offset: 0, pageSize: 30, total: 0, error: '', moreError: '' },
   requestGeneration: 0,
   onLoad() {
+    enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadObservations();
   },
@@ -49,4 +51,17 @@ Page({
     wx.navigateTo({ url });
   },
   goBack() { wx.navigateBack({ delta: 1 }); },
+  onShareAppMessage() {
+    return shareCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      path: '/pages/home/index',
+      query: {},
+    });
+  },
+  onShareTimeline() {
+    return shareTimelineCard({
+      title: 'MYRIAD SHE｜写给自己的私人档案馆',
+      query: {},
+    });
+  },
 });
