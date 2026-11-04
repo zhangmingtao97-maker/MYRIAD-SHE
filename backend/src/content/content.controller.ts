@@ -865,6 +865,15 @@ export class ContentController {
       if (!module || typeof module !== 'object' || Array.isArray(module)) return false;
       const record = module as Record<string, unknown>;
       if (typeof record.id !== 'string' || typeof record.type !== 'string' || !Number.isSafeInteger(record.order) || typeof record.enabled !== 'boolean') return false;
+      if (record.linkType !== undefined) {
+        if (record.linkType === 'page') {
+          if (!this.boundedText(record.linkPath, 512, 1) || String(record.linkPath).includes('..')
+            || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(String(record.linkPath))) return false;
+        } else if (record.linkType === 'web') {
+          if (!this.boundedText(record.linkUrl, 2048, 8) || !/^https:\/\/[^\s<>]+$/i.test(String(record.linkUrl))) return false;
+        } else if (record.linkType !== 'none') return false;
+        if (record.linkLabel !== undefined && (!this.boundedText(record.linkLabel, 40, 1) || /[\r\n]/.test(String(record.linkLabel)))) return false;
+      }
       if (record.tracks === undefined) return true;
       return record.type === 'audio' && Array.isArray(record.tracks) && record.tracks.length <= 3 && record.tracks.every((track) => {
         if (!track || typeof track !== 'object' || Array.isArray(track)) return false;
