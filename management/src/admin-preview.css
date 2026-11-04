@@ -1277,3 +1277,262 @@
   background: rgba(200, 85, 61, .12);
   color: #a8432f;
 }
+/* —— 人物故事详情页预览（按 pages/story-detail 的 750rpx 折算成 px） —— */
+.story-preview-topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin: 0 -20px;
+  border-bottom: 1px solid rgba(92, 73, 60, .22);
+}
+
+.story-preview-back,
+.story-preview-more {
+  position: absolute;
+  display: flex;
+  width: 36px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  color: #5c493c;
+}
+
+.story-preview-back {
+  left: 0;
+  font-family: Georgia, serif;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.story-preview-more {
+  right: 0;
+  font-size: 14px;
+  letter-spacing: .08em;
+}
+
+.story-preview-nav {
+  color: #5c493c;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.story-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 24px;
+  color: #8a6755;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+
+.story-preview-meta span:last-child {
+  color: #663124;
+  white-space: nowrap;
+}
+
+.story-preview-hero {
+  min-height: 240px;
+  padding: 49px 0 36px;
+}
+
+.story-preview-hero h3 {
+  margin: 0;
+  color: #5c493c;
+  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.22;
+  white-space: pre-wrap;
+}
+
+.story-preview-hero p {
+  display: block;
+  width: 92%;
+  margin: 19px auto 0;
+  color: #40362f;
+  font-size: 15px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.story-preview-image {
+  height: 300px;
+  background: #d9d0c4;
+  overflow: hidden;
+}
+
+.story-preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-preview-image.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #dfd5c8;
+  color: #8a6755;
+  font-size: 13px;
+}
+
+.story-preview-caption {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 9px;
+  color: #8a6755;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.story-preview-caption span:first-child {
+  min-width: 0;
+}
+
+.story-preview-caption span:last-child {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.story-preview-article {
+  padding-top: 65px;
+}
+
+.story-preview-source {
+  width: 90%;
+  margin: 0 auto;
+  color: #8a6755;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.story-preview-rule {
+  margin-top: 17px;
+  border-top: 1px solid rgba(92, 73, 60, .24);
+}
+
+.story-preview-paragraph {
+  width: 90%;
+  margin: 21px auto 0;
+  color: #5c493c;
+  font-size: 16px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+}
+
+.story-preview-quote {
+  width: 84%;
+  margin: 66px auto 0;
+  color: #5c493c;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.story-preview-closing {
+  width: 90%;
+  margin: 61px auto 0;
+  color: #5c493c;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.story-preview-action {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin-top: 43px;
+  border-top: 1px solid rgba(92, 73, 60, .24);
+  border-bottom: 1px solid rgba(92, 73, 60, .24);
+  color: #5c493c;
+  font-size: 14px;
+}
+
+.story-preview-arrow {
+  color: #663124;
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+
+.story-preview-back-to-issue {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  color: #5c493c;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.story-preview-back-to-issue span:last-child {
+  color: #663124;
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+
+/* 人物故事：首页入口 / 详情页 两个编辑页的切换 */
+.story-editor-tabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+
+.story-editor-tab-group {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, .6);
+}
+
+.story-editor-tab-group button {
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6e594a;
+  font-size: 12.5px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.story-editor-tab-group button.is-active {
+  background: #c8553d;
+  color: #fff8f3;
+}
+
+.story-editor-tabs .field-help {
+  margin: 0;
+  flex: 1;
+  min-width: 240px;
+}
+
+.story-detail-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.story-detail-editor .section-heading {
+  margin-bottom: 2px;
+}
+
+.story-card-detail-link {
+  justify-self: start;
+  margin-top: 2px;
+}

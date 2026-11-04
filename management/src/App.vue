@@ -12,6 +12,7 @@ import AboutPagePreview from './components/AboutPagePreview.vue';
 import MinePagePreview from './components/MinePagePreview.vue';
 import CopyPagePreview from './components/CopyPagePreview.vue';
 import AudioPagePreview from './components/AudioPagePreview.vue';
+import StoryDetailPreview from './components/StoryDetailPreview.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
@@ -1503,7 +1504,7 @@ const journalPastIssues = computed(() => [...issues.value]
 const journalSectionDescription = computed(() => {
   switch (activeContentSection.value) {
     case 'journal-home': return '刊期信息、封面主题、首页栏目顺序与整期手机预览。';
-    case 'journal-story': return '人物纪实摘要与人物故事详情页；标题、导语来自「首页策展」的本期主题，正文与图片说明在下方「人物故事详情页」里编辑。保存后同时更新首页对应栏目。';
+    case 'journal-story': return '分两个编辑页：「首页入口」改首页那张人物纪实卡片（图片、引言、图上说明），「详情页」改点进去之后的正文、图片说明与公众号链接。标题与导语来自「首页策展」的本期主题，保存后一起生效。';
     case 'journal-audio': return '本期可放 1–3 段微声音，每段可以是声音或视频；至少 1 段有可播放文件即可。进入详情页后显示单独标题与解释。';
     case 'journal-discussion': return '讨论页固定文案、示例经历与写作页预览；可在讨论页单独保存/发布，也可随整期发布。';
     case 'journal-archive': return '首页「策展档案」入口文案，以及已发布/已归档期次列表。';
@@ -2058,6 +2059,45 @@ function focusAudioField(event: FocusEvent) {
     return;
   }
   activeAudioKey.value = `track:${trackId}`;
+}
+
+// —— 人物故事：首页入口 / 详情页两个编辑页 ——
+const storyEditorTab = ref<'home' | 'detail'>('home');
+const activeStoryDetailKey = ref('');
+
+const storyDetailModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'story') || null);
+const storyDetailIntro = computed(() => String(journalCoverModule.value?.body || issueForm.value.homeMetaRichText || '').trim());
+const storyDetailImageUrl = computed(() => {
+  const module = storyDetailModule.value;
+  return module ? issueModulePreviewUrls.value[module.id] || '' : '';
+});
+
+function setStoryEditorTab(tab: 'home' | 'detail') {
+  storyEditorTab.value = tab;
+  activeStoryDetailKey.value = tab === 'detail' ? 'from-home' : '';
+}
+
+function pickStoryDetailKey(key: string) {
+  activeStoryDetailKey.value = key;
+  nextTick(() => {
+    const target = document.querySelector<HTMLElement>(`[data-story-field="${key}"]`);
+    if (!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('is-locating');
+    window.setTimeout(() => target.classList.remove('is-locating'), 1400);
+  });
+}
+
+function focusStoryDetailField(event: FocusEvent) {
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-story-field]');
+  const key = holder?.dataset.storyField;
+  if (key && key !== activeStoryDetailKey.value) activeStoryDetailKey.value = key;
+}
+
+// 详情页标题与导语来自「首页策展」的本期主题，点预览里的标题直接跳过去改
+function editStoryHeadlineFromHome() {
+  if (journalCoverModule.value) selectJournalModule(journalCoverModule.value);
+  goToJournalSection('journal-home');
 }
 
 function togglePracticeEntryEnabled(entry: PracticeEntry) {
@@ -4095,9 +4135,11 @@ function setIssueModuleLinkType(module: ManagedIssueModule, event: Event) {
   if (target.value === 'none') module.linkLabel = '';
 }
 
+let issuePreviewGeneration = 0;
+
 async function previewIssueModules() {
   const session = sessionGeneration;
-  const previews: Record<string, string> = {};
+  const generation = ++issuePreviewGeneration;
   for (const module of issueForm.value.draftContent.sections) {
     const media = module.type === 'audio'
       ? (module.tracks || []).map((track) => ({
@@ -4107,16 +4149,23 @@ async function previewIssueModules() {
       : [{ key: module.imageObjectKey || '', previewKey: module.id }];
     for (const item of media) {
       if (typeof item.key !== 'string' || !item.key) continue;
+      if (generation !== issuePreviewGeneration) return;
       const params = new URLSearchParams({ objectKey: item.key });
-      const response = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
-      if (handleAdminUnauthorized(response, session)) return;
-      assertSession(session);
-      if (!response.ok) continue;
-      const result = await response.json();
-      if (isMediaViewTarget(result)) previews[item.previewKey] = result.url;
+      try {
+        const response = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
+        if (handleAdminUnauthorized(response, session)) return;
+        assertSession(session);
+        if (!response.ok) continue;
+        const result = await response.json();
+        // 逐条写入：即使后面某个媒体拿不到预览地址，前面取到的也不会被清空。
+        if (isMediaViewTarget(result) && generation === issuePreviewGeneration) {
+          issueModulePreviewUrls.value = { ...issueModulePreviewUrls.value, [item.previewKey]: result.url };
+        }
+      } catch {
+        if (generation !== issuePreviewGeneration) return;
+      }
     }
   }
-  issueModulePreviewUrls.value = previews;
 }
 
 function issueAudioTrackPreviewKey(moduleId: string, trackId: string) { return `${moduleId}:${trackId}`; }
@@ -5279,6 +5328,26 @@ onBeforeUnmount(() => {
               />
               <p class="journal-preview-hint">小程序里只有 1 段声音时，列表页会直接跳进详情页。点「详情页」切换二级页面；点任意区块 → 右侧滚到对应字段并闪框。</p>
             </template>
+            <template v-else-if="activeContentSection === 'journal-story' && storyEditorTab === 'detail'">
+              <StoryDetailPreview
+                :active-key="activeStoryDetailKey"
+                :issue-code="String(issueForm.code || '')"
+                :title="journalCoverTitle"
+                :intro="storyDetailIntro"
+                :image-url="storyDetailImageUrl"
+                :alt-text="String(storyDetailModule?.altText || '')"
+                :caption-left="String(storyDetailModule?.detailCaptionLeft || storyDetailModule?.captionLeft || '')"
+                :caption-right="String(storyDetailModule?.detailCaptionRight || '人物纪实')"
+                :source="String(storyDetailModule?.detailSource || '')"
+                :paragraph1="String(storyDetailModule?.detailParagraph1 || '')"
+                :paragraph2="String(storyDetailModule?.detailParagraph2 || '')"
+                :quote="String(storyDetailModule?.detailQuote || '')"
+                :official-article-url="String(storyDetailModule?.officialArticleUrl || '')"
+                @pick="pickStoryDetailKey"
+                @pick-from-home="editStoryHeadlineFromHome"
+              />
+              <p class="journal-preview-hint">点预览里的任意区块 → 右侧滚到对应字段并闪框；标题和导语来自首页策展，点它可以直接跳过去改。</p>
+            </template>
             <template v-else>
               <JournalHomePreview
                 :modules="issueForm.draftContent.sections"
@@ -5319,7 +5388,14 @@ onBeforeUnmount(() => {
               <p class="field-help">主题与问题只保留一个来源：封面标题和「本期问题」栏目。这里只读展示，避免同一句话在两处维护后不一致。</p>
               <p class="field-help">小程序首页第一栏固定排成三行：<strong>当期策展</strong> / 期刊标签 / 刊期月份 · A CURATED EDITION。英文月份缩写会自动展开为大写全称（Sep 2026 → SEPTEMBER 2026），中文写法原样保留。</p>
             </section>
-            <div v-if="activeContentSection !== 'journal-discussion'" class="journal-module-toolbar-wrap">
+            <div v-if="activeContentSection === 'journal-story'" class="story-editor-tabs">
+              <div class="story-editor-tab-group" role="tablist" aria-label="人物故事编辑页面">
+                <button type="button" role="tab" :class="{ 'is-active': storyEditorTab === 'home' }" :aria-selected="storyEditorTab === 'home'" @click="setStoryEditorTab('home')">首页入口</button>
+                <button type="button" role="tab" :class="{ 'is-active': storyEditorTab === 'detail' }" :aria-selected="storyEditorTab === 'detail'" @click="setStoryEditorTab('detail')">详情页</button>
+              </div>
+              <p class="field-help">{{ storyEditorTab === 'home' ? '首页那张人物纪实卡片：图片、引言与图上两行说明。' : '点进卡片后的独立页面：图片说明、文章来源、正文两段、结尾引言与公众号链接保存后一起生效。' }}</p>
+            </div>
+            <div v-if="activeContentSection !== 'journal-discussion' && (activeContentSection !== 'journal-story' || storyEditorTab === 'home')" class="journal-module-toolbar-wrap">
               <div class="issue-module-toolbar"><h3>{{ journalModuleWorkspaceTitle }}</h3><select v-if="journalAddableModuleTypes.length" aria-label="新增栏目类型" @change="(event) => { const target = event.target as HTMLSelectElement; if (target.value) { addIssueModule(target.value as ManagedIssueModule['type']); target.value = ''; } }"><option value="">＋ 新增栏目</option><option v-for="type in journalAddableModuleTypes" :key="type" :value="type">{{ issueModuleTypeLabel(type) }}</option></select></div>
               <p class="field-help">选择一个栏目进行编辑；启用、排序与删除只改这份草稿。保存会写入整期，发布也会整期一起生效。</p>
               <nav class="issue-module-picker" aria-label="选择要编辑的栏目"><button v-for="(module, index) in issueForm.draftContent.sections" v-show="isIssueModuleVisibleInJournalSection(module)" :key="module.id" type="button" :class="{ active: selectedIssueModuleId === module.id }" :aria-pressed="selectedIssueModuleId === module.id" @click="selectedIssueModuleId = module.id"><small>{{ String(index + 1).padStart(2, '0') }}</small><span>{{ issueModuleLabel(module) }}</span><em :class="{ 'is-hidden': !module.enabled }">{{ module.enabled ? '显示' : '隐藏' }}</em></button></nav>
@@ -5412,7 +5488,23 @@ onBeforeUnmount(() => {
               </details>
             </details>
             <datalist id="issue-module-page-presets"><option value="/pages/home/index">首页</option><option value="/pages/story-detail/index?id=story">人物故事</option><option value="/pages/audio/index">本期微声音</option><option value="/pages/practice/index">实践</option><option value="/pages/about/index">关于</option><option value="/pages/archive/index">往期档案</option><option value="/pages/daily-objects/index">日常之物</option><option value="/pages/shared-practice/index">共同实践</option><option value="/pages/contact-support/index">联系客服</option></datalist>
-            <div v-if="activeContentSection !== 'journal-discussion'" class="issue-module-list"><article v-for="(module, index) in issueForm.draftContent.sections" v-show="selectedIssueModuleId === module.id && isIssueModuleVisibleInJournalSection(module)" :key="module.id" :data-issue-module="module.id" class="issue-module-card">
+                        <section v-if="activeContentSection === 'journal-story' && storyEditorTab === 'detail'" class="story-detail-editor" @focusin="focusStoryDetailField">
+              <div class="section-heading"><div><p class="eyebrow">STORY DETAIL</p><h3>人物故事详情页</h3></div><small>小程序 pages/story-detail</small></div>
+              <template v-if="storyDetailModule">
+                <div class="form-grid">
+                  <label data-story-field="caption-left">详情图片左侧说明<input :value="String(storyDetailModule.detailCaptionLeft || '')" maxlength="160" placeholder="留空时用首页卡片的图片左侧说明" @input="setIssueModuleText(storyDetailModule, 'detailCaptionLeft', $event)" /></label>
+                  <label data-story-field="caption-right">详情图片右侧说明<input :value="String(storyDetailModule.detailCaptionRight || '')" maxlength="160" placeholder="留空时为「人物纪实」" @input="setIssueModuleText(storyDetailModule, 'detailCaptionRight', $event)" /></label>
+                  <label data-story-field="source">文章来源说明<input :value="String(storyDetailModule.detailSource || '')" maxlength="500" placeholder="原载于 MYRIAD SHE 公众号 · 小程序策展节选" @input="setIssueModuleText(storyDetailModule, 'detailSource', $event)" /></label>
+                  <label data-story-field="article-url">公众号文章链接<input type="url" :value="String(storyDetailModule.officialArticleUrl || '')" maxlength="2048" placeholder="https://mp.weixin.qq.com/s/..." @input="setIssueModuleText(storyDetailModule, 'officialArticleUrl', $event)" /></label>
+                  <label data-story-field="paragraph1">故事正文第一段<textarea :value="String(storyDetailModule.detailParagraph1 || '')" rows="5" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailParagraph1', $event)" /></label>
+                  <label data-story-field="paragraph2">故事正文第二段<textarea :value="String(storyDetailModule.detailParagraph2 || '')" rows="5" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailParagraph2', $event)" /></label>
+                  <label data-story-field="quote">结尾引言<textarea :value="String(storyDetailModule.detailQuote || '')" rows="3" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailQuote', $event)" /></label>
+                </div>
+                <p class="field-help">标题与导语沿用「首页策展」的本期主题（封面标题 + 封面正文），这里只管点进去之后的正文。<strong>这 7 项要么一起填完，要么先都留空</strong>：小程序只要检测到其中任意一项，就不再使用 ISSUE 02 的内置文案。</p>
+              </template>
+              <p v-else class="field-help">这一期还没有「人物纪实」栏目，先到「首页策展」补一个再回来。</p>
+            </section>
+<div v-if="activeContentSection !== 'journal-discussion' && (activeContentSection !== 'journal-story' || storyEditorTab === 'home')" class="issue-module-list"><article v-for="(module, index) in issueForm.draftContent.sections" v-show="selectedIssueModuleId === module.id && isIssueModuleVisibleInJournalSection(module)" :key="module.id" :data-issue-module="module.id" class="issue-module-card">
               <header><span>{{ String(index + 1).padStart(2, '0') }} · {{ issueModuleLabel(module) }}</span><label class="issue-module-toggle"><input v-model="module.enabled" type="checkbox" />启用</label><button type="button" class="quiet" :disabled="index === 0" aria-label="上移栏目" @click="moveIssueModule(index, -1)">↑</button><button type="button" class="quiet" :disabled="index === issueForm.draftContent.sections.length - 1" aria-label="下移栏目" @click="moveIssueModule(index, 1)">↓</button><button v-if="!['issueMeta','coverStory','cover','opener','question','observationAction','sharedPracticeAction'].includes(module.type)" type="button" class="quiet danger" aria-label="删除栏目" @click="removeIssueModule(index)">删除</button></header>
               <div v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'" class="form-grid"><label v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'">上传 / 替换图片<input type="file" accept="image/jpeg,image/png,image/webp" @change="selectIssueModuleFile(module, $event)" /></label><label>图片对象路径<input :value="String(module.imageObjectKey || '')" placeholder="content/image/..." @input="setIssueModuleText(module, 'imageObjectKey', $event)" /></label><label>图片替代文本<input :value="String(module.altText || '')" @input="setIssueModuleText(module, 'altText', $event)" /></label></div>
               <label v-if="module.type === 'coverStory' || module.type === 'story'">{{ module.type === 'coverStory' ? '本期主题标题' : '人物引言' }}（换行会保留）<textarea :value="String(module.title || '')" rows="2" maxlength="500" @input="setIssueModuleText(module, 'title', $event)" /></label>
@@ -5421,7 +5513,7 @@ onBeforeUnmount(() => {
               <label v-else-if="module.type !== 'issueMeta' && module.type !== 'audio'">标题 / 引言<input :value="String(module.title || '')" maxlength="500" @input="setIssueModuleText(module, 'title', $event)" /></label>
               <label v-if="module.type === 'issueMeta' || module.type === 'coverStory' || module.type === 'story' || module.type === 'question'">栏目眉题<input :value="String(module.eyebrow || '')" @input="setIssueModuleText(module, 'eyebrow', $event)" /></label>
               <div v-if="module.type === 'story'" class="form-grid"><label>图片左侧说明<input :value="String(module.captionLeft || '')" maxlength="160" @input="setIssueModuleText(module, 'captionLeft', $event)" /></label><label>图片右侧说明<input :value="String(module.captionRight || '')" maxlength="160" @input="setIssueModuleText(module, 'captionRight', $event)" /></label></div>
-              <details v-if="module.type === 'story'" class="issue-module-details" open><summary>人物故事详情页 · 正文、图片说明与公众号链接</summary><div class="form-grid"><label>详情图片左侧说明<input :value="String(module.detailCaptionLeft || '')" maxlength="160" @input="setIssueModuleText(module, 'detailCaptionLeft', $event)" /></label><label>详情图片右侧说明<input :value="String(module.detailCaptionRight || '')" maxlength="160" @input="setIssueModuleText(module, 'detailCaptionRight', $event)" /></label></div><label>文章来源说明<input :value="String(module.detailSource || '')" maxlength="500" @input="setIssueModuleText(module, 'detailSource', $event)" /></label><label>故事正文第一段<textarea :value="String(module.detailParagraph1 || '')" rows="5" maxlength="6000" @input="setIssueModuleText(module, 'detailParagraph1', $event)" /></label><label>故事正文第二段<textarea :value="String(module.detailParagraph2 || '')" rows="5" maxlength="6000" @input="setIssueModuleText(module, 'detailParagraph2', $event)" /></label><label>结尾引言<textarea :value="String(module.detailQuote || '')" rows="3" maxlength="6000" @input="setIssueModuleText(module, 'detailQuote', $event)" /></label><label>公众号文章链接<input type="url" :value="String(module.officialArticleUrl || '')" placeholder="https://mp.weixin.qq.com/s/..." maxlength="2048" @input="setIssueModuleText(module, 'officialArticleUrl', $event)" /></label><p class="field-help">文章链接需来自 mp.weixin.qq.com。以上内容随期刊草稿保存，发布后在小程序人物故事页显示。</p></details>
+              <button v-if="module.type === 'story'" type="button" class="quiet story-card-detail-link" @click="setStoryEditorTab('detail')">编辑详情页正文 →</button>
               <div v-if="module.type === 'storyAction'" class="form-grid"><label>跳转目标栏目<input :value="String(module.targetId || 'story')" maxlength="64" @input="setIssueModuleText(module, 'targetId', $event)" /></label></div>
               <label v-if="module.type === 'issueMeta'">月份文字<input :value="String(module.month || '')" @input="setIssueModuleText(module, 'month', $event)" /></label>
               <label v-if="module.body !== undefined || ['coverStory','opener','story','question','observationAction','sharedPracticeAction','brandFooter'].includes(module.type)">{{ module.type === 'coverStory' ? '主题说明' : '正文 / 说明' }}<textarea :value="String(module.body || '')" rows="4" maxlength="6000" @input="setIssueModuleText(module, 'body', $event)" /></label>
