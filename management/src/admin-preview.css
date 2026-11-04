@@ -1865,3 +1865,150 @@
   gap: 8px;
 }
 
+
+/* —— 实践目录（全部条目一览：排序 / 新增 / 删除）—— */
+.directory-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(252, 246, 237, .55);
+}
+
+.directory-toolbar-copy strong {
+  display: block;
+  color: #49392f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 14px;
+}
+
+.directory-toolbar-copy p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.directory-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.directory-toolbar-actions select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf9;
+  color: #49392f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 13px;
+}
+
+.practice-directory-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.practice-directory-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 84px 48px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(216, 199, 178, .45);
+}
+
+.practice-directory-row:last-child {
+  border-bottom: 0;
+}
+
+.practice-directory-index {
+  color: #b08b6f;
+  font-family: Georgia, serif;
+  font-size: 12px;
+  letter-spacing: .08em;
+}
+
+.practice-directory-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.practice-directory-copy strong {
+  overflow: hidden;
+  color: #40362f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 14px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-directory-copy small {
+  overflow: hidden;
+  color: #8b6b58;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-directory-target {
+  color: #8b6b58;
+  font-size: 11.5px;
+}
+
+.practice-directory-state {
+  color: #4b7a52;
+  font-size: 11.5px;
+}
+
+.practice-directory-state.off {
+  color: #a98b74;
+}
+
+.practice-directory-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.practice-directory-move,
+.practice-directory-edit {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: #8b6b58;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.practice-directory-move:hover:not(:disabled),
+.practice-directory-edit:hover:not(:disabled) {
+  border-color: rgba(200, 85, 61, .5);
+  color: #c8553d;
+}
+
+.practice-directory-move:disabled,
+.practice-directory-edit:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1240px) {
+  .practice-directory-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .practice-directory-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}

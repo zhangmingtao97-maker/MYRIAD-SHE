@@ -1083,13 +1083,13 @@ const currentPageRefreshing = ref(false);
 type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
 type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'legal-history' | 'privacy-page' | 'about-history';
-type PracticeSection = 'practice' | 'observation' | 'shared-practice' | 'daily-objects';
+type PracticeSection = 'practice' | 'practice-directory' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
 const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'employees', 'life-cards', 'life-card-views']);
-const contentSectionKeys = new Set<ContentSection>(['practice', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
+const contentSectionKeys = new Set<ContentSection>(['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'legal-history', 'privacy-page', 'about-history'];
-const practiceSections: PracticeSection[] = ['practice', 'observation', 'shared-practice', 'daily-objects'];
+const practiceSections: PracticeSection[] = ['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects'];
 const operationsSections = ['contributions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
 const systemSections = ['settings', 'life-cards', 'life-card-views', 'employees'] as const;
 type OperationsSection = typeof operationsSections[number];
@@ -1352,6 +1352,7 @@ watch(activeSection, (section) => {
 });
 const currentView = computed(() => {
   if (activeSection.value === 'practice') {
+    if (activeContentSection.value === 'practice-directory') return { eyebrow: 'PRACTICE / DIRECTORY', title: '实践目录' };
     if (activeContentSection.value === 'observation') return { eyebrow: 'PRACTICE / CONTENT / OBSERVATION', title: '此刻观察' };
     if (activeContentSection.value === 'shared-practice') return { eyebrow: 'PRACTICE / CONTENT / SHARED PRACTICE', title: '共同实践' };
     if (activeContentSection.value === 'daily-objects') return { eyebrow: 'PRACTICE / DAILY OBJECTS', title: '日常之物' };
@@ -1363,6 +1364,7 @@ const currentView = computed(() => {
   if (activeSection.value === 'content') {
     const contentViews: Record<ContentSection, { eyebrow: string; title: string }> = {
       practice: { eyebrow: 'PRACTICE / PAGE COPY', title: '实践页面' },
+      'practice-directory': { eyebrow: 'PRACTICE / DIRECTORY', title: '实践目录' },
       observation: { eyebrow: 'PRACTICE / CONTENT / OBSERVATION', title: '此刻观察' },
       'shared-practice': { eyebrow: 'PRACTICE / CONTENT / SHARED PRACTICE', title: '共同实践' },
       'daily-objects': { eyebrow: 'PRACTICE / DAILY OBJECTS', title: '日常之物' },
@@ -1807,6 +1809,9 @@ function markPracticeContentDirty() {
 
 // 每个实践目录都有两页：首页里那一行入口，和点进去之后的详情页。
 const practiceEntryTabs = ref<Record<string, 'home' | 'detail'>>({});
+const newPracticeEntryTarget = ref<'observation' | 'shared-practice' | 'daily-goods'>('observation');
+type PracticeEntryTarget = 'observation' | 'shared-practice' | 'daily-goods';
+
 const practiceEntrySectionByKey: Record<string, PracticeSection> = {
   observation: 'observation',
   'shared-practice': 'shared-practice',
@@ -1835,7 +1840,35 @@ function practiceEntryIndex(key: string) {
   return index + 1;
 }
 
-function addPracticeEntry(section: string) {
+function practiceEntrySectionLabel(entry: PracticeEntry) {
+  const section = practiceEntrySectionOf(entry);
+  if (section === 'observation') return '此刻观察';
+  if (section === 'shared-practice') return '共同实践';
+  if (section === 'daily-objects') return '日常之物';
+  return '未指定';
+}
+
+function movePracticeEntry(entry: PracticeEntry, delta: number) {
+  const content = practiceContent.value;
+  if (!content || practiceContentSaving.value || practiceContentConflict.value) return;
+  const index = content.entries.findIndex((item) => item.key === entry.key);
+  const next = index + delta;
+  if (index < 0 || next < 0 || next >= content.entries.length) return;
+  const entries = [...content.entries];
+  [entries[index], entries[next]] = [entries[next], entries[index]];
+  content.entries = entries;
+  markPracticeContentDirty();
+}
+
+function openPracticeEntry(entry: PracticeEntry) {
+  const section = practiceEntrySectionOf(entry);
+  activePracticeKey.value = `entry:${entry.key}`;
+  if (!section) { activeContentSection.value = 'practice-directory'; return; }
+  activeContentSection.value = section;
+  setPracticeEntryTab(section, 'home');
+}
+
+function addPracticeEntry(target: PracticeEntryTarget = newPracticeEntryTarget.value) {
   const content = practiceContent.value;
   if (!content || practiceContentSaving.value || practiceContentConflict.value) return;
   if (content.entries.length >= 100) {
@@ -1845,7 +1878,7 @@ function addPracticeEntry(section: string) {
   const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
   const entry: PracticeEntry = {
     key: `directory-${suffix}`,
-    target: section,
+    target,
     enabled: true,
     contextRichText: '一个新的实践情境',
     contextFontSize: practiceEntryFixedStyle.context.fontSize,
@@ -5139,6 +5172,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="dashboard-tab" :class="{ active: activeSection === 'practice' }" :aria-label="sidebarCollapsed ? '实践' : undefined" :title="sidebarCollapsed ? '实践' : undefined" :aria-current="activeSection === 'practice' ? 'page' : undefined" :aria-expanded="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" aria-controls="practice-navigation" @click.stop="openPracticeNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 4.5c-7.7.2-12.8 2.3-13.8 7.1-.8 3.4 1.8 6.3 5 6.3 5.1 0 7.8-5.5 8.8-13.4ZM5 20c2.4-4.4 5.2-7.1 9.2-9.6" /></svg><span>实践</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="activeSection === 'practice' && practiceNavigationExpanded && !sidebarCollapsed" id="practice-navigation" class="dashboard-subnav" aria-label="实践子菜单">
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'practice' }" :aria-current="activeContentSection === 'practice' ? 'page' : undefined" @click="activeContentSection = 'practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12v14H6zM9 8h6m-6 4h6m-6 4h3" /></svg><span>实践页面</span></button>
+                  <button class="dashboard-subtab" :class="{ active: activeContentSection === 'practice-directory' }" :aria-current="activeContentSection === 'practice-directory' ? 'page' : undefined" @click="activeContentSection = 'practice-directory'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" /></svg><span>实践目录</span></button>
                   <button class="dashboard-subtab" :class="{ active: activeContentSection === 'observation' }" :aria-current="activeContentSection === 'observation' ? 'page' : undefined" @click="activeContentSection = 'observation'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.7l3.2 2" /></svg><span>此刻观察</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'shared-practice' }" :aria-current="activeContentSection === 'shared-practice' ? 'page' : undefined" @click="activeContentSection = 'shared-practice'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM7 9h10M7 12h7M7 15h4" /></svg><span>共同实践</span></button><button class="dashboard-subtab" :class="{ active: activeContentSection === 'daily-objects' }" :aria-current="activeContentSection === 'daily-objects' ? 'page' : undefined" @click="openDailyObjectsEditor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Zm4 0V6a3 3 0 0 1 6 0v2" /></svg><span>日常之物</span></button>
                 </nav></Transition>
               </div>
@@ -5748,6 +5782,64 @@ onBeforeUnmount(() => {
           </form>
         </div>
       </section>
+      <section v-if="activeSection === 'practice' && activeContentSection === 'practice-directory'" id="practice-directory-content" class="content-area">
+        <div class="section-heading"><div><p class="eyebrow">PRACTICE / DIRECTORY</p><h2>实践目录</h2></div></div>
+        <div v-if="!practiceContent" class="practice-empty">
+          <p class="muted">实践页面配置尚未读取。</p>
+          <button class="quiet" :disabled="dashboardLoading" @click="loadDashboard">{{ dashboardLoading ? '读取中…' : '重新读取' }}</button>
+        </div>
+        <div v-else class="preview-layout has-preview">
+          <aside class="preview-rail" aria-label="小程序实践页预览">
+            <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
+          </aside>
+          <form class="practice-form" @submit.prevent="savePracticeContent">
+            <div class="directory-toolbar">
+              <div class="directory-toolbar-copy">
+                <strong>目录顺序</strong>
+                <p class="muted">小程序按这个顺序编号 01、02、03…；新增的条目排在最后。</p>
+              </div>
+              <div class="directory-toolbar-actions">
+                <select v-model="newPracticeEntryTarget" :disabled="practiceContentSaving || practiceContentConflict" aria-label="新增条目点进去打开哪一页">
+                  <option value="observation">此刻观察</option>
+                  <option value="shared-practice">共同实践</option>
+                  <option value="daily-goods">日常之物</option>
+                </select>
+                <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || practiceContent.entries.length >= 100" @click="addPracticeEntry()">＋ 新增目录</button>
+              </div>
+            </div>
+            <ol class="practice-directory-list">
+              <li v-for="(entry, index) in practiceContent.entries" :key="entry.key" class="practice-directory-row">
+                <span class="practice-directory-index">{{ String(index + 1).padStart(2, '0') }}</span>
+                <span class="practice-directory-copy">
+                  <strong>{{ practiceEntryText(entry.titleRichText) || '未命名目录' }}</strong>
+                  <small>{{ practiceEntryText(entry.contextRichText) }}</small>
+                </span>
+                <span class="practice-directory-target">{{ practiceEntrySectionLabel(entry) }}</span>
+                <span class="practice-directory-state" :class="{ off: !entry.enabled }">{{ entry.enabled ? '开启' : '关闭' }}</span>
+                <span class="practice-directory-actions">
+                  <button type="button" class="practice-directory-move" :disabled="index === 0 || practiceContentSaving || practiceContentConflict" aria-label="上移" @click="movePracticeEntry(entry, -1)">↑</button>
+                  <button type="button" class="practice-directory-move" :disabled="index === practiceContent.entries.length - 1 || practiceContentSaving || practiceContentConflict" aria-label="下移" @click="movePracticeEntry(entry, 1)">↓</button>
+                  <button type="button" class="practice-directory-edit" :disabled="practiceContentSaving || practiceContentConflict" @click="openPracticeEntry(entry)">编辑</button>
+                  <button type="button" class="practice-entry-delete" :disabled="practiceContentSaving || practiceContentConflict" @click="removePracticeEntry(entry)">删除</button>
+                </span>
+              </li>
+            </ol>
+            <p v-if="practiceContentConflict" class="error" role="alert">实践页面已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
+            <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
+            <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
+            <PracticeSaveBar
+              :dirty="practiceContentDirty"
+              :conflict="practiceContentConflict"
+              :saving="practiceContentSaving"
+              label="实践目录 · 顺序、入口与状态"
+              :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
+              reload-label="放弃修改并载入最新版本"
+              @publish="publishPracticeContent"
+              @reload="reloadPracticeContent"
+            />
+          </form>
+        </div>
+      </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'observation'" id="practice-observation-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / OBSERVATION</p><h2>此刻观察</h2></div></div>
         <div class="practice-entry-tabs" role="tablist" :aria-label="`此刻观察：首页入口或详情页`">
@@ -5904,7 +5996,7 @@ onBeforeUnmount(() => {
           <form v-if="practiceEntryTab('daily-objects') === 'home' && practiceContent" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
             <div class="practice-entry-toolbar">
               <p class="muted">这一页列出的入口卡片；删除后小程序实践页不再显示它。</p>
-              <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || (practiceContent?.entries.length ?? 0) >= 100" @click="addPracticeEntry('daily-objects')">＋ 新增目录</button>
+              <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || (practiceContent?.entries.length ?? 0) >= 100" @click="addPracticeEntry('daily-goods')">＋ 新增目录</button>
             </div>
             <p v-if="!practiceEntriesFor('daily-objects').length" class="muted">这一页还没有入口卡片，先新增一个。</p>
             <PracticeEntryEditor v-for="entry in practiceEntriesFor('daily-objects')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
