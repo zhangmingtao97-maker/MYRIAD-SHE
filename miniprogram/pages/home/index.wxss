@@ -78,8 +78,8 @@
 .audio-progress-thumb { position: absolute; top: 50%; width: 18rpx; height: 18rpx; margin: -9rpx 0 0 -9rpx; border-radius: 50%; background: #663124; box-shadow: 0 0 0 6rpx rgba(102, 49, 36, .12); transition: left 200ms linear; }
 .audio-seek-active .audio-progress-fill, .audio-seek-active .audio-progress-thumb { transition: none; }
 .audio-progress-times { display: flex; justify-content: space-between; margin-top: 10rpx; color: #8a6755; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 22rpx; line-height: 1.3; letter-spacing: .04em; }
-.audio-feature { display: grid; grid-template-columns: 88rpx 1fr; align-items: start; margin-top: 76rpx; }
-.audio-feature-with-progress { margin-top: 40rpx; }
+.audio-feature { display: grid; grid-template-columns: 88rpx 1fr; align-items: start; margin-top: 32rpx; }
+.audio-feature-with-progress { margin-top: 28rpx; }
 .audio-play { display: flex; width: 88rpx; height: 88rpx; align-items: flex-start; justify-content: flex-start; padding-top: 8rpx; color: #5c493c; font-family: Garamond, "Times New Roman", serif; font-size: 26rpx; line-height: 1.5; box-sizing: border-box; }
 .audio-play:active { opacity: .62; }
 .audio-quote { color: #5c493c; font-size: 48rpx; font-weight: 600; line-height: 1.5; white-space: pre-wrap; }
