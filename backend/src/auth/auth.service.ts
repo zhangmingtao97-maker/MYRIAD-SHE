@@ -1,10 +1,10 @@
-import { randomBytes } from 'crypto';
+﻿import { randomBytes } from 'crypto';
 import { BadRequestException, HttpException, HttpStatus, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuditService } from '../admin/audit.service';
 import { DatabaseService } from '../database/database.service';
-import { verifyAdminPassword } from './admin-password';
+import { hashAdminPassword, verifyAdminPassword } from './admin-password';
 
 interface AdminLoginSource {
   ip?: string;
@@ -269,6 +269,75 @@ export class AuthService {
     throw new ServiceUnavailableException('企业微信服务暂时不可用');
   }
 
+  private adminWecomAutoProvision() {
+    const value = String(this.config.get('ADMIN_WECOM_AUTO_PROVISION', 'true')).trim().toLowerCase();
+    return !['0', 'false', 'no', 'off'].includes(value);
+  }
+
+  /** 自动建号时尽量取企业微信里的姓名，取不到就退回 UserID。 */
+  private async adminWecomDisplayName(accessToken: string, userId: string) {
+    try {
+      const result = await this.adminWecomRequest('/cgi-bin/user/get', { access_token: accessToken, userid: userId });
+      if (Number(result.errcode ?? 0) !== 0) return '';
+      const name = typeof result.name === 'string' ? result.name.trim() : '';
+      return name.slice(0, 80);
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * 扫码登录时自动创建后台账号：角色为超级管理员，密码是随机生成、谁都不知道的值，
+   * 因此该账号只能通过企业微信扫码进入。能发起登录的人受企业微信应用「可见范围」约束。
+   */
+  private async provisionAdminFromWecom(userId: string, auditMetadata: Record<string, unknown>) {
+    const accessToken = await this.getAdminWecomAccessToken();
+    const displayName = (await this.adminWecomDisplayName(accessToken, userId)) || userId;
+    const base = `wecom_${userId.replace(/[^A-Za-z0-9_.-]/g, '_')}`.slice(0, 56) || 'wecom_member';
+    const passwordHash = await hashAdminPassword(randomBytes(32).toString('base64url'));
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const username = attempt === 0 ? base : `${base}_${randomBytes(2).toString('hex')}`;
+      try {
+        const inserted = await this.database.query<{ id: string; role: string; passwordChangeRequired: boolean }>(
+          `insert into admin_accounts
+             (username, display_name, password_hash, role, password_change_required, wecom_user_id)
+           values ($1, $2, $3, 'super_admin', false, $4)
+           returning id, role, password_change_required as "passwordChangeRequired"`,
+          [username, displayName, passwordHash, userId],
+        );
+        const account = inserted.rows[0];
+        try {
+          await this.audit.record({
+            actorType: 'system',
+            action: 'admin.auth.provisioned',
+            resourceType: 'admin_account',
+            resourceId: account.id,
+            metadata: { ...auditMetadata, username, displayName, role: 'super_admin' },
+          });
+        } catch {
+          // 建号成功即应允许登录，审计失败不阻塞。
+        }
+        return account;
+      } catch (caught) {
+        lastError = caught;
+        // 并发扫码或账号名冲突时，重新按企业微信绑定关系取已有账号。
+        const existing = await this.database.query<{ id: string; role: string; passwordChangeRequired: boolean }>(
+          `select id, role, password_change_required as "passwordChangeRequired"
+           from admin_accounts
+           where status = 'active' and (wecom_user_id = $1 or lower(username) = lower($2))
+           order by case when wecom_user_id = $1 then 0 else 1 end, created_at
+           limit 1`,
+          [userId, username],
+        ).catch(() => ({ rows: [] as { id: string; role: string; passwordChangeRequired: boolean }[] }));
+        if (existing.rows[0]) return existing.rows[0];
+      }
+    }
+    throw lastError instanceof HttpException
+      ? lastError
+      : new ServiceUnavailableException('企业微信账号自动创建失败，请稍后重试');
+  }
+
   async adminWecomConfig() {
     const settings = this.adminWecomSettings();
     if (!settings.enabled) return { enabled: false };
@@ -324,7 +393,18 @@ export class AuthService {
        limit 1`,
       [wecomUserId],
     );
-    const staffAccount = staff.rows[0];
+    let staffAccount = staff.rows[0];
+    const legacyUsername = String(this.config.get('ADMIN_DEV_USERNAME', '')).trim();
+    const allowedUserIds = String(this.config.get('ADMIN_WECOM_SUPER_ADMIN_USER_IDS', ''))
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+    const isLegacyOwner = Boolean(legacyUsername)
+      && legacyUsername.toLowerCase() === wecomUserId.toLowerCase();
+    const isExplicitlyAllowed = allowedUserIds.includes(wecomUserId.toLowerCase());
+    if (!staffAccount && !isLegacyOwner && !isExplicitlyAllowed && this.adminWecomAutoProvision()) {
+      staffAccount = await this.provisionAdminFromWecom(wecomUserId, auditMetadata);
+    }
     let loginId: string;
     let role: 'super_admin' | 'content_editor' | 'support_readonly';
     if (staffAccount) {
@@ -340,14 +420,6 @@ export class AuthService {
         [staffAccount.id],
       );
     } else {
-      const legacyUsername = String(this.config.get('ADMIN_DEV_USERNAME', '')).trim();
-      const allowedUserIds = String(this.config.get('ADMIN_WECOM_SUPER_ADMIN_USER_IDS', ''))
-        .split(',')
-        .map((value) => value.trim().toLowerCase())
-        .filter(Boolean);
-      const isLegacyOwner = Boolean(legacyUsername)
-        && legacyUsername.toLowerCase() === wecomUserId.toLowerCase();
-      const isExplicitlyAllowed = allowedUserIds.includes(wecomUserId.toLowerCase());
       if (!isLegacyOwner && !isExplicitlyAllowed) {
         await this.recordAdminLoginAudit('admin.auth.login_failed', wecomUserId, {
           ...auditMetadata,

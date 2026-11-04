@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
@@ -1021,6 +1021,7 @@ const overviewGreeting = computed(() => {
 const overviewAuditActions: Record<string, string> = {
   'admin.auth.login_succeeded': '管理员登录成功',
   'admin.auth.login_failed': '管理员登录失败',
+  'admin.auth.provisioned': '扫码自动创建管理员',
   'audit.logs.viewed': '查看审计日志',
   'member.listed': '查看会员列表',
   'member.viewed': '查看会员详情',

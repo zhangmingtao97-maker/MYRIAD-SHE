@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -28,7 +28,9 @@ function pageHarness(request: (path: string) => Promise<unknown>) {
   runInNewContext(compile('pages/privacy-policy/index.ts'), {
     exports: {}, Page: (definition: PageInstance) => { page = definition; },
     wx: { getWindowInfo: () => ({ statusBarHeight: 24 }), setNavigationBarTitle: (value: { title: string }) => { title = value.title; } },
-    require: (path: string) => path.endsWith('/content') ? validators : { request, apiErrorMessage: (_error: unknown, fallback: string) => fallback },
+    require: (path: string) => path.endsWith('/content') ? validators
+      : path.endsWith('/share') ? { enableShareMenu: () => undefined }
+      : { request, apiErrorMessage: (_error: unknown, fallback: string) => fallback },
   });
   page.setData = function(value) { Object.assign(this.data, value); };
   return { page, getTitle: () => title };

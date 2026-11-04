@@ -87,3 +87,93 @@ test('WeChat phone exchange caches the app token and uses the one-time user code
     globalThis.fetch = originalFetch;
   }
 });
+
+test('wecom scan auto-provisions an unbound member as super admin', async () => {
+  const queries: { sql: string; params: unknown[] }[] = [];
+  const auditEvents: { action: string }[] = [];
+  const payloads: object[] = [];
+  const jwt = {
+    signAsync: async (payload: object) => {
+      payloads.push(payload);
+      return 'wecom-token';
+    },
+  } as unknown as JwtService;
+  const audit = {
+    record: async (event: { action: string }) => {
+      auditEvents.push(event);
+    },
+  } as unknown as AuditService;
+  const database = {
+    query: async (sql: string, params: unknown[] = []) => {
+      queries.push({ sql, params });
+      if (/insert into admin_accounts/.test(sql)) {
+        return { rows: [{ id: 'acc-wecom-1', role: 'super_admin', passwordChangeRequired: false }] };
+      }
+      return { rows: [] };
+    },
+  } as unknown as DatabaseService;
+  const auth = new AuthService(
+    new ConfigService({
+      ADMIN_WECOM_LOGIN_ENABLED: 'true',
+      ADMIN_WECOM_CORP_ID: 'ww1234567890',
+      ADMIN_WECOM_AGENT_ID: '100001',
+      ADMIN_WECOM_APP_SECRET: 'secret',
+      ADMIN_WECOM_REDIRECT_URI: 'https://www.myriadshe.com/admin/wecom/callback',
+    }),
+    jwt,
+    database,
+    audit,
+  );
+  const wecom = auth as unknown as {
+    adminWecomRequest(path: string): Promise<Record<string, unknown>>;
+  };
+  wecom.adminWecomRequest = async (path: string) => {
+    if (path === '/cgi-bin/gettoken') return { errcode: 0, access_token: 'token', expires_in: 7200 };
+    if (path === '/cgi-bin/auth/getuserinfo') return { errcode: 0, userid: 'CaoYuChen' };
+    if (path === '/cgi-bin/user/get') return { errcode: 0, name: '曹宇辰' };
+    return { errcode: 0 };
+  };
+
+  const config = await auth.adminWecomConfig() as { state: string };
+  const result = await auth.adminWecomLogin('scan-code', config.state);
+
+  assert.deepEqual(result, { accessToken: 'wecom-token', expiresIn: 86400 });
+  const insert = queries.find((query) => /insert into admin_accounts/.test(query.sql));
+  assert.ok(insert, 'expected a provisioned admin account insert');
+  assert.equal(insert.params[0], 'wecom_CaoYuChen');
+  assert.equal(insert.params[1], '曹宇辰');
+  assert.match(String(insert.params[2]), /^scrypt\$/);
+  assert.equal(insert.params[3], 'CaoYuChen');
+  assert.deepEqual(payloads, [{ sub: 'acc-wecom-1', role: 'super_admin', passwordChangeRequired: false }]);
+  assert.deepEqual(auditEvents.map((event) => event.action), ['admin.auth.provisioned', 'admin.auth.login_succeeded']);
+});
+
+test('wecom scan still rejects unbound members when auto provisioning is disabled', async () => {
+  const auditEvents: string[] = [];
+  const database = { query: async () => ({ rows: [] }) } as unknown as DatabaseService;
+  const auth = new AuthService(
+    new ConfigService({
+      ADMIN_WECOM_LOGIN_ENABLED: 'true',
+      ADMIN_WECOM_CORP_ID: 'ww1234567890',
+      ADMIN_WECOM_AGENT_ID: '100001',
+      ADMIN_WECOM_APP_SECRET: 'secret',
+      ADMIN_WECOM_REDIRECT_URI: 'https://www.myriadshe.com/admin/wecom/callback',
+      ADMIN_WECOM_AUTO_PROVISION: 'off',
+    }),
+    { signAsync: async () => 'unused' } as unknown as JwtService,
+    database,
+    { record: async (event: { action: string }) => { auditEvents.push(event.action); } } as unknown as AuditService,
+  );
+  const wecom = auth as unknown as {
+    adminWecomRequest(path: string): Promise<Record<string, unknown>>;
+  };
+  wecom.adminWecomRequest = async (path: string) => {
+    if (path === '/cgi-bin/gettoken') return { errcode: 0, access_token: 'token', expires_in: 7200 };
+    if (path === '/cgi-bin/auth/getuserinfo') return { errcode: 0, userid: 'CaoYuChen' };
+    return { errcode: 0 };
+  };
+
+  const config = await auth.adminWecomConfig() as { state: string };
+  await assert.rejects(auth.adminWecomLogin('scan-code', config.state), /未绑定管理后台/);
+  assert.deepEqual(auditEvents, ['admin.auth.login_failed']);
+});

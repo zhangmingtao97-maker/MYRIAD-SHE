@@ -1,5 +1,14 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-04 企业微信扫码可直接建号（超级管理员）
+
+- 现象：曹宇辰扫码报「该企业微信账号未绑定管理后台（UserID: CaoYuChen）」。原因是后台按 `wecom_user_id` 或同名 username 匹配管理员，`CaoYuChen` 两边都没有，也不在 `ADMIN_WECOM_SUPER_ADMIN_USER_IDS` 白名单；审计日志里能查到 10:21:14 的 `admin.auth.login_failed`（`reason: wecom_unbound`）。
+- 改动：`adminWecomLogin` 在查不到账号时自动创建 `admin_accounts` —— 角色 `super_admin`、状态 active、`password_change_required = false`；用户名 `wecom_<企业微信账号>`（重名时追加随机后缀），显示名取企业微信通讯录里的姓名（取不到就退回 UserID），密码是随机 32 字节的 scrypt 哈希、没有人知道，因此这种账号只能扫码登录。建号会写一条 `admin.auth.provisioned` 审计，后台「审计日志」显示为「扫码自动创建管理员」。并发扫码由 `wecom_user_id` 唯一索引加回查兜住，不会重复建号。
+- 开关：`ADMIN_WECOM_AUTO_PROVISION`（默认开启；填 `0/false/no/off` 关闭，关闭后行为回到「必须先在员工与权限里绑定」）。实际风险面受企业微信应用的「可见范围」约束：只有可见范围内的成员能扫码，扫到就会成为超级管理员；要收回权限可在「员工与权限」里停用该账号，或在企业微信后台缩小可见范围。
+- 已绑定账号仍按既有绑定登录、不会重复建号；但如果绑定值和真实 UserID 对不上，就会走到自动建号。张明涛当前绑的是 `d1d755558214dfc6b10def9413a69052`，和企业微信返回的账号（形如 `CaoYuChen`）不一致，建议在「员工与权限」里改成通讯录里的真实账号。
+- 验证：新增两个单测（自动建号成功、关闭开关时仍拒绝并记失败），后端 180 项测试全过；后台 `vue-tsc + vite build` 通过；已发布，线上 `/` 200、`/api/health/ready` 200、`/api/auth/admin/wecom/config` 返回 `enabled: true`，api 镜像内含 `ADMIN_WECOM_AUTO_PROVISION` 与 `admin.auth.provisioned`，后台 bundle 含新的审计文案。
+- 发布备份：`source-pre-wecom-autoprovision-20261104-102948.tar.gz`。
+
 ## 2026-11-04 小程序全站开启分享（好友 + 朋友圈）
 
 - 新增 `miniprogram/utils/share.ts`：`shareCard`（转发给朋友，自动拼接并编码 query）、`shareTimelineCard`（分享到朋友圈，只带 query）、`enableShareMenu`（在 `onLoad` 里开启 `shareAppMessage` / `shareTimeline` 菜单，否则右上角没有「分享到朋友圈」）。
