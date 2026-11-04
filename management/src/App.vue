@@ -68,6 +68,7 @@ type PracticeEntry = {
   title: string;
   description: string;
   enabled: boolean;
+  target?: string;
   contextRichText: string;
   contextFontSize: number;
   contextColor: string;
@@ -1820,15 +1821,60 @@ function setPracticeEntryTab(section: string, tab: 'home' | 'detail') {
   practiceEntryTabs.value = { ...practiceEntryTabs.value, [section]: tab };
 }
 
-function practiceEntryFor(section: string) {
-  const key = Object.keys(practiceEntrySectionByKey).find((entryKey) => practiceEntrySectionByKey[entryKey] === section);
-  return practiceContent.value?.entries.find((entry) => entry.key === key) ?? null;
+// 目录条目可以新增 / 删除：条目归属哪一页由 target 决定，老数据没有 target 时用 key 兜底。
+function practiceEntrySectionOf(entry: PracticeEntry): PracticeSection | null {
+  return practiceEntrySectionByKey[entry.target || entry.key] ?? null;
 }
 
-function practiceEntryIndex(section: string) {
-  const key = Object.keys(practiceEntrySectionByKey).find((entryKey) => practiceEntrySectionByKey[entryKey] === section);
+function practiceEntriesFor(section: string) {
+  return (practiceContent.value?.entries ?? []).filter((entry) => practiceEntrySectionOf(entry) === section);
+}
+
+function practiceEntryIndex(key: string) {
   const index = practiceContent.value?.entries.findIndex((entry) => entry.key === key) ?? -1;
   return index + 1;
+}
+
+function addPracticeEntry(section: string) {
+  const content = practiceContent.value;
+  if (!content || practiceContentSaving.value || practiceContentConflict.value) return;
+  if (content.entries.length >= 100) {
+    practiceContentError.value = '最多可以设置 100 个目录。';
+    return;
+  }
+  const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const entry: PracticeEntry = {
+    key: `directory-${suffix}`,
+    target: section,
+    enabled: true,
+    contextRichText: '一个新的实践情境',
+    contextFontSize: practiceEntryFixedStyle.context.fontSize,
+    contextColor: practiceEntryFixedStyle.context.color,
+    title: '新的实践目录',
+    titleRichText: '新的实践目录',
+    titleFontSize: practiceEntryFixedStyle.title.fontSize,
+    titleColor: practiceEntryFixedStyle.title.color,
+    description: '一句话说明它是什么',
+    descriptionRichText: '一句话说明它是什么',
+    descriptionFontSize: practiceEntryFixedStyle.description.fontSize,
+    descriptionColor: practiceEntryFixedStyle.description.color,
+  };
+  content.entries = [...content.entries, entry];
+  activePracticeKey.value = `entry:${entry.key}`;
+  markPracticeContentDirty();
+}
+
+function removePracticeEntry(entry: PracticeEntry) {
+  const content = practiceContent.value;
+  if (!content || practiceContentSaving.value || practiceContentConflict.value) return;
+  if (content.entries.length <= 1) {
+    practiceContentError.value = '至少要保留一个目录。';
+    return;
+  }
+  const name = practiceEntryText(entry.titleRichText) || '这个目录';
+  if (!window.confirm(`删除「${name}」？保存后小程序实践页将不再显示它。`)) return;
+  content.entries = content.entries.filter((item) => item.key !== entry.key);
+  markPracticeContentDirty();
 }
 
 // 实践页预览的当前高亮项：meta / title / intro / directory，或 entry:<key>。
@@ -1844,7 +1890,8 @@ function pickPracticeKey(key: string) {
   activeSection.value = 'practice';
   if (key.startsWith('entry:')) {
     const entryKey = key.slice('entry:'.length);
-    const section = practiceEntrySectionByKey[entryKey];
+    const entry = practiceContent.value?.entries.find((item) => item.key === entryKey) ?? null;
+    const section = (entry ? practiceEntrySectionOf(entry) : practiceEntrySectionByKey[entryKey]) ?? null;
     if (section) {
       activeContentSection.value = section;
       setPracticeEntryTab(section, 'home');
@@ -5714,7 +5761,12 @@ onBeforeUnmount(() => {
             <CopyPagePreview v-else title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="practiceContent.observationCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
           </aside>
           <form v-if="practiceEntryTab('observation') === 'home'" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
-            <PracticeEntryEditor :entry="practiceEntryFor('observation')" :index="practiceEntryIndex('observation')" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(practiceEntryFor('observation'))" />
+            <div class="practice-entry-toolbar">
+              <p class="muted">这一页列出的入口卡片；删除后小程序实践页不再显示它。</p>
+              <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || (practiceContent?.entries.length ?? 0) >= 100" @click="addPracticeEntry('observation')">＋ 新增目录</button>
+            </div>
+            <p v-if="!practiceEntriesFor('observation').length" class="muted">这一页还没有入口卡片，先新增一个。</p>
+            <PracticeEntryEditor v-for="entry in practiceEntriesFor('observation')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
@@ -5748,7 +5800,12 @@ onBeforeUnmount(() => {
             <CopyPagePreview v-else :title="practiceCopyIssueCode ? `共同实践 · 按期` : `共同实践`" :subtitle="practiceCopyIssueCode ? practiceCopyIssueCode : `SHARED PRACTICE`" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :extra-sections="sharedPracticeExtraSections" :active-key="activeObservationKey" @pick="pickObservationKey" />
           </aside>
           <form v-if="practiceEntryTab('shared-practice') === 'home'" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
-            <PracticeEntryEditor :entry="practiceEntryFor('shared-practice')" :index="practiceEntryIndex('shared-practice')" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(practiceEntryFor('shared-practice'))" />
+            <div class="practice-entry-toolbar">
+              <p class="muted">这一页列出的入口卡片；删除后小程序实践页不再显示它。</p>
+              <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || (practiceContent?.entries.length ?? 0) >= 100" @click="addPracticeEntry('shared-practice')">＋ 新增目录</button>
+            </div>
+            <p v-if="!practiceEntriesFor('shared-practice').length" class="muted">这一页还没有入口卡片，先新增一个。</p>
+            <PracticeEntryEditor v-for="entry in practiceEntriesFor('shared-practice')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
@@ -5845,7 +5902,12 @@ onBeforeUnmount(() => {
             <DailyObjectsPreview v-else :content="dailyObjectsContent" :image-urls="dailyObjectPreviewUrls" :active-key="activeDailyKey" @pick="pickDailyKey" />
           </aside>
           <form v-if="practiceEntryTab('daily-objects') === 'home' && practiceContent" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
-            <PracticeEntryEditor :entry="practiceEntryFor('daily-objects')" :index="practiceEntryIndex('daily-objects')" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(practiceEntryFor('daily-objects'))" />
+            <div class="practice-entry-toolbar">
+              <p class="muted">这一页列出的入口卡片；删除后小程序实践页不再显示它。</p>
+              <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || (practiceContent?.entries.length ?? 0) >= 100" @click="addPracticeEntry('daily-objects')">＋ 新增目录</button>
+            </div>
+            <p v-if="!practiceEntriesFor('daily-objects').length" class="muted">这一页还没有入口卡片，先新增一个。</p>
+            <PracticeEntryEditor v-for="entry in practiceEntriesFor('daily-objects')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>

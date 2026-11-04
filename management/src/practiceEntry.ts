@@ -5,6 +5,7 @@ export type PracticeEntrySlot = 'context' | 'title' | 'description';
 export type PracticeEntryFields = {
   key: string;
   enabled: boolean;
+  target?: string;
   title: string;
   titleRichText: string;
   titleFontSize: number;
@@ -17,6 +18,7 @@ export type PracticeEntryFields = {
   descriptionFontSize: number;
   descriptionColor: string;
 };
+
 
 export const practiceEntryFixedStyle = {
   // 对应 wxss 的 23rpx / 31rpx / 25rpx（750rpx = 375pt 时 1rpx = 0.5px）

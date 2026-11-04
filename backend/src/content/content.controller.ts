@@ -122,6 +122,7 @@ class MediaDeleteDto {
 
 class PracticeEntryDto {
   @IsString() @Matches(/^[a-z0-9][a-z0-9-]{1,63}$/) key!: PracticeEntryKey;
+  @IsOptional() @IsString() @Matches(/^(observation|shared-practice|daily-goods|none)$/) target?: string;
   @IsString() @MinLength(1) @MaxLength(80) title!: string;
   @IsString() @MinLength(1) @MaxLength(240) description!: string;
   @IsOptional() @IsString() @MaxLength(2000) contextRichText?: string;
@@ -1786,18 +1787,19 @@ export class ContentController {
     return this.database.withTransaction(async (client) => {
       await client.query('set transaction isolation level repeatable read');
       const pageResult = await client.query<{ title: string; titleRichText: string; titleFontSize: number; titleColor: string; intro: string; introRichText: string; introFontSize: number; introColor: string; metaLeftRichText: string; metaLeftFontSize: number; metaLeftColor: string; metaRightRichText: string; metaRightFontSize: number; metaRightColor: string; observationCopy: unknown; sharedPracticeCopy: unknown; editVersion: number }>(`select title, title_rich_text as "titleRichText", title_font_size as "titleFontSize", title_color as "titleColor", intro, intro_rich_text as "introRichText", intro_font_size as "introFontSize", intro_color as "introColor", meta_left_rich_text as "metaLeftRichText", meta_left_font_size as "metaLeftFontSize", meta_left_color as "metaLeftColor", meta_right_rich_text as "metaRightRichText", meta_right_font_size as "metaRightFontSize", meta_right_color as "metaRightColor", observation_copy as "observationCopy", shared_practice_copy as "sharedPracticeCopy", edit_version as "editVersion" from content_practice_page where id = 1`);
-      const entriesResult = await client.query<{ key: PracticeEntryKey; title: string; description: string; enabled: boolean; contextRichText: string; contextFontSize: number; contextColor: string; titleRichText: string; titleFontSize: number; titleColor: string; descriptionRichText: string; descriptionFontSize: number; descriptionColor: string }>(
-        `select key, title, description, enabled,
+      const entriesResult = await client.query<{ key: PracticeEntryKey; target: string | null; title: string; description: string; enabled: boolean; contextRichText: string; contextFontSize: number; contextColor: string; titleRichText: string; titleFontSize: number; titleColor: string; descriptionRichText: string; descriptionFontSize: number; descriptionColor: string }>(
+        `select key, target, title, description, enabled,
                 context_rich_text as "contextRichText", context_font_size as "contextFontSize", context_color as "contextColor",
                 title_rich_text as "titleRichText", title_font_size as "titleFontSize", title_color as "titleColor",
                 description_rich_text as "descriptionRichText", description_font_size as "descriptionFontSize", description_color as "descriptionColor"
          from content_practice_entries order by sort_order, key`,
       );
-      if (!pageResult.rows[0] || !entriesResult.rows.some((entry) => entry.key === 'observation')) {
+      if (!pageResult.rows[0] || entriesResult.rows.length === 0) {
         throw new NotFoundException('实践页面内容尚未初始化');
       }
       const entries = entriesResult.rows.map((entry) => ({
         ...entry,
+        target: entry.target ?? entry.key,
         contextRichText: sanitizeMinePageRichText(entry.contextRichText, 240, '实践目录情境文案'),
         titleRichText: sanitizeMinePageRichText(entry.titleRichText, 80, '实践目录名称'),
         descriptionRichText: sanitizeMinePageRichText(entry.descriptionRichText, 240, '实践目录补充说明'),
@@ -1835,7 +1837,7 @@ export class ContentController {
   private async isStoreOpen() {
     const result = await this.database.query<{ store: unknown; entryEnabled: unknown }>(
       `select (select value from system_settings where key = 'store_enabled') as store,
-              (select enabled from content_practice_entries where key = 'daily-goods') as "entryEnabled"`,
+              (select enabled from content_practice_entries where coalesce(target, key) = 'daily-goods' order by sort_order limit 1) as "entryEnabled"`,
     );
     const row = result.rows[0];
     return row?.store === true && row?.entryEnabled === true;
@@ -2283,8 +2285,8 @@ export class ContentController {
       throw new BadRequestException('实践页面版本无效，请刷新后台后重试');
     }
     const keys = body.entries.map((entry) => entry.key);
-    if (new Set(keys).size !== keys.length || !keys.includes('observation')) {
-      throw new BadRequestException('目录标识不能重复，且“此刻观察”目录必须保留');
+    if (new Set(keys).size !== keys.length || keys.length === 0) {
+      throw new BadRequestException('目录标识不能重复，且至少要保留一个目录');
     }
     const title = body.title.trim();
     const intro = body.intro.trim();
@@ -2309,8 +2311,10 @@ export class ContentController {
       const title = decodeMineTextEntities(titleRichText.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '')).trim();
       const description = decodeMineTextEntities(descriptionRichText.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '')).trim();
       if (!title || title.length > 80 || !description || description.length > 240) throw new BadRequestException('实践目录名称与补充说明需为有效文字');
+      const target = entry.target && ['observation', 'shared-practice', 'daily-goods', 'none'].includes(entry.target) ? entry.target : entry.key;
       return {
         ...entry,
+        target,
         title,
         description,
         contextRichText,
@@ -2336,11 +2340,7 @@ export class ContentController {
       if (currentVersion !== body.editVersion) {
         throw new ConflictException({ code: 'practice_content_changed', message: '实践页面内容已被其他管理员更新，请重新载入后再保存。' });
       }
-      const existingEntries = await client.query<{ key: string }>(`select key from content_practice_entries`);
-      const retainedEntryKeys = new Set(entries.map((entry) => entry.key));
-      if (existingEntries.rows.some((entry) => !retainedEntryKeys.has(entry.key))) {
-        throw new BadRequestException('实践入口不能永久删除；请关闭入口状态进行下架。');
-      }
+      // 目录允许新增 / 删除：这里不再拦截缺失的 key，下面按前端数组重写整张表。
       if (!publishDraft && request.user?.role) {
         const nextVersion = currentVersion + 1;
         const draftContent = {
@@ -2377,16 +2377,16 @@ export class ContentController {
       for (const [index, entry] of entries.entries()) {
         await client.query(
           `insert into content_practice_entries
-             (key, title, description, enabled, sort_order, context_rich_text, context_font_size, context_color,
+             (key, target, title, description, enabled, sort_order, context_rich_text, context_font_size, context_color,
               title_rich_text, title_font_size, title_color, description_rich_text, description_font_size, description_color, updated_at)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now())
-           on conflict (key) do update set title = excluded.title, description = excluded.description,
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
+           on conflict (key) do update set target = excluded.target, title = excluded.title, description = excluded.description,
              enabled = excluded.enabled, sort_order = excluded.sort_order, context_rich_text = excluded.context_rich_text,
              context_font_size = excluded.context_font_size, context_color = excluded.context_color,
              title_rich_text = excluded.title_rich_text, title_font_size = excluded.title_font_size, title_color = excluded.title_color,
              description_rich_text = excluded.description_rich_text, description_font_size = excluded.description_font_size,
              description_color = excluded.description_color, updated_at = now()`,
-          [entry.key, entry.title, entry.description, entry.enabled, index + 1, entry.contextRichText, entry.contextFontSize, entry.contextColor, entry.titleRichText, entry.titleFontSize, entry.titleColor, entry.descriptionRichText, entry.descriptionFontSize, entry.descriptionColor],
+          [entry.key, entry.target, entry.title, entry.description, entry.enabled, index + 1, entry.contextRichText, entry.contextFontSize, entry.contextColor, entry.titleRichText, entry.titleFontSize, entry.titleColor, entry.descriptionRichText, entry.descriptionFontSize, entry.descriptionColor],
         );
       }
       await this.audit.record({

@@ -48,7 +48,7 @@ export interface PracticeContent {
   observationCopy: Record<string, { richText: string; fontSize: number; color: string }>;
   sharedPracticeCopy: Record<string, { richText: string; fontSize: number; color: string }>;
   entries: Array<{
-    key: string; title: string; description: string; enabled: boolean;
+    key: string; target?: string; title: string; description: string; enabled: boolean;
     contextRichText: string; contextFontSize: number; contextColor: string;
     titleRichText: string; titleFontSize: number; titleColor: string;
     descriptionRichText: string; descriptionFontSize: number; descriptionColor: string;
@@ -254,13 +254,13 @@ export function isPracticeContent(value: unknown): value is PracticeContent {
   const entries = value.entries;
   if (!entries.every((entry) => isRecord(entry)
     && typeof entry.key === 'string' && /^[a-z0-9][a-z0-9-]{1,63}$/.test(entry.key)
+    && (entry.target === undefined || entry.target === null || ['observation', 'shared-practice', 'daily-goods', 'none'].includes(String(entry.target)))
     && isBoundedText(entry.title, 80, 1) && isBoundedText(entry.description, 240, 1) && typeof entry.enabled === 'boolean'
     && isBoundedText(entry.contextRichText, 2000, 1) && isPracticeFontSize(entry.contextFontSize) && isPracticeColor(entry.contextColor)
     && isBoundedText(entry.titleRichText, 2000, 1) && isPracticeFontSize(entry.titleFontSize) && isPracticeColor(entry.titleColor)
     && isBoundedText(entry.descriptionRichText, 2000, 1) && isPracticeFontSize(entry.descriptionFontSize) && isPracticeColor(entry.descriptionColor))) return false;
   const byKey = new Map(entries.map((entry) => [String((entry as Record<string, unknown>).key), entry as Record<string, unknown>]));
-  return byKey.size === entries.length
-    && byKey.has('observation');
+  return byKey.size === entries.length;
 }
 
 export function isDailyObjectsContent(value: unknown): value is DailyObjectsContent {

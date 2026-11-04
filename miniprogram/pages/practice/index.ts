@@ -32,27 +32,25 @@ Page({
       wx.showToast({ title: '该实践尚未开放', icon: 'none' });
       return;
     }
-    if (key === 'shared-practice') {
-      if (!entry.enabled) {
-        wx.showToast({ title: '该实践尚未开放', icon: 'none' });
-        return;
-      }
+    // 后台可以新增 / 删除目录条目，每个条目用 target 指向要打开的页面；
+    // 老数据没有 target 时回落到它自己的 key。
+    const target = String((entry as { target?: string }).target || entry.key);
+    if (!entry.enabled) {
+      wx.showToast({ title: '该实践尚未开放', icon: 'none' });
+      return;
+    }
+    if (target === 'shared-practice') {
       wx.navigateTo({ url: '/pages/shared-practice/index' });
       return;
     }
-    if (key === 'observation') {
-      if (!entry.enabled) {
-        wx.showToast({ title: '该实践尚未开放', icon: 'none' });
-        return;
-      }
+    if (target === 'observation') {
       wx.navigateTo({ url: '/pages/observation/index' });
       return;
     }
-    if (key === 'daily-goods') {
+    if (target === 'daily-goods') {
       wx.navigateTo({ url: '/pages/daily-objects/index' });
       return;
     }
-    if (!entry.enabled) wx.showToast({ title: '该实践尚未开放', icon: 'none' });
   },
   onShareAppMessage() {
     return shareCard({

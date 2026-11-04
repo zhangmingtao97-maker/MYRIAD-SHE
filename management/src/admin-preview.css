@@ -1805,3 +1805,56 @@
   background: #c8553d;
   color: #fff8ee;
 }
+
+/* —— 目录条目：新增 / 删除 —— */
+.practice-entry-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+
+.practice-entry-toolbar .muted {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted, #8b6b58);
+}
+
+.practice-entry-delete {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: #8b6b58;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.practice-entry-delete:hover:not(:disabled) {
+  border-color: rgba(200, 85, 61, .5);
+  color: #c8553d;
+}
+
+.practice-entry-delete:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.practice-entry-field select {
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf9;
+  color: #49392f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 14px;
+}
+
+.practice-entry-field select:focus {
+  outline: none;
+  border-color: #c8553d;
+  box-shadow: 0 0 0 3px rgba(200, 85, 61, .12);
+}

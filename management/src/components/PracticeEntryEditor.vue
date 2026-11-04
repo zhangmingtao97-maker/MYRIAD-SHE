@@ -7,7 +7,8 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
-const emit = defineEmits<{ change: []; toggleEnabled: [] }>();
+const emit = defineEmits<{ change: []; toggleEnabled: []; delete: [] }>();
+
 
 function onInput(slot: 'context' | 'title' | 'description', event: Event) {
   const target = event.target as HTMLInputElement | null;
@@ -25,6 +26,7 @@ function onInput(slot: 'context' | 'title' | 'description', event: Event) {
         <strong>{{ practiceEntryText(entry.titleRichText) || '未命名目录' }}</strong>
         <small>{{ entry.enabled ? '首页可见' : '首页暂不显示' }}</small>
       </span>
+      <button type="button" class="practice-entry-delete" :disabled="disabled" :aria-label="`删除目录 ${practiceEntryText(entry.titleRichText)}`" @click="emit('delete')">删除</button>
       <button
         type="button"
         class="practice-entry-status-toggle"
@@ -51,6 +53,7 @@ function onInput(slot: 'context' | 'title' | 'description', event: Event) {
         <span>第三行 · 补充说明</span>
         <input type="text" :value="practiceEntryText(entry.descriptionRichText)" :disabled="disabled" @input="onInput('description', $event)" />
       </label>
+
     </div>
   </article>
 </template>
