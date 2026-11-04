@@ -1,5 +1,14 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-04 后台「手机预览 + 双向定位」：期刊首页先上线
+
+- 目标：后台编辑内容时，左边常驻一个手机预览，点预览里的区块就知道在改哪里，反过来在右边点字段预览也跟着高亮（对标商城后台那种「左预览右配置」）。
+- 做法：新增 `management/src/components/JournalHomePreview.vue` —— 把原来藏在 `<details>` 里的首页草稿预览抽成组件，复用 `style.css` 里已有的 `.issue-phone-preview` / `.preview-*` 版式，按栏目顺序渲染封面、人物、微声音、本期问题、目录、策展档案、品牌页尾，只有被隐藏的栏目半透明并标「已隐藏」。
+- 双向定位：每个预览区块带 `data-preview-key`，点它会把右侧切到该栏目、把栏目卡片滚进视野并闪一次红框（`focusIssueModule`）；在右侧栏目卡片里点任意输入框（`@focusin="focusModuleFromEditor"`），左侧预览同步高亮并滚到对应区块。预览区块右上角的小标签显示与右侧「栏目选择器」一致的序号和栏目名，hover 加深、选中变红框。
+- 布局：`management/src/admin-preview.css` —— `.journal-preview-layout` 两栏（340px 手机 + 右侧编辑区），预览列 `position: sticky` 常驻；宽度 ≤1080px 时改为上下堆叠，预览限高 420px。
+- 覆盖范围：期刊的「首页策展 / 人物故事 / 微声音 / 往期策展」共用这一个预览（「本期讨论」保留它自己的讨论页与写作页预览）。实践、日常之物、页面与协议等编辑页后续按同一套 `data-preview-key` + `is-preview-active` 约定逐个接入。
+- 验证：`vue-tsc + vite build` 通过；Playwright 在本地后台实测 —— 预览 8 个区块标签与右侧栏目序号一致，点「微声音」区块后右侧切到 05·微声音 且卡片闪红框，右侧选「本期问题」后左侧高亮 05·本期问题，点右侧输入框左侧同步，预览列 sticky 高度 709px 不超屏。
+
 ## 2026-11-04 企业微信扫码可直接建号（超级管理员）
 
 - 现象：曹宇辰扫码报「该企业微信账号未绑定管理后台（UserID: CaoYuChen）」。原因是后台按 `wecom_user_id` 或同名 username 匹配管理员，`CaoYuChen` 两边都没有，也不在 `ADMIN_WECOM_SUPER_ADMIN_USER_IDS` 白名单；审计日志里能查到 10:21:14 的 `admin.auth.login_failed`（`reason: wecom_unbound`）。

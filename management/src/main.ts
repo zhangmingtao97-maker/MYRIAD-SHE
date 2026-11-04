@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+﻿import { createApp } from 'vue';
 import App from './App.vue';
 import garamondFont from '../../miniprogram/AppleGaramond.ttf?url';
 import sourceHanSerifFont from '../../miniprogram/SourceHanSerifCN-Regular.otf?url';
@@ -7,6 +7,7 @@ import './style.css';
 import './admin-theme.css';
 import './admin-fixes.css';
 import './admin-journal.css';
+import './admin-preview.css';
 
 const brandFonts = document.createElement('style');
 brandFonts.textContent = `

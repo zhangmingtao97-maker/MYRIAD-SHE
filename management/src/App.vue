@@ -5,6 +5,7 @@ import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
 import DatePickerField from './components/DatePickerField.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
 import PracticeLineEditor from './components/PracticeLineEditor.vue';
+import JournalHomePreview from './components/JournalHomePreview.vue';
 import { createDefaultDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
@@ -152,7 +153,7 @@ function createDefaultIssueModules(): ManagedIssueModule[] {
     { id: 'story', type: 'story', order: 3, enabled: true, eyebrow: '人物纪实·时雨', title: '', body: '', imageObjectKey: '', altText: '', captionLeft: '纪实剪辑·时雨', captionRight: '恢复并不是回到从前，而是慢慢学会全新的方式生活。' },
     { id: 'story-action', type: 'storyAction', order: 4, enabled: true, title: '进入本期人物', body: '', targetId: 'story' },
     { id: 'image', type: 'image', order: 5, enabled: false, imageObjectKey: '', altText: '', caption: '' },
-    { id: 'audio', type: 'audio', order: 6, enabled: false, title: '', duration: '', audioObjectKey: '', quote: '', subtitle: '', transcript: '', tracks: [createIssueAudioTrack(1)] },
+    { id: 'audio', type: 'audio', order: 6, enabled: false, title: '', duration: '', mediaType: 'audio', audioObjectKey: '', videoObjectKey: '', detailTitle: '', description: '', quote: '', subtitle: '', transcript: '', tracks: [createIssueAudioTrack(1)] },
     { id: 'question', type: 'question', order: 7, enabled: true, eyebrow: '从她的经验，回到你的此刻', title: '', body: '' },
     { id: 'observation-action', type: 'observationAction', order: 8, enabled: true, title: '留给自己观察', body: '从现实处境开始，记录保持私密' },
     { id: 'shared-practice-action', type: 'sharedPracticeAction', order: 9, enabled: true, title: '一起谈谈', body: '围绕本期问题，听见不同的生活经验' },
@@ -162,11 +163,16 @@ function createDefaultIssueModules(): ManagedIssueModule[] {
   ];
 }
 function createIssueAudioTrack(number: number, source: Partial<ManagedAudioTrack> = {}): ManagedAudioTrack {
+  const mediaType: 'audio' | 'video' = source.mediaType === 'video' || (!source.mediaType && Boolean(source.videoObjectKey) && !source.audioObjectKey) ? 'video' : 'audio';
   return {
     id: source.id || `voice-${String(number).padStart(2, '0')}`,
     title: source.title || `微声音 ${String(number).padStart(2, '0')}`,
     duration: source.duration || '',
+    mediaType,
     audioObjectKey: source.audioObjectKey || '',
+    videoObjectKey: source.videoObjectKey || '',
+    detailTitle: source.detailTitle || '',
+    description: source.description || '',
     quote: source.quote || '',
     subtitle: source.subtitle || '',
     transcript: source.transcript || '',
@@ -177,17 +183,23 @@ function normalizeIssueAudioModule(module: ManagedIssueModule): ManagedIssueModu
     ? module.tracks.slice(0, 3).map((track, index) => createIssueAudioTrack(index + 1, track))
     : [createIssueAudioTrack(1, {
       id: 'voice-01', title: String(module.title || ''), duration: String(module.duration || ''),
-      audioObjectKey: String(module.audioObjectKey || ''), quote: String(module.quote || ''),
-      subtitle: String(module.subtitle || ''), transcript: String(module.transcript || ''),
+      mediaType: module.mediaType === 'video' ? 'video' : 'audio',
+      audioObjectKey: String(module.audioObjectKey || ''), videoObjectKey: String(module.videoObjectKey || ''),
+      detailTitle: String(module.detailTitle || ''), description: String(module.description || ''),
+      quote: String(module.quote || ''), subtitle: String(module.subtitle || ''), transcript: String(module.transcript || ''),
     })];
   return { ...module, tracks };
 }
-function issueAudioTrackPayload(track: ManagedAudioTrack) {
+function issueAudioTrackPayload(track: ManagedAudioTrack): ManagedAudioTrack {
   return {
     id: track.id,
     title: track.title || '',
     duration: track.duration || '',
+    mediaType: track.mediaType === 'video' ? 'video' : 'audio',
     audioObjectKey: track.audioObjectKey || '',
+    videoObjectKey: track.videoObjectKey || '',
+    detailTitle: track.detailTitle || '',
+    description: track.description || '',
     quote: track.quote || '',
     subtitle: track.subtitle || '',
     transcript: track.transcript || '',
@@ -1486,7 +1498,7 @@ const journalSectionDescription = computed(() => {
   switch (activeContentSection.value) {
     case 'journal-home': return '刊期信息、封面主题、首页栏目顺序与整期手机预览。';
     case 'journal-story': return '人物纪实摘要与人物故事详情页；保存后同时更新首页对应栏目。';
-    case 'journal-audio': return '本期可放 1–3 段微声音；至少 1 段有音频即可，未上传音频的条目发布时会忽略。';
+    case 'journal-audio': return '本期可放 1–3 段微声音，每段可以是声音或视频；至少 1 段有可播放文件即可。进入详情页后显示单独标题与解释。';
     case 'journal-discussion': return '讨论页固定文案、示例经历与写作页预览；可在讨论页单独保存/发布，也可随整期发布。';
     case 'journal-archive': return '首页「策展档案」入口文案，以及已发布/已归档期次列表。';
     case 'journal-list': return '期号创建、线上状态、整期发布与发布记录。';
@@ -1546,6 +1558,36 @@ function ensureJournalModuleSelection() {
 }
 function selectJournalModule(module: ManagedIssueModule | null) {
   if (module) selectedIssueModuleId.value = module.id;
+}
+// 左侧首页预览只在编辑具体栏目时出现（本期讨论有自己的预览）。
+const showJournalPreview = computed(() => activeContentSection.value !== 'journal-discussion' && Boolean(editingIssueId.value));
+const journalIssueMetaModule = computed(
+  () => issueForm.value.draftContent.sections.find((module) => module.type === 'issueMeta') || null,
+);
+const journalPreviewIssueNumber = computed(
+  () => (journalIssueMetaModule.value ? issuePreviewIssueNumber(journalIssueMetaModule.value) : ''),
+);
+const journalPreviewIssueEdition = computed(
+  () => (journalIssueMetaModule.value ? issuePreviewIssueEdition(journalIssueMetaModule.value) : ''),
+);
+// 点预览里的区块：切到对应栏目，并把右侧那张卡片滚进视野、闪一下。
+function focusIssueModule(key: string) {
+  const module = issueForm.value.draftContent.sections.find((item) => item.id === key);
+  if (!module) return;
+  selectedIssueModuleId.value = module.id;
+  nextTick(() => {
+    const card = document.querySelector<HTMLElement>(`[data-issue-module="${module.id}"]`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    card.classList.add('is-locating');
+    window.setTimeout(() => card.classList.remove('is-locating'), 1400);
+  });
+}
+// 在右侧点进某个栏目的任意字段时，左侧预览跟着高亮到同一块。
+function focusModuleFromEditor(event: FocusEvent) {
+  const card = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-issue-module]');
+  const id = card?.dataset.issueModule;
+  if (id && id !== selectedIssueModuleId.value) selectedIssueModuleId.value = id;
 }
 function goToJournalSection(section: JournalSection | 'media') {
   openJournalSubsection(section);
@@ -3610,16 +3652,20 @@ function syncIssueFieldsToModules() {
   }
   if (audio) {
     const firstTrack = audio.tracks?.[0];
+    audio.mediaType = firstTrack?.mediaType === 'video' ? 'video' : 'audio';
     audio.audioObjectKey = String(firstTrack?.audioObjectKey || '');
+    audio.videoObjectKey = String(firstTrack?.videoObjectKey || '');
     audio.title = String(firstTrack?.title || '');
     audio.duration = String(firstTrack?.duration || '');
+    audio.detailTitle = String(firstTrack?.detailTitle || '');
+    audio.description = String(firstTrack?.description || '');
     audio.quote = String(firstTrack?.quote || '');
     audio.subtitle = String(firstTrack?.subtitle || '');
     audio.transcript = String(firstTrack?.transcript || '');
     issueForm.value.microVoiceObjectKey = String(firstTrack?.audioObjectKey || '');
     issueForm.value.microVoiceTitle = String(firstTrack?.title || '');
     issueForm.value.microVoiceDuration = String(firstTrack?.duration || '');
-    audio.enabled = Boolean(audio.tracks?.some((track) => track.audioObjectKey));
+    audio.enabled = Boolean(audio.tracks?.some((track) => track.audioObjectKey || track.videoObjectKey));
   }
   if (question) {
     const nextQuestion = String(question.title || '').trim();
@@ -3644,7 +3690,7 @@ const issueModuleLabels: Record<ManagedIssueModule['type'], string> = {
 function issueModuleLabel(module: ManagedIssueModule) { return issueModuleLabels[module.type] || module.type; }
 
 function issueModuleSummary(module: ManagedIssueModule) {
-  if (module.type === 'audio') return `${module.tracks?.length || (module.audioObjectKey ? 1 : 0)} 段声音`;
+  if (module.type === 'audio') return `${module.tracks?.length || (module.audioObjectKey || module.videoObjectKey ? 1 : 0)} 段微声音`;
   const summary = module.title || module.body || module.text || module.caption || module.eyebrow || '';
   return typeof summary === 'string' ? summary : '';
 }
@@ -3792,7 +3838,10 @@ async function previewIssueModules() {
   const previews: Record<string, string> = {};
   for (const module of issueForm.value.draftContent.sections) {
     const media = module.type === 'audio'
-      ? (module.tracks || []).map((track) => ({ key: track.audioObjectKey || '', previewKey: issueAudioTrackPreviewKey(module.id, track.id) }))
+      ? (module.tracks || []).map((track) => ({
+        key: track.mediaType === 'video' ? track.videoObjectKey || '' : track.audioObjectKey || '',
+        previewKey: issueAudioTrackPreviewKey(module.id, track.id),
+      }))
       : [{ key: module.imageObjectKey || '', previewKey: module.id }];
     for (const item of media) {
       if (typeof item.key !== 'string' || !item.key) continue;
@@ -3814,15 +3863,24 @@ function issueDraftMediaKeys(modules: ManagedIssueModule[]) {
   return [...new Set(modules.flatMap((module) => [
     typeof module.imageObjectKey === 'string' ? module.imageObjectKey : '',
     typeof module.audioObjectKey === 'string' ? module.audioObjectKey : '',
-    ...(module.tracks || []).map((track) => track.audioObjectKey || ''),
+    typeof module.videoObjectKey === 'string' ? module.videoObjectKey : '',
+    ...(module.tracks || []).flatMap((track) => [track.audioObjectKey || '', track.videoObjectKey || '']),
   ].filter(Boolean)))];
 }
 
-function setIssueAudioTrackText(track: ManagedAudioTrack, field: keyof ManagedAudioTrack, event: Event) {
+function setIssueAudioTrackText(track: ManagedAudioTrack, field: 'title' | 'duration' | 'detailTitle' | 'description' | 'quote' | 'subtitle' | 'transcript', event: Event) {
   const target = event.target;
-  if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && field !== 'id') {
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
     track[field] = target.value;
   }
+}
+
+function setIssueAudioTrackMediaType(track: ManagedAudioTrack, module: ManagedIssueModule, event: Event) {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  track.mediaType = target.value === 'video' ? 'video' : 'audio';
+  delete issueModulePreviewUrls.value[issueAudioTrackPreviewKey(module.id, track.id)];
+  syncIssueFieldsToModules();
 }
 
 function addIssueAudioTrack(module: ManagedIssueModule) {
@@ -3835,7 +3893,7 @@ function addIssueAudioTrack(module: ManagedIssueModule) {
 function removeIssueAudioTrack(module: ManagedIssueModule, index: number) {
   if (!module.tracks || index < 0 || index >= module.tracks.length) return;
   const track = module.tracks[index];
-  if ((track.audioObjectKey || track.quote || track.subtitle || track.transcript) && !window.confirm('移除此声音条目？已上传的文件会在保存草稿后按引用情况处理。')) return;
+  if ((track.audioObjectKey || track.videoObjectKey || track.detailTitle || track.description || track.quote || track.subtitle || track.transcript) && !window.confirm('移除此声音条目？已上传的文件会在保存草稿后按引用情况处理。')) return;
   module.tracks.splice(index, 1);
   syncIssueFieldsToModules();
 }
@@ -3849,7 +3907,7 @@ function addIssueModule(type: ManagedIssueModule['type']) {
   else if (type === 'storyAction') Object.assign(textModule, { title: '进入本期人物', body: '', targetId: 'story' });
   else if (type === 'image') Object.assign(textModule, { imageObjectKey: '', altText: '', caption: '' });
   else if (type === 'quote') Object.assign(textModule, { text: '', attribution: '' });
-  else if (type === 'audio') Object.assign(textModule, { title: '', duration: '', audioObjectKey: '', quote: '', subtitle: '', transcript: '', tracks: [createIssueAudioTrack(1)] });
+  else if (type === 'audio') Object.assign(textModule, { title: '', duration: '', mediaType: 'audio', audioObjectKey: '', videoObjectKey: '', detailTitle: '', description: '', quote: '', subtitle: '', transcript: '', tracks: [createIssueAudioTrack(1)] });
   else if (type === 'archive') Object.assign(textModule, { title: '策展档案', body: '', entryLabel: '', entryTitle: '' });
   else Object.assign(textModule, { title: '', body: '' });
   sections.push(textModule);
@@ -4104,7 +4162,7 @@ async function cleanupMedia(input: MediaCleanupCandidate[], expectedSession = se
 
 async function cleanupCandidates() {
   const expectedSession = sessionGeneration;
-  const candidates = uploadedMediaKeys.value.filter((objectKey) => !objectKey.startsWith('content/audio/')).map((objectKey): MediaCleanupCandidate => {
+  const candidates = uploadedMediaKeys.value.filter((objectKey) => !objectKey.startsWith('content/audio/') && !objectKey.startsWith('content/video/')).map((objectKey): MediaCleanupCandidate => {
     const cleanupToken = mediaCleanupTokens.value[objectKey];
     return cleanupToken ? { objectKey, purpose: 'temporary', cleanupToken } : { objectKey, purpose: 'orphan' };
   });
@@ -4175,7 +4233,7 @@ async function resetIssue() {
   }
 }
 
-async function uploadMedia(file: File, kind: 'image' | 'audio', expectedSession = sessionGeneration) {
+async function uploadMedia(file: File, kind: 'image' | 'audio' | 'video', expectedSession = sessionGeneration) {
   const urlResponse = await apiFetch(`${apiBase}/content/media/upload-url`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
@@ -4243,9 +4301,12 @@ async function selectIssueAudioTrackFile(module: ManagedIssueModule, track: Mana
   const session = sessionGeneration;
   uploading.value = true;
   try {
-    track.audioObjectKey = await uploadMedia(file, 'audio', session);
+    const kind = track.mediaType === 'video' ? 'video' : 'audio';
+    const objectKey = await uploadMedia(file, kind, session);
+    if (kind === 'video') track.videoObjectKey = objectKey;
+    else track.audioObjectKey = objectKey;
     syncIssueFieldsToModules();
-    const params = new URLSearchParams({ objectKey: track.audioObjectKey });
+    const params = new URLSearchParams({ objectKey });
     const response = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(response, session)) return;
     assertSession(session);
@@ -4316,12 +4377,12 @@ async function saveIssue() {
     saved = true;
     const savedKeys = issueDraftMediaKeys(issueForm.value.draftContent.sections);
     const unsavedUploadedKeys = uploadedMediaKeys.value.filter((key) => !savedKeys.includes(key));
-    const obsoleteKeys = [...new Set([...unsavedUploadedKeys, originalMediaKeys.value.cover].filter((key) => key && !savedKeys.includes(key)))];
+    const obsoleteKeys = [...new Set([...unsavedUploadedKeys, originalMediaKeys.value.cover].filter((key) => key && !savedKeys.includes(key) && !key.startsWith('content/audio/') && !key.startsWith('content/video/')))];
     const candidates = obsoleteKeys.map((objectKey): MediaCleanupCandidate => {
       const cleanupToken = mediaCleanupTokens.value[objectKey];
       return cleanupToken ? { objectKey, purpose: 'temporary', cleanupToken } : { objectKey, purpose: 'orphan' };
     });
-    uploadedMediaKeys.value = unsavedUploadedKeys;
+    uploadedMediaKeys.value = unsavedUploadedKeys.filter((key) => !key.startsWith('content/audio/') && !key.startsWith('content/video/'));
     persistCleanupKeys();
     originalMediaKeys.value = {
       cover: issueForm.value.coverObjectKey || '',
@@ -4938,7 +4999,21 @@ onBeforeUnmount(() => {
           <div class="journal-page-head-copy"><p class="eyebrow">{{ currentView.eyebrow }}</p><small>{{ journalSectionDescription }}</small></div>
           <button type="button" class="quiet" @click="goToJournalSection('journal-list')">返回期刊列表</button>
         </div>
-        <form class="panel issue-editor-form journal-module-form" @submit.prevent="saveIssue">
+        <div class="journal-preview-layout" :class="{ 'has-preview': showJournalPreview }">
+          <aside v-if="showJournalPreview" class="journal-preview-rail" aria-label="小程序首页预览">
+            <JournalHomePreview
+              :modules="issueForm.draftContent.sections"
+              :image-urls="issueModulePreviewUrls"
+              :active-key="selectedIssueModuleId"
+              :issue-number="journalPreviewIssueNumber"
+              :issue-edition="journalPreviewIssueEdition"
+              :question-fallback="issueForm.question"
+              :theme-fallback="issueForm.theme"
+              @pick="focusIssueModule"
+            />
+            <p class="journal-preview-hint">点预览里的任意区块 → 右侧自动切到对应栏目；在右侧选中栏目时，这里会同步高亮。</p>
+          </aside>
+          <form class="panel issue-editor-form journal-module-form" @submit.prevent="saveIssue" @focusin="focusModuleFromEditor">
           <div class="journal-context">
             <div class="journal-context-copy">
               <p class="eyebrow">CURRENT ISSUE</p>
@@ -5056,7 +5131,7 @@ onBeforeUnmount(() => {
                 </div>
               </details>
             </details>
-            <div v-if="activeContentSection !== 'journal-discussion'" class="issue-module-list"><article v-for="(module, index) in issueForm.draftContent.sections" v-show="selectedIssueModuleId === module.id && isIssueModuleVisibleInJournalSection(module)" :key="module.id" class="issue-module-card">
+            <div v-if="activeContentSection !== 'journal-discussion'" class="issue-module-list"><article v-for="(module, index) in issueForm.draftContent.sections" v-show="selectedIssueModuleId === module.id && isIssueModuleVisibleInJournalSection(module)" :key="module.id" :data-issue-module="module.id" class="issue-module-card">
               <header><span>{{ String(index + 1).padStart(2, '0') }} · {{ issueModuleLabel(module) }}</span><label class="issue-module-toggle"><input v-model="module.enabled" type="checkbox" />启用</label><button type="button" class="quiet" :disabled="index === 0" aria-label="上移栏目" @click="moveIssueModule(index, -1)">↑</button><button type="button" class="quiet" :disabled="index === issueForm.draftContent.sections.length - 1" aria-label="下移栏目" @click="moveIssueModule(index, 1)">↓</button><button v-if="!['issueMeta','coverStory','cover','opener','question','observationAction','sharedPracticeAction'].includes(module.type)" type="button" class="quiet danger" aria-label="删除栏目" @click="removeIssueModule(index)">删除</button></header>
               <div v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'" class="form-grid"><label v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'">上传 / 替换图片<input type="file" accept="image/jpeg,image/png,image/webp" @change="selectIssueModuleFile(module, $event)" /></label><label>图片对象路径<input :value="String(module.imageObjectKey || '')" placeholder="content/image/..." @input="setIssueModuleText(module, 'imageObjectKey', $event)" /></label><label>图片替代文本<input :value="String(module.altText || '')" @input="setIssueModuleText(module, 'altText', $event)" /></label></div>
               <label v-if="module.type === 'coverStory' || module.type === 'story'">{{ module.type === 'coverStory' ? '本期主题标题' : '人物引言' }}（换行会保留）<textarea :value="String(module.title || '')" rows="2" maxlength="500" @input="setIssueModuleText(module, 'title', $event)" /></label>
@@ -5074,71 +5149,31 @@ onBeforeUnmount(() => {
               <div v-if="module.type === 'coverStory'" class="form-grid cover-story-typography"><label>主题标题字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.titleFontSize || 72)" @input="setIssueModuleText(module, 'titleFontSize', $event)" /></label><label>主题标题颜色<input type="color" :value="String(module.titleColor || '#59483d')" @input="setIssueModuleText(module, 'titleColor', $event)" /></label><label>主题说明字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.bodyFontSize || 30)" @input="setIssueModuleText(module, 'bodyFontSize', $event)" /></label><label>主题说明颜色<input type="color" :value="String(module.bodyColor || '#40362f')" @input="setIssueModuleText(module, 'bodyColor', $event)" /></label></div>
               <div v-if="module.type === 'coverStory'" class="form-grid"><label>封面左侧说明<input :value="String(module.captionLeft || '')" @input="setIssueModuleText(module, 'captionLeft', $event)" /></label><label>封面右侧说明<input :value="String(module.captionRight || '')" @input="setIssueModuleText(module, 'captionRight', $event)" /></label><label>策展署名<input :value="String(module.byline || '')" @input="setIssueModuleText(module, 'byline', $event)" /></label></div>
               <section v-if="module.type === 'audio'" class="issue-audio-editor">
-                <p class="field-help">可添加 1–3 段；至少 1 段有音频即可。发布时会忽略未上传音频的条目，只有发布后小程序才会显示更新。</p>
+                <p class="field-help">可添加 1–3 段，每段可以是声音或视频；至少 1 段有可播放文件即可。视频建议使用 MP4（H.264），单个文件不超过 200 MB。发布后小程序才会显示更新。</p>
                 <article v-for="(track, trackIndex) in issueAudioTracks(module)" :key="track.id" class="issue-audio-track">
-                  <header><strong>{{ trackIndex === 0 ? '主声音' : `更多声音 ${String(trackIndex + 1).padStart(2, '0')}` }}</strong><button v-if="trackIndex > 0" type="button" class="quiet danger" :disabled="uploading" @click="removeIssueAudioTrack(module, trackIndex)">移除</button></header>
-                  <div class="form-grid"><label>声音标题<input :value="track.title" maxlength="120" @input="setIssueAudioTrackText(track, 'title', $event)" /></label><label>时长文字<input :value="track.duration" maxlength="20" placeholder="01:12" @input="setIssueAudioTrackText(track, 'duration', $event)" /></label><label>上传 / 替换音频<input type="file" accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a" :disabled="uploading" @change="selectIssueAudioTrackFile(module, track, $event)" /></label><label>音频对象路径<input :value="String(track.audioObjectKey || '')" placeholder="content/audio/..." @input="setIssueAudioTrackText(track, 'audioObjectKey', $event)" /></label></div>
-                  <audio v-if="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-audio" controls preload="none" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持音频试听</audio>
+                  <header><strong>{{ trackIndex === 0 ? '主微声音' : `更多微声音 ${String(trackIndex + 1).padStart(2, '0')}` }}</strong><span class="issue-audio-kind">{{ track.mediaType === 'video' ? '视频' : '声音' }}</span><button v-if="trackIndex > 0" type="button" class="quiet danger" :disabled="uploading" @click="removeIssueAudioTrack(module, trackIndex)">移除</button></header>
+                  <div class="form-grid">
+                    <label>媒体类型<select :value="track.mediaType" :disabled="uploading" @change="setIssueAudioTrackMediaType(track, module, $event)"><option value="audio">声音</option><option value="video">视频</option></select></label>
+                    <label>列表标题<input :value="track.title" maxlength="120" @input="setIssueAudioTrackText(track, 'title', $event)" /></label>
+                    <label>时长文字<input :value="track.duration" maxlength="20" placeholder="01:12" @input="setIssueAudioTrackText(track, 'duration', $event)" /></label>
+                    <label>上传 / 替换{{ track.mediaType === 'video' ? '视频' : '音频' }}<input type="file" :accept="track.mediaType === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'audio/mpeg,audio/mp4,audio/wav,audio/x-m4a'" :disabled="uploading" @change="selectIssueAudioTrackFile(module, track, $event)" /></label>
+                    <label>媒体对象路径<input :value="track.mediaType === 'video' ? String(track.videoObjectKey || '') : String(track.audioObjectKey || '')" :placeholder="track.mediaType === 'video' ? 'content/video/...' : 'content/audio/...'" readonly /></label>
+                  </div>
+                  <video v-if="track.mediaType === 'video' && issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-video" controls preload="metadata" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持视频预览</video>
+                  <audio v-else-if="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-audio" controls preload="none" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持音频试听</audio>
+                  <label>详情页标题<input :value="track.detailTitle" maxlength="120" placeholder="留空时使用列表标题" @input="setIssueAudioTrackText(track, 'detailTitle', $event)" /></label>
+                  <label>这段声音 / 视频的解释<textarea :value="track.description" rows="4" maxlength="6000" placeholder="进入详情页后，显示在声音或视频下方" @input="setIssueAudioTrackText(track, 'description', $event)" /></label>
                   <label>引言<textarea :value="track.quote" rows="2" maxlength="500" @input="setIssueAudioTrackText(track, 'quote', $event)" /></label>
                   <label>引言说明<textarea :value="track.subtitle" rows="2" maxlength="500" @input="setIssueAudioTrackText(track, 'subtitle', $event)" /></label>
                   <label>音频文字稿<textarea :value="track.transcript" rows="3" maxlength="6000" @input="setIssueAudioTrackText(track, 'transcript', $event)" /></label>
                 </article>
-                <button v-if="issueAudioTracks(module).length < 3" type="button" class="secondary" :disabled="uploading" @click="addIssueAudioTrack(module)">＋ 添加声音</button>
+                <button v-if="issueAudioTracks(module).length < 3" type="button" class="secondary" :disabled="uploading" @click="addIssueAudioTrack(module)">＋ 添加微声音</button>
               </section>
               <label v-if="module.transcript !== undefined && module.type !== 'audio'">音频文字稿<textarea :value="String(module.transcript || '')" rows="3" maxlength="6000" @input="setIssueModuleText(module, 'transcript', $event)" /></label>
               <label v-if="module.text !== undefined">引言内容<textarea :value="String(module.text || '')" rows="3" maxlength="1000" @input="setIssueModuleText(module, 'text', $event)" /></label>
               <label v-if="module.attribution !== undefined">引言署名<input :value="String(module.attribution || '')" @input="setIssueModuleText(module, 'attribution', $event)" /></label>
               <label v-if="module.caption !== undefined">图片说明<input :value="String(module.caption || '')" @input="setIssueModuleText(module, 'caption', $event)" /></label>
             </article></div>
-            <details v-if="activeContentSection === 'journal-home'" class="issue-preview-disclosure">
-              <summary>小程序首页预览 <span>展开查看 · 草稿预览，不会发布</span></summary>
-              <section class="issue-phone-preview" aria-label="小程序首页草稿预览">
-                <div class="issue-phone-preview-head"><span>MYRIAD SHE</span><small>仅预览草稿，不会发布到线上</small></div>
-                <div class="issue-phone-preview-body">
-                  <article v-for="module in issueForm.draftContent.sections.filter((item) => item.enabled && item.type !== 'storyAction' && !(['observationAction','sharedPracticeAction'].includes(item.type) && issueForm.draftContent.sections.some((section) => section.enabled && section.type === 'question')))" :key="module.id" :class="`preview-${module.type}`">
-                    <template v-if="module.type === 'coverStory'">
-                      <img v-if="issueModulePreviewUrls[module.id]" class="preview-image" :src="issueModulePreviewUrls[module.id]" :alt="String(module.altText || '')" />
-                      <div v-if="issueModulePreviewUrls[module.id]" class="preview-cover-caption"><span>{{ module.captionLeft }}</span><span>{{ module.captionRight }}</span></div>
-                      <div class="preview-cover-copy"><small>{{ module.eyebrow || '本期主题' }}</small><h3 :style="{ fontSize: `${Number(module.titleFontSize || 72) * 0.42}px`, color: String(module.titleColor || '#59483d'), whiteSpace: 'pre-wrap' }">{{ module.title || '' }}</h3><p :style="{ fontSize: `${Number(module.bodyFontSize || 30) * 0.42}px`, color: String(module.bodyColor || '#40362f') }">{{ module.body || '' }}</p><footer>{{ module.byline || '' }}</footer></div>
-                    </template>
-                    <template v-else-if="module.type === 'story'">
-                      <div class="preview-story-kicker"><span>01</span><span>{{ module.eyebrow || '人物纪实' }}</span></div><blockquote>{{ module.title || '' }}</blockquote><p class="preview-story-copy">{{ module.body || '' }}</p><div class="preview-story-link">{{ issueForm.draftContent.sections.find((item) => item.type === 'storyAction' && (item.targetId || 'story') === module.id)?.title || '进入本期人物' }} <span>→</span></div><img v-if="issueModulePreviewUrls[module.id]" class="preview-image" :src="issueModulePreviewUrls[module.id]" :alt="String(module.altText || '')" /><div v-else-if="module.imageObjectKey" class="preview-image-placeholder">{{ module.altText || '人物图片预览' }}</div><footer>{{ module.captionLeft }}<span>{{ module.captionRight }}</span></footer>
-                    </template>
-                    <template v-else-if="module.type === 'audio'">
-                      <div class="preview-audio-kicker"><span>02</span><span>{{ String(module.title || '微声音').replace(/\s+0?\d+$/, '') }}</span><time>{{ module.duration }}</time></div>
-                      <template v-if="issueAudioTracks(module)[0]" v-for="(track, trackIndex) in issueAudioTracks(module).slice(0, 1)" :key="track.id">
-                        <div class="preview-audio-feature"><span class="preview-audio-play">▶</span><div><h3 v-if="track.quote">{{ track.quote }}</h3><p v-if="track.subtitle" class="preview-audio-subtitle">{{ track.subtitle }}</p><p v-if="track.transcript" class="preview-audio-transcript">{{ track.transcript }}</p></div></div>
-                      </template>
-                      <div v-if="issueAudioTracks(module).length > 1" class="preview-audio-more"><h4>更多声音</h4><div v-for="track in issueAudioTracks(module).slice(1)" :key="track.id" class="preview-audio-more-item"><div class="preview-audio-more-title"><span>▶</span><strong>{{ track.title }}</strong><time>{{ track.duration }}</time></div><p v-if="track.subtitle">{{ track.subtitle }}</p><blockquote v-if="track.quote">{{ track.quote }}</blockquote><p v-if="track.transcript">{{ track.transcript }}</p></div></div>
-                    </template>
-                    <template v-else-if="module.type === 'question'">
-                      <div class="preview-question-kicker"><span>03</span><span>本期问题</span></div><p class="preview-question-intro">{{ module.eyebrow || '从她的经验，回到你的此刻' }}</p><h3 class="preview-question-title">{{ module.title || issueForm.question }}</h3><p v-if="module.body" class="preview-question-body">{{ module.body }}</p>
-                      <div v-if="issueForm.draftContent.sections.some((action) => action.enabled && ['observationAction','sharedPracticeAction'].includes(action.type))" class="preview-question-actions"><div v-for="action in issueForm.draftContent.sections.filter((item) => item.enabled && ['observationAction','sharedPracticeAction'].includes(item.type))" :key="action.id" class="preview-question-action"><div><strong>{{ action.title }}</strong><small>{{ action.body }}</small></div><span>→</span></div></div>
-                    </template>
-                    <template v-else-if="module.type === 'contents'">
-                      <div class="preview-contents-heading"><span>{{ module.title || '本期目录' }}</span><small>CONTENTS</small></div>
-                      <div v-for="entry in issuePreviewContents(module)" :key="entry.number" class="preview-contents-row"><small>{{ entry.number }}</small><strong>{{ entry.label }}</strong><span>{{ entry.summary }}</span></div>
-                    </template>
-                    <template v-else-if="module.type === 'archive'">
-                      <div class="preview-archive-heading">{{ module.title || '策展档案' }}</div>
-                      <div class="preview-archive-entry"><small>{{ module.entryLabel || 'ISSUE 01 · 往期精彩示意' }}</small><strong>{{ module.entryTitle || '留住没有答案的时刻' }}<span>→</span></strong></div>
-                    </template>
-                    <template v-else-if="module.type === 'brandFooter'">
-                      <div class="preview-footer-brand">MYRIAD SHE</div>
-                      <div class="preview-footer-title">{{ module.title || '我有我的时节' }}</div>
-                      <p class="preview-footer-copy">{{ module.body || '记录真实的女性经验，也为看见之后的生活留下一条可行的路。' }}</p>
-                      <div class="preview-footer-flower" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-                    </template>
-                    <template v-else-if="module.type === 'issueMeta'">
-                      <div class="preview-issue-meta"><small>{{ issuePreviewKicker }}</small><strong v-if="issuePreviewIssueNumber(module)">{{ issuePreviewIssueNumber(module) }}</strong><span>{{ issuePreviewIssueEdition(module) }}</span></div>
-                    </template>
-                    <template v-else>
-                      <small>{{ module.eyebrow || module.type }}</small><h3>{{ module.title || module.month || '' }}</h3><p>{{ module.body || module.text || module.caption || '' }}</p><img v-if="(module.type === 'cover' || module.type === 'image') && issueModulePreviewUrls[module.id]" class="preview-image" :src="issueModulePreviewUrls[module.id]" :alt="String(module.altText || '')" /><div v-else-if="module.type === 'cover' || module.type === 'image'" class="preview-image-placeholder">{{ module.altText || '图片预览（上传或保存后载入）' }}</div>
-                    </template>
-                  </article>
-                </div>
-              </section>
-            </details>
             <section v-if="activeContentSection === 'journal-archive'" class="panel journal-past-panel">
               <div class="section-heading"><div><p class="eyebrow">PAST ISSUES</p><h3>往期与归档期次</h3></div><small>由期刊状态自动生成，不能手工新增</small></div>
               <p class="field-help">这里只读展示当前期之外的线上与归档期次；「策展档案」栏目的入口文案在上方编辑。旧期正文仍按各自发布版本保留。</p>
@@ -5157,7 +5192,8 @@ onBeforeUnmount(() => {
               <div class="form-actions"><button type="submit" :disabled="uploading || issueConflict">{{ uploading ? '保存中…' : '保存整份草稿' }}</button><button type="button" class="quiet" :disabled="uploading || issueConflict || issueDraftDirty" @click="publishIssue">确认发布整期</button></div>
             </footer>
           </template>
-        </form>
+          </form>
+        </div>
       </section>
       <section v-if="activeSection === 'content' && activeContentSection === 'media'" id="content-media" class="content-area">
         <div class="journal-page-head">
