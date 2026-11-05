@@ -2012,3 +2012,9 @@
     justify-content: flex-end;
   }
 }
+
+/* —— 日期弹层：筛选卡片带入场动画（自带层叠上下文），会被下面的表格盖住 —— */
+.dashboard-workspace > .content-area > :is(.filters, .life-card-view-filters, .employee-toolbar) {
+  position: relative;
+  z-index: 3;
+}

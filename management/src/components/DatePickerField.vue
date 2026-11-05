@@ -22,6 +22,15 @@ const trigger = ref<HTMLButtonElement | null>(null);
 const open = ref(false);
 const placement = ref<'bottom' | 'top'>('bottom');
 const cursor = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12));
+// 矮窗口里把弹层夹在顶栏与视口底部之间，必要时让它内部滚动，「今天 / 关闭」始终可点。
+const popoverShift = ref(0);
+const popoverMaxHeight = ref(0);
+const popoverStyle = computed(() => {
+  const style: Record<string, string> = {};
+  if (popoverShift.value) style.transform = `translateY(${popoverShift.value}px)`;
+  if (popoverMaxHeight.value) style.maxHeight = `${popoverMaxHeight.value}px`;
+  return style;
+});
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
 function pad(value: number) {
@@ -78,10 +87,30 @@ function openPicker() {
   cursor.value = new Date((selectedDate.value ?? new Date()).getFullYear(), (selectedDate.value ?? new Date()).getMonth(), 1, 12);
   const rect = trigger.value?.getBoundingClientRect();
   const estimatedHeight = 380;
-  placement.value = rect && rect.top > estimatedHeight && rect.bottom + estimatedHeight > window.innerHeight - 12 ? 'top' : 'bottom';
+  if (rect) {
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    placement.value = spaceBelow < estimatedHeight && spaceAbove > spaceBelow ? 'top' : 'bottom';
+  } else {
+    placement.value = 'bottom';
+  }
   open.value = true;
+  popoverShift.value = 0;
+  popoverMaxHeight.value = 0;
   void nextTick(() => {
-    if (open.value) root.value?.querySelector<HTMLElement>('.admin-date-popover')?.focus({ preventScroll: true });
+    const popover = root.value?.querySelector<HTMLElement>('.admin-date-popover');
+    if (!popover || !open.value) return;
+    const topbar = document.querySelector<HTMLElement>('.topbar');
+    const minTop = Math.max(12, Math.round(topbar?.getBoundingClientRect().bottom ?? 0) + 8);
+    const available = window.innerHeight - minTop - 12;
+    if (available > 0) popoverMaxHeight.value = available;
+    void nextTick(() => {
+      const rect = popover.getBoundingClientRect();
+      const maxTop = Math.max(minTop, window.innerHeight - 12 - rect.height);
+      const target = Math.min(Math.max(rect.top, minTop), maxTop);
+      popoverShift.value = Math.round(target - rect.top);
+      popover.focus({ preventScroll: true });
+    });
   });
 }
 
@@ -156,7 +185,7 @@ defineExpose({ focus: focusTrigger });
       <span class="admin-date-value" :class="{ 'is-placeholder': !displayValue }">{{ displayValue || placeholder }}</span>
       <svg class="admin-date-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" /></svg>
     </button>
-    <div v-if="open" class="admin-date-popover" :class="{ 'is-top': placement === 'top' }" role="dialog" :aria-label="`${ariaLabel}日历`" tabindex="-1">
+    <div v-if="open" class="admin-date-popover" :class="{ 'is-top': placement === 'top' }" :style="popoverStyle" role="dialog" :aria-label="`${ariaLabel}日历`" tabindex="-1">
       <div class="admin-date-head">
         <button type="button" class="admin-date-nav" aria-label="上个月" @click="moveMonth(-1)">‹</button>
         <strong>{{ monthLabel }}</strong>
@@ -191,7 +220,7 @@ defineExpose({ focus: focusTrigger });
 .admin-date-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-date-value.is-placeholder { color: #9b8b7d; }
 .admin-date-icon { flex: none; width: 17px; height: 17px; fill: none; stroke: #8a6755; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
-.admin-date-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 80; width: min(300px, calc(100vw - 32px)); padding: 12px; border: 1px solid #d8cdbd; border-radius: 8px; background: #fffdf9; box-shadow: 0 18px 40px rgb(64 54 47 / 16%); }
+.admin-date-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 80; width: min(300px, calc(100vw - 32px)); max-height: calc(100vh - 24px); overflow-y: auto; padding: 12px; border: 1px solid #d8cdbd; border-radius: 8px; background: #fffdf9; box-shadow: 0 18px 40px rgb(64 54 47 / 16%); }
 .admin-date-popover.is-top { top: auto; bottom: calc(100% + 6px); }
 .admin-date-popover:focus { outline: none; }
 .admin-date-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
