@@ -271,7 +271,7 @@ strong { font-weight: 600; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ---------- 鍐呭鍖?---------- */
-.content-area { margin-top: 28px; animation: section-in .22s var(--ease) both; }
+.content-area { margin-top: 28px; animation: section-in .22s var(--ease) backwards; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
 
 .section-heading {
@@ -777,7 +777,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   border-radius: 16px;
   background: var(--surface);
   box-shadow: 0 24px 64px rgba(23, 24, 26, .22);
-  animation: modal-in .2s var(--ease) both;
+  animation: modal-in .2s var(--ease) backwards;
 }
 .observation-answer {
   display: grid;
@@ -808,7 +808,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   border-radius: 16px;
   background: var(--surface);
   box-shadow: 0 24px 64px rgba(23, 24, 26, .24);
-  animation: modal-in .2s var(--ease) both;
+  animation: modal-in .2s var(--ease) backwards;
 }
 .admin-error-dialog .eyebrow { margin: 0; color: var(--danger); }
 .admin-error-dialog h3 { margin: 8px 0 10px; color: var(--ink); font-size: 20px; }
@@ -921,7 +921,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
   background: var(--surface);
   color: var(--ink-2);
   box-shadow: var(--shadow-2);
-  animation: to-top-in .18s var(--ease) both;
+  animation: to-top-in .18s var(--ease) backwards;
 }
 .to-top:hover { background: var(--surface); border-color: var(--accent-line); color: var(--accent-strong); }
 .to-top svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }

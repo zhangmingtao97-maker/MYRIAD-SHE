@@ -2013,7 +2013,9 @@
   }
 }
 
-/* —— 日期弹层：筛选卡片带入场动画（自带层叠上下文），会被下面的表格盖住 —— */
+/* —— 带弹层的筛选卡片排在表格之上 ——
+   入场动画已统一改成 animation-fill-mode: backwards（跑完不再留 transform），
+   所以这里不再需要靠 z-index 抢救层叠上下文，只是把「卡片在表格之前」这件事写清楚。 */
 .dashboard-workspace > .content-area > :is(.filters, .life-card-view-filters, .employee-toolbar) {
   position: relative;
   z-index: 3;

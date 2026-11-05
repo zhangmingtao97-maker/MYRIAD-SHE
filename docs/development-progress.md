@@ -1,5 +1,14 @@
 # MYRIAD SHE 开发进度
 
+## 2026-11-05 入场动画不再留下层叠上下文（弹层遮挡的根因）
+
+- 上一轮定位到「日历弹层被表格盖住」是层叠上下文问题，但当时只是给筛选卡片加了 `z-index` 抢救。这一轮把根因修掉。
+- 根因：全站入场动画用的是 `animation-fill-mode: both`，动画跑完最后一帧的 `transform` 会**一直留在元素上**（值是单位矩阵 `matrix(1,0,0,1,0,0)`，看着像「没有 transform」，实际照样建立层叠上下文）。于是 `.content-area`、`.filters`、`.observation-table` 各自成了独立的层叠上下文，卡片里的弹层不管写多大 `z-index` 都只能在自己卡片内部排序。开着「减少动态效果」的机器上动画时长被压到 0.01ms，这个残留 transform 就是永久的，所以问题必现。
+- 修法：把所有「结束状态就是元素自然状态」的入场动画从 `both` 改成 `backwards`（16 处，`section-enter` / `section-in` / `modal-in` / `to-top-in` / `nav-item-in` / `overview-rise` / `admin-title-in` / `admin-content-in` / `admin-dialog-in` / `admin-popover-in` / `admin-reveal`）。`backwards` 只在动画开始前保留首帧（延迟期间不闪），跑完就交还给元素自身的样式，不再残留 `transform`。唯一保留 `both` 的是顶栏那条渐变线 `topbar-line`——它的结束状态是 `opacity: .7`，不是元素自然状态。
+- 效果：动画结束后 `.content-area` 及其所有子元素的 `transform` 都是 `none`；把 `.filters` 那条 `z-index: 3` 拿掉，预览弹层照样浮在表格之上——说明不再依赖到处补 `z-index`。以后在内容区里放任何弹层都不会再被关住。
+- 验证：7 个一级页 + 26 个二级页，1440×900 与 805×431 各扫一遍（4×4 网格命中检测 + 残留 transform 检测），全部干净。
+- 注意：`admin-experience.css`、`admin-dashboard.css` 目前还是未入库文件（另一条线在改），改动用同样的脚本处理，随那批一起入库。
+
 ## 2026-11-05 修日历弹层被表格盖住
 
 - 现象：会员列表点「注册自 / 注册至」，日历弹出后被下面的表格切掉一半，只能看到月份标题那一条。
