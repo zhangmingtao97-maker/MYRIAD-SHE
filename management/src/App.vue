@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
+import AnimatedNumber from './components/AnimatedNumber.vue';
+import AdminCommandMenu from './components/AdminCommandMenu.vue';
+import { useAdminDialogs } from './composables/useAdminDialogs';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
 import DatePickerField from './components/DatePickerField.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
@@ -22,6 +25,7 @@ import { isAdminLoginResult, isAuditPage, isIssueDashboardConsistent, isManagedI
 import type { AuditEntry, IssueLifecycle, ManagedAudioTrack, ManagedIssue, ManagedIssueModule, ManagedObservation, ManagedObservationDetail, MediaOrphan, ObservationLifecycle, PrivacyLifecycle, PrivacyRequest, PublicHome } from './api-shapes';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.32:61021/api';
+useAdminDialogs();
 const maxAdminTokenLength = 16_384;
 const maxAdminSessionSeconds = 30 * 24 * 60 * 60;
 function readAdminToken() {
@@ -627,7 +631,8 @@ async function loadLifeCards() {
       && typeof (item as LifeCardRow).title === 'string' && typeof (item as LifeCardRow).summary === 'string'
       && typeof (item as LifeCardRow).prompt === 'string' && typeof (item as LifeCardRow).theme === 'string'
       && typeof (item as LifeCardRow).note === 'string' && typeof (item as LifeCardRow).sourceNote === 'string'));
-    lifeCardDraft.value = lifeCards.value.find((card) => card.month === lifeCardMonth.value) ?? null;
+    const selected = lifeCards.value.find((card) => card.month === lifeCardMonth.value);
+    lifeCardDraft.value = selected ? { ...selected } : null;
   } catch (caught) {
     lifeCardsError.value = caught instanceof Error ? caught.message : '无法读取生命牌文案';
   } finally {
@@ -688,7 +693,8 @@ function editLifeCard(card: LifeCardRow) {
 
 function selectLifeCardMonth(month: number) {
   lifeCardMonth.value = month;
-  lifeCardDraft.value = lifeCards.value.find((card) => card.month === month) ?? null;
+  const selected = lifeCards.value.find((card) => card.month === month);
+  lifeCardDraft.value = selected ? { ...selected } : null;
 }
 
 async function saveLifeCard() {
@@ -1079,6 +1085,7 @@ const observationStaleOnly = ref(false);
 const observationStatusBeforeStale = ref<string | null>(null);
 const dashboardLoading = ref(false);
 const overviewUpdatedAt = ref('');
+const overviewSyncError = ref('');
 const currentPageRefreshing = ref(false);
 type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
@@ -1172,7 +1179,23 @@ async function enterDashboardByPermissions() {
   if (landing.section === 'contributions') await refreshDiscussionContributions();
   if (landing.section === 'discussion-reports') await refreshDiscussionReports();
 }
-const sidebarCollapsed = ref(false);
+const sidebarCollapsed = ref(localStorage.getItem('myriad_she_admin_sidebar_collapsed') === 'true');
+watch(sidebarCollapsed, (collapsed) => localStorage.setItem('myriad_she_admin_sidebar_collapsed', String(collapsed)));
+const commandMenuOpen = ref(false);
+function openCommandMenu() {
+  closeAccountMenu();
+  commandMenuOpen.value = true;
+}
+function handleWorkspaceShortcut(event: KeyboardEvent) {
+  if (!loggedIn.value || adminPasswordChangeRequired.value || event.isComposing) return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    if (!commandMenuOpen.value && document.querySelector('[aria-modal="true"]')) return;
+    event.preventDefault();
+    if (commandMenuOpen.value) commandMenuOpen.value = false;
+    else openCommandMenu();
+  }
+  if (event.key === 'Escape') closeAccountMenu();
+}
 // 回到顶部：滚动超过一屏后出现，避免长表格页无处可回去。
 const showBackToTop = ref(false);
 
@@ -1181,7 +1204,7 @@ function handleWorkspaceScroll() {
 }
 
 function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 const practiceNavigationExpanded = ref(initialDashboardLocation.section === 'practice');
 const journalNavigationExpanded = ref(initialDashboardLocation.section === 'content' && (isJournalSection(initialDashboardLocation.contentSection) || initialDashboardLocation.contentSection === 'media'));
@@ -1228,7 +1251,7 @@ function openPageNavigation() {
   journalNavigationExpanded.value = false;
   operationsNavigationExpanded.value = false;
   systemNavigationExpanded.value = false;
-  if (!shouldCollapse && !onPage) activeContentSection.value = 'mine';
+  if (!shouldCollapse && !onPage) activeContentSection.value = isSuperAdmin.value ? 'mine' : 'privacy-policy';
 }
 async function restoreLegalVersion(payload: { key: LegalKey; content: LegalContent }) {
   const target = payload.key === 'privacy-policy' ? privacyDocumentManager.value : agreementDocumentManager.value;
@@ -1399,6 +1422,93 @@ const currentView = computed(() => {
   };
   return views[activeSection.value];
 });
+type AdminDestination = {
+  id: string;
+  label: string;
+  group: string;
+  description: string;
+  keywords: string;
+  section: DashboardSection;
+  contentSection?: ContentSection;
+  module?: AdminModuleId;
+  superOnly?: boolean;
+};
+const adminDestinations: AdminDestination[] = [
+  { id: 'overview', label: '工作台', group: '总览', description: '查看关键数据、待办与最近操作。', keywords: 'dashboard home overview', section: 'overview', superOnly: true },
+  ...([
+    ['practice', '实践页面', '管理实践入口、介绍与页面文案。'],
+    ['practice-directory', '实践目录', '配置实践目录与各个内容入口。'],
+    ['observation', '此刻观察', '编辑观察引导，让每一次记录更有温度。'],
+    ['shared-practice', '共同实践', '管理共同实践的介绍、规则与引导。'],
+    ['daily-objects', '日常之物', '维护物品内容，预览并发布草稿。'],
+  ] as const).map(([id, label, description]) => ({ id, label, description, group: '实践', keywords: 'practice', section: 'practice' as const, contentSection: id, module: 'practice' as const })),
+  ...([
+    ['journal-list', '期刊列表', '管理每一期内容，从草稿到正式发布。'],
+    ['journal-home', '首页策展', '编排首页栏目与期刊展示内容。'],
+    ['journal-story', '人物故事', '编辑人物叙事，实时预览阅读效果。'],
+    ['journal-audio', '微声音', '管理音频、文案与收听入口。'],
+    ['journal-discussion', '本期讨论', '设置讨论话题、引导与互动内容。'],
+    ['journal-archive', '往期策展', '整理往期期刊与归档展示。'],
+  ] as const).map(([id, label, description]) => ({ id, label, description, group: '期刊', keywords: 'journal editorial', section: 'content' as const, contentSection: id, module: 'journal' as const })),
+  { id: 'media', label: '媒体库', group: '期刊', description: '查找音频与媒体文件，清理未引用资源。', keywords: 'audio image media', section: 'content', contentSection: 'media', module: 'media' },
+  ...([
+    ['mine', '我的页面设置', '维护个人页面的模块与显示文案。'],
+    ['privacy-page', '关于 MYRIAD SHE', '编辑品牌介绍，检查预览并发布。'],
+    ['about-history', '关于发布历史', '查看关于页面的历史发布内容。'],
+    ['privacy-policy', '隐私政策', '维护隐私政策草稿、预览与发布版本。'],
+    ['user-agreement', '用户协议', '维护用户协议，核对版本后发布。'],
+    ['legal-history', '历史版本', '查询政策与协议的历史发布版本。'],
+  ] as const).map(([id, label, description]) => ({ id, label, description, group: '页面与协议', keywords: 'pages legal privacy agreement', section: 'content' as const, contentSection: id, module: 'pages' as const, superOnly: id === 'mine' })),
+  { id: 'members', label: '会员列表', group: '会员', description: '按昵称与注册时间查找会员，查看账号详情。', keywords: 'users members', section: 'members', module: 'members' },
+  ...([
+    ['contributions', '用户经历审核', '处理用户经历与回复，照看社区表达。'],
+    ['discussion-reports', '用户举报', '核对举报原因与讨论内容，跟进处理状态。'],
+    ['observations', '观察记录管理', '筛选观察记录，查看记录状态与生命周期。'],
+    ['privacy', '隐私申请', '跟进账户删除申请与处理进度。'],
+    ['audit', '审计日志', '按操作者与动作追溯后台操作。'],
+  ] as const).map(([id, label, description]) => ({ id, label, description, group: '运营管理', keywords: 'operations review', section: id, module: id })),
+  ...([
+    ['settings', '系统设置', '管理业务开关、维护提示与支持联系方式。'],
+    ['life-cards', '生命牌文案', '按月份与日期编辑生命牌的说明和观察提示。'],
+    ['life-card-views', '生命牌查看', '筛选生命牌的查看记录与使用情况。'],
+  ] as const).map(([id, label, description]) => ({ id, label, description, group: '系统管理', keywords: 'system cards settings', section: id, module: id })),
+  { id: 'employees', label: '员工与权限', group: '系统管理', description: '管理员工账号、角色与模块授权。', keywords: 'admin employees permissions', section: 'employees', superOnly: true },
+];
+const navigationItems = computed(() => adminDestinations
+  .filter((item) => (!item.superOnly || isSuperAdmin.value) && (!item.module || canAccessModule(item.module)))
+  .map((item) => ({ ...item, active: item.section === activeSection.value && (!item.contentSection || item.contentSection === activeContentSection.value) })));
+const currentDestination = computed(() => adminDestinations.find((item) => item.section === activeSection.value && (!item.contentSection || item.contentSection === activeContentSection.value)));
+async function selectAdminDestination(id: string) {
+  const target = navigationItems.value.find((item) => item.id === id);
+  if (!target) return;
+  commandMenuOpen.value = false;
+  if (target.section === 'content' && target.contentSection) {
+    if (isJournalSection(target.contentSection) || target.contentSection === 'media') {
+      await openJournalSubsection(target.contentSection as JournalSection | 'media');
+      if (target.contentSection === 'media') void loadAudioLibrary(true);
+    } else {
+      activeSection.value = 'content';
+      activeContentSection.value = target.contentSection;
+      pageNavigationExpanded.value = true;
+      journalNavigationExpanded.value = false;
+      practiceNavigationExpanded.value = false;
+      operationsNavigationExpanded.value = false;
+      systemNavigationExpanded.value = false;
+    }
+  } else if (target.section === 'practice') {
+    activeSection.value = 'practice';
+    activeContentSection.value = target.contentSection || 'practice';
+    practiceNavigationExpanded.value = true;
+    if (target.contentSection === 'daily-objects') openDailyObjectsEditor();
+  } else if (target.section === 'members') openMembersNavigation();
+  else if (isOperationsSection(target.section)) openOperationsSubsection(target.section);
+  else if (isSystemSection(target.section)) openSystemSubsection(target.section);
+  else activeSection.value = target.section;
+  await nextTick();
+  document.querySelector<HTMLElement>('.topbar h1')?.focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+watch(token, (value) => { if (!value) commandMenuOpen.value = false; });
 const processingPrivacyId = ref('');
 const retryingPrivacyId = ref('');
 const privacyControlsBusy = computed(() => Boolean(dashboardLoading.value || privacyRefreshing.value || privacyLoadingMore.value || processingPrivacyId.value || retryingPrivacyId.value));
@@ -2952,6 +3062,7 @@ async function loadDashboard() {
   auditLoadingMore.value = false;
   auditMoreError.value = '';
   dashboardLoading.value = true;
+  overviewSyncError.value = '';
   const authHeaders = { Authorization: `Bearer ${token.value}` };
   const canJournal = canAccessModule('journal');
   const canPractice = canAccessModule('practice');
@@ -3068,6 +3179,7 @@ async function loadDashboard() {
     }
   } catch (caught) {
     if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration && loggedIn.value) {
+      overviewSyncError.value = caught instanceof Error ? caught.message : '无法读取 API 数据';
       error.value = caught instanceof Error ? caught.message : '无法读取 API 数据';
     }
     throw caught;
@@ -3079,23 +3191,34 @@ async function loadDashboard() {
 async function refreshCurrentPage() {
   if (currentPageRefreshing.value || dashboardLoading.value) return;
   const location = { section: activeSection.value, contentSection: activeContentSection.value };
+  const dailyHome = location.section === 'practice' && location.contentSection === 'daily-objects'
+    && practiceEntryTab('daily-objects') === 'home';
   if (location.section === 'settings'
     && JSON.stringify(systemSettings.value) !== JSON.stringify(systemSettingsOriginal.value)
     && !window.confirm('刷新会放弃尚未保存的系统设置修改，是否继续？')) return;
-  if (canAccessModule('practice')
-    && ['practice', 'observation', 'shared-practice'].includes(location.contentSection)
+  if (location.section === 'practice' && canAccessModule('practice')
+    && (['practice', 'practice-directory', 'observation', 'shared-practice'].includes(location.contentSection) || dailyHome)
     && practiceContentDirty.value
     && !window.confirm('刷新会放弃尚未保存的实践文案修改，是否继续？')) return;
+  if (location.contentSection === 'daily-objects' && location.section === 'practice' && !dailyHome && dailyObjectsDirty.value
+    && !window.confirm('刷新会放弃尚未保存的日常之物修改，是否继续？')) return;
+  if (location.section === 'life-cards' && lifeCardDraft.value
+    && JSON.stringify(lifeCardDraft.value) !== JSON.stringify(lifeCards.value.find((card) => card.month === lifeCardDraft.value?.month && card.day === lifeCardDraft.value?.day))
+    && !window.confirm('刷新会放弃尚未保存的生命牌修改，是否继续？')) return;
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
   currentPageRefreshing.value = true;
   try {
-    if (location.section === 'overview' || location.section === 'practice') {
+    if (location.section === 'practice' && location.contentSection === 'daily-objects' && !dailyHome) {
+      await loadDailyObjectsContent(true);
+    } else if (location.section === 'practice') {
+      await reloadPracticeContent(true);
+    } else if (location.section === 'overview') {
       await loadDashboard();
     } else if (location.section === 'content') {
       switch (location.contentSection) {
         case 'mine': await reloadMinePageContent(); break;
-        case 'media': await loadOrphanMedia(true); break;
+        case 'media': await Promise.all([loadOrphanMedia(true), loadAudioLibrary(true)]); break;
         case 'daily-objects': await loadDailyObjectsContent(); break;
         case 'privacy-page': await reloadPrivacyPageContent(); break;
         case 'about-history': await loadPrivacyRevisions('about-page'); break;
@@ -3116,6 +3239,14 @@ async function refreshCurrentPage() {
       await loadSystemSettings();
     } else if (location.section === 'employees') {
       await loadEmployees();
+    } else if (location.section === 'contributions') {
+      await refreshDiscussionContributions();
+    } else if (location.section === 'discussion-reports') {
+      await refreshDiscussionReports();
+    } else if (location.section === 'life-cards') {
+      await loadLifeCards();
+    } else if (location.section === 'life-card-views') {
+      await loadLifeCardViews();
     }
   } catch (caught) {
     if (loggedIn.value) error.value = caught instanceof Error ? caught.message : '当前页面刷新失败。';
@@ -3215,9 +3346,9 @@ async function publishPracticeContent() {
   finally { if (session === sessionGeneration) practiceContentSaving.value = false; }
 }
 
-async function reloadPracticeContent() {
+async function reloadPracticeContent(discardLocal: boolean | Event = false) {
   if (practiceContentSaving.value) return;
-  if (practiceContentDirty.value && !window.confirm('放弃当前实践页面的未保存修改，并载入云端最新版本？')) return;
+  if (practiceContentDirty.value && discardLocal !== true && !window.confirm('放弃当前实践页面的未保存修改，并载入云端最新版本？')) return;
   const generation = ++practiceContentRequestGeneration;
   const session = sessionGeneration;
   practiceContentSaving.value = true;
@@ -3354,7 +3485,7 @@ function openDailyObjectsEntrySettings() {
   if (!practiceContent.value) void loadDashboard();
 }
 
-async function loadDailyObjectsContent() {
+async function loadDailyObjectsContent(discardLocal: boolean | Event = false) {
   const session = sessionGeneration;
   dailyObjectsError.value = '';
   try {
@@ -3376,8 +3507,9 @@ async function loadDailyObjectsContent() {
       } catch { return [product.id, ''] as const; }
     }));
     if (session !== sessionGeneration) return;
-    if (session === sessionGeneration && !dailyObjectsDirty.value) {
+    if (session === sessionGeneration && (!dailyObjectsDirty.value || discardLocal === true)) {
       dailyObjectsContent.value = content;
+      dailyObjectsDirty.value = false;
       dailyObjectPreviewUrls.value = Object.fromEntries(previewEntries);
       dailyObjectsConflict.value = false;
     }
@@ -4961,6 +5093,7 @@ function logout(message = '') {
   loading.value = false;
   sessionExpiresAt.value = 0;
   overviewUpdatedAt.value = '';
+  overviewSyncError.value = '';
   home.value = null;
   issues.value = [];
   issueLifecycle.value = null;
@@ -5071,6 +5204,7 @@ function handleAdminUnauthorized(response: Response, expectedSession = sessionGe
 
 onMounted(() => {
   window.addEventListener('scroll', handleWorkspaceScroll, { passive: true });
+  window.addEventListener('keydown', handleWorkspaceShortcut);
   handleWorkspaceScroll();
   if (!token.value || !sessionExpiresAt.value || sessionExpiresAt.value > Date.now() + maxAdminSessionSeconds * 1000) {
     localStorage.removeItem('myriad_she_admin_token');
@@ -5104,6 +5238,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleWorkspaceScroll);
+  window.removeEventListener('keydown', handleWorkspaceShortcut);
   wecomQrInstance?.destroyed?.();
   wecomQrInstance = null;
 });
@@ -5160,9 +5295,11 @@ onBeforeUnmount(() => {
         <button class="quiet" type="button" @click="logoutFromButton">退出登录</button>
       </section>
       <div v-else class="dashboard-layout" :class="{ 'nav-collapsed': sidebarCollapsed }">
+        <AdminCommandMenu :open="commandMenuOpen" :items="navigationItems" @close="commandMenuOpen = false" @select="selectAdminDestination" />
         <aside class="dashboard-sidebar" aria-label="后台分区导航">
           <div class="dashboard-brand">
-            <div class="dashboard-brand-copy"><strong>MYRIAD SHE</strong></div>
+            <div class="dashboard-brand-copy"><strong>MYRIAD SHE</strong><small>ADMIN WORKSPACE</small></div>
+            <button type="button" class="quiet admin-icon-button sidebar-toggle" :aria-label="sidebarCollapsed ? '展开侧边导航' : '收起侧边导航'" :title="sidebarCollapsed ? '展开侧边导航' : '收起侧边导航'" :aria-expanded="!sidebarCollapsed" @click="sidebarCollapsed = !sidebarCollapsed"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9 4v16m6-11-3 3 3 3"/></svg></button>
           </div>
           <nav class="dashboard-nav" aria-label="后台分区">
             <div class="dashboard-nav-tabs">
@@ -5221,12 +5358,14 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </nav>
+          <div class="dashboard-nav-footer"><span class="admin-workspace-mark" aria-hidden="true">M</span><div><strong>管理工作空间</strong><small>{{ adminIdentity.roleLabel }}</small></div><span class="admin-workspace-dot" aria-hidden="true"></span></div>
         </aside>
         <div class="dashboard-workspace">
           <header class="topbar">
-            <div class="topbar-title" :key="currentView.title"><p class="eyebrow">MYRIAD SHE / {{ currentView.eyebrow }}</p><h1>{{ currentView.title }}</h1></div>
+            <div class="topbar-title" :key="currentView.title"><p class="eyebrow">MYRIAD SHE / {{ currentView.eyebrow }}</p><h1 tabindex="-1">{{ currentView.title }}</h1><p v-if="activeSection !== 'overview'" class="admin-page-description">{{ currentDestination?.description }}</p></div>
             <div class="topbar-actions">
-              
+              <button type="button" class="quiet admin-command-trigger" aria-label="快捷导航" aria-keyshortcuts="Control+k Meta+k" @click="openCommandMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span>快速前往</span><kbd>⌘ / Ctrl K</kbd></button>
+              <button v-if="activeSection !== 'overview'" type="button" class="quiet admin-page-refresh" :disabled="currentPageRefreshing || dashboardLoading" :aria-busy="currentPageRefreshing" :aria-label="currentPageRefreshing ? '刷新中…' : '刷新页面'" title="刷新页面" @click="refreshCurrentPage"><svg :class="{ spinning: currentPageRefreshing }" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 11.5-1L20 9M4 15l2.5 3A7 7 0 0 0 18 17"/></svg><span>{{ currentPageRefreshing ? '刷新中…' : '刷新页面' }}</span></button>
               <div class="account-menu">
   <button type="button" class="account-avatar-button" :aria-expanded="accountMenuOpen" aria-haspopup="menu" :aria-label="`账号菜单，${adminIdentity.name}`" @click="accountMenuOpen = !accountMenuOpen">
     <img v-if="adminIdentity.avatarUrl" :src="adminIdentity.avatarUrl" alt="" />
@@ -5299,91 +5438,105 @@ onBeforeUnmount(() => {
 </Teleport>
           <button v-if="showBackToTop" type="button" class="to-top" aria-label="回到顶部" title="回到顶部" @click="scrollToTop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
           <p v-if="dashboardLoading" class="loading-note" role="status" aria-live="polite">正在同步云端数据…</p>
-      <section v-if="activeSection === 'overview'" id="overview-panel" class="overview-workspace">
+      <section v-if="activeSection === 'overview'" id="overview-panel" class="overview-workspace" :aria-busy="dashboardLoading">
         <header class="panel overview-hero">
           <div class="overview-hero-copy">
-            <p class="eyebrow">MYRIAD SHE / WORKSPACE</p>
+            <p class="eyebrow">A LITTLE CARE, EVERY DAY</p>
             <h2>{{ overviewGreeting }}</h2>
-            <p class="muted">{{ adminRoleLabels[adminRole] }} · 已授权 {{ adminModuleList.length }} / {{ adminModules.length }} 个模块<template v-if="overviewUpdatedAt"> · 更新于 {{ displayDate(overviewUpdatedAt) }}</template></p>
+            <p class="overview-hero-description">从这里，照看每一份真实的表达。</p>
+            <p class="muted">{{ adminRoleLabels[adminRole] }} · 已授权 {{ adminModuleList.length }} / {{ adminModules.length }} 个模块</p>
+          </div>
+          <div class="overview-hero-date">
+            <span>{{ new Date(overviewUpdatedAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase() }}</span>
+            <time :datetime="overviewUpdatedAt || undefined">{{ new Date(overviewUpdatedAt || Date.now()).toLocaleDateString('zh-CN', { year: 'numeric', weekday: 'long' }) }}</time>
           </div>
           <div class="overview-hero-actions">
-            <button v-if="canAccessModule('journal')" type="button" @click="openJournalSubsection('journal-list')">期刊工作台</button>
+            <button v-if="canAccessModule('journal')" type="button" @click="openJournalSubsection('journal-list')">期刊工作台 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
             <button v-if="canAccessModule('contributions')" type="button" class="quiet" @click="activeSection = 'contributions'; refreshDiscussionContributions()">审核用户经历</button>
             <button v-if="canAccessModule('observations')" type="button" class="quiet" @click="activeSection = 'observations'; refreshObservations()">观察记录</button>
             <button v-if="isSuperAdmin" type="button" class="quiet" @click="activeSection = 'employees'; loadEmployees()">员工与权限</button>
-            <button type="button" class="quiet" :disabled="dashboardLoading" @click="refreshCurrentPage">{{ dashboardLoading ? '同步中…' : '刷新数据' }}</button>
+            <span class="overview-sync-message" :class="{ 'has-error': Boolean(overviewSyncError) }" role="status">{{ dashboardLoading ? '正在同步最新数据' : overviewSyncError ? '数据同步未完成，请重试' : overviewUpdatedAt ? '更新于 ' + displayDate(overviewUpdatedAt) : '等待同步数据' }}</span>
+            <button type="button" class="quiet overview-sync" :class="{ 'is-syncing': dashboardLoading }" :disabled="dashboardLoading || currentPageRefreshing" @click="refreshCurrentPage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 11.5-1L20 9M4 15l2.5 3A7 7 0 0 0 18 17"/></svg>{{ dashboardLoading ? '同步中…' : '刷新数据' }}</button>
           </div>
         </header>
 
         <p v-if="adminModuleList.length === 0" class="panel overview-empty">当前账号还没有获得任何后台模块。请让超级管理员在「员工与权限 → 授权模块」中勾选后使用。</p>
 
+        <div class="overview-section-heading">
+          <div><h3>运营概览</h3><p>内容、社区与日常运营，一目了然。</p></div>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 11h16"/></svg>截至最近一次同步</span>
+        </div>
         <div class="overview-metrics">
           <article v-if="canAccessModule('journal')" class="panel overview-metric">
-            <p class="eyebrow">JOURNAL</p>
-            <strong>{{ issueLifecycle?.publishedCode || '尚未发布' }}</strong>
+            <div class="overview-metric-top"><p class="eyebrow">JOURNAL / 当前期刊</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h5a4 4 0 0 1 4 4v13a4 4 0 0 0-4-3H3zM12 8a4 4 0 0 1 4-4h5v14h-5a4 4 0 0 0-4 3"/></svg></span></div>
+            <strong>{{ dashboardLoading && !overviewUpdatedAt ? '—' : issueLifecycle?.publishedCode || '尚未发布' }}</strong>
             <p class="overview-metric-line">草稿 {{ issueLifecycle?.draftCount ?? 0 }} 期 · 归档 {{ issueLifecycle?.archivedCount ?? 0 }} 期</p>
             <small>{{ issueLifecycle?.publishedUpdatedAt ? '发布时间 ' + displayDate(issueLifecycle.publishedUpdatedAt) : '还没有已发布期刊' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="openJournalSubsection('journal-list')">管理期刊</button>
+            <button type="button" class="quiet overview-metric-action" @click="openJournalSubsection('journal-list')"><span>管理期刊</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           </article>
 
           <article v-if="canAccessModule('contributions')" class="panel overview-metric">
-            <p class="eyebrow">REVIEW</p>
-            <strong>{{ discussionContributionTotal }} 条待审核</strong>
+            <div class="overview-metric-top"><p class="eyebrow">REVIEW / 经历审核</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h12v15H8zM4 7v14h12M11 10l2 2 4-4"/></svg></span></div>
+            <strong><AnimatedNumber :value="discussionContributionTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">条待审核</span></strong>
             <p class="overview-metric-line">本期讨论里用户主动保存的经历</p>
             <small v-if="discussionContributions[0]">最近提交：{{ displayDate(discussionContributions[0].createdAt) }}</small>
             <small v-else>暂时没有待审核内容</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'contributions'; refreshDiscussionContributions()">进入审核队列</button>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'contributions'; refreshDiscussionContributions()"><span>进入审核队列</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           </article>
 
-          <article v-if="canAccessModule('observations')" class="panel overview-metric">
-            <p class="eyebrow">OBSERVATIONS</p>
-            <strong>{{ observationLifecycle?.savedCount ?? observationTotal }} 条已保存</strong>
+          <article v-if="canAccessModule('observations')" class="panel overview-metric" data-tone="sage">
+            <div class="overview-metric-top"><p class="eyebrow">OBSERVATIONS / 此刻观察</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span></div>
+            <strong><AnimatedNumber :value="observationLifecycle?.savedCount ?? observationTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">条已保存</span></strong>
             <p class="overview-metric-line">草稿 {{ observationLifecycle?.draftCount ?? 0 }} 条 · 超期草稿 {{ observationLifecycle?.staleDraftCount ?? 0 }} 条</p>
             <small>保留期 {{ observationLifecycle?.retentionDays ?? 90 }} 天</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'observations'; refreshObservations()">查看观察记录</button>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'observations'; refreshObservations()"><span>查看观察记录</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           </article>
 
           <article v-if="canAccessModule('members')" class="panel overview-metric">
-            <p class="eyebrow">MEMBERS</p>
-            <strong>{{ memberTotal }} 位会员</strong>
+            <div class="overview-metric-top"><p class="eyebrow">MEMBERS / 社区会员</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3.5"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 4a3.5 3.5 0 0 1 0 7m4 10v-2a6 6 0 0 0-4-5.5"/></svg></span></div>
+            <strong><AnimatedNumber :value="memberTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">位会员</span></strong>
             <p class="overview-metric-line">按注册时间倒序展示在会员列表</p>
             <small>{{ members[0] ? '最近注册 ' + displayDate(members[0].createdAt) : '暂无注册会员' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'members'; refreshMembers()">打开会员列表</button>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'members'; refreshMembers()"><span>打开会员列表</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           </article>
 
-          <article v-if="canAccessModule('privacy')" class="panel overview-metric">
-            <p class="eyebrow">PRIVACY</p>
-            <strong>{{ privacyLifecycle?.pendingCount ?? 0 }} 条待处理</strong>
+          <article v-if="canAccessModule('privacy')" class="panel overview-metric" data-tone="amber">
+            <div class="overview-metric-top"><p class="eyebrow">PRIVACY / 隐私申请</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3-8 3v6c0 5 8 9 8 9s8-4 8-9V6zM9 12l2 2 4-4"/></svg></span></div>
+            <strong><AnimatedNumber :value="privacyLifecycle?.pendingCount ?? 0" :loading="dashboardLoading" /><span class="overview-metric-unit">条待处理</span></strong>
             <p class="overview-metric-line">其中到期 {{ privacyLifecycle?.duePendingCount ?? 0 }} 条 · 失败 {{ privacyLifecycle?.failedCount ?? 0 }} 条</p>
             <small>{{ privacyLifecycle?.oldestPendingAt ? '最早申请 ' + displayDate(privacyLifecycle.oldestPendingAt) : '没有积压的删除申请' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'privacy'; refreshPrivacy(true)">处理删除申请</button>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'privacy'; refreshPrivacy(true)"><span>处理删除申请</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           </article>
 
           <article v-if="canAccessModule('audit')" class="panel overview-metric">
-            <p class="eyebrow">AUDIT</p>
-            <strong>{{ auditTotal }} 条操作记录</strong>
+            <div class="overview-metric-top"><p class="eyebrow">AUDIT / 操作审计</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"/></svg></span></div>
+            <strong><AnimatedNumber :value="auditTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">条操作记录</span></strong>
             <p class="overview-metric-line">覆盖用户、管理员与系统动作</p>
             <small>{{ auditLogs[0] ? '最近动作 ' + displayDate(auditLogs[0].createdAt) : '暂无审计记录' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'audit'; refreshAudit()">查看审计日志</button>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'audit'; refreshAudit()"><span>查看审计日志</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           </article>
         </div>
 
         <div class="overview-columns">
           <section v-if="canAccessModule('audit')" class="panel overview-recent">
-            <div class="section-heading"><div><p class="eyebrow">RECENT ACTIVITY</p><h3>最近操作</h3></div><small>{{ auditTotal }} 条</small></div>
+            <div class="section-heading"><div><p class="eyebrow">RECENT ACTIVITY</p><h3>最近操作</h3></div><button type="button" class="quiet overview-audit-link" @click="activeSection = 'audit'; refreshAudit()">全部记录<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button></div>
             <ul class="overview-list">
               <li v-for="entry in auditLogs.slice(0, 6)" :key="entry.id">
                 <div><strong>{{ overviewAuditAction(entry.action) }}</strong><small>{{ entry.actorType === 'admin' ? '管理员' : entry.actorType === 'user' ? '用户' : '系统' }} · {{ overviewAuditResource(entry.resourceType) }}<template v-if="entry.resourceId"> · {{ entry.resourceId.slice(0, 8) }}</template></small></div>
-                <time>{{ displayDate(entry.createdAt) }}</time>
+                <time :datetime="entry.createdAt">{{ displayDate(entry.createdAt) }}</time>
               </li>
             </ul>
-            <p v-if="!auditLogs.length" class="muted">还没有审计记录。</p>
+            <p v-if="!auditLogs.length" class="overview-activity-empty">{{ dashboardLoading ? '正在读取最近操作…' : '还没有操作记录，新的动态会出现在这里。' }}</p>
           </section>
 
           <section class="panel overview-access">
             <div class="section-heading"><div><p class="eyebrow">ACCESS</p><h3>当前授权模块</h3></div><small>{{ adminModuleList.length }} / {{ adminModules.length }}</small></div>
+            <div class="overview-access-summary">
+              <svg class="overview-access-ring" viewBox="0 0 40 40" aria-hidden="true"><circle class="ring-track" cx="20" cy="20" r="16"/><circle class="ring-value" cx="20" cy="20" r="16" pathLength="100" :stroke-dasharray="`${adminModuleList.length / adminModules.length * 100} 100`"/></svg>
+              <div><strong>{{ adminModuleList.length }} <span class="overview-metric-unit">/ {{ adminModules.length }}</span></strong><small>个模块已授权，可在左侧导航访问</small></div>
+            </div>
             <div class="overview-chips">
-              <span v-for="module in adminModules" :key="module.id" class="overview-chip" :class="{ granted: adminModuleList.includes(module.id) }">{{ module.label }}</span>
+              <span v-for="module in adminModules" :key="module.id" class="overview-chip" :class="{ granted: adminModuleList.includes(module.id) }"><svg v-if="adminModuleList.includes(module.id)" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>{{ module.label }}<span class="overview-visually-hidden">{{ adminModuleList.includes(module.id) ? '（已授权）' : '（未授权）' }}</span></span>
             </div>
             <p class="muted overview-access-note">模块授权由超级管理员在「员工与权限 → 授权模块」中按人调整，保存后立即生效。</p>
           </section>
@@ -6258,7 +6411,7 @@ onBeforeUnmount(() => {
           <div v-if="memberOffset < memberTotal" class="table-actions"><button class="quiet" :disabled="memberLoading" @click="refreshMembers(true)">加载更多会员</button></div>
         </div>
         <Teleport to="body">
-<div v-if="memberDetail" class="observation-modal-backdrop" @click.self="memberDetail = null"><section class="observation-detail-panel" role="dialog" aria-modal="true" aria-labelledby="member-detail-title"><div class="section-heading"><div><p class="eyebrow">MEMBER ACCOUNT</p><h3 id="member-detail-title">会员详情</h3></div><button class="quiet" @click="memberDetail = null">关闭</button></div>
+<div v-if="memberDetail" class="observation-modal-backdrop" @click.self="memberDetail = null"><section class="observation-detail-panel" role="dialog" aria-modal="true" aria-labelledby="member-detail-title" @keydown.esc="memberDetail = null"><div class="section-heading"><div><p class="eyebrow">MEMBER ACCOUNT</p><h3 id="member-detail-title">会员详情</h3></div><button class="quiet" @click="memberDetail = null">关闭</button></div>
           <div class="panel-body"><div class="member-detail-profile"><img v-if="memberDetail.avatarUrl" class="member-avatar" :src="memberDetail.avatarUrl" :alt="memberDetail.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ memberDetail.nickname ? memberDetail.nickname.slice(0, 1) : 'M' }}</span><strong>{{ memberDetail.nickname || '未设置昵称' }}</strong></div><p class="mono">{{ memberDetail.id }}</p><p>注册时间：{{ displayDate(memberDetail.createdAt) }}</p><p>生日：{{ memberBirthday(memberDetail) }}</p><p>收货地址：{{ isSuperAdmin ? memberAddressLabel(memberDetail.address) : '仅超级管理员可见' }}</p><p>手机号：{{ memberDetail.phoneNumber || memberDetail.phoneMasked || '未绑定' }}</p><p>微信 OpenID：{{ memberDetail.openId }}</p><p>微信 UnionID：{{ memberDetail.maskedUnionId || '未提供' }}</p><p>观察记录：{{ memberDetail.observationCount }} 条（详情内容不在此页读取）</p><h4>账户隐私申请</h4><p v-if="!memberDetail.privacyRequests?.length" class="muted">暂无隐私申请。</p><p v-for="item in memberDetail.privacyRequests" :key="item.id">{{ item.status }} · {{ displayDate(item.requestedAt) }} · 计划 {{ displayDate(item.scheduledFor) }}</p><p v-if="!isSuperAdmin" class="muted">客服仅查看申请状态；处理与删除操作由超级管理员执行。</p>
           </div>
         </section></div>

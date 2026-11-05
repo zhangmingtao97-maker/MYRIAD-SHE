@@ -24,6 +24,7 @@ const loaded = ref<Record<LegalKey, boolean>>({ 'user-agreement': false, 'privac
 const preview = ref<{ key: LegalKey; entry: HistoryEntry } | null>(null);
 const dialog = ref<HTMLElement | null>(null);
 let previousBodyOverflow = '';
+let previousFocus: HTMLElement | null = null;
 let alive = true;
 
 const activeState = computed(() => states.value[activeKey.value]);
@@ -103,6 +104,15 @@ function onModalKeydown(event: KeyboardEvent) {
     event.stopPropagation();
     closePreview();
   }
+  if (event.key === 'Tab' && dialog.value) {
+    const items = Array.from(dialog.value.querySelectorAll<HTMLElement>('button:not(:disabled), [href], [tabindex]:not([tabindex="-1"])'))
+      .filter((element) => element.getClientRects().length > 0);
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!first || !last) { event.preventDefault(); dialog.value.focus(); }
+    else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.value)) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.value)) { event.preventDefault(); first.focus(); }
+  }
 }
 
 function restoreEntry() {
@@ -113,6 +123,7 @@ function restoreEntry() {
 
 watch(preview, async (value) => {
   if (value) {
+    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', onModalKeydown);
@@ -121,6 +132,7 @@ watch(preview, async (value) => {
   } else {
     document.body.style.overflow = previousBodyOverflow;
     window.removeEventListener('keydown', onModalKeydown);
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
   }
 });
 
@@ -132,7 +144,7 @@ watch(() => props.active, (active) => {
 onBeforeUnmount(() => {
   alive = false;
   window.removeEventListener('keydown', onModalKeydown);
-  document.body.style.overflow = previousBodyOverflow;
+  if (preview.value) document.body.style.overflow = previousBodyOverflow;
 });
 
 defineExpose({ reload });
@@ -172,7 +184,7 @@ defineExpose({ reload });
     <Teleport to="body">
       <Transition name="legal-history-pop">
         <div v-if="preview" class="legal-history-modal-backdrop" @click.self="closePreview">
-          <section ref="dialog" class="legal-history-modal" role="dialog" aria-modal="true" :aria-label="`${documentLabels[preview.key]}第 ${preview.entry.version} 版正文`" tabindex="-1">
+          <section ref="dialog" class="legal-history-modal" role="dialog" aria-modal="true" data-admin-dialog-managed="local" :aria-label="`${documentLabels[preview.key]}第 ${preview.entry.version} 版正文`" tabindex="-1">
             <header class="legal-history-modal-head">
               <div>
                 <p class="eyebrow">PAGES / LEGAL / HISTORY</p>
@@ -241,5 +253,9 @@ defineExpose({ reload });
   .legal-history-modal-backdrop { padding: 12px; }
   .legal-history-modal { max-height: calc(100vh - 24px); border-radius: 16px; }
   .legal-history-modal-head, .legal-history-modal-body, .legal-history-modal-foot { padding-left: 18px; padding-right: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .legal-history-pop-enter-active, .legal-history-pop-leave-active,
+  .legal-history-pop-enter-active .legal-history-modal, .legal-history-pop-leave-active .legal-history-modal { transition: none; }
 }
 </style>

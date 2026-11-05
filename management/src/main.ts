@@ -8,6 +8,8 @@ import './admin-theme.css';
 import './admin-fixes.css';
 import './admin-journal.css';
 import './admin-preview.css';
+import './admin-dashboard.css';
+import './admin-experience.css';
 
 const brandFonts = document.createElement('style');
 brandFonts.textContent = `
