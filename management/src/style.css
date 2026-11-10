@@ -198,10 +198,12 @@ h2 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
 .rich-text-tool { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; padding: 4px 9px; border: 1px solid #cdbbae; border-radius: 3px; background: #fffdf9; color: #40362f; cursor: pointer; }
 .rich-text-tool:focus-visible, .rich-text-color input:focus-visible, .rich-text-canvas:focus-visible { outline: 2px solid #8e493c; outline-offset: 2px; }
 .rich-text-tool:disabled { cursor: not-allowed; opacity: .5; }
-.rich-text-color { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #40362f; font-size: 13px; }
-.rich-text-size { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #40362f; font-size: 13px; }
+/* 字号 / 文字颜色是工具栏里的“整块”，不允许被挤窄：
+   否则「文字颜色」四个字会一个字一行地竖排下去。 */
+.rich-text-color { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; min-height: 44px; color: #40362f; font-size: 13px; white-space: nowrap; }
+.rich-text-size { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; min-height: 44px; color: #40362f; font-size: 13px; white-space: nowrap; }
 .rich-text-size select { min-height: 40px; padding: 6px 9px; }
-.rich-text-color input { width: 40px; height: 40px; padding: 2px; border: 1px solid #cdbbae; background: #fffdf9; cursor: pointer; }
+.rich-text-color input { flex: 0 0 40px; width: 40px; height: 40px; padding: 2px; border: 1px solid #cdbbae; background: #fffdf9; cursor: pointer; }
 .rich-text-color input:disabled { cursor: not-allowed; opacity: .5; }
 .rich-text-help { line-height: 1.5; }
 .rich-text-canvas { min-height: 92px; padding: 10px 12px; border: 1px solid #cdbbae; background: #fff; color: #40362f; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }

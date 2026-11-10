@@ -1,4 +1,4 @@
-﻿/* =========================================================================
+/* =========================================================================
    期刊工作台 · 视觉统一层
    接在 admin-theme.css / admin-fixes.css 之后加载。
    目标：把期刊工作台从独立的“米色纸张”风格收回到后台设计系统内，
@@ -350,6 +350,27 @@
 }
 .journal-meta-panel .section-heading h3 { font-size: 14px; }
 .journal-meta-panel .section-heading small { color: var(--muted); }
+
+/* 刊期信息：两列各自堆叠。
+   之前三个字段直接铺在两列网格里，富文本那一格把整行撑高，
+   期刊编号下面就会空出一大块，刊期月份被推到很下面。 */
+.journal-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 18px;
+}
+.journal-meta-column {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
+.journal-meta-column > label { display: grid; gap: 6px; min-width: 0; }
+
+@media (max-width: 1240px) {
+  .journal-meta-grid { grid-template-columns: minmax(0, 1fr); }
+}
 
 .journal-derived-grid {
   display: grid;

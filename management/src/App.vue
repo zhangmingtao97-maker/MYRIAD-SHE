@@ -6857,7 +6857,15 @@ onBeforeUnmount(() => {
           <div class="journal-list-main">
             <form v-if="!editingIssueId" class="panel issue-editor-form journal-create-form" novalidate @submit.prevent="saveIssue">
               <div class="section-heading"><div><p class="eyebrow">NEW ISSUE</p><h3>新建期刊草稿</h3></div><small>只在后台保存，不会立即上线</small></div>
-              <div class="form-grid"><label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" placeholder="例如：issue-03" /></label><div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div><div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div></div>
+              <div class="journal-meta-grid">
+                <div class="journal-meta-column">
+                  <label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" placeholder="例如：issue-03" /></label>
+                  <div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
+                </div>
+                <div class="journal-meta-column">
+                  <div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>
+                </div>
+              </div>
               <div class="form-grid issue-create-basics"><div><JournalRichTextField :model-value="issueForm.theme" :rich-text="issueForm.themeRichText" label="本期主题" @update:model-value="setIssueBaseField('theme', $event)" @update:rich-text="setIssueBaseRichText('theme', $event)" /></div><div><JournalRichTextField :model-value="issueForm.question" :rich-text="issueForm.questionRichText" label="本期问题" @update:model-value="setIssueBaseField('question', $event)" @update:rich-text="setIssueBaseRichText('question', $event)" /></div></div>
               <p class="field-help">创建后进入「首页策展」继续补充封面、人物、声音与讨论。这里填写的主题与问题会成为封面标题和「本期问题」栏目的初始值；这些模块共用同一份草稿。</p>
               <p v-if="issueValidationMessage" class="error issue-validation-message" role="alert">{{ issueValidationMessage }}</p>
@@ -6982,7 +6990,15 @@ onBeforeUnmount(() => {
               <div class="section-heading"><div><p class="eyebrow">ISSUE META</p><h3>刊期信息</h3></div><small>首页顶部显示</small></div>
               <label>首页顶部介绍<input v-model="journalHomeIntroduction" maxlength="120" aria-describedby="home-introduction-help" /></label>
               <p id="home-introduction-help" class="field-help">显示在首页品牌栏下方，最多 120 字。留空则隐藏；保存整份草稿并确认发布后生效。</p>
-              <div class="form-grid"><label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" /></label><div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div><div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div></div>
+              <div class="journal-meta-grid">
+                <div class="journal-meta-column">
+                  <label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" /></label>
+                  <div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
+                </div>
+                <div class="journal-meta-column">
+                  <div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>
+                </div>
+              </div>
               <div class="journal-derived-grid">
                 <div><small>本期主题 · 取自封面标题</small><strong><RichTextView inline :text="journalCoverTitle" :rich-text="journalCoverTitleRichText" fallback="尚未填写" /></strong><button type="button" class="quiet" :disabled="!journalCoverModule" @click="selectJournalModule(journalCoverModule)">去修改封面</button></div>
                 <div><small>本期问题 · 取自主页问题栏目</small><strong><RichTextView inline :text="journalQuestionTitle" :rich-text="journalQuestionTitleRichText" fallback="尚未填写" /></strong><button type="button" class="quiet" :disabled="!journalQuestionModule" @click="selectJournalModule(journalQuestionModule)">去修改问题</button></div>
