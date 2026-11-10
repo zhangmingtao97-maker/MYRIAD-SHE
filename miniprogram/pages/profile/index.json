@@ -3,5 +3,6 @@
   "navigationBarTitleText": "个人资料",
   "navigationBarBackgroundColor": "#e7dfd1",
   "backgroundColor": "#e7dfd1",
-  "navigationBarTextStyle": "black"
+  "navigationBarTextStyle": "black",
+  "usingComponents": { "avatar-picker": "/components/avatar-picker/index" }
 }

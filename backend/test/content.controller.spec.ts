@@ -75,9 +75,11 @@ function harness(input: { referenced?: boolean; failIntentAudit?: boolean; failC
   const events: string[] = [];
   const committedAuditActions: string[] = [];
   const signedTokens: Array<{ payload: object; options: object }> = [];
+  const referenceSqls: string[] = [];
   const client = {
     query: async (sql: string, values: unknown[] = []) => {
       if (sql.includes('select exists')) {
+        referenceSqls.push(sql);
         events.push('references:checked');
         return { rows: [{ referenced: input.referenced ?? false }] };
       }
@@ -139,12 +141,12 @@ function harness(input: { referenced?: boolean; failIntentAudit?: boolean; failC
     },
   } as unknown as JwtService;
   const controller = new ContentController(database, storage, new AuditService(database), new ConfigService({}), {} as RedisService, jwt);
-  return { controller, events, committedAuditActions, signedTokens };
+  return { controller, events, committedAuditActions, signedTokens, referenceSqls };
 }
 
 function practiceHarness() {
   const events: string[] = [];
-  const page = { title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 28, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', observationCopy: practiceUpdate().observationCopy, sharedPracticeCopy: practiceUpdate().sharedPracticeCopy, editVersion: 1 };
+  const page = { title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 32, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', observationCopy: practiceUpdate().observationCopy, sharedPracticeCopy: practiceUpdate().sharedPracticeCopy, editVersion: 1 };
   const entries = [
     { key: 'observation', title: '此刻观察', description: '从现实处境开始，也可以从四时气韵开始', enabled: true, contextRichText: '一个人 · 随时可以开始', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: '此刻观察', titleFontSize: 16, titleColor: '#40362f', descriptionRichText: '从现实处境开始，也可以从四时气韵开始', descriptionFontSize: 13, descriptionColor: '#40362f' },
     { key: 'shared-practice', title: '共同实践', description: '有真实活动时才开放', enabled: false, contextRichText: '与他人 · 从一个问题开始', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: '共同实践', titleFontSize: 16, titleColor: '#40362f', descriptionRichText: '本期线上讨论 · 未来线下相见', descriptionFontSize: 13, descriptionColor: '#40362f' },
@@ -159,7 +161,7 @@ function practiceHarness() {
       if (sql.includes('select title, title_rich_text as "titleRichText"')) {
         return { rows: [{ ...page }] };
       }
-      if (sql.includes('select key, title, description, enabled,')) {
+      if (sql.includes('select key, target, title, description, enabled,')) {
         return { rows: entries.map((entry) => ({ ...entry })) };
       }
       if (sql.includes('select key from content_practice_entries')) {
@@ -302,7 +304,7 @@ function practiceUpdate() {
     titleColor: '#8b6b58',
     intro: '先回到能承接真实经验的位置。',
     introRichText: '先回到能承接真实经验的位置。',
-    introFontSize: 28,
+    introFontSize: 32,
     introColor: '#40362f',
     metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58',
     metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58',
@@ -479,6 +481,7 @@ function issueEditHarness(editVersion: number, cacheInvalidation = true) {
     id: '00000000-0000-4000-8000-000000000001',
     coverObjectKey: null,
     microVoiceObjectKey: null,
+    homeBackgroundObjectKey: null,
     code: 'issue-03',
     status: 'draft' as const,
     editVersion,
@@ -685,10 +688,11 @@ test('issue media validation rejects directory marker object keys before storage
     objectMetadata: async () => { metadataLookups += 1; return { contentType: 'image/webp', contentLength: 1 }; },
   } as unknown as StorageService;
   const controller = new ContentController({} as DatabaseService, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
-  const validate = (controller as unknown as { validateMediaKeys: (input: { coverObjectKey?: string; microVoiceObjectKey?: string }) => Promise<void> }).validateMediaKeys.bind(controller);
+  const validate = (controller as unknown as { validateMediaKeys: (input: { coverObjectKey?: string; microVoiceObjectKey?: string; homeBackgroundObjectKey?: string }) => Promise<void> }).validateMediaKeys.bind(controller);
 
   await assert.rejects(validate({ coverObjectKey: 'content/image/' }), BadRequestException);
   await assert.rejects(validate({ microVoiceObjectKey: 'content/audio/' }), BadRequestException);
+  await assert.rejects(validate({ homeBackgroundObjectKey: 'content/audio/background.mp3' }), BadRequestException);
   assert.equal(metadataLookups, 0);
 });
 
@@ -739,10 +743,13 @@ test('home cache hits sign media from the cached object keys for each response',
   const cached = {
     issue: {
       code: 'issue-02', label: 'ISSUE 02', month: 'Sep 2026', theme: '松开', question: '最近有什么不想再握紧的？',
+      labelRichText: '', monthRichText: '', themeRichText: '', questionRichText: '',
       microVoiceTitle: '微声音 01', microVoiceDuration: '01:12',
       homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f',
       homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面',
+      homeCoverCaptionLeftRichText: '', homeCoverCaptionRightRichText: '',
       coverObjectKey: 'content/image/2026-09/cover.webp', microVoiceObjectKey: 'content/audio/2026-09/voice.mp3',
+      homeBackgroundObjectKey: 'content/image/2026-09/background.webp',
     },
     question: '最近有什么不想再握紧的？',
     sections: ['人物与档案', '实践与观察', '共同实践', '日常之物'],
@@ -757,15 +764,58 @@ test('home cache hits sign media from the cached object keys for each response',
     }),
     createDownloadUrl: async (key: string) => ({ url: `${key}?signature=${++signed}`, expiresIn: 3600 }),
   } as unknown as StorageService;
-  const controller = new ContentController({} as DatabaseService, storage, {} as AuditService, new ConfigService({}), redis, {} as JwtService);
+  const database = {
+    withSessionAdvisoryLock: async (_key: string, callback: (client: PoolClient) => Promise<unknown>) => {
+      return callback({ query: async () => { throw new Error('database should not be queried after the locked cache hit'); } } as unknown as PoolClient);
+    },
+  } as unknown as DatabaseService;
+  const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), redis, {} as JwtService);
 
   const first = await controller.home();
   const second = await controller.home();
 
   assert.equal(first.coverUrl.endsWith('signature=1'), true);
   assert.equal(first.microVoice.url.endsWith('signature=2'), true);
-  assert.equal(second.coverUrl.endsWith('signature=3'), true);
-  assert.equal(second.microVoice.url.endsWith('signature=4'), true);
+  assert.equal(first.issue?.homeBackgroundUrl.endsWith('signature=3'), true);
+  assert.equal(second.coverUrl.endsWith('signature=4'), true);
+  assert.equal(second.microVoice.url.endsWith('signature=5'), true);
+  assert.equal(second.issue?.homeBackgroundUrl.endsWith('signature=6'), true);
+});
+
+test('home cache entries created before background support remain readable', async () => {
+  const cached = {
+    issue: {
+      code: 'issue-02', label: 'ISSUE 02', month: 'Sep 2026', theme: '松开', question: '最近有什么不想再握紧的？',
+      labelRichText: '', monthRichText: '', themeRichText: '', questionRichText: '',
+      microVoiceTitle: null, microVoiceDuration: null,
+      homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f',
+      homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面',
+      homeCoverCaptionLeftRichText: '', homeCoverCaptionRightRichText: '',
+      coverObjectKey: null, microVoiceObjectKey: null,
+    },
+    question: '最近有什么不想再握紧的？',
+    sections: ['人物与档案'],
+    publishedVersion: 3,
+    modules: [],
+  };
+  const database = {
+    withSessionAdvisoryLock: async (_key: string, callback: (client: PoolClient) => Promise<unknown>) => {
+      return callback({ query: async () => { throw new Error('database should not be queried after the locked cache hit'); } } as unknown as PoolClient);
+    },
+  } as unknown as DatabaseService;
+  const controller = new ContentController(
+    database,
+    {} as StorageService,
+    {} as AuditService,
+    new ConfigService({}),
+    { getJson: async () => cached } as unknown as RedisService,
+    {} as JwtService,
+  );
+
+  const result = await controller.home();
+
+  assert.equal(result.issue?.homeBackgroundUrl, '');
+  assert.equal(result.publishedVersion, 3);
 });
 
 test('home cache rejects unsafe media object keys before signing', () => {
@@ -774,9 +824,11 @@ test('home cache rejects unsafe media object keys before signing', () => {
   const cached = {
     issue: {
       code: 'issue-02', label: 'ISSUE 02', month: 'Sep 2026', theme: '松开', question: '最近有什么不想再握紧的？',
+      labelRichText: '', monthRichText: '', themeRichText: '', questionRichText: '',
       microVoiceTitle: null, microVoiceDuration: null,
       homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f',
       homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面',
+      homeCoverCaptionLeftRichText: '', homeCoverCaptionRightRichText: '',
       coverObjectKey: 'content/image/../private/cover.webp', microVoiceObjectKey: null,
     },
     question: '最近有什么不想再握紧的？',
@@ -823,7 +875,7 @@ test('practice copy updates save atomically with metadata audit while entries st
   assert.equal(events.filter((event) => event.startsWith('entry:updated:')).length, 3);
 });
 
-test('practice directory deletion is rejected to preserve content history', async () => {
+test('practice directory deletion removes only omitted directories', async () => {
   const { controller, entries, events } = practiceHarness();
   const update = practiceUpdate();
   update.entries.splice(1, 1);
@@ -834,10 +886,12 @@ test('practice directory deletion is rejected to preserve content history', asyn
     descriptionRichText: '从日常开始', descriptionFontSize: 13, descriptionColor: '#40362f',
   });
 
-  await assert.rejects(controller.updatePracticeContent(request, update), /不能永久删除/);
-  assert.deepEqual(entries.map((entry) => entry.key), ['observation', 'shared-practice', 'daily-goods']);
-  assert.equal(events.includes('entries:deleted-unsubmitted'), false);
-  assert.equal(events.includes('entries:reordered'), false);
+  const result = await controller.updatePracticeContent(request, update);
+
+  assert.deepEqual(result.entries.map((entry) => entry.key), ['observation', 'daily-goods', 'new-directory-01']);
+  assert.deepEqual(entries.map((entry) => entry.key), ['observation', 'daily-goods', 'new-directory-01']);
+  assert.equal(events.includes('entries:deleted-unsubmitted'), true);
+  assert.equal(events.includes('entries:reordered'), true);
 });
 
 test('practice directory persists separate rich-text lines with typography', async () => {
@@ -1001,6 +1055,97 @@ test('a current issue edit advances its version and records the edit', async () 
   assert.ok(events.indexOf('cache:deleted') < events.indexOf('transaction:commit'));
 });
 
+test('publishing preserves the homepage background, introduction, and empty question eyebrow in the immutable snapshot', async () => {
+  const id = '00000000-0000-4000-8000-000000000001';
+  const publishedSnapshots: Array<Record<string, any>> = [];
+  const issue = {
+    id,
+    code: 'issue-03',
+    label: 'ISSUE 03',
+    month: 'Nov 2026',
+    theme: '松开',
+    question: '最近有什么不想再握紧的？',
+    microVoiceTitle: null,
+    microVoiceDuration: null,
+    coverObjectKey: 'content/image/cover.webp',
+    microVoiceObjectKey: null,
+    homeBackgroundObjectKey: 'content/image/background.webp',
+    homeMetaRichText: '',
+    homeMetaFontSize: 16,
+    homeMetaColor: '#40362f',
+    homeCoverCaptionLeft: '人物纪实·时雨',
+    homeCoverCaptionRight: '本期封面',
+    draftContent: {
+      sections: [
+        { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '本期策展', month: 'Nov 2026', introduction: '每一种生活，都值得被认真看见' },
+        { id: 'cover', type: 'cover', order: 1, enabled: true, imageObjectKey: 'content/image/cover.webp', altText: '封面人物', captionLeft: '纪实', captionRight: '本期封面' },
+        { id: 'opener', type: 'opener', order: 2, enabled: true, eyebrow: '本期主题', title: '松开以后', body: '' },
+        { id: 'question', type: 'question', order: 3, enabled: true, eyebrow: '', eyebrowRichText: '', title: '最近有什么不想再握紧的？', body: '' },
+        { id: 'observation-action', type: 'observationAction', order: 4, enabled: true, title: '留给自己观察', body: '' },
+        { id: 'shared-practice-action', type: 'sharedPracticeAction', order: 5, enabled: true, title: '一起实践', body: '' },
+      ],
+      discussion: defaultDiscussionContent(),
+    },
+    editVersion: 3,
+    publishedVersion: 0,
+    status: 'draft',
+  };
+  const client = {
+    query: async (sql: string, values: unknown[] = []) => {
+      if (sql.includes('pg_advisory_xact_lock')) return { rows: [] };
+      if (sql.includes('from content_issues where id = $1 for update')) return { rows: [issue] };
+      if (sql.includes("update content_issues set status = 'archived'")) return { rows: [] };
+      if (sql.includes('insert into content_issue_publications')) {
+        publishedSnapshots.push(JSON.parse(String(values[2])));
+        return { rows: [] };
+      }
+      if (sql.includes("update content_issues set status = 'published'")) return { rows: [] };
+      if (sql.includes('insert into audit_logs')) return { rows: [] };
+      throw new Error(`Unexpected test query: ${sql}`);
+    },
+  } as unknown as PoolClient;
+  const database = {
+    withTransaction: async (callback: (transactionClient: PoolClient) => Promise<unknown>) => callback(client),
+  } as unknown as DatabaseService;
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 1 }),
+  } as unknown as StorageService;
+  const redis = { delete: async () => true } as unknown as RedisService;
+  const controller = new ContentController(database, storage, new AuditService(database), new ConfigService({}), redis, {} as JwtService);
+
+  const result = await controller.publishIssue(request, id, { editVersion: 3 });
+
+  assert.deepEqual(result, { published: true, version: 1 });
+  assert.equal(publishedSnapshots.length, 1);
+  const publishedQuestion = publishedSnapshots[0].sections.find((module: Record<string, unknown>) => module.type === 'question');
+  assert.equal(publishedQuestion.eyebrow, '');
+  assert.equal(publishedQuestion.eyebrowRichText, '');
+  assert.equal(publishedSnapshots[0].issue.homeBackgroundObjectKey, 'content/image/background.webp');
+  issue.draftContent.sections[0].introduction = '这句还没有发布';
+  const publishedMeta = publishedSnapshots[0].sections.find((module: Record<string, unknown>) => module.type === 'issueMeta');
+  assert.equal(publishedMeta.introduction, '每一种生活，都值得被认真看见');
+  const publicController = new ContentController(database, storage, new AuditService(database), new ConfigService({}), {
+    getJson: async () => ({ issue: null, question: '', sections: [], publishedVersion: 1, modules: [publishedMeta, publishedQuestion] }),
+  } as unknown as RedisService, {} as JwtService);
+  const home = await publicController.home();
+  assert.equal(home.modules[0].introduction, '每一种生活，都值得被认真看见');
+  assert.equal(home.modules[1].eyebrow, '');
+  assert.equal(home.modules[1].eyebrowRichText, '');
+});
+
+test('homepage introduction accepts a short sentence or an explicit empty value and rejects invalid copy', () => {
+  const { controller } = issueEditHarness(1);
+  const validate = (introduction: unknown) => (controller as unknown as {
+    validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> };
+  }).validateIssueDraft({ sections: [{ id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, introduction }] });
+  assert.equal(validate('  看见生活里的每一种可能  ').sections[0].introduction, '看见生活里的每一种可能');
+  assert.equal(validate('').sections[0].introduction, '');
+  for (const value of ['字'.repeat(121), '第一行\n第二行', '<strong>介绍</strong>', null, 123]) {
+    assert.throws(() => validate(value), BadRequestException);
+  }
+});
+
 test('issue writes invalidate the public home cache before committing', async () => {
   const { controller, events } = issueEditHarness(1);
 
@@ -1049,7 +1194,7 @@ test('issue input normalization removes accidental whitespace and clears empty m
   const { controller } = issueEditHarness(1);
   const normalized = (controller as unknown as { normalizeIssueInput: (body: unknown, required: boolean) => Record<string, unknown> }).normalizeIssueInput({
     code: ' issue-03 ', label: ' 标签 ', month: ' Oct ', theme: ' 主题 ', question: ' 问题 ',
-    microVoiceTitle: '  ', microVoiceDuration: ' 01:12 ', coverObjectKey: ' ', microVoiceObjectKey: null,
+    microVoiceTitle: '  ', microVoiceDuration: ' 01:12 ', coverObjectKey: ' ', microVoiceObjectKey: null, homeBackgroundObjectKey: ' ',
     homeMetaRichText: ' <strong onclick="alert(1)">SEP 2026</strong><img src="https://bad.example/x"/><script>alert(1)</script> ',
     homeMetaFontSize: 24, homeMetaColor: '#AB7852',
   }, true);
@@ -1059,6 +1204,7 @@ test('issue input normalization removes accidental whitespace and clears empty m
   assert.equal(normalized.microVoiceDuration, '01:12');
   assert.equal(normalized.coverObjectKey, null);
   assert.equal(normalized.microVoiceObjectKey, null);
+  assert.equal(normalized.homeBackgroundObjectKey, null);
   assert.equal(normalized.homeMetaRichText, '<strong>SEP 2026</strong>');
   assert.equal(normalized.homeMetaFontSize, 24);
   assert.equal(normalized.homeMetaColor, '#ab7852');
@@ -1143,20 +1289,103 @@ test('audio and question modules accept the editorial copy fields used by the mo
   ]), BadRequestException);
 });
 
-test('audio modules support up to three validated tracks and keep first-track legacy fields synchronized', () => {
+test('audio modules support up to twenty validated tracks and keep first-track legacy fields synchronized', () => {
   const { controller } = issueEditHarness(1);
   const validate = (sections: unknown[]) => (controller as unknown as { validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> } }).validateIssueDraft({ sections });
-  const tracks = [1, 2, 3].map((number) => ({
+  const tracks = [1, 2, 3, 4].map((number) => ({
     id: `voice-0${number}`, title: `微声音 0${number}`, duration: '01:12', audioObjectKey: `content/audio/voice-0${number}.mp3`,
     quote: `引言 ${number}`, subtitle: `说明 ${number}`, transcript: `文字稿 ${number}`,
   }));
   const [audio] = validate([{ id: 'audio', type: 'audio', order: 0, enabled: true, tracks }]).sections;
-  assert.equal((audio.tracks as unknown[]).length, 3);
+  assert.equal((audio.tracks as unknown[]).length, 4);
   assert.equal(audio.audioObjectKey, tracks[0].audioObjectKey);
   assert.equal(audio.title, tracks[0].title);
-  assert.throws(() => validate([{ id: 'audio', type: 'audio', order: 0, enabled: true, tracks: [...tracks, { ...tracks[0], id: 'voice-04' }] }]), BadRequestException);
+  const tooManyTracks = Array.from({ length: 21 }, (_, index) => ({
+    id: `voice-${String(index + 1).padStart(2, '0')}`,
+    title: `微声音 ${index + 1}`,
+    duration: '00:30',
+    audioObjectKey: `content/audio/voice-${String(index + 1).padStart(2, '0')}.mp3`,
+    quote: '', subtitle: '', transcript: '',
+  }));
+  assert.throws(() => validate([{ id: 'audio', type: 'audio', order: 0, enabled: true, tracks: tooManyTracks }]), BadRequestException);
   assert.throws(() => validate([{ id: 'audio', type: 'audio', order: 0, enabled: true, tracks: [tracks[0], { ...tracks[1], id: tracks[0].id }] }]), BadRequestException);
   assert.throws(() => validate([{ id: 'audio', type: 'audio', order: 0, enabled: true, tracks: [{ ...tracks[0], audioObjectKey: 'content/image/not-audio.webp' }] }]), BadRequestException);
+});
+
+test('micro voice tracks preserve multiple page, web, and share actions in order', () => {
+  const { controller } = issueEditHarness(1);
+  const validate = (sections: unknown[]) => (controller as unknown as { validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> } }).validateIssueDraft({ sections });
+  const actions = [
+    { id: 'action-page', label: '阅读本期人物', kind: 'page', path: '/pages/story-detail/index?id=story' },
+    { id: 'action-web', label: '打开官方网站', kind: 'web', url: 'https://example.com/story' },
+    { id: 'action-share', label: '分享给朋友', kind: 'share' },
+  ];
+  const audio = (sections: unknown[]) => validate(sections).sections[0];
+  const track = (audio([{
+    id: 'audio', type: 'audio', order: 0, enabled: true,
+    tracks: [{ id: 'voice-01', title: '微声音 01', duration: '00:30', audioObjectKey: 'content/audio/voice-01.mp3', quote: '', subtitle: '', transcript: '', actions }],
+  }]).tracks as Array<Record<string, unknown>>)[0];
+  assert.deepEqual(track.actions, actions);
+
+  const rejectActions = (invalidActions: unknown[]) => assert.throws(() => audio([{
+    id: 'audio', type: 'audio', order: 0, enabled: true,
+    tracks: [{ id: 'voice-01', title: '微声音 01', duration: '00:30', audioObjectKey: 'content/audio/voice-01.mp3', quote: '', subtitle: '', transcript: '', actions: invalidActions }],
+  }]), BadRequestException);
+  rejectActions([actions[0], { ...actions[0], label: '重复编号' }]);
+  rejectActions([{ ...actions[0], path: '/pages/../admin' }]);
+  rejectActions([{ ...actions[1], url: 'http://example.com/story' }]);
+  rejectActions([{ ...actions[2], label: '<b>分享</b>' }]);
+  rejectActions([{ ...actions[2], label: 'x'.repeat(41) }]);
+  rejectActions([{ ...actions[2], url: 'https://example.com/share' }]);
+  rejectActions(Array.from({ length: 9 }, (_, index) => ({ id: `action-${index + 1}`, label: `入口 ${index + 1}`, kind: 'share' })));
+});
+
+test('issue draft validation names the module, track, action, and unregistered field', () => {
+  const { controller } = issueEditHarness(1);
+  const validate = (sections: unknown[]) => (controller as unknown as { validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> } }).validateIssueDraft({ sections });
+  const expectMessage = (sections: unknown[], expected: RegExp) => assert.throws(() => validate(sections), (error: unknown) => {
+    assert.ok(error instanceof BadRequestException);
+    assert.match(error.message, expected);
+    return true;
+  });
+
+  expectMessage([
+    { id: 'audio', type: 'audio', order: 0, enabled: true, unknownCopy: '未登记' },
+  ], /第 1 个栏目（类型：audio，ID：audio）包含未登记字段：unknownCopy/);
+
+  expectMessage([{
+    id: 'audio', type: 'audio', order: 0, enabled: true,
+    tracks: [{ id: 'voice-01', title: '微声音 01', unknownTrack: '未登记' }],
+  }], /第 1 个栏目（类型：audio，ID：audio）字段 tracks 第 1 段微声音（ID：voice-01）包含未登记字段：unknownTrack/);
+
+  expectMessage([{
+    id: 'audio', type: 'audio', order: 0, enabled: true,
+    tracks: [{
+      id: 'voice-01', title: '微声音 01',
+      actions: [{ id: 'action-share', label: '分享给朋友', kind: 'share', unknownAction: '未登记' }],
+    }],
+  }], /第 1 个栏目（类型：audio，ID：audio）字段 tracks 第 1 段微声音（ID：voice-01）的第 1 个操作模块包含未登记字段：unknownAction/);
+});
+
+test('legacy top-level audio actions migrate to the first track and are not persisted', () => {
+  const { controller } = issueEditHarness(1);
+  const validate = (sections: unknown[]) => (controller as unknown as { validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> } }).validateIssueDraft({ sections });
+  const actions = [{ id: 'action-share', label: '分享给朋友', kind: 'share' }];
+
+  const merged = validate([{
+    id: 'audio', type: 'audio', order: 0, enabled: true, actions,
+    tracks: [{ id: 'voice-01', title: '微声音 01' }],
+  }]).sections[0];
+  assert.equal(Object.prototype.hasOwnProperty.call(merged, 'actions'), false);
+  assert.deepEqual((merged.tracks as Array<Record<string, unknown>>)[0].actions, actions);
+
+  const trackActions = [{ id: 'action-page', label: '阅读本期人物', kind: 'page', path: '/pages/story-detail/index?id=story' }];
+  const preserved = validate([{
+    id: 'audio', type: 'audio', order: 0, enabled: true, actions,
+    tracks: [{ id: 'voice-01', title: '微声音 01', actions: trackActions }],
+  }]).sections[0];
+  assert.equal(Object.prototype.hasOwnProperty.call(preserved, 'actions'), false);
+  assert.deepEqual((preserved.tracks as Array<Record<string, unknown>>)[0].actions, trackActions);
 });
 
 test('micro voice tracks accept video media and detail-page copy', () => {
@@ -1274,7 +1503,13 @@ test('home signs every published audio track and strips storage object keys', as
       audioObjectKey: 'content/audio/voice-01.mp3',
       linkType: 'page', linkPath: '/pages/audio/index', linkLabel: '听更多',
       tracks: [
-        { id: 'voice-01', title: '微声音 01', duration: '01:12', audioObjectKey: 'content/audio/voice-01.mp3', quote: '', subtitle: '', transcript: '' },
+        {
+          id: 'voice-01', title: '微声音 01', duration: '01:12', audioObjectKey: 'content/audio/voice-01.mp3', quote: '', subtitle: '', transcript: '',
+          actions: [
+            { id: 'action-page', label: '阅读本期人物', kind: 'page', path: '/pages/story-detail/index?id=story' },
+            { id: 'action-share', label: '分享给朋友', kind: 'share' },
+          ],
+        },
         { id: 'voice-02', title: '微声音 02', duration: '00:45', audioObjectKey: 'content/audio/voice-02.mp3', quote: '', subtitle: '', transcript: '' },
       ],
     }],
@@ -1295,6 +1530,10 @@ test('home signs every published audio track and strips storage object keys', as
   assert.equal(module.linkPath, '/pages/audio/index');
   assert.equal(module.linkLabel, '听更多');
   assert.equal('audioObjectKey' in tracks[0], false);
+  assert.deepEqual(tracks[0].actions, [
+    { id: 'action-page', label: '阅读本期人物', kind: 'page', path: '/pages/story-detail/index?id=story' },
+    { id: 'action-share', label: '分享给朋友', kind: 'share' },
+  ]);
 });
 
 test('contents and archive modules accept only their registered editorial entry fields', () => {
@@ -1319,7 +1558,7 @@ test('issue home metadata rejects unsafe typography values and overlong rich tex
 
   assert.throws(() => normalize({ homeMetaFontSize: 49 }), BadRequestException);
   assert.throws(() => normalize({ homeMetaColor: 'red' }), BadRequestException);
-  assert.throws(() => normalize({ homeMetaRichText: 'x'.repeat(2001) }), BadRequestException);
+  assert.throws(() => normalize({ homeMetaRichText: 'x'.repeat(24001) }), BadRequestException);
   assert.throws(() => normalize({ homeCoverCaptionLeft: 'x'.repeat(81) }), BadRequestException);
   assert.throws(() => normalize({ homeCoverCaptionRight: '两行\n文字' }), BadRequestException);
 });
@@ -1347,9 +1586,11 @@ test('media deletion commits its intent before deleting the object under the con
 });
 
 test('a referenced media object is not deleted or audited', async () => {
-  const { controller, events, committedAuditActions } = harness({ referenced: true });
+  const { controller, events, committedAuditActions, referenceSqls } = harness({ referenced: true });
 
   await assert.rejects(controller.deleteUnusedMedia(request, { objectKey, purpose: 'temporary', cleanupToken: 'valid-cleanup-token' }), ConflictException);
+  assert.match(referenceSqls[0], /home_background_object_key/);
+  assert.match(referenceSqls[0], /homeBackgroundObjectKey/);
   assert.equal(events.some((event) => event.startsWith('object:deleted:')), false);
   assert.deepEqual(committedAuditActions, []);
   assert.equal(events.at(-1), 'lock:released');

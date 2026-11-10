@@ -3,6 +3,9 @@ import { discussionStorageKey } from '../../utils/discussion-storage';
 import { isDeletionState, isDeletionStateOrNull, isUserExport, isUserSettings } from '../../utils/privacy';
 import type { DeletionState, UserExport, UserSettings } from '../../utils/privacy';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { clearCloudPreferenceCaches } from '../../utils/cloud-preference';
+import { cacheNotificationsEnabled, saveNotificationsEnabled, subscribeNotificationsEnabled } from '../../utils/notification-preference';
+import { cacheSeasonPaused, isSeasonPaused, preferencesWithSeasonPaused, saveSeasonPaused, seasonPreferencesPaused, subscribeSeasonPaused } from '../../utils/season-preference';
 
 const app = getApp<IAppOption>();
 
@@ -13,7 +16,21 @@ Page({
   knownAuthGeneration: 0,
   loadInFlight: false,
   deletionConfirmationOpen: false,
-  onLoad() { enableShareMenu(); this.knownAuthGeneration = app.globalData.authGeneration; this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
+  unsubscribeSeasonPreference: () => undefined,
+  unsubscribeNotificationPreference: () => undefined,
+  onLoad() {
+    enableShareMenu();
+    this.knownAuthGeneration = app.globalData.authGeneration;
+    this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
+    this.unsubscribeSeasonPreference = subscribeSeasonPaused((paused) => {
+      if (this.data.accountDeleted) return;
+      this.setData({ 'settings.preferences': preferencesWithSeasonPaused(this.data.settings.preferences, paused) });
+    });
+    this.unsubscribeNotificationPreference = subscribeNotificationsEnabled((enabled) => {
+      if (this.data.accountDeleted) return;
+      this.setData({ 'settings.notificationsEnabled': enabled });
+    });
+  },
   onShow() {
     if (app.globalData.accountDeleted) {
       this.showAccountDeleted();
@@ -38,6 +55,10 @@ Page({
     this.loadGeneration += 1;
     this.lifecycleGeneration += 1;
     this.deletionConfirmationOpen = false;
+    this.unsubscribeSeasonPreference();
+    this.unsubscribeNotificationPreference();
+    this.unsubscribeSeasonPreference = () => undefined;
+    this.unsubscribeNotificationPreference = () => undefined;
   },
   resetAfterAccountRecreation() {
     this.loadInFlight = false;
@@ -68,6 +89,8 @@ Page({
       const [settings, deletion] = await Promise.all([request<UserSettings>('/me/settings'), request<DeletionState | null>('/me/deletion-request')]);
       if (generation !== this.loadGeneration) return;
       if (!isUserSettings(settings) || !isDeletionStateOrNull(deletion)) throw new Error('隐私数据格式无效');
+      cacheSeasonPaused(isSeasonPaused(settings));
+      cacheNotificationsEnabled(settings.notificationsEnabled);
       this.setData({ settings, deletion, loading: false, loadError: '' });
     } catch (caught) {
       if (generation !== this.loadGeneration) return;
@@ -82,58 +105,48 @@ Page({
       if (generation === this.loadGeneration) this.loadInFlight = false;
     }
   },
-  async toggleSetting(event: WechatMiniprogram.CustomEvent) {
-    if (app.globalData.accountDeleted) {
-      this.showAccountDeleted();
-      return;
-    }
-    if (this.data.saving) return;
+  async toggleMethod(event: WechatMiniprogram.CustomEvent) {
+    if (app.globalData.accountDeleted || this.data.saving) return;
     const generation = this.lifecycleGeneration;
-    const field = event.currentTarget.dataset.field as 'notificationsEnabled' | 'analyticsEnabled';
-    if (field !== 'notificationsEnabled' && field !== 'analyticsEnabled') return;
-    const value = event.detail?.value === true;
-    this.setData({ [`settings.${field}`]: value, saving: true, message: '' });
+    const paused = event.detail?.value === true;
+    const previousPreferences = this.data.settings.preferences;
+    const previousPaused = seasonPreferencesPaused(previousPreferences);
+    const preferences = preferencesWithSeasonPaused(previousPreferences, paused);
+    cacheSeasonPaused(paused);
+    this.setData({ 'settings.preferences': preferences, saving: true, message: '', error: '' });
     try {
-      await request('/me/settings', { method: 'PATCH', data: { [field]: value } });
+      const settings = await saveSeasonPaused(paused);
       if (generation !== this.lifecycleGeneration) return;
-      this.setData({ saving: false, message: '设置已保存到云端。' });
+      this.setData({ settings, saving: false, message: paused ? '四时气韵已暂停使用。' : '四时气韵已重新开启。' });
     } catch (caught) {
       if (generation !== this.lifecycleGeneration) return;
+      cacheSeasonPaused(previousPaused);
       if (app.globalData.accountDeleted) {
         this.showAccountDeleted();
         return;
       }
-      this.setData({ [`settings.${field}`]: !value, saving: false, message: apiErrorMessage(caught, '设置保存失败，请重试。') });
+      this.setData({ 'settings.preferences': previousPreferences, saving: false, error: apiErrorMessage(caught, '方法偏好保存失败，请重试。') });
     }
   },
-  async toggleMethod(event: WechatMiniprogram.CustomEvent) {
+  async toggleNotifications() {
     if (app.globalData.accountDeleted || this.data.saving) return;
     const generation = this.lifecycleGeneration;
-    const enabled = event.detail?.value === true;
-    const preferences = { ...this.data.settings.preferences, seasonEnabled: enabled };
-    this.setData({ 'settings.preferences': preferences, saving: true, message: '', error: '' });
+    const previous = this.data.settings.notificationsEnabled;
+    const enabled = !previous;
+    cacheNotificationsEnabled(enabled);
+    this.setData({ 'settings.notificationsEnabled': enabled, saving: true, error: '', message: '' });
     try {
-      const settings = await request<UserSettings>('/me/settings', { method: 'PATCH', data: { preferences } });
+      const settings = await saveNotificationsEnabled(enabled);
       if (generation !== this.lifecycleGeneration) return;
-      if (!isUserSettings(settings)) throw new Error('设置保存结果无效');
-      this.setData({ settings, saving: false, message: '方法偏好已保存。' });
+      this.setData({ settings, saving: false, message: enabled ? '活动提醒已开启。' : '活动提醒已关闭。' });
     } catch (caught) {
       if (generation !== this.lifecycleGeneration) return;
-      this.setData({ 'settings.preferences': { ...this.data.settings.preferences, seasonEnabled: !enabled }, saving: false, error: apiErrorMessage(caught, '方法偏好保存失败，请重试。') });
-    }
-  },
-  toggleNotifications() {
-    if (this.data.saving) return;
-    this.setData({ settings: { ...this.data.settings, notificationsEnabled: !this.data.settings.notificationsEnabled }, saving: true, error: '', message: '' });
-    void this.saveNotificationPreference();
-  },
-  async saveNotificationPreference() {
-    const value = this.data.settings.notificationsEnabled;
-    try {
-      const settings = await request<UserSettings>('/me/settings', { method: 'PATCH', data: { notificationsEnabled: value } });
-      if (isUserSettings(settings)) this.setData({ settings, message: value ? '活动提醒已开启。' : '活动提醒已关闭。', saving: false });
-    } catch (caught) {
-      this.setData({ 'settings.notificationsEnabled': !value, saving: false, error: apiErrorMessage(caught, '提醒设置保存失败，请重试。') });
+      cacheNotificationsEnabled(previous);
+      if (app.globalData.accountDeleted) {
+        this.showAccountDeleted();
+        return;
+      }
+      this.setData({ 'settings.notificationsEnabled': previous, saving: false, error: apiErrorMessage(caught, '提醒设置保存失败，请重试。') });
     }
   },
   clearLocalData() {
@@ -141,6 +154,7 @@ Page({
     wx.showModal({ title: '清除本地数据', content: '确定清除这台设备上的登录状态和临时数据吗？云端记录不会删除。', confirmText: '确认清除', success: ({ confirm }) => {
       if (!confirm) return;
       this.setData({ clearingLocalData: true, message: '', error: '' });
+      clearCloudPreferenceCaches();
       wx.removeStorageSync('myriad_she_access_token');
       wx.removeStorageSync('myriad_she_access_token_expires_at');
       wx.removeStorageSync('myriad_she_user_id');

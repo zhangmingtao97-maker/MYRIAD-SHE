@@ -16,9 +16,12 @@
     <view wx:if="{{error}}" class="login-error" role="alert">{{error}}</view>
   </view>
   <view class="login-consent">
-    <checkbox-group class="consent-checkbox" bindchange="onConsentChange">
-      <label class="consent-label"><checkbox value="agreed" color="#663124" /><text>我已阅读并同意</text></label>
-    </checkbox-group>
+    <button wx:if="{{!consentAgreed}}" id="login-privacy-agree" class="consent-label" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgreePrivacyAuthorization" disabled="{{loggingIn}}" hover-class="consent-label-hover" aria-label="我已阅读并同意用户协议和隐私政策，未勾选">
+      <text class="consent-check" aria-hidden="true"></text><text>我已阅读并同意</text>
+    </button>
+    <button wx:else class="consent-label" bindtap="onWithdrawConsent" disabled="{{loggingIn}}" hover-class="consent-label-hover" aria-label="我已阅读并同意用户协议和隐私政策，已勾选，点击取消">
+      <text class="consent-check is-checked" aria-hidden="true">✓</text><text>我已阅读并同意</text>
+    </button>
     <text class="consent-policy-link" catchtap="openUserAgreement">《用户协议》</text><text>和</text>
     <text class="consent-policy-link" catchtap="openPrivacyPolicy">《隐私政策》</text>
     <text wx:if="{{!consentAgreed}}" class="consent-hint">请先勾选</text>

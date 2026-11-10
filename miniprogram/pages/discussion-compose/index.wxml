@@ -1,14 +1,14 @@
 <view class="compose-page">
   <view class="compose-topbar" style="padding-top: {{statusBarHeight}}px">
     <view class="compose-control compose-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回本期讨论" tabindex="0" bindtap="handleBack">‹</view>
-    <text class="compose-nav-title">{{title}}</text>
+    <rich-text class="compose-nav-title" nodes="{{titleHtml}}"></rich-text>
     <view class="compose-control compose-more" style="top: {{statusBarHeight}}px" role="button" aria-label="草稿说明" tabindex="0" bindtap="handleMore">···</view>
   </view>
   <view class="compose-content">
     <block wx:if="{{!previewOpen}}">
-      <view class="compose-meta"><text class="compose-number">{{copy.number}}</text><text>{{copy.composeTitle}}</text></view>
-      <view class="compose-heading">{{copy.composeHeading}}</view>
-      <view class="compose-intro">{{copy.intro}}</view>
+      <view class="compose-meta"><rich-text class="compose-number" nodes="{{copyHtml.number}}"></rich-text><rich-text nodes="{{copyHtml.composeTitle}}"></rich-text></view>
+      <rich-text class="compose-heading" nodes="{{copyHtml.composeHeading}}"></rich-text>
+      <rich-text class="compose-intro" nodes="{{copyHtml.intro}}"></rich-text>
       <view wx:if="{{draftNotice}}" class="compose-draft-notice">
         <view class="compose-draft-notice-text">{{draftSource === 'cloud' ? '你已经写过一段回应' : '你还有一份未完成的草稿'}}，已为你保留。可以继续原稿，或放弃后开始这次回应。</view>
         <view class="compose-draft-notice-actions">
@@ -16,37 +16,47 @@
           <view class="compose-draft-notice-action" role="button" aria-label="放弃原稿并开始这次回应" tabindex="0" bindtap="startFresh">放弃原稿，开始这次</view>
         </view>
       </view>
-      <view class="compose-field-label">{{fieldLabel}}</view>
-      <textarea class="compose-input" maxlength="2000" value="{{body}}" placeholder="{{copy.composePlaceholder}}" placeholder-class="compose-placeholder" bindinput="onInput" aria-label="{{fieldLabel}}" />
+      <rich-text class="compose-field-label" nodes="{{fieldLabelHtml}}"></rich-text>
+      <view class="compose-input-wrap">
+        <textarea class="compose-input" maxlength="2000" value="{{body}}" placeholder="" bindinput="onInput" aria-label="{{fieldLabel}}" />
+        <rich-text wx:if="{{!body}}" class="compose-input-placeholder" nodes="{{copyHtml.composePlaceholder}}" aria-hidden="true"></rich-text>
+      </view>
       <view class="compose-count">{{body.length}} / 2000</view>
-      <view class="compose-preview" role="button" aria-expanded="{{previewOpen}}" aria-label="{{copy.composePreviewAction}}" tabindex="0" bindtap="togglePreview"><text>{{copy.composePreviewAction}}</text><text class="compose-arrow">{{previewOpen ? '↓' : '→'}}</text></view>
+      <view wx:if="{{notifyOnReplyAvailable}}" class="compose-notify" role="switch" aria-checked="{{notifyOnReply}}" aria-label="有人回复我时，通过微信通知我" tabindex="0" bindtap="toggleReplyNotification">
+        <view class="compose-notify-copy">
+          <view class="compose-notify-title">有人回复我时，通过微信通知我</view>
+          <view class="compose-notify-hint">仅通知一次，可关闭</view>
+        </view>
+        <view class="compose-notify-toggle {{notifyOnReply ? 'is-on' : ''}}" aria-hidden="true"><view></view></view>
+      </view>
+      <view class="compose-preview" role="button" aria-expanded="{{previewOpen}}" aria-label="{{copy.composePreviewAction}}" tabindex="0" bindtap="togglePreview"><rich-text class="compose-action-copy" nodes="{{copyHtml.composePreviewAction}}"></rich-text><text class="compose-arrow">{{previewOpen ? '↓' : '→'}}</text></view>
       <view class="compose-share-note">请只分享你愿意表达的内容，隐去他人的姓名、联系方式等信息。这里不会带入你的生日或私密观察记录。</view>
       <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
       <view class="compose-preview-draft-row compose-editor-draft-row">
         <view class="compose-preview-draft-action" role="button" aria-label="保留草稿并返回" tabindex="0" bindtap="handleBack">保留草稿并返回</view>
-        <view class="compose-preview-draft-action" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft">{{copy.composeDiscardAction}}</view>
+        <view class="compose-preview-draft-action" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft"><rich-text class="compose-action-copy" nodes="{{copyHtml.composeDiscardAction}}"></rich-text></view>
       </view>
     </block>
     <view wx:else class="compose-preview-mode">
-      <view class="compose-preview-meta"><text class="compose-preview-number">{{copy.number}}</text><text>{{copy.composeTitle}}</text></view>
-      <view class="compose-preview-title">{{copy.composeHeading}}</view>
-      <view class="compose-preview-question">{{copy.intro}}</view>
+      <view class="compose-preview-meta"><rich-text class="compose-preview-number" nodes="{{copyHtml.number}}"></rich-text><rich-text nodes="{{copyHtml.composeTitle}}"></rich-text></view>
+      <rich-text class="compose-preview-title" nodes="{{copyHtml.composeHeading}}"></rich-text>
+      <rich-text class="compose-preview-question" nodes="{{copyHtml.intro}}"></rich-text>
       <view class="compose-preview-local">预览内容仅在本机显示，其他人无法看到。</view>
       <view class="compose-preview-heading"><text class="compose-preview-heading-title">预览</text><text class="compose-preview-heading-hint">发布前，再读一遍</text></view>
       <view class="compose-preview-card">
         <view class="compose-preview-byline"><text class="compose-preview-author">我</text><text class="compose-preview-kind">提交前预览</text></view>
-        <view class="compose-preview-card-body">{{body}}</view>
+        <rich-text class="compose-preview-card-body" nodes="{{bodyHtml}}"></rich-text>
       </view>
       <view class="compose-preview-confirm" role="checkbox" aria-checked="{{previewConfirmed}}" aria-disabled="{{saving}}" tabindex="0" bindtap="togglePreviewConfirm">
         <view class="compose-preview-checkbox {{previewConfirmed ? 'is-checked' : ''}}" aria-hidden="true"></view>
         <view class="compose-preview-confirm-text"><view>我已检查内容，确认愿意提交发布。</view><view>内容会提交到后台审核，审核通过后才会公开。</view></view>
       </view>
       <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
-      <view class="compose-preview-primary {{previewConfirmed ? '' : 'is-disabled'}}" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving || !previewConfirmed}}" tabindex="0" bindtap="saveDraft">{{saving ? '提交中…' : copy.composeSaveAction}}<text class="compose-preview-primary-arrow" aria-hidden="true">→</text></view>
+      <view class="compose-preview-primary {{previewConfirmed ? '' : 'is-disabled'}}" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving || !previewConfirmed}}" tabindex="0" bindtap="saveDraft"><text wx:if="{{saving}}">提交中…</text><rich-text wx:else class="compose-action-copy" nodes="{{copyHtml.composeSaveAction}}"></rich-text><text class="compose-preview-primary-arrow" aria-hidden="true">→</text></view>
       <view class="compose-preview-back" role="button" aria-label="返回修改" tabindex="0" bindtap="closePreview">返回修改</view>
       <view class="compose-preview-draft-row">
         <view class="compose-preview-draft-action" role="button" aria-label="保留草稿并返回" tabindex="0" bindtap="handleBack">保留草稿并返回</view>
-        <view class="compose-preview-draft-action" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft">{{copy.composeDiscardAction}}</view>
+        <view class="compose-preview-draft-action" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft"><rich-text class="compose-action-copy" nodes="{{copyHtml.composeDiscardAction}}"></rich-text></view>
       </view>
     </view>
   </view>

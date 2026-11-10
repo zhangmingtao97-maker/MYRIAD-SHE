@@ -8,35 +8,35 @@
   <view wx:elif="{{error}}" class="discussion-state discussion-error" role="alert"><text>{{error}}</text><view class="discussion-retry" role="button" aria-label="重新读取这段对话" tabindex="0" bindtap="load">重新读取</view></view>
   <block wx:elif="{{thread}}">
     <view class="thread-intro">
-      <view class="discussion-meta"><text class="discussion-number">{{number}}</text><text class="discussion-kicker">本期讨论 · 一段对话</text></view>
+      <view class="discussion-meta"><rich-text class="discussion-number" nodes="{{numberHtml}}"></rich-text><text class="discussion-kicker">本期讨论 · 一段对话</text></view>
       <view class="thread-title">从这一段经历，
 继续谈起。</view>
-      <view class="thread-lead">{{intro}}</view>
-      <view class="thread-note">示例内容 · 新写的经历会进入运营后台，不会自动公开。</view>
+      <rich-text class="thread-lead" nodes="{{introHtml}}"></rich-text>
+      <view class="thread-note">新写的经历会进入运营后台，审核通过后才会公开。</view>
     </view>
     <view class="thread-origin">
-      <view class="discussion-thread-meta"><text class="discussion-author">{{thread.author}}</text><text class="discussion-example-label">示例</text></view>
-      <view class="discussion-thread-body">{{thread.body}}</view>
+      <view class="discussion-thread-meta"><text class="discussion-author">{{thread.author}}</text><text class="discussion-example-label">{{thread.source === 'community' ? '读者分享' : '示例'}}</text><text wx:if="{{thread.featured}}" class="discussion-featured-label">精华</text></view>
+      <rich-text class="discussion-thread-body" nodes="{{thread.bodyHtml}}"></rich-text>
       <view class="thread-actions">
-        <view class="discussion-reply-action" role="button" aria-label="回应{{thread.author}}" tabindex="0" data-author="{{thread.author}}" bindtap="replyTo">回应{{thread.author}} <text>↗</text></view>
+        <view class="discussion-reply-action" role="button" aria-label="回应{{thread.author}}" tabindex="0" data-author="{{thread.author}}" data-contribution-id="{{thread.contributionId}}" bindtap="replyTo">回应{{thread.author}} <text>↗</text></view>
         <view class="discussion-report" role="button" aria-label="{{reported ? '已举报' : '举报'}}{{thread.author}}" tabindex="0" bindtap="reportThread">{{reported ? '已举报' : '举报'}}</view>
       </view>
     </view>
     <view wx:if="{{thread.replies.length || localReplies.length}}" class="thread-replies">
       <view class="thread-section-title">接着这段经历</view>
       <view wx:for="{{thread.replies}}" wx:key="id" class="thread-reply">
-        <view class="thread-reply-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">示例</text></view>
-        <view class="thread-reply-to">回应 {{thread.author}} 的示例</view>
-        <view class="thread-reply-body">{{item.body}}</view>
+        <view class="thread-reply-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">{{item.source === 'community' ? '读者分享' : '示例'}}</text></view>
+        <view class="thread-reply-to">回应 {{thread.author}} 的{{thread.source === 'community' ? '分享' : '示例'}}</view>
+        <rich-text class="thread-reply-body" nodes="{{item.bodyHtml}}"></rich-text>
         <view class="thread-actions">
-          <view class="discussion-reply-action" role="button" aria-label="回应{{item.author}}" tabindex="0" data-author="{{item.author}}" bindtap="replyTo">回应{{item.author}} <text>↗</text></view>
+          <view class="discussion-reply-action" role="button" aria-label="回应{{item.author}}" tabindex="0" data-author="{{item.author}}" data-contribution-id="{{item.contributionId}}" bindtap="replyTo">回应{{item.author}} <text>↗</text></view>
           <view class="discussion-report" role="button" aria-label="{{reported ? '已举报' : '举报'}}{{item.author}}" tabindex="0" bindtap="reportThread">{{reported ? '已举报' : '举报'}}</view>
         </view>
       </view>
       <view wx:for="{{localReplies}}" wx:for-item="reply" wx:key="id" class="thread-reply thread-reply-local">
         <view class="thread-reply-meta"><text class="discussion-author">你</text><text class="discussion-example-label">本机</text></view>
-        <view class="thread-reply-to">回应 {{thread.author}} 的示例</view>
-        <view class="thread-reply-body">{{reply.body}}</view>
+        <view class="thread-reply-to">回应 {{thread.author}} 的{{thread.source === 'community' ? '分享' : '示例'}}</view>
+        <rich-text class="thread-reply-body" nodes="{{reply.bodyHtml}}"></rich-text>
       </view>
     </view>
     <view class="thread-footer">

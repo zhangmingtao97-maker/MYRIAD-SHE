@@ -93,8 +93,32 @@ function observationDateLabel(value: string) {
   return Number.isNaN(date.getTime()) ? '观察记录' : `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
+function readNativeInputValue(selector: string) {
+  return new Promise<string | null>((resolve) => {
+    let settled = false;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const finish = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      if (timeout) clearTimeout(timeout);
+      resolve(value);
+    };
+    timeout = setTimeout(() => finish(null), 240);
+    wx.createSelectorQuery()
+      .select(selector)
+      .fields({ properties: ['value'] }, (result) => {
+        if (!result) {
+          finish(null);
+          return;
+        }
+        const value = (result as { value?: unknown }).value;
+        finish(typeof value === 'string' ? value : null);
+      })
+      .exec();
+  });
+}
 Page({
-  data: { statusBarHeight: 0, isLoggedIn: false, loggingIn: false, accountProfileReady: false, profileSaving: false, editingNickname: false, profileError: '', accountProfile: { ...emptyAccountProfile } as AccountProfile, observationCount: 0, discussionExpanded: false, localContributionCount: 0, localContributions: [] as LocalContribution[], cloudContributionCount: 0, cloudContributions: [] as CloudContribution[], cloudContributionsLoading: false, cloudContributionsError: '', minePage: { title: '把正在经历的，留在自己这里。', intro: '观察记录保存在你的云端账户上。讨论中的发言由你另行选择，个人观察不会自动公开。', observationHeading: '我的观察', emptyTitle: '还没有观察记录。', emptyIntro: '从一件真实发生的事开始，或借四时气韵换一个角度。', startButton: '开始第一次观察', discussionHeading: '我参与的讨论', discussionCount: '0 条已保存经历', discussionEmptyAction: '还没有留下发言', discussionIntro: '本期讨论独立于个人观察。示例装载的发言不会计入你的参与。', practiceHeading: '线下实践', practiceCount: '0 次', practiceEmptyTitle: '尚未参加共同实践', practiceIntro: '活动开放并真实参与后，会记录在这里。', privacyHeading: '选择与隐私', privacyAction: '通知与隐私' } as MinePageContent, minePageAccessibility: { startButton: '开始第一次观察', privacyAction: '通知与隐私' }, observations: [] as ObservationListItem[], loading: false, loadingMore: false, hasMore: false, offset: 0, pageSize: 30, error: '', moreError: '', accountDeleted: false, creatingNewAccount: false, newAccountError: '' },
+  data: { statusBarHeight: 0, avatarPickerVisible: false, isLoggedIn: false, loggingIn: false, accountProfileReady: false, profileSaving: false, editingNickname: false, nicknameEditingValue: '', profileError: '', accountProfile: { ...emptyAccountProfile } as AccountProfile, observationCount: 0, localContributionCount: 0, localContributions: [] as LocalContribution[], cloudContributionCount: 0, cloudContributions: [] as CloudContribution[], cloudContributionsLoading: false, cloudContributionsError: '', minePage: { title: '把正在经历的，留在自己这里。', intro: '观察记录保存在你的云端账户上。讨论中的发言由你另行选择，个人观察不会自动公开。', observationHeading: '我的观察', emptyTitle: '还没有观察记录。', emptyIntro: '从一件真实发生的事开始，或借四时气韵换一个角度。', startButton: '开始第一次观察', discussionHeading: '我参与的讨论', discussionCount: '0 条已保存经历', discussionEmptyAction: '还没有留下发言', discussionIntro: '本期讨论独立于个人观察。示例装载的发言不会计入你的参与。', practiceHeading: '线下实践', practiceCount: '0 次', practiceEmptyTitle: '尚未参加共同实践', practiceIntro: '活动开放并真实参与后，会记录在这里。', privacyHeading: '选择与隐私', privacyAction: '通知与隐私' } as MinePageContent, minePageAccessibility: { startButton: '开始第一次观察', privacyAction: '通知与隐私' }, observations: [] as ObservationListItem[], loading: false, loadingMore: false, hasMore: false, offset: 0, pageSize: 30, error: '', moreError: '', accountDeleted: false, creatingNewAccount: false, newAccountError: '' },
   requestGeneration: 0,
   minePageRequestGeneration: 0,
   discussionRequestGeneration: 0,
@@ -106,11 +130,16 @@ Page({
   accountProfileSavedNickname: '',
   nicknameDraft: '',
   nicknameDirty: false,
+  nicknameReviewGeneration: 0,
+  pendingReviewedNickname: null as { value: string; userId: string; authGeneration: number; reviewGeneration: number } | null,
+  nicknameCommitInFlight: false,
+  avatarSelection: null as { userId: string; authGeneration: number } | null,
   onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
   onShow() {
     this.syncLocalDiscussions();
     void this.loadMinePageContent();
     if (app.globalData.accountDeleted) {
+      this.closeAvatarPicker();
       this.accountProfileUserId = '';
       this.accountProfileSavedNickname = '';
       this.nicknameDraft = '';
@@ -119,12 +148,13 @@ Page({
       this.observationsLoadInFlight = false;
       this.requestGeneration += 1;
       this.discussionRequestGeneration += 1;
-      this.setData({ accountDeleted: true, isLoggedIn: false, accountProfileReady: false, editingNickname: false, accountProfile: { ...emptyAccountProfile }, observationCount: 0, observations: [], cloudContributions: [], cloudContributionCount: 0, loading: false, loadingMore: false, hasMore: false, error: '', moreError: '' });
+      this.setData({ accountDeleted: true, isLoggedIn: false, accountProfileReady: false, editingNickname: false, nicknameEditingValue: '', profileSaving: false, accountProfile: { ...emptyAccountProfile }, observationCount: 0, observations: [], cloudContributions: [], cloudContributionCount: 0, loading: false, loadingMore: false, hasMore: false, error: '', moreError: '' });
       return;
     }
     const authChanged = this.knownAuthGeneration !== app.globalData.authGeneration;
     this.knownAuthGeneration = app.globalData.authGeneration;
     if (!this.hasSession()) {
+      this.closeAvatarPicker();
       this.accountProfileUserId = '';
       this.accountProfileSavedNickname = '';
       this.nicknameDraft = '';
@@ -133,15 +163,18 @@ Page({
       this.observationsLoadInFlight = false;
       this.requestGeneration += 1;
       this.discussionRequestGeneration += 1;
-      this.setData({ isLoggedIn: false, accountDeleted: false, accountProfileReady: false, editingNickname: false, profileError: '', accountProfile: { ...emptyAccountProfile }, observations: [], observationCount: 0, cloudContributions: [], cloudContributionCount: 0, cloudContributionsLoading: false, loading: false, loadingMore: false, offset: 0, hasMore: false, error: '', moreError: '' });
+      this.setData({ isLoggedIn: false, accountDeleted: false, accountProfileReady: false, editingNickname: false, nicknameEditingValue: '', profileSaving: false, profileError: '', accountProfile: { ...emptyAccountProfile }, observations: [], observationCount: 0, cloudContributions: [], cloudContributionCount: 0, cloudContributionsLoading: false, loading: false, loadingMore: false, offset: 0, hasMore: false, error: '', moreError: '' });
       return;
     }
     const userId = app.globalData.userId;
     if (this.accountProfileUserId !== userId || authChanged) {
+      this.closeAvatarPicker();
       this.accountProfileSavedNickname = '';
       this.nicknameDraft = '';
       this.nicknameDirty = false;
-      this.setData({ accountProfile: { ...emptyAccountProfile }, accountProfileReady: false, editingNickname: false });
+      this.nicknameReviewGeneration += 1;
+      this.pendingReviewedNickname = null;
+      this.setData({ accountProfile: { ...emptyAccountProfile }, accountProfileReady: false, editingNickname: false, nicknameEditingValue: '', profileSaving: false });
     }
     this.accountProfileUserId = userId;
     this.setData({ isLoggedIn: true, accountDeleted: false, profileError: '' });
@@ -174,7 +207,7 @@ Page({
   },
   async loadAccountProfile() {
     const userId = this.accountProfileUserId;
-    if (!userId || !app.globalData.accessToken) return;
+    if (!userId || !app.globalData.accessToken || this.data.profileSaving) return;
     const generation = ++this.accountProfileRequestGeneration;
     const authGeneration = app.globalData.authGeneration;
     this.setData({ accountProfileReady: false, profileError: '' });
@@ -183,7 +216,10 @@ Page({
       if (generation !== this.accountProfileRequestGeneration || authGeneration !== app.globalData.authGeneration || userId !== this.accountProfileUserId) return;
       if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
       this.accountProfileSavedNickname = profile.nickname.slice(0, 32);
-      if (!this.nicknameDirty) this.nicknameDraft = this.accountProfileSavedNickname;
+      if (!this.nicknameDirty && !this.data.editingNickname) {
+        this.nicknameDraft = this.accountProfileSavedNickname;
+        this.setData({ nicknameEditingValue: this.accountProfileSavedNickname });
+      }
       const nickname = this.nicknameDirty ? this.nicknameDraft : this.accountProfileSavedNickname;
       this.setData({ accountProfile: { nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null }, accountProfileReady: true });
     } catch (caught) {
@@ -194,69 +230,165 @@ Page({
   onRetryProfile() {
     void this.loadAccountProfile();
   },
-  editNickname() {
-    if (!this.accountProfileUserId || !this.data.accountProfileReady || this.data.profileSaving || app.globalData.accountDeleted) return;
-    this.nicknameDraft = this.accountProfileSavedNickname;
-    this.nicknameDirty = false;
-    this.setData({ editingNickname: true, 'accountProfile.nickname': this.accountProfileSavedNickname });
+  onNicknameFocus() {
+    this.nicknameReviewGeneration += 1;
+    this.pendingReviewedNickname = null;
+    this.setData({ editingNickname: true, profileError: '' });
   },
   onNicknameInput(event: WechatMiniprogram.CustomEvent<{ value?: string }>) {
-    if (!this.accountProfileUserId || app.globalData.accountDeleted) return;
-    this.nicknameDirty = true;
-    this.nicknameDraft = String(event.detail.value || '').slice(0, 32);
-    this.setData({ 'accountProfile.nickname': this.nicknameDraft });
+    this.syncNicknameDraft(event.detail?.value);
   },
-  async onNicknameChange(event: WechatMiniprogram.CustomEvent<{ value?: string }>) {
+  onNicknameChange(event: WechatMiniprogram.CustomEvent<{ value?: string }>) {
+    this.syncNicknameDraft(event.detail?.value);
+  },
+  onNicknameBlur(event: WechatMiniprogram.CustomEvent<{ value?: string }>) {
+    this.syncNicknameDraft(event.detail?.value);
+    this.setData({ editingNickname: false });
+  },
+  onNicknameConfirm(event: WechatMiniprogram.CustomEvent<{ value?: string }>) {
+    this.syncNicknameDraft(event.detail?.value);
+    wx.hideKeyboard();
+  },
+  onNicknameReview(event: WechatMiniprogram.CustomEvent<{ pass?: boolean; timeout?: boolean }>) {
+    if (event.detail?.timeout || event.detail?.pass !== true) {
+      this.nicknameReviewGeneration += 1;
+      this.pendingReviewedNickname = null;
+      this.setData({ profileError: event.detail?.timeout ? '昵称校验超时，请重新输入后重试' : '昵称未通过微信校验，请修改后重试' });
+      return;
+    }
+    // 原生昵称自动填充可能晚于 change/blur；审核通过后读取最终输入值。
+    void this.autoSaveSelectedNickname();
+  },
+  async autoSaveSelectedNickname() {
     const userId = this.accountProfileUserId;
-    const value = typeof event.detail?.value === 'string' ? event.detail.value : this.nicknameDirty ? this.nicknameDraft : this.data.accountProfile.nickname;
-    const nickname = String(value || '').trim().slice(0, 32);
+    const authGeneration = app.globalData.authGeneration;
+    const reviewGeneration = this.nicknameReviewGeneration;
+    if (!userId || app.globalData.accountDeleted) return;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const nativeValue = await readNativeInputValue('#mineNicknameInput');
+      if (userId !== this.accountProfileUserId || authGeneration !== app.globalData.authGeneration
+        || reviewGeneration !== this.nicknameReviewGeneration || app.globalData.accountDeleted) return;
+      const nickname = (nativeValue ?? this.nicknameDraft).trim();
+      if (nickname && nickname !== this.accountProfileSavedNickname) {
+        this.pendingReviewedNickname = { value: nickname, userId, authGeneration, reviewGeneration };
+        await this.saveReviewedNickname();
+        return;
+      }
+      if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+  },
+  async saveReviewedNickname() {
+    if (this.data.profileSaving || this.nicknameCommitInFlight) return;
+    const pending = this.pendingReviewedNickname;
+    this.pendingReviewedNickname = null;
+    if (!pending || pending.userId !== this.accountProfileUserId || pending.authGeneration !== app.globalData.authGeneration
+      || pending.reviewGeneration !== this.nicknameReviewGeneration || app.globalData.accountDeleted) return;
+    await this.commitNickname(pending.value);
+  },
+  syncNicknameDraft(value: unknown) {
+    if (typeof value !== 'string') return;
+    if (value !== this.nicknameDraft) {
+      this.nicknameReviewGeneration += 1;
+      this.pendingReviewedNickname = null;
+    }
+    this.nicknameDraft = value;
+    this.nicknameDirty = value.trim() !== this.accountProfileSavedNickname;
+    // 输入期间不回写 value，保留微信昵称候选和输入光标。
+  },
+  async commitNickname(rawValue: unknown) {
+    const userId = this.accountProfileUserId;
+    const authGeneration = app.globalData.authGeneration;
     if (!userId || app.globalData.accountDeleted) {
       this.setData({ editingNickname: false });
       return;
     }
-    if (this.data.profileSaving) return;
+    if (this.data.profileSaving || this.nicknameCommitInFlight) return;
+    const nickname = String(typeof rawValue === 'string' ? rawValue : '').trim().slice(0, 32);
+    if (!nickname) {
+      if (this.accountProfileSavedNickname) {
+        this.nicknameDirty = false;
+        this.nicknameDraft = this.accountProfileSavedNickname;
+        this.setData({ 'accountProfile.nickname': this.accountProfileSavedNickname, editingNickname: false });
+        return;
+      }
+      wx.showToast({ title: '昵称不能为空', icon: 'none' });
+      return;
+    }
+    this.nicknameDraft = nickname;
+    this.nicknameDirty = true;
     if (nickname === this.accountProfileSavedNickname) {
       this.nicknameDirty = false;
       this.nicknameDraft = this.accountProfileSavedNickname;
       this.setData({ accountProfile: { ...this.data.accountProfile, nickname: this.accountProfileSavedNickname }, editingNickname: false });
       return;
     }
-    if (!nickname) {
-      wx.showToast({ title: '昵称不能为空', icon: 'none' });
-      this.nicknameDirty = false;
-      this.nicknameDraft = this.accountProfileSavedNickname;
-      this.setData({ 'accountProfile.nickname': this.accountProfileSavedNickname, editingNickname: false });
-      return;
-    }
-    this.setData({ profileSaving: true, editingNickname: false });
+
+    // Paint the native selection before the save finishes so the card never
+    // falls back to the empty "设置昵称" state while the request is in flight.
+    this.nicknameCommitInFlight = true;
+    this.accountProfileRequestGeneration += 1;
+    this.setData({ 'accountProfile.nickname': nickname, nicknameEditingValue: nickname, profileSaving: true, editingNickname: false, profileError: '' });
     try {
       const profile = await request<AccountProfile>('/me/profile', { method: 'PATCH', data: { nickname } });
-      if (userId !== this.accountProfileUserId || !isAccountProfile(profile)) return;
+      if (userId !== this.accountProfileUserId || authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) return;
+      if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
       this.accountProfileSavedNickname = profile.nickname;
       this.nicknameDraft = profile.nickname;
       this.nicknameDirty = false;
-      this.setData({ accountProfile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null }, accountProfileReady: true });
+      this.setData({ accountProfile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null }, nicknameEditingValue: profile.nickname, accountProfileReady: true });
       wx.showToast({ title: '昵称已更新', icon: 'success' });
     } catch (caught) {
+      if (userId !== this.accountProfileUserId || authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) return;
       this.nicknameDirty = false;
       this.nicknameDraft = this.accountProfileSavedNickname;
-      this.setData({ 'accountProfile.nickname': this.accountProfileSavedNickname });
-      wx.showToast({ title: apiErrorMessage(caught, '昵称暂时无法保存'), icon: 'none' });
-      void this.loadAccountProfile();
+      this.setData({ 'accountProfile.nickname': this.accountProfileSavedNickname, nicknameEditingValue: this.accountProfileSavedNickname, profileError: apiErrorMessage(caught, '昵称暂时无法保存，请重新输入后重试') });
     } finally {
-      if (userId === this.accountProfileUserId) this.setData({ profileSaving: false });
+      this.nicknameCommitInFlight = false;
+      if (userId === this.accountProfileUserId && authGeneration === app.globalData.authGeneration) {
+        this.setData({ profileSaving: false });
+        void this.saveReviewedNickname();
+      }
     }
   },
+  openAvatarPicker() {
+    if (this.data.profileSaving) {
+      wx.showToast({ title: '资料正在保存，请稍候', icon: 'none' });
+      return;
+    }
+    if (!this.hasSession() || app.globalData.accountDeleted) {
+      wx.showToast({ title: '请先登录后更换头像', icon: 'none' });
+      return;
+    }
+    this.avatarSelection = { userId: app.globalData.userId, authGeneration: app.globalData.authGeneration };
+    this.setData({ avatarPickerVisible: true, profileError: '' });
+  },
+  closeAvatarPicker() {
+    this.avatarSelection = null;
+    this.setData({ avatarPickerVisible: false });
+  },
   onChooseAvatar(event: WechatMiniprogram.CustomEvent<{ avatarUrl?: string }>) {
-    const userId = this.accountProfileUserId;
-    const tempFilePath = String(event.detail.avatarUrl || '');
-    if (!userId || !tempFilePath || !this.data.accountProfileReady || app.globalData.accountDeleted) return;
-    void this.uploadAvatar(userId, tempFilePath);
+    const selection = this.avatarSelection;
+    const tempFilePath = String(event.detail?.avatarUrl || '');
+    this.closeAvatarPicker();
+    if (!selection || selection.userId !== app.globalData.userId || selection.userId !== this.accountProfileUserId
+      || selection.authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) {
+      wx.showToast({ title: '登录状态已变化，请重新选择头像', icon: 'none' });
+      return;
+    }
+    if (!tempFilePath || this.data.profileSaving) {
+      wx.showToast({ title: this.data.profileSaving ? '资料正在保存，请稍候' : '没有选到头像，请重试', icon: 'none' });
+      return;
+    }
+    void this.uploadAvatar(selection.userId, tempFilePath);
   },
   async uploadAvatar(userId: string, filePath: string) {
-    this.setData({ profileSaving: true });
+    const authGeneration = app.globalData.authGeneration;
+    const previousAvatarUrl = this.data.accountProfile.avatarUrl;
+    this.accountProfileRequestGeneration += 1;
+    this.setData({ profileSaving: true, 'accountProfile.avatarUrl': filePath, profileError: '' });
     try {
       await app.ensureLogin();
+      if (userId !== this.accountProfileUserId || authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) return;
       const result = await new Promise<{ statusCode: number; data: string }>((resolve, reject) => {
         wx.uploadFile({
           url: `${app.globalData.apiBaseUrl}/me/profile/avatar`,
@@ -268,18 +400,25 @@ Page({
           fail: reject,
         });
       });
-      if (userId !== this.accountProfileUserId) return;
+      if (userId !== this.accountProfileUserId || authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) return;
       if (result.statusCode < 200 || result.statusCode >= 300) throw new Error(showProfileUploadError(result.data));
       const profile: unknown = JSON.parse(result.data);
       if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
       this.accountProfileSavedNickname = profile.nickname;
       if (!this.nicknameDirty) this.nicknameDraft = profile.nickname;
       const nickname = this.nicknameDirty ? this.nicknameDraft : profile.nickname;
-      this.setData({ accountProfile: { nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null } });
+      if (!this.nicknameDirty && !this.data.editingNickname) this.setData({ nicknameEditingValue: nickname });
+      this.setData({ accountProfile: { nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null }, accountProfileReady: true, profileError: '' });
+      wx.showToast({ title: '头像已更新', icon: 'success' });
     } catch (caught) {
-      if (userId === this.accountProfileUserId) wx.showToast({ title: apiErrorMessage(caught, '头像暂时无法保存'), icon: 'none' });
+      if (userId === this.accountProfileUserId && authGeneration === app.globalData.authGeneration && !app.globalData.accountDeleted) {
+        this.setData({ 'accountProfile.avatarUrl': previousAvatarUrl, profileError: apiErrorMessage(caught, '头像暂时无法保存，请重新选择后重试') });
+      }
     } finally {
-      if (userId === this.accountProfileUserId) this.setData({ profileSaving: false });
+      if (userId === this.accountProfileUserId && authGeneration === app.globalData.authGeneration) {
+        this.setData({ profileSaving: false });
+        void this.saveReviewedNickname();
+      }
     }
   },
   async loadMinePageContent() {
@@ -352,8 +491,17 @@ Page({
   openAllObservations() {
     wx.navigateTo({ url: '/pages/observation-list/index' });
   },
-  toggleDiscussionIntro() {
-    this.setData({ discussionExpanded: !this.data.discussionExpanded });
+  openAllContributions() {
+    const url = '/pages/my-contributions/index';
+    wx.navigateTo({
+      url,
+      fail: () => {
+        wx.redirectTo({
+          url,
+          fail: () => wx.showToast({ title: '暂时无法打开，请稍后重试', icon: 'none' }),
+        });
+      },
+    });
   },
   syncLocalDiscussions() {
     const contributions = readLocalDiscussion().contributions.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));

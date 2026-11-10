@@ -12,9 +12,12 @@ interface AccountProfile {
 Page({
   onLoad() { enableShareMenu(); },
   data: { consentAgreed: false, loggingIn: false, error: '' },
-  onConsentChange(event: WechatMiniprogram.CustomEvent<{ value?: string[] }>) {
-    const value = event.detail.value;
-    this.setData({ consentAgreed: Array.isArray(value) && value.includes('agreed'), error: '' });
+  onAgreePrivacyAuthorization() {
+    // 仅在微信确认用户点击原生同意按钮后，才允许获取手机号。
+    this.setData({ consentAgreed: true, error: '' });
+  },
+  onWithdrawConsent() {
+    this.setData({ consentAgreed: false, error: '' });
   },
   openPrivacyPolicy() {
     wx.navigateTo({ url: '/pages/privacy-policy/index' });

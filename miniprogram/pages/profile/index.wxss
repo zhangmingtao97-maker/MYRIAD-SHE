@@ -112,6 +112,7 @@ page {
   font-size: 21rpx;
   line-height: 1.6;
 }
+.hero-avatar-fallback { display: inline-block; margin-top: 8rpx; padding: 4rpx 0; color: rgba(251, 244, 234, .78); font-size: 20rpx; line-height: 1.5; }
 
 /* 分组卡 */
 .profile-group { margin-top: 30rpx; }
@@ -175,8 +176,17 @@ page {
   border-bottom: 1rpx solid rgba(92, 73, 60, .10);
   box-sizing: border-box;
 }
-.profile-nickname-editor input {
+.profile-nickname-form {
+  display: flex;
   width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 12rpx;
+}
+.profile-nickname-editor input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
   min-height: 76rpx;
   padding: 0 18rpx;
   border: 1rpx solid #d8cabb;
@@ -186,6 +196,26 @@ page {
   font-size: 27rpx;
   box-sizing: border-box;
 }
+.profile-nickname-save {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 92rpx;
+  height: 64rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  border: 0;
+  border-radius: 999rpx;
+  background: #663124;
+  color: #fffaf2;
+  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 64rpx;
+  text-align: center;
+}
+.profile-nickname-save::after { border: 0; }
+.profile-nickname-save-active { opacity: .78; }
+.profile-nickname-save[disabled] { opacity: .5; }
 
 /* 加载与错误 */
 .profile-state {

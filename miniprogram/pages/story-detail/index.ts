@@ -2,6 +2,7 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent, PublicHomeModule } from '../../utils/content';
 import { enableShareMenu } from '../../utils/share';
+import { richTextHtml } from '../../utils/rich-text';
 
 const issueTwoCopy = {
   source: '原载于 MYRIAD SHE 公众号·小程序策展节选',
@@ -15,11 +16,17 @@ const issueTwoCopy = {
 type StoryModule = PublicHomeModule & {
   imageUrl?: string;
   detailCaptionLeft?: string;
+  detailCaptionLeftRichText?: string;
   detailCaptionRight?: string;
+  detailCaptionRightRichText?: string;
   detailSource?: string;
+  detailSourceRichText?: string;
   detailParagraph1?: string;
+  detailParagraph1RichText?: string;
   detailParagraph2?: string;
+  detailParagraph2RichText?: string;
   detailQuote?: string;
+  detailQuoteRichText?: string;
   officialArticleUrl?: string;
 };
 
@@ -39,15 +46,23 @@ Page({
     error: '',
     issueCode: 'ISSUE 02',
     title: '',
+    titleHtml: '',
     intro: '',
+    introHtml: '',
     imageUrl: '',
     altText: '',
     captionLeft: issueTwoCopy.captionLeft,
+    captionLeftHtml: richTextHtml('', issueTwoCopy.captionLeft),
     captionRight: issueTwoCopy.captionRight,
+    captionRightHtml: richTextHtml('', issueTwoCopy.captionRight),
     source: issueTwoCopy.source,
+    sourceHtml: richTextHtml('', issueTwoCopy.source),
     paragraph1: issueTwoCopy.paragraph1,
+    paragraph1Html: richTextHtml('', issueTwoCopy.paragraph1),
     paragraph2: issueTwoCopy.paragraph2,
+    paragraph2Html: richTextHtml('', issueTwoCopy.paragraph2),
     quote: issueTwoCopy.quote,
+    quoteHtml: richTextHtml('', issueTwoCopy.quote),
     officialArticleUrl: '',
   },
   requestGeneration: 0,
@@ -81,23 +96,49 @@ Page({
       const coverStory = modules.find((item) => item.type === 'coverStory');
       const opener = coverStory || modules.find((item) => item.type === 'opener');
       const isIssueTwo = /^issue[\s_-]*0?2$/i.test(issue.code);
-      const hasDetailCopy = ['detailCaptionLeft', 'detailCaptionRight', 'detailSource', 'detailParagraph1', 'detailParagraph2', 'detailQuote', 'officialArticleUrl']
-        .some((field) => typeof story[field] === 'string');
+      const detailFields = ['detailCaptionLeft', 'detailCaptionRight', 'detailSource', 'detailParagraph1', 'detailParagraph2', 'detailQuote', 'officialArticleUrl'];
+      const hasDetailCopy = detailFields.some((field) => {
+        const value = story[field];
+        return typeof value === 'string' && value.trim().length > 0;
+      }) || ['detailCaptionLeftRichText', 'detailCaptionRightRichText', 'detailSourceRichText', 'detailParagraph1RichText', 'detailParagraph2RichText', 'detailQuoteRichText']
+        .some((field) => typeof story[field] === 'string' && String(story[field]).trim().length > 0);
       const fallback = isIssueTwo && !hasDetailCopy ? issueTwoCopy : { source: '', captionLeft: '', captionRight: '人物纪实', paragraph1: '', paragraph2: '', quote: '' };
+      const title = String(opener?.title || issue.theme || '');
+      const openerBody = String(opener?.body || '');
+      const openerBodyRichText = typeof opener?.bodyRichText === 'string' ? opener.bodyRichText.trim() : '';
+      const homeMetaRichText = typeof issue.homeMetaRichText === 'string' ? issue.homeMetaRichText.trim() : '';
+      const introHtml = openerBodyRichText
+        ? richTextHtml(openerBodyRichText, openerBody)
+        : homeMetaRichText || richTextHtml('', openerBody);
+      const captionLeft = String(story.detailCaptionLeft || fallback.captionLeft || story.captionLeft || '');
+      const captionLeftRichText = String(story.detailCaptionLeftRichText || (story.detailCaptionLeft ? '' : story.captionLeftRichText || ''));
+      const captionRight = String(story.detailCaptionRight || fallback.captionRight || '人物纪实');
+      const source = String(story.detailSource || fallback.source);
+      const paragraph1 = String(story.detailParagraph1 || fallback.paragraph1);
+      const paragraph2 = String(story.detailParagraph2 || fallback.paragraph2);
+      const quote = String(story.detailQuote || fallback.quote);
       this.setData({
         loading: false,
         error: '',
         issueCode: issueLabel(issue.code),
-        title: String(opener?.title || issue.theme || ''),
-        intro: String(opener?.body || issue.homeMetaRichText || ''),
+        title,
+        titleHtml: richTextHtml(opener?.titleRichText, title),
+        intro: openerBody,
+        introHtml,
         imageUrl: String(story.imageUrl || ''),
-        altText: String(story.altText || '本期人物纪实图片'),
-        captionLeft: String(story.detailCaptionLeft || fallback.captionLeft || story.captionLeft || ''),
-        captionRight: String(story.detailCaptionRight || fallback.captionRight || '人物纪实'),
-        source: String(story.detailSource || fallback.source),
-        paragraph1: String(story.detailParagraph1 || fallback.paragraph1),
-        paragraph2: String(story.detailParagraph2 || fallback.paragraph2),
-        quote: String(story.detailQuote || fallback.quote),
+        altText: String(story.altText || '本期人物图片'),
+        captionLeft,
+        captionLeftHtml: richTextHtml(captionLeftRichText, captionLeft),
+        captionRight,
+        captionRightHtml: richTextHtml(story.detailCaptionRightRichText, captionRight),
+        source,
+        sourceHtml: richTextHtml(story.detailSourceRichText, source),
+        paragraph1,
+        paragraph1Html: richTextHtml(story.detailParagraph1RichText, paragraph1),
+        paragraph2,
+        paragraph2Html: richTextHtml(story.detailParagraph2RichText, paragraph2),
+        quote,
+        quoteHtml: richTextHtml(story.detailQuoteRichText, quote),
         officialArticleUrl: String(story.officialArticleUrl || ''),
       });
     } catch (caught) {

@@ -16,7 +16,7 @@
         <view class="bag-rule" aria-hidden="true"></view>
         <rich-text class="bag-empty-title" nodes="{{copy.bagEmptyTitle.richText}}" style="font-size: {{copy.bagEmptyTitle.fontSize}}px; color: {{copy.bagEmptyTitle.color}}"></rich-text>
         <rich-text class="bag-empty-copy" nodes="{{copy.bagEmptyCopy.richText}}" style="font-size: {{copy.bagEmptyCopy.fontSize}}px; color: {{copy.bagEmptyCopy.color}}"></rich-text>
-        <view class="bag-action" role="button" aria-label="{{copy.bagAction.richText}}" tabindex="0" bindtap="browseObjects"><rich-text nodes="{{copy.bagAction.richText}}" style="font-size: {{copy.bagAction.fontSize}}px; color: {{copy.bagAction.color}}"></rich-text><text>→</text></view>
+        <view class="bag-action" role="button" aria-label="{{bagActionLabel}}" tabindex="0" bindtap="browseObjects"><rich-text nodes="{{copy.bagAction.richText}}" style="font-size: {{copy.bagAction.fontSize}}px; color: {{copy.bagAction.color}}"></rich-text><text>→</text></view>
       </view>
 
       <view class="bag-footer"><rich-text nodes="{{copy.bagPreviewNote.richText}}" style="font-size: {{copy.bagPreviewNote.fontSize}}px; color: {{copy.bagPreviewNote.color}}"></rich-text></view>

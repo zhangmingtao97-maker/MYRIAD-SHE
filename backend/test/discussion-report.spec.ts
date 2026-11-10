@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import type { PoolClient } from 'pg';
 import { AdminDiscussionReportController } from '../src/admin/admin-discussion-report.controller';
@@ -9,6 +10,7 @@ import { AuditService } from '../src/admin/audit.service';
 import { defaultDiscussionContent } from '../src/content/discussion-content';
 import { DatabaseService } from '../src/database/database.service';
 import { DiscussionReportController } from '../src/discussion/discussion-report.controller';
+import { DataEncryptionService } from '../src/security/data-encryption.service';
 
 const userId = '11111111-1111-4111-8111-111111111111';
 const otherUserId = '33333333-3333-4333-8333-333333333333';
@@ -31,6 +33,7 @@ function harness() {
         ? { rows: [{ issueCode: 'issue-02', issueLabel: 'ISSUE 02', discussion: defaultDiscussionContent() }] }
         : { rows: [] };
     }
+    if (sql.includes('from discussion_contributions contribution') && sql.includes("publication_status = 'published'")) return { rows: [] };
     if (sql.includes('insert into audit_logs')) {
       state.audits.push({ action: String(values[2]), metadata: JSON.parse(String(values[5])) as Record<string, unknown> });
       return { rows: [] };
@@ -73,7 +76,7 @@ function harness() {
   const audit = new AuditService(database);
   return {
     state,
-    user: new DiscussionReportController(database, audit),
+    user: new DiscussionReportController(database, audit, new DataEncryptionService(new ConfigService({ DATA_ENCRYPTION_KEY: 'unit-test-discussion-encryption-secret-32-bytes' }))),
     admin: new AdminDiscussionReportController(database, audit),
   };
 }

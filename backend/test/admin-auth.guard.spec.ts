@@ -1,4 +1,4 @@
-﻿import 'reflect-metadata';
+import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
@@ -93,6 +93,30 @@ test('explicitly empty module grants block every module but keep self-service en
   }
 });
 
+test('notification endpoints remain available without business module grants', async () => {
+  for (const [path, method] of [
+    ['/api/admin/notifications', 'GET'],
+    ['/api/admin/notifications/unread-count', 'GET'],
+    ['/api/admin/notifications/read-all', 'POST'],
+    ['/api/admin/notifications/00000000-0000-4000-8000-000000000101/read', 'POST'],
+  ]) {
+    const notification = guardFor('support_readonly', path, method, false, []);
+    assert.equal(await notification.guard.canActivate(notification.context), true);
+  }
+  const invalidId = guardFor('support_readonly', '/api/admin/notifications/not-a-uuid/read', 'POST', false, []);
+  await assert.rejects(invalidId.guard.canActivate(invalidId.context), ForbiddenException);
+});
+
+test('notification endpoints stay locked until a required password change is completed', async () => {
+  for (const [path, method] of [
+    ['/api/admin/notifications', 'GET'],
+    ['/api/admin/notifications/unread-count', 'GET'],
+    ['/api/admin/notifications/read-all', 'POST'],
+  ]) {
+    const notification = guardFor('content_editor', path, method, true, []);
+    await assert.rejects(notification.guard.canActivate(notification.context), ForbiddenException);
+  }
+});
 test('support accounts can be granted extra modules such as audit logs', async () => {
   const audit = guardFor('support_readonly', '/api/admin/audit-logs', 'GET', false, ['members', 'settings', 'audit']);
   assert.equal(await audit.guard.canActivate(audit.context), true);

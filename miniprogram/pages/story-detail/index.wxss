@@ -21,8 +21,8 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .story-detail-image { background: #d9d0c4; }
 .story-image-empty { display: flex; align-items: center; justify-content: center; background: #dfd5c8; color: #8a6755; font-size: 26rpx; }
 .story-image-caption { display: flex; min-height: 60rpx; align-items: flex-start; justify-content: space-between; gap: 24rpx; padding: 18rpx 40rpx 0; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 22rpx; line-height: 1.55; }
-.story-image-caption text:first-child { min-width: 0; }
-.story-image-caption text:last-child { flex: 0 0 auto; text-align: right; }
+.story-image-caption rich-text:first-child { min-width: 0; }
+.story-image-caption rich-text:last-child { flex: 0 0 auto; text-align: right; }
 .story-article { padding: 130rpx 40rpx 70rpx; }
 .story-source { display: block; width: 90%; max-width: 610rpx; margin: 0 auto; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 23rpx; line-height: 1.6; }
 .story-rule { margin-top: 34rpx; border-top: 1rpx solid rgba(92, 73, 60, .24); }

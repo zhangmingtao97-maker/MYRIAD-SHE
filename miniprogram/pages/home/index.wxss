@@ -1,8 +1,14 @@
 @import "../../app.wxss";
-.home-page { padding-top: 0; background: #e7dfd1; }
+.home-page { position: relative; padding-top: 0; background: #e7dfd1; }
+.home-background, .home-background-scrim { position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+.home-background { z-index: 0; }
+.home-background-scrim { z-index: 1; background: rgba(231, 223, 209, .62); }
+.home-content { position: relative; z-index: 2; }
+.home-page .brand-topbar { background: rgba(231, 223, 209, .88); }
+.home-intro { margin-top: 20rpx; color: #75675d; font-size: 24rpx; line-height: 1.7; }
 .home-page [role="button"]:active { opacity: .72; }
 .home-page [role="button"]:focus { opacity: .7; }
-.issue-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 10rpx; padding: 42rpx 0 28rpx; font-size: 33rpx; line-height: 1.4; }
+.issue-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 10rpx; padding: 16rpx 0 28rpx; font-size: 33rpx; line-height: 1.4; }
 .issue-meta-kicker { color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.5; letter-spacing: 4rpx; }
 .issue-meta-number { color: inherit; font-family: Georgia, serif; font-size: 1em; letter-spacing: 2rpx; text-transform: uppercase; }
 .issue-meta-edition { color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; line-height: 1.5; letter-spacing: 2rpx; text-transform: uppercase; }
@@ -32,14 +38,14 @@
 .contents-number { color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; }
 .contents-label { font-family: Georgia, serif; font-size: 31rpx; }
 .contents-arrow { color: #663124; font-size: 34rpx; text-align: right; }
-.module-issueMeta { padding: 24rpx 0 18rpx; border-top: 0; }
+.module-issueMeta { padding: 0 0 18rpx; border-top: 0; }
 .module-cover, .module-image { margin-right: -36rpx; margin-left: -36rpx; padding-top: 0; border-top: 0; }
 .module-cover .issue-cover, .module-image .issue-cover, .module-cover .cover-empty, .module-image .cover-empty { height: 960rpx; }
 .module-coverStory { margin: 0 -36rpx; padding: 0; border-top: 0; }
 .cover-story-image-wrap .issue-cover, .cover-story-image-wrap .cover-empty { height: 960rpx; }
 .cover-story-caption { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 58rpx; padding: 12rpx 40rpx; background: #e9e0d2; color: #8a6755; font-family: Georgia, serif; font-size: 23rpx; line-height: 1.4; }
-.cover-story-caption text { min-width: 0; }
-.cover-story-caption text:last-child { text-align: right; }
+.cover-story-caption rich-text { display: block; min-width: 0; }
+.cover-story-caption rich-text:last-child { text-align: right; }
 .cover-story-copy { padding: 76rpx 44rpx 84rpx; background: #e9e0d2; }
 .cover-story-copy .eyebrow { color: #976e59; font-family: Georgia, serif; font-size: 25rpx; letter-spacing: 2rpx; }
 .cover-story-title { margin-top: 40rpx; color: #59483d; font-family: Georgia, "Songti SC", serif; font-size: 72rpx; font-weight: 600; line-height: 1.17; white-space: pre-wrap; }
@@ -57,16 +63,16 @@
 .story-image-wrap { margin-top: 132rpx; }
 .story-image { display: block; width: 100%; height: 462rpx; object-fit: cover; object-position: 78% 74%; }
 .story-caption { display: grid; grid-template-columns: 224rpx 1fr; align-items: start; gap: 36rpx; margin-top: 28rpx; color: #5c493c; font-size: 26rpx; line-height: 1.7; }
-.story-caption text { min-width: 0; }
-.story-caption text:first-child { color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.55; }
-.story-caption text:last-child { text-align: left; }
+.story-caption rich-text { display: block; min-width: 0; }
+.story-caption rich-text:first-child { color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.55; }
+.story-caption rich-text:last-child { text-align: left; }
 .story-action { position: relative; min-height: 92rpx; padding: 30rpx 72rpx 30rpx 0; border-top: 1rpx solid #cdbbae; border-bottom: 1rpx solid #cdbbae; color: #66564c; }
 .story-action .section-title { margin: 0; color: #66564c; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 400; }
 .story-action .section-copy { margin-top: 12rpx; }
 .story-action-arrow { position: absolute; top: 28rpx; right: 4rpx; color: #8c604b; font-family: Georgia, serif; font-size: 36rpx; }
 .module-quote { color: #663124; font-family: Georgia, serif; font-size: 44rpx; line-height: 1.55; text-align: center; }
 .module-quote .section-copy { margin-top: 20rpx; text-align: right; }
-.module-audio { margin: 0 8rpx; padding: 40rpx 0 12rpx; border-top-color: rgba(92, 73, 60, .24); color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; }
+.module-audio { margin: 0 8rpx; padding: 40rpx 0 36rpx; border-top-color: rgba(92, 73, 60, .24); color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; }
 .audio-kicker { display: grid; grid-template-columns: 88rpx 1fr auto; align-items: center; color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.4; letter-spacing: .12em; }
 .audio-number, .audio-label, .audio-duration { min-width: 0; }
 .audio-kicker-meta { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 18rpx; }
@@ -85,12 +91,20 @@
 .audio-player-main { min-width: 0; }
 .audio-player-main .audio-progress { margin: 0; }
 .audio-player-main .audio-progress-times { margin-top: 8rpx; }
-.audio-player-hint { color: #8a6755; font-size: 24rpx; line-height: 1.6; letter-spacing: .04em; }
+.audio-video { display: block; width: 100%; height: 340rpx; margin-top: 24rpx; background: #231d19; }
+.audio-secondary-tracks { margin-top: 36rpx; }
+.audio-secondary-track { padding: 28rpx 0; border-top: 1rpx solid rgba(92, 73, 60, .2); }
+.audio-track-heading { display: flex; align-items: center; gap: 18rpx; }
+.audio-track-heading .audio-play { flex: 0 0 70rpx; width: 70rpx; }
+.audio-track-title { flex: 1; min-width: 0; color: #5c493c; font-size: 28rpx; line-height: 1.6; }
+.audio-track-meta { flex: 0 0 auto; color: #8a6755; font-size: 22rpx; }
+.audio-track-detail { display: flex; justify-content: flex-end; align-items: center; gap: 18rpx; min-height: 56rpx; margin-top: 12rpx; color: #663124; font-size: 24rpx; }
 .audio-copy { margin: 28rpx 0 0 88rpx; }
 .audio-quote { color: #5c493c; font-size: 48rpx; font-weight: 600; line-height: 1.5; white-space: pre-wrap; }
 .audio-subtitle { margin-top: 18rpx; color: #5c493c; font-size: 28rpx; font-weight: 500; line-height: 1.65; }
 .audio-media-kind { display: inline-block; padding: 3rpx 14rpx; border: 1rpx solid rgba(102, 49, 36, .28); border-radius: 999rpx; color: #663124; font-family: "Songti SC", STSong, serif; font-size: 20rpx; line-height: 1.5; letter-spacing: .08em; }
-.audio-enter { display: flex; min-height: 56rpx; align-items: center; justify-content: space-between; gap: 18rpx; margin: 14rpx 0 0 88rpx; border-top: 1rpx solid rgba(92, 73, 60, .2); color: #663124; font-size: 26rpx; font-weight: 600; line-height: 1.4; }
+.audio-enter-actions { display: flex; align-items: stretch; gap: 28rpx; margin: 14rpx 0 0 88rpx; border-top: 1rpx solid rgba(92, 73, 60, .2); }
+.audio-enter { display: flex; min-width: 0; min-height: 56rpx; flex: 1; align-items: center; padding-top: 20rpx; justify-content: space-between; gap: 18rpx; color: #663124; font-size: 26rpx; font-weight: 600; line-height: 1.4; }
 .audio-enter text:last-child { font-family: Garamond, Georgia, serif; font-size: 30rpx; }
 .audio-enter:active { opacity: .62; }
 .audio-transcript { margin: 28rpx 0 0 88rpx; color: #5c493c; font-size: 28rpx; line-height: 1.8; white-space: pre-wrap; }
@@ -109,14 +123,14 @@
 .question-action:active { opacity: .68; }
 .module-action { border-bottom: 1rpx solid #cdbbae; }
 .module-action .section-title { font-size: 38rpx; }
-.module-contents { padding: 28rpx 0 168rpx; }
-.contents-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 20rpx; margin-bottom: 12rpx; color: #8a6755; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.5; }
-.contents-title { color: #8a6755; }
-.contents-english { color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 22rpx; letter-spacing: .08em; }
-.contents-row { display: grid; grid-template-columns: 72rpx 164rpx minmax(0, 1fr); align-items: center; min-height: 128rpx; gap: 8rpx; padding: 18rpx 0; border-bottom: 1rpx solid rgba(92, 73, 60, .24); box-sizing: border-box; }
-.contents-number { color: #8a6755; font-family: Garamond, "Times New Roman", serif; font-size: 22rpx; letter-spacing: .04em; }
-.contents-label { min-width: 0; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; font-weight: 500; line-height: 1.5; }
-.contents-summary { min-width: 0; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.55; }
+.module-contents { margin: 0 12rpx; padding: 44rpx 0 184rpx; }
+.contents-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 32rpx; margin-bottom: 44rpx; color: #663124; font-family: "MYRIAD Garamond", Garamond, "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.5; letter-spacing: .11em; }
+.contents-title { color: #663124; }
+.contents-english { color: #663124; font-family: "MYRIAD Garamond", Garamond, "Times New Roman", serif; font-size: 24rpx; letter-spacing: .11em; }
+.contents-row { display: grid; grid-template-columns: 92rpx 180rpx minmax(0, 1fr); align-items: center; min-height: 144rpx; gap: 0; padding: 24rpx 0; border-bottom: 1rpx solid rgba(92, 73, 60, .24); box-sizing: border-box; }
+.contents-number { color: #663124; font-family: "MYRIAD Garamond", Garamond, "Times New Roman", serif; font-size: 24rpx; letter-spacing: .04em; }
+.contents-label { min-width: 0; color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 32rpx; font-weight: 400; line-height: 1.5; }
+.contents-summary { min-width: 0; color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.55; }
 .contents-row:active { opacity: .68; }
 .module-archive { min-height: 0; margin: 0 8rpx; padding: 40rpx 0 160rpx; color: #5c493c; }
 .archive-heading { color: #8a6755; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 24rpx; line-height: 1.5; }

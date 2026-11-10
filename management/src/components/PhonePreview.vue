@@ -15,6 +15,7 @@ const props = defineProps<{
   title: string;
   caption?: string;
   activeKey?: string;
+  backgroundImageUrl?: string;
 }>();
 
 const wrap = ref<HTMLElement | null>(null);
@@ -92,9 +93,16 @@ defineExpose({ reveal });
           <span class="phone-statusbar-notch" />
           <span class="phone-statusbar-icons">···</span>
         </div>
-        <div ref="scroller" class="phone-screen-inner">
+        <img v-if="backgroundImageUrl" class="phone-background-image" :src="backgroundImageUrl" alt="" aria-hidden="true" />
+        <div v-if="backgroundImageUrl" class="phone-background-scrim" aria-hidden="true"></div>
+        <div
+          ref="scroller"
+          class="phone-screen-inner"
+          :class="{ 'has-background': backgroundImageUrl, 'has-tabbar': Boolean($slots.tabbar) }"
+        >
           <slot />
         </div>
+        <slot name="tabbar" />
       </div>
     </div>
   </section>

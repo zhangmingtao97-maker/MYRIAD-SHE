@@ -22,6 +22,14 @@
     </block>
   </view>
 
-  <view class="page-signature"><view class="eyebrow">MYRIAD SHE</view><view>看见真实经验，此刻归安，让一件小事发生。</view></view>
+  <view class="page-signature" aria-label="MYRIAD SHE，看见真实经验，此刻归安，让一件小事发生。">
+    <view class="signature-grid">
+      <view class="signature-kicker signature-brand">MYRIAD SHE</view>
+      <view class="signature-line">看见真实经验</view>
+      <view class="signature-kicker">此刻归安</view>
+      <view class="signature-line">让一件小事发生</view>
+    </view>
+    <image class="signature-flower" src="/assets/brand/practice-signature-flower.svg" mode="aspectFit" aria-hidden="true" />
+  </view>
 
 </view>

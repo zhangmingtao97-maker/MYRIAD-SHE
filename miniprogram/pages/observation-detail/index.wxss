@@ -4,37 +4,37 @@
 .record-content { width: 100%; padding-top: 26rpx; }
 
 /* 顶部元信息 */
-.record-meta { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; min-height: 44rpx; color: #8b6b58; font-size: 21rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.record-meta { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; min-height: 44rpx; color: #8b6b58; font-size: 20rpx; line-height: 1.5; letter-spacing: 1rpx; }
 .record-method { color: #8f4938; }
 .record-date { color: #8b6b58; text-align: right; }
 
 /* 四段 */
 .stage { padding: 34rpx 0 28rpx; border-top: 1rpx solid #cdbbae; }
 .stage:first-of-type { margin-top: 28rpx; }
-.stage-label { color: #8f4938; font-size: 21rpx; font-weight: 500; line-height: 1.5; letter-spacing: 1rpx; }
+.stage-label { color: #8f4938; font-size: 22rpx; font-weight: 600; line-height: 1.5; letter-spacing: 1rpx; }
 .stage-label-tail { color: #8f4938; }
 
 .stage-title {
   margin-top: 12rpx;
   color: #3f352e;
   font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
-  font-size: 24rpx;
+  font-size: 30rpx;
   font-weight: 600;
-  line-height: 1.8;
+  line-height: 1.65;
   letter-spacing: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.stage-subtitle { margin-top: 18rpx; color: #5c493c; font-size: 24rpx; line-height: 1.7; }
+.stage-subtitle { margin-top: 18rpx; color: #5c493c; font-size: 23rpx; line-height: 1.7; }
 
 .stage-block { margin-top: 28rpx; }
 .stage-block:first-of-type { margin-top: 26rpx; }
-.stage-key { color: #8f4938; font-size: 21rpx; line-height: 1.6; letter-spacing: 1rpx; }
+.stage-key { color: #8f4938; font-size: 22rpx; font-weight: 500; line-height: 1.6; letter-spacing: 1rpx; }
 .stage-value {
   margin-top: 12rpx;
   color: #3f352e;
   font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
-  font-size: 24rpx;
+  font-size: 27rpx;
   font-weight: 600;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -46,7 +46,7 @@
   margin-top: 16rpx;
   color: #3f352e;
   font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
-  font-size: 24rpx;
+  font-size: 27rpx;
   font-weight: 600;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -61,7 +61,7 @@
 .perspective-note {
   margin-top: 14rpx;
   color: #8b6b58;
-  font-size: 21rpx;
+  font-size: 20rpx;
   line-height: 1.7;
 }
 
@@ -78,10 +78,11 @@
   align-items: center;
   justify-content: center;
   padding: 16rpx 24rpx;
+  border-radius: 20rpx;
   box-sizing: border-box;
   background: #73362a;
   color: #fffaf4;
-  font-size: 27rpx;
+  font-size: 28rpx;
   font-weight: 600;
   letter-spacing: 1rpx;
   line-height: 1.5;
@@ -96,11 +97,12 @@
   align-items: center;
   justify-content: center;
   padding: 16rpx 20rpx;
+  border-radius: 20rpx;
   box-sizing: border-box;
   border: 0;
   background: #73362a;
   color: #fffaf4;
-  font-size: 27rpx;
+  font-size: 28rpx;
   font-weight: 600;
   letter-spacing: 1rpx;
   line-height: 1.5;
@@ -110,14 +112,12 @@
 .disabled { opacity: .5; }
 .loading-copy { padding-top: 60rpx; color: #88786b; font-size: 26rpx; }
 .error-state { margin-top: 28rpx; }
-.retry-button { display: flex; min-height: 88rpx; align-items: center; justify-content: center; margin-top: 26rpx; border: 1rpx solid #cdbbae; color: #663124; font-size: 27rpx; }
+.retry-button { display: flex; min-height: 88rpx; align-items: center; justify-content: center; margin-top: 26rpx; border: 1rpx solid #cdbbae; border-radius: 20rpx; color: #663124; font-size: 28rpx; }
 .error-text { margin-top: 22rpx; color: #a53f32; font-size: 24rpx; line-height: 1.6; }
 .account-deleted { display: grid; gap: 18rpx; }
 
 @media (max-width: 360px) {
   .detail-page { padding-right: 36rpx; padding-left: 36rpx; }
-  .stage-title { font-size: 42rpx; }
-  .stage-action { font-size: 31rpx; }
 }
 
 /* 自定义导航栏（与 observation / season-intro 保持一致） */

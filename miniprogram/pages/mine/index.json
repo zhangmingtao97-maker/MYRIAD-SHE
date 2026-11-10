@@ -1,1 +1,1 @@
-{ "navigationStyle": "custom", "navigationBarTitleText": "MYRIAD SHE", "navigationBarBackgroundColor": "#e7dfd1", "backgroundColor": "#e7dfd1" }
+{ "navigationStyle": "custom", "navigationBarTitleText": "MYRIAD SHE", "navigationBarBackgroundColor": "#e7dfd1", "backgroundColor": "#e7dfd1", "usingComponents": { "avatar-picker": "/components/avatar-picker/index" } }

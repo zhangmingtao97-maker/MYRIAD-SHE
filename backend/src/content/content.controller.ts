@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, Header, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, Res, ServiceUnavailableException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, Header, NotFoundException, Optional, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, Res, ServiceUnavailableException, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
@@ -13,14 +13,20 @@ import { AuditService } from '../admin/audit.service';
 import { RedisService } from '../cache/redis.service';
 import { parseDatabaseCount, parsePagination } from '../pagination';
 import { defaultDiscussionContent, DiscussionContent, validateDiscussionContent } from './discussion-content';
+import { plainTextFromRichText, sanitizeRichText } from './rich-text';
+import { DataEncryptionService } from '../security/data-encryption.service';
+import { mergePublishedCommunityContent } from '../discussion/published-community';
 
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const allowedAudioTypes = ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-m4a'];
 const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
+const maxIssueAudioTracks = 20;
+const maxIssueAudioActions = 8;
+const issueRichTextOptions = { allowEmpty: true, minFontSize: 10, maxFontSize: 72, maxHtmlCharacters: 24000 } as const;
 type PracticeEntryKey = string;
 
 interface PublicHomeResponse {
-  issue: { code: string; label: string; month: string; theme: string; question: string; microVoiceTitle: string | null; microVoiceDuration: string | null; homeMetaRichText: string; homeMetaFontSize: number; homeMetaColor: string; homeCoverCaptionLeft: string; homeCoverCaptionRight: string } | null;
+  issue: { code: string; label: string; labelRichText: string; month: string; monthRichText: string; theme: string; themeRichText: string; question: string; questionRichText: string; microVoiceTitle: string | null; microVoiceDuration: string | null; homeMetaRichText: string; homeMetaFontSize: number; homeMetaColor: string; homeCoverCaptionLeft: string; homeCoverCaptionLeftRichText: string; homeCoverCaptionRight: string; homeCoverCaptionRightRichText: string; homeBackgroundUrl: string } | null;
   question: string;
   coverUrl: string;
   microVoice: { title: string; duration: string; url: string; enabled: boolean };
@@ -33,18 +39,25 @@ interface PublicHomeCache {
   issue: {
     code: string;
     label: string;
+    labelRichText: string;
     month: string;
+    monthRichText: string;
     theme: string;
+    themeRichText: string;
     question: string;
+    questionRichText: string;
     microVoiceTitle: string | null;
     microVoiceDuration: string | null;
     homeMetaRichText: string;
     homeMetaFontSize: number;
     homeMetaColor: string;
     homeCoverCaptionLeft: string;
+    homeCoverCaptionLeftRichText: string;
     homeCoverCaptionRight: string;
+    homeCoverCaptionRightRichText: string;
     coverObjectKey: string | null;
     microVoiceObjectKey: string | null;
+    homeBackgroundObjectKey: string | null;
   } | null;
   question: string;
   sections: string[];
@@ -54,21 +67,63 @@ interface PublicHomeCache {
 
 const issueModuleTypes = ['issueMeta', 'coverStory', 'cover', 'opener', 'story', 'storyAction', 'image', 'quote', 'audio', 'question', 'observationAction', 'sharedPracticeAction', 'contents', 'archive', 'brandFooter'] as const;
 type IssueModuleType = typeof issueModuleTypes[number];
+interface IssueAudioAction {
+  id: string;
+  label: string;
+  labelRichText?: string;
+  kind: 'page' | 'web' | 'share';
+  path?: string;
+  url?: string;
+}
 interface IssueAudioTrack {
   id: string;
   title: string;
+  titleRichText?: string;
   duration: string;
   mediaType: 'audio' | 'video';
   audioObjectKey: string;
   videoObjectKey: string;
   detailTitle: string;
+  detailTitleRichText?: string;
   description: string;
+  descriptionRichText?: string;
   quote: string;
+  quoteRichText?: string;
   subtitle: string;
+  subtitleRichText?: string;
   transcript: string;
+  transcriptRichText?: string;
+  actions?: IssueAudioAction[];
 }
 interface IssueModule { id: string; type: IssueModuleType; order: number; enabled: boolean; tracks?: IssueAudioTrack[]; [key: string]: unknown }
 interface IssueDraftContent { sections: IssueModule[]; discussion: DiscussionContent }
+
+const issueRichTextFields: Record<IssueModuleType, string[]> = {
+  issueMeta: ['eyebrow', 'month'],
+  coverStory: ['captionLeft', 'captionRight', 'eyebrow', 'title', 'body', 'byline'],
+  cover: ['captionLeft', 'captionRight'],
+  opener: ['eyebrow', 'title', 'body'],
+  story: ['eyebrow', 'title', 'body', 'captionLeft', 'captionRight', 'detailCaptionLeft', 'detailCaptionRight', 'detailSource', 'detailParagraph1', 'detailParagraph2', 'detailQuote'],
+  storyAction: ['title', 'body'],
+  image: ['caption'],
+  quote: ['text', 'attribution'],
+  audio: ['title', 'detailTitle', 'description', 'quote', 'subtitle', 'transcript'],
+  question: ['eyebrow', 'title', 'body'],
+  observationAction: ['title', 'body'],
+  sharedPracticeAction: ['title', 'body'],
+  contents: ['title', 'entry1Label', 'entry1Summary', 'entry2Label', 'entry2Summary', 'entry3Label', 'entry3Summary', 'entry4Label', 'entry4Summary'],
+  archive: ['title', 'entryLabel', 'entryTitle'],
+  brandFooter: ['title', 'body'],
+};
+const issueAudioTrackRichTextFields = ['title', 'detailTitle', 'description', 'quote', 'subtitle', 'transcript'] as const;
+
+function issueRichTextMaximum(field: string) {
+  return ['body', 'transcript', 'description', 'detailParagraph1', 'detailParagraph2', 'detailQuote'].includes(field) ? 6000 : 500;
+}
+
+function withIssueRichTextFields(fields: string[]) {
+  return fields.flatMap((field) => [field, `${field}RichText`]);
+}
 
 class IssueDto {
   @IsString() @MinLength(2) @MaxLength(64) code!: string;
@@ -76,15 +131,22 @@ class IssueDto {
   @IsString() @MinLength(2) @MaxLength(40) month!: string;
   @IsString() @MinLength(2) @MaxLength(200) theme!: string;
   @IsString() @MinLength(2) @MaxLength(500) question!: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) labelRichText?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) monthRichText?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) themeRichText?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) questionRichText?: string;
   @IsOptional() @IsString() @MaxLength(120) microVoiceTitle?: string;
   @IsOptional() @IsString() @MaxLength(20) microVoiceDuration?: string;
   @IsOptional() @IsString() @MaxLength(512) coverObjectKey?: string;
   @IsOptional() @IsString() @MaxLength(512) microVoiceObjectKey?: string;
-  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(2000) homeMetaRichText?: string;
+  @IsOptional() @IsString() @MaxLength(512) homeBackgroundObjectKey?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) homeMetaRichText?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsInt() @Min(12) @Max(48) homeMetaFontSize?: number;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @Matches(/^#[0-9a-fA-F]{6}$/) homeMetaColor?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(80) homeCoverCaptionLeft?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) homeCoverCaptionLeftRichText?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(80) homeCoverCaptionRight?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) homeCoverCaptionRightRichText?: string;
   @IsOptional() @IsObject() draftContent?: IssueDraftContent;
 }
 
@@ -95,15 +157,22 @@ class UpdateIssueDto {
   @ValidateIf((_object, value) => value !== undefined) @IsString() @MinLength(2) @MaxLength(40) month?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @MinLength(2) @MaxLength(200) theme?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @MinLength(2) @MaxLength(500) question?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) labelRichText?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) monthRichText?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) themeRichText?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) questionRichText?: string;
   @IsOptional() @IsString() @MaxLength(120) microVoiceTitle?: string | null;
   @IsOptional() @IsString() @MaxLength(20) microVoiceDuration?: string | null;
   @IsOptional() @IsString() @MaxLength(512) coverObjectKey?: string | null;
   @IsOptional() @IsString() @MaxLength(512) microVoiceObjectKey?: string | null;
-  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(2000) homeMetaRichText?: string;
+  @IsOptional() @IsString() @MaxLength(512) homeBackgroundObjectKey?: string | null;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) homeMetaRichText?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsInt() @Min(12) @Max(48) homeMetaFontSize?: number;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @Matches(/^#[0-9a-fA-F]{6}$/) homeMetaColor?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(80) homeCoverCaptionLeft?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) homeCoverCaptionLeftRichText?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(80) homeCoverCaptionRight?: string;
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24000) homeCoverCaptionRightRichText?: string;
   @IsOptional() @IsObject() draftContent?: IssueDraftContent;
 }
 
@@ -317,122 +386,12 @@ const minePageRichTextFields = [
   ['privacyHeading', 60], ['privacyAction', 60],
 ] as const;
 
-function safeRichTextColor(attributes: string) {
-  const style = /\bstyle\s*=\s*(["'])(.*?)\1/i.exec(attributes)?.[2] ?? '';
-  const fontColor = /\bcolor\s*=\s*(["'])(.*?)\1/i.exec(attributes)?.[2] ?? '';
-  const candidate = /(?:^|;)\s*color\s*:\s*([^;]+)/i.exec(style)?.[1]?.trim() ?? fontColor.trim();
-  if (/^#[0-9a-f]{6}$/i.test(candidate)) return candidate.toLowerCase();
-  const shortHex = /^#([0-9a-f]{3})$/i.exec(candidate);
-  if (shortHex) return `#${[...shortHex[1]].map((character) => character + character).join('').toLowerCase()}`;
-  const rgb = /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i.exec(candidate);
-  if (!rgb) return '';
-  const channels = rgb.slice(1).map(Number);
-  if (channels.some((channel) => channel > 255)) return '';
-  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
-}
-
-function safeRichTextFontSize(attributes: string) {
-  const style = /\bstyle\s*=\s*(["'])(.*?)\1/i.exec(attributes)?.[2] ?? '';
-  const styledSize = /(?:^|;)\s*font-size\s*:\s*(\d{1,3})px\s*(?:;|$)/i.exec(style)?.[1];
-  if (styledSize) {
-    const size = Number(styledSize);
-    if (Number.isInteger(size) && size >= 10 && size <= 48) return `${size}px`;
-  }
-  const legacySize = /\bsize\s*=\s*(["']?)([1-7])\1/i.exec(attributes)?.[2];
-  const legacyPixels: Record<string, number> = { '1': 12, '2': 14, '3': 16, '4': 18, '5': 24, '6': 32, '7': 48 };
-  return legacySize ? `${legacyPixels[legacySize]}px` : '';
-}
-
-function decodeMineTextEntities(value: string) {
-  return value
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&#(\d+);/g, (_entity, decimal: string) => {
-      const codePoint = Number(decimal);
-      return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : '';
-    })
-    .replace(/&#x([0-9a-f]+);/gi, (_entity, hex: string) => {
-      const codePoint = Number.parseInt(hex, 16);
-      return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : '';
-    });
-}
-
 function sanitizeMinePageRichText(value: unknown, maximumCharacters: number, label: string) {
-  if (typeof value !== 'string' || value.length > 6000) {
-    throw new BadRequestException(`${label}内容无效或过长`);
-  }
-  const tags: string[] = [];
-  const tokens = value.trim().match(/<\/?[a-z][^>]*>|[^<]+|</gi) ?? [];
-  let html = '';
-  let skippedTag = '';
-  const safeTag = (tag: string) => tag === 'div' ? 'p' : tag === 'font' ? 'span' : tag;
-
-  for (const token of tokens) {
-    if (token[0] !== '<') {
-      if (!skippedTag) html += token;
-      continue;
-    }
-    const closing = /^<\/\s*([a-z][a-z0-9]*)\s*>$/i.exec(token);
-    if (skippedTag) {
-      if (closing?.[1].toLowerCase() === skippedTag) skippedTag = '';
-      continue;
-    }
-    const opening = /^<\s*([a-z][a-z0-9]*)\b([^>]*)>$/i.exec(token);
-    if (opening) {
-      const originalTag = opening[1].toLowerCase();
-      if (['script', 'style', 'iframe', 'object', 'svg', 'math'].includes(originalTag)) {
-        skippedTag = originalTag;
-        continue;
-      }
-      if (!['p', 'div', 'br', 'span', 'font', 'strong', 'b', 'em', 'i', 'u'].includes(originalTag)) continue;
-      const tag = safeTag(originalTag);
-      if (tag === 'br') {
-        html += '<br/>';
-        continue;
-      }
-      if (tag === 'p' && tags.includes(tag)) {
-        while (tags.length) {
-          const previous = tags.pop()!;
-          html += `</${previous}>`;
-          if (previous === tag) break;
-        }
-      }
-      if (tag === 'span') {
-        const color = safeRichTextColor(opening[2]);
-        const fontSize = safeRichTextFontSize(opening[2]);
-        const styles = [fontSize && `font-size:${fontSize}`, color && `color:${color}`].filter(Boolean);
-        html += styles.length ? `<span style="${styles.join(';')}">` : '<span>';
-      } else {
-        html += `<${tag}>`;
-      }
-      tags.push(tag);
-      continue;
-    }
-    if (closing) {
-      const tag = safeTag(closing[1].toLowerCase());
-      const index = tags.lastIndexOf(tag);
-      if (index < 0) continue;
-      while (tags.length > index) html += `</${tags.pop()!}>`;
-      continue;
-    }
-    html += '&lt;';
-  }
-  while (tags.length) html += `</${tags.pop()!}>`;
-
-  const plainText = decodeMineTextEntities(html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(?:p|div)>/gi, ' ')
-    .replace(/<[^>]*>/g, '')
-    .replace(/\u200b/g, ''));
-  const characterCount = Array.from(plainText.trim()).length;
-  if (characterCount < 1 || characterCount > maximumCharacters || html.length > 6000) {
-    throw new BadRequestException(`${label}文字需为 1 至 ${maximumCharacters} 个字符`);
-  }
-  return html;
+  return sanitizeRichText(value, maximumCharacters, label, {
+    minFontSize: 10,
+    maxFontSize: 48,
+    maxHtmlCharacters: 6000,
+  });
 }
 
 function sanitizeMinePageContentFields<T extends Record<string, unknown>>(fields: T): T {
@@ -443,7 +402,6 @@ function sanitizeMinePageContentFields<T extends Record<string, unknown>>(fields
   }
   return sanitized;
 }
-
 const defaultObservationCopy = {
   metaLeft: { richText: '此刻归安', fontSize: 12, color: '#8b6b58' },
   metaRight: { richText: 'PRIVATE PRACTICE', fontSize: 12, color: '#663124' },
@@ -672,9 +630,9 @@ function parseCsv(input: string): string[][] {
 
 @Controller('content')
 export class ContentController {
-  private readonly homeCacheKey = 'myriad-she:content:home:v3';
+  private readonly homeCacheKey = 'myriad-she:content:home:v5';
 
-  constructor(private readonly database: DatabaseService, private readonly storage: StorageService, private readonly audit: AuditService, private readonly config: ConfigService, private readonly redis: RedisService, private readonly jwt: JwtService) {}
+  constructor(private readonly database: DatabaseService, private readonly storage: StorageService, private readonly audit: AuditService, private readonly config: ConfigService, private readonly redis: RedisService, private readonly jwt: JwtService, @Optional() private readonly encryption?: DataEncryptionService) {}
 
   private publicContentCacheTtlSeconds() {
     const configured = Number(this.config.get('CONTENT_PUBLIC_CACHE_TTL_SECONDS', 60));
@@ -685,13 +643,83 @@ export class ContentController {
     return typeof value === 'string' && value.length >= minimum && value.length <= maximum;
   }
 
-  private validateIssueDraft(value: unknown): IssueDraftContent {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException('期刊栏目内容格式无效');
-    const sections = (value as Record<string, unknown>).sections;
-    if (!Array.isArray(sections) || sections.length < 1 || sections.length > 40) throw new BadRequestException('期刊栏目数量须为 1–40 个');
+  /** 规范化微声音详情页的操作模块；未提供时保留 undefined，空数组表示明确不显示操作。 */
+  private normalizeIssueAudioActions(value: unknown, owner = '微声音'): IssueAudioAction[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.length > maxIssueAudioActions) {
+      throw new BadRequestException(`${owner}最多可添加 ${maxIssueAudioActions} 个操作模块`);
+    }
     const ids = new Set<string>();
-    const allowedFields: Record<IssueModuleType, string[]> = {
-      issueMeta: ['eyebrow', 'month'], coverStory: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'eyebrow', 'title', 'titleFontSize', 'titleColor', 'body', 'bodyFontSize', 'bodyColor', 'byline'], cover: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight'],
+    return value.map((rawAction, index) => {
+      const actionLabel = `${owner}的第 ${index + 1} 个操作模块`;
+      if (!rawAction || typeof rawAction !== 'object' || Array.isArray(rawAction)) {
+        throw new BadRequestException(`${actionLabel}格式无效`);
+      }
+      const action = rawAction as Record<string, unknown>;
+      const unexpectedFields = Object.keys(action).filter((key) => !['id', 'label', 'labelRichText', 'kind', 'path', 'url'].includes(key));
+      if (unexpectedFields.length) {
+        throw new BadRequestException(`${actionLabel}包含未登记字段：${unexpectedFields.join('、')}`);
+      }
+      const id = typeof action.id === 'string' ? action.id.trim() : '';
+      if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(id) || ids.has(id)) {
+        throw new BadRequestException(`${actionLabel}字段 id 无效或重复`);
+      }
+      ids.add(id);
+      const labelRichText = action.labelRichText === undefined
+        ? undefined
+        : sanitizeRichText(action.labelRichText, 40, `${actionLabel}字段 labelRichText`, issueRichTextOptions);
+      const label = labelRichText !== undefined
+        ? plainTextFromRichText(labelRichText)
+        : typeof action.label === 'string' ? action.label.trim() : '';
+      if (!label || label.length > 40 || /[\r\n]/.test(label) || /<\/?[a-z][^>]*>/i.test(label)) {
+        throw new BadRequestException(`${actionLabel}字段 label 须为 1–40 个字符的纯文本`);
+      }
+      const richLabelFields = labelRichText !== undefined ? { labelRichText } : {};
+      if (action.kind !== 'page' && action.kind !== 'web' && action.kind !== 'share') {
+        throw new BadRequestException(`${actionLabel}字段 kind 无效`);
+      }
+      if (action.path !== undefined && typeof action.path !== 'string') throw new BadRequestException(`${actionLabel}字段 path 须为字符串`);
+      if (action.url !== undefined && typeof action.url !== 'string') throw new BadRequestException(`${actionLabel}字段 url 须为 HTTPS 地址`);
+      const path = typeof action.path === 'string' ? action.path.trim() : '';
+      const url = typeof action.url === 'string' ? action.url.trim() : '';
+      if (action.kind === 'page') {
+        if (url || !path || path.length > 512 || path.includes('..') || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(path)) {
+          throw new BadRequestException(`${actionLabel}字段 path 须为有效的小程序页面路径`);
+        }
+        return { id, label, ...richLabelFields, kind: 'page', path };
+      }
+      if (action.kind === 'web') {
+        if (path || !url || url.length > 2048 || !/^https:\/\/[^\s<>]+$/i.test(url)) {
+          throw new BadRequestException(`${actionLabel}字段 url 须为 HTTPS 地址`);
+        }
+        try {
+          const parsed = new URL(url);
+          if (parsed.protocol !== 'https:' || !parsed.hostname) throw new Error('invalid protocol');
+        } catch {
+          throw new BadRequestException(`${actionLabel}字段 url 须为 HTTPS 地址`);
+        }
+        return { id, label, ...richLabelFields, kind: 'web', url };
+      }
+      if (path || url) throw new BadRequestException(`${actionLabel}为分享操作，不可包含 path 或 url`);
+      return { id, label, ...richLabelFields, kind: 'share' };
+    });
+  }  private isValidIssueAudioActions(value: unknown): boolean {
+    if (value === undefined) return true;
+    if (!Array.isArray(value) || value.length > maxIssueAudioActions) return false;
+    try {
+      return this.normalizeIssueAudioActions(value) !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
+  private validateIssueDraft(value: unknown): IssueDraftContent {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException('字段 sections：期刊栏目内容格式无效');
+    const sections = (value as Record<string, unknown>).sections;
+    if (!Array.isArray(sections) || sections.length < 1 || sections.length > 40) throw new BadRequestException('字段 sections 须包含 1–40 个栏目');
+    const ids = new Set<string>();
+    const baseAllowedFields: Record<IssueModuleType, string[]> = {
+      issueMeta: ['eyebrow', 'month', 'introduction'], coverStory: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'eyebrow', 'title', 'titleFontSize', 'titleColor', 'body', 'bodyFontSize', 'bodyColor', 'byline'], cover: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight'],
       opener: ['eyebrow', 'title', 'body'], story: ['eyebrow', 'title', 'body', 'imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'detailCaptionLeft', 'detailCaptionRight', 'detailSource', 'detailParagraph1', 'detailParagraph2', 'detailQuote', 'officialArticleUrl'], storyAction: ['title', 'body', 'targetId'], image: ['imageObjectKey', 'altText', 'caption'],
       quote: ['text', 'attribution'], audio: ['title', 'duration', 'mediaType', 'audioObjectKey', 'videoObjectKey', 'detailTitle', 'description', 'transcript', 'quote', 'subtitle', 'tracks'], question: ['eyebrow', 'title', 'body'],
       observationAction: ['title', 'body'], sharedPracticeAction: ['title', 'body'],
@@ -699,72 +727,111 @@ export class ContentController {
       archive: ['title', 'entryLabel', 'entryTitle'], brandFooter: ['title', 'body'],
     };
     const normalized = sections.map((raw, index) => {
-      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new BadRequestException(`第 ${index + 1} 个栏目格式无效`);
+      const sectionLabel = `第 ${index + 1} 个栏目`;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new BadRequestException(`${sectionLabel}格式无效`);
       const item = raw as Record<string, unknown>;
       const id = item.id;
       const type = item.type;
       const order = item.order;
-      if (typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(id) || ids.has(id)) throw new BadRequestException('栏目 ID 无效或重复');
-      if (typeof type !== 'string' || !issueModuleTypes.includes(type as IssueModuleType)) throw new BadRequestException('栏目类型不受支持');
-      if (!Number.isSafeInteger(order) || Number(order) < 0 || Number(order) >= sections.length) throw new BadRequestException('栏目顺序无效');
-      if (typeof item.enabled !== 'boolean') throw new BadRequestException('栏目启用状态无效');
-      const allowed = new Set(['id', 'type', 'order', 'enabled', 'linkType', 'linkPath', 'linkUrl', 'linkLabel', ...allowedFields[type as IssueModuleType]]);
-      if (Object.keys(item).some((key) => !allowed.has(key))) throw new BadRequestException('栏目包含未登记字段');
+      if (typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(id) || ids.has(id)) throw new BadRequestException(`${sectionLabel}字段 id 无效或重复`);
+      if (typeof type !== 'string' || !issueModuleTypes.includes(type as IssueModuleType)) throw new BadRequestException(`${sectionLabel}字段 type 不受支持`);
+      const moduleType = type as IssueModuleType;
+      const moduleLabel = `${sectionLabel}（类型：${type}，ID：${id}）`;
+      if (!Number.isSafeInteger(order) || Number(order) < 0 || Number(order) >= sections.length) throw new BadRequestException(`${moduleLabel}字段 order 须为 0–${sections.length - 1} 的整数`);
+      if (typeof item.enabled !== 'boolean') throw new BadRequestException(`${moduleLabel}字段 enabled 须为布尔值`);
+      const legacyAudioActions = type === 'audio' ? item.actions : undefined;
+      const baseFields = baseAllowedFields[moduleType];
+      const richFields = issueRichTextFields[moduleType];
+      const allowed = new Set([
+        'id', 'type', 'order', 'enabled', 'linkType', 'linkPath', 'linkUrl', 'linkLabel', 'linkLabelRichText',
+        ...(type === 'audio' ? ['actions'] : []), ...baseFields, ...withIssueRichTextFields(richFields),
+      ]);
+      const unexpectedFields = Object.keys(item).filter((key) => !allowed.has(key));
+      if (unexpectedFields.length) throw new BadRequestException(`${moduleLabel}包含未登记字段：${unexpectedFields.join('、')}`);
+      const normalizedLegacyActions = legacyAudioActions === undefined ? undefined : this.normalizeIssueAudioActions(legacyAudioActions, `${moduleLabel}字段 actions`);
       const linkType = item.linkType === undefined || item.linkType === '' ? 'none' : item.linkType;
-      if (linkType !== 'none' && linkType !== 'page' && linkType !== 'web') throw new BadRequestException('栏目跳转类型无效');
+      if (linkType !== 'none' && linkType !== 'page' && linkType !== 'web') throw new BadRequestException(`${moduleLabel}字段 linkType 无效`);
       const linkPath = typeof item.linkPath === 'string' ? item.linkPath.trim() : '';
       const linkUrl = typeof item.linkUrl === 'string' ? item.linkUrl.trim() : '';
-      const linkLabel = typeof item.linkLabel === 'string' ? item.linkLabel.trim() : '';
+      const linkLabelRichText = item.linkLabelRichText === undefined
+        ? undefined
+        : sanitizeRichText(item.linkLabelRichText, 40, `${moduleLabel}字段 linkLabelRichText`, issueRichTextOptions);
+      const linkLabel = linkLabelRichText !== undefined
+        ? plainTextFromRichText(linkLabelRichText)
+        : (typeof item.linkLabel === 'string' ? item.linkLabel.trim() : '');
       if (linkType === 'page') {
-        if (!linkPath || linkPath.length > 512 || linkPath.includes('..') || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(linkPath)) throw new BadRequestException('小程序页面路径无效');
+        if (!linkPath || linkPath.length > 512 || linkPath.includes('..') || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(linkPath)) throw new BadRequestException(`${moduleLabel}字段 linkPath 须为有效的小程序页面路径`);
       }
       if (linkType === 'web') {
-        if (!linkUrl || linkUrl.length > 2048 || !/^https:\/\/[^\s<>]+$/i.test(linkUrl)) throw new BadRequestException('网站链接须为 HTTPS 地址');
+        if (!linkUrl || linkUrl.length > 2048 || !/^https:\/\/[^\s<>]+$/i.test(linkUrl)) throw new BadRequestException(`${moduleLabel}字段 linkUrl 须为 HTTPS 地址`);
         try {
           if (new URL(linkUrl).protocol !== 'https:') throw new Error('invalid protocol');
         } catch {
-          throw new BadRequestException('网站链接须为 HTTPS 地址');
+          throw new BadRequestException(`${moduleLabel}字段 linkUrl 须为 HTTPS 地址`);
         }
       }
-      if (linkLabel !== '' && (linkLabel.length > 40 || /[\r\n]/.test(linkLabel) || /<\/?[a-z][^>]*>/i.test(linkLabel))) throw new BadRequestException('栏目跳转文字须为长度有效的纯文本');
+      if (linkLabel !== '' && (linkLabel.length > 40 || /[\r\n]/.test(linkLabel) || /<\/?[a-z][^>]*>/i.test(linkLabel))) throw new BadRequestException(`${moduleLabel}字段 linkLabel 须为长度有效的纯文本`);
+      const normalizedRichText: Record<string, string> = {};
+      const normalizedRichPlainText: Record<string, string> = {};
+      for (const richField of richFields) {
+        const richKey = `${richField}RichText`;
+        const richValue = item[richKey];
+        if (richValue === undefined) continue;
+        const sanitized = sanitizeRichText(richValue, issueRichTextMaximum(richField), `${moduleLabel}字段 ${richKey}`, issueRichTextOptions);
+        normalizedRichText[richKey] = sanitized;
+        normalizedRichPlainText[richField] = plainTextFromRichText(sanitized);
+      }
       let normalizedTracks: IssueAudioTrack[] | undefined;
-      for (const key of allowedFields[type as IssueModuleType]) {
+      for (const key of baseFields) {
         const field = item[key];
         if (key === 'tracks') {
           if (field === undefined) continue;
-          if (type !== 'audio' || !Array.isArray(field) || field.length > 3) throw new BadRequestException('微声音最多添加 3 段');
+          if (type !== 'audio' || !Array.isArray(field) || field.length > maxIssueAudioTracks) throw new BadRequestException(`${moduleLabel}字段 tracks 最多可包含 ${maxIssueAudioTracks} 段微声音`);
           const trackIds = new Set<string>();
-          normalizedTracks = field.map((rawTrack) => {
-            if (!rawTrack || typeof rawTrack !== 'object' || Array.isArray(rawTrack)) throw new BadRequestException('微声音条目格式无效');
+          normalizedTracks = field.map((rawTrack, trackIndex) => {
+            const trackPosition = `${moduleLabel}字段 tracks 第 ${trackIndex + 1} 段微声音`;
+            if (!rawTrack || typeof rawTrack !== 'object' || Array.isArray(rawTrack)) throw new BadRequestException(`${trackPosition}格式无效`);
             const track = rawTrack as Record<string, unknown>;
-            const trackFields = ['id', 'title', 'duration', 'mediaType', 'audioObjectKey', 'videoObjectKey', 'detailTitle', 'description', 'quote', 'subtitle', 'transcript'];
-            if (Object.keys(track).some((trackField) => !trackFields.includes(trackField))) throw new BadRequestException('微声音条目包含未登记字段');
-            if (typeof track.id !== 'string' || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(track.id) || trackIds.has(track.id)) throw new BadRequestException('微声音条目编号无效或重复');
+            const trackIdLabel = typeof track.id === 'string' && track.id ? `（ID：${track.id}）` : '';
+            const trackLabel = `${trackPosition}${trackIdLabel}`;
+            const trackFields = ['id', 'title', 'duration', 'mediaType', 'audioObjectKey', 'videoObjectKey', 'detailTitle', 'description', 'quote', 'subtitle', 'transcript', 'actions', ...withIssueRichTextFields([...issueAudioTrackRichTextFields])];
+            const unexpectedTrackFields = Object.keys(track).filter((trackField) => !trackFields.includes(trackField));
+            if (unexpectedTrackFields.length) throw new BadRequestException(`${trackLabel}包含未登记字段：${unexpectedTrackFields.join('、')}`);
+            if (typeof track.id !== 'string' || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(track.id) || trackIds.has(track.id)) throw new BadRequestException(`${trackLabel}字段 id 无效或重复`);
             trackIds.add(track.id);
             const limits: Record<string, number> = { title: 120, detailTitle: 120, duration: 20, quote: 500, subtitle: 500, transcript: 6000, description: 6000 };
+            const normalizedTrackRichText: Record<string, string> = {};
             for (const [trackField, maximum] of Object.entries(limits)) {
               const value = track[trackField] ?? '';
-              if (typeof value !== 'string' || value.length > maximum || /<\/?[a-z][^>]*>/i.test(value)) throw new BadRequestException('微声音文案须为长度有效的纯文本');
+              if (typeof value !== 'string' || value.length > maximum || /<\/?[a-z][^>]*>/i.test(value)) throw new BadRequestException(`${trackLabel}字段 ${trackField} 须为不超过 ${maximum} 个字符的纯文本`);
+              const richValue = track[`${trackField}RichText`];
+              if (richValue === undefined) continue;
+              const sanitized = sanitizeRichText(richValue, maximum, `${trackLabel}字段 ${trackField}RichText`, issueRichTextOptions);
+              normalizedTrackRichText[`${trackField}RichText`] = sanitized;
+              track[trackField] = plainTextFromRichText(sanitized);
             }
             const audioObjectKey = track.audioObjectKey ?? '';
             const videoObjectKey = track.videoObjectKey ?? '';
-            if (audioObjectKey !== '' && (typeof audioObjectKey !== 'string' || !this.isManagedMediaObjectKey(audioObjectKey) || !audioObjectKey.startsWith('content/audio/'))) throw new BadRequestException('栏目媒体路径无效');
-            if (videoObjectKey !== '' && (typeof videoObjectKey !== 'string' || !this.isManagedMediaObjectKey(videoObjectKey) || !videoObjectKey.startsWith('content/video/'))) throw new BadRequestException('栏目媒体路径无效');
-            if (track.mediaType !== undefined && track.mediaType !== 'audio' && track.mediaType !== 'video') throw new BadRequestException('微声音媒体类型无效');
+            if (audioObjectKey !== '' && (typeof audioObjectKey !== 'string' || !this.isManagedMediaObjectKey(audioObjectKey) || !audioObjectKey.startsWith('content/audio/'))) throw new BadRequestException(`${trackLabel}字段 audioObjectKey 须为 content/audio/ 下的受管媒体路径`);
+            if (videoObjectKey !== '' && (typeof videoObjectKey !== 'string' || !this.isManagedMediaObjectKey(videoObjectKey) || !videoObjectKey.startsWith('content/video/'))) throw new BadRequestException(`${trackLabel}字段 videoObjectKey 须为 content/video/ 下的受管媒体路径`);
+            if (track.mediaType !== undefined && track.mediaType !== 'audio' && track.mediaType !== 'video') throw new BadRequestException(`${trackLabel}字段 mediaType 须为 audio 或 video`);
             const mediaType = track.mediaType === 'video' || (!track.mediaType && videoObjectKey && !audioObjectKey) ? 'video' : 'audio';
+            const actions = this.normalizeIssueAudioActions(track.actions, trackLabel);
             return {
               id: track.id, title: String(track.title ?? ''), duration: String(track.duration ?? ''), mediaType,
               audioObjectKey: String(audioObjectKey), videoObjectKey: String(videoObjectKey),
               detailTitle: String(track.detailTitle ?? ''), description: String(track.description ?? ''),
               quote: String(track.quote ?? ''), subtitle: String(track.subtitle ?? ''), transcript: String(track.transcript ?? ''),
+              ...normalizedTrackRichText,
+              ...(actions !== undefined ? { actions } : {}),
             };
           });
         } else if (key.endsWith('FontSize')) {
-          if (field !== undefined && (!Number.isSafeInteger(field) || Number(field) < 20 || Number(field) > 120)) throw new BadRequestException('文字字号须为 20–120');
+          if (field !== undefined && (!Number.isSafeInteger(field) || Number(field) < 20 || Number(field) > 120)) throw new BadRequestException(`${moduleLabel}字段 ${key} 须为 20–120 的整数`);
         } else if (key.endsWith('Color')) {
-          if (field !== undefined && (typeof field !== 'string' || !/^#[0-9a-f]{6}$/i.test(field))) throw new BadRequestException('文字颜色格式无效');
+          if (field !== undefined && (typeof field !== 'string' || !/^#[0-9a-f]{6}$/i.test(field))) throw new BadRequestException(`${moduleLabel}字段 ${key} 须为 #RRGGBB 格式的颜色值`);
         } else if (key === 'targetId') {
-          if (field !== undefined && (typeof field !== 'string' || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(field))) throw new BadRequestException('栏目跳转目标无效');
+          if (field !== undefined && (typeof field !== 'string' || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(field))) throw new BadRequestException(`${moduleLabel}字段 targetId 无效`);
         } else if (key === 'officialArticleUrl') {
           if (field !== undefined && field !== '') {
             let validArticleUrl = false;
@@ -774,23 +841,31 @@ export class ContentController {
                 validArticleUrl = articleUrl.protocol === 'https:' && articleUrl.hostname === 'mp.weixin.qq.com' && /^\/s(?:\/|$)/i.test(articleUrl.pathname);
               } catch {}
             }
-            if (!validArticleUrl) throw new BadRequestException('公众号文章链接格式无效');
+            if (!validArticleUrl) throw new BadRequestException(`${moduleLabel}字段 officialArticleUrl 须为 mp.weixin.qq.com 的 HTTPS 文章链接`);
+          }
+        } else if (key === 'introduction') {
+          if (field !== undefined && (typeof field !== 'string' || field.length > 120 || /[\r\n<>]/.test(field))) {
+            throw new BadRequestException(`${moduleLabel}字段 introduction 须为不超过 120 字的单行纯文本`);
           }
         } else if (key.endsWith('ObjectKey')) {
           if (field !== undefined && field !== null && field !== '' && (typeof field !== 'string' || !this.isManagedMediaObjectKey(field)
             || (key === 'imageObjectKey' && !field.startsWith('content/image/'))
             || (key === 'audioObjectKey' && !field.startsWith('content/audio/'))
-            || (key === 'videoObjectKey' && !field.startsWith('content/video/')))) throw new BadRequestException('栏目媒体路径无效');
-        } else if (field !== undefined && (typeof field !== 'string' || field.length > (['body', 'transcript', 'description', 'detailParagraph1', 'detailParagraph2', 'detailQuote'].includes(key) ? 6000 : 500) || /<\/?[a-z][^>]*>/i.test(field))) {
-          throw new BadRequestException('栏目文字须为不含 HTML 的纯文本且长度有效');
+            || (key === 'videoObjectKey' && !field.startsWith('content/video/')))) throw new BadRequestException(`${moduleLabel}字段 ${key} 须为受管媒体路径`);
+        } else if (field !== undefined && (typeof field !== 'string' || field.length > issueRichTextMaximum(key) || /<\/?[a-z][^>]*>/i.test(field))) {
+          throw new BadRequestException(`${moduleLabel}字段 ${key} 须为长度有效且不含 HTML 的纯文本`);
         }
       }
+      if (normalizedTracks?.[0] && normalizedTracks[0].actions === undefined && normalizedLegacyActions !== undefined) normalizedTracks[0].actions = normalizedLegacyActions;
       ids.add(id);
-      const normalizedItem = { ...item, id, type: type as IssueModuleType, order: Number(order), enabled: item.enabled } as IssueModule;
+      const normalizedItem = { ...item, ...normalizedRichText, ...normalizedRichPlainText, id, type: moduleType, order: Number(order), enabled: item.enabled } as IssueModule;
+      if (typeof normalizedItem.introduction === 'string') normalizedItem.introduction = normalizedItem.introduction.trim();
+      delete normalizedItem.actions;
       delete normalizedItem.linkType;
       delete normalizedItem.linkPath;
       delete normalizedItem.linkUrl;
       delete normalizedItem.linkLabel;
+      delete normalizedItem.linkLabelRichText;
       if (linkType === 'page') {
         normalizedItem.linkType = 'page';
         normalizedItem.linkPath = linkPath;
@@ -799,18 +874,23 @@ export class ContentController {
         normalizedItem.linkUrl = linkUrl;
       }
       if (linkType !== 'none' && linkLabel) normalizedItem.linkLabel = linkLabel;
+      if (linkType !== 'none' && linkLabelRichText !== undefined) normalizedItem.linkLabelRichText = linkLabelRichText;
       if (normalizedTracks) {
         normalizedItem.tracks = normalizedTracks;
         const firstTrack = normalizedTracks[0];
         if (firstTrack) Object.assign(normalizedItem, firstTrack);
+        delete normalizedItem.actions;
       }
       return normalizedItem;
     });
-    if (new Set(normalized.map((item) => item.order)).size !== normalized.length) throw new BadRequestException('栏目顺序不能重复');
+    const orderCounts = new Map<number, number>();
+    for (const item of normalized) orderCounts.set(item.order, (orderCounts.get(item.order) ?? 0) + 1);
+    const duplicateOrders = [...orderCounts.entries()].filter(([, count]) => count > 1).map(([order]) => order);
+    if (duplicateOrders.length) throw new BadRequestException(`字段 order 存在重复值：${duplicateOrders.join('、')}`);
     const sectionIds = new Set(normalized.map((item) => item.id));
-    for (const module of normalized) {
+    for (const [index, module] of normalized.entries()) {
       if (module.type === 'storyAction' && module.targetId !== undefined && !sectionIds.has(String(module.targetId))) {
-        throw new BadRequestException('人物入口的跳转目标栏目不存在');
+        throw new BadRequestException(`第 ${index + 1} 个栏目（类型：${module.type}，ID：${module.id}）字段 targetId 指向的栏目不存在：${String(module.targetId)}`);
       }
     }
     const discussion = (value as Record<string, unknown>).discussion;
@@ -820,11 +900,11 @@ export class ContentController {
   private legacyIssueDraft(issue: IssueDto | UpdateIssueDto): IssueDraftContent {
     const source = issue as IssueDto;
     return this.validateIssueDraft({ sections: [
-      { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: source.label ?? '本期策展', month: source.month ?? '' },
-      { id: 'cover', type: 'cover', order: 1, enabled: true, imageObjectKey: source.coverObjectKey ?? null, altText: source.theme ?? '', captionLeft: source.homeCoverCaptionLeft ?? '人物纪实·时雨', captionRight: source.homeCoverCaptionRight ?? '本期封面' },
-      { id: 'opener', type: 'opener', order: 2, enabled: true, eyebrow: '本期主题', title: source.theme ?? '', body: source.homeMetaRichText ?? '' },
+      { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: source.label ?? '本期策展', eyebrowRichText: source.labelRichText ?? '', month: source.month ?? '', monthRichText: source.monthRichText ?? '' },
+      { id: 'cover', type: 'cover', order: 1, enabled: true, imageObjectKey: source.coverObjectKey ?? null, altText: source.theme ?? '', captionLeft: source.homeCoverCaptionLeft ?? '人物纪实·时雨', captionLeftRichText: source.homeCoverCaptionLeftRichText ?? '', captionRight: source.homeCoverCaptionRight ?? '本期封面', captionRightRichText: source.homeCoverCaptionRightRichText ?? '' },
+      { id: 'opener', type: 'opener', order: 2, enabled: true, eyebrow: '本期主题', title: source.theme ?? '', titleRichText: source.themeRichText ?? '', body: plainTextFromRichText(source.homeMetaRichText ?? ''), bodyRichText: source.homeMetaRichText ?? '' },
       { id: 'audio', type: 'audio', order: 3, enabled: Boolean(source.microVoiceObjectKey), title: source.microVoiceTitle ?? '', duration: source.microVoiceDuration ?? '', audioObjectKey: source.microVoiceObjectKey ?? null, quote: '', subtitle: '', transcript: '' },
-      { id: 'question', type: 'question', order: 4, enabled: true, eyebrow: '从她的经验，回到你的此刻', title: source.question ?? '', body: '' },
+      { id: 'question', type: 'question', order: 4, enabled: true, eyebrow: '从她的经验，回到你的此刻', title: source.question ?? '', titleRichText: source.questionRichText ?? '', body: '' },
       { id: 'observation-action', type: 'observationAction', order: 5, enabled: true, title: '留给自己观察', body: '从现实处境开始，记录保持私密' },
       { id: 'story', type: 'story', order: 6, enabled: false, eyebrow: '人物纪实', title: '', body: '', imageObjectKey: '', altText: '', captionLeft: '', captionRight: '' },
       { id: 'story-action', type: 'storyAction', order: 7, enabled: false, title: '进入本期人物', body: '', targetId: 'story' },
@@ -832,6 +912,10 @@ export class ContentController {
       { id: 'archive', type: 'archive', order: 9, enabled: true, title: '策展档案', entryLabel: 'ISSUE 01 · 往期精彩示意', entryTitle: '留住没有答案的时刻' },
       { id: 'brand-footer', type: 'brandFooter', order: 10, enabled: true, title: '我有我的时节', body: '记录真实的女性经验，也为看见之后的生活留下一条可行的路。' },
     ] });
+  }
+
+  private isOptionalRichText(value: unknown) {
+    return value === undefined || this.boundedText(value, issueRichTextOptions.maxHtmlCharacters);
   }
 
   private isPublicHomeCache(value: unknown): value is PublicHomeCache {
@@ -849,11 +933,17 @@ export class ContentController {
       && this.boundedText(issueRecord.question, 500, 2)
       && (issueRecord.microVoiceTitle === null || this.boundedText(issueRecord.microVoiceTitle, 120))
       && (issueRecord.microVoiceDuration === null || this.boundedText(issueRecord.microVoiceDuration, 20))
-      && this.boundedText(issueRecord.homeMetaRichText, 2000)
+      && this.boundedText(issueRecord.labelRichText, 24000)
+      && this.boundedText(issueRecord.monthRichText, 24000)
+      && this.boundedText(issueRecord.themeRichText, 24000)
+      && this.boundedText(issueRecord.questionRichText, 24000)
+      && this.boundedText(issueRecord.homeMetaRichText, 24000)
       && Number.isSafeInteger(issueRecord.homeMetaFontSize) && Number(issueRecord.homeMetaFontSize) >= 12 && Number(issueRecord.homeMetaFontSize) <= 48
       && typeof issueRecord.homeMetaColor === 'string' && /^#[0-9a-f]{6}$/i.test(issueRecord.homeMetaColor)
       && this.boundedText(issueRecord.homeCoverCaptionLeft, 80)
+      && this.boundedText(issueRecord.homeCoverCaptionLeftRichText, 24000)
       && this.boundedText(issueRecord.homeCoverCaptionRight, 80)
+      && this.boundedText(issueRecord.homeCoverCaptionRightRichText, 24000)
       && (issueRecord.coverObjectKey === null
         || (typeof issueRecord.coverObjectKey === 'string'
           && this.isManagedMediaObjectKey(issueRecord.coverObjectKey)
@@ -861,11 +951,16 @@ export class ContentController {
       && (issueRecord.microVoiceObjectKey === null
         || (typeof issueRecord.microVoiceObjectKey === 'string'
           && this.isManagedMediaObjectKey(issueRecord.microVoiceObjectKey)
-          && issueRecord.microVoiceObjectKey.startsWith('content/audio/'))));
+          && issueRecord.microVoiceObjectKey.startsWith('content/audio/')))
+      && (issueRecord.homeBackgroundObjectKey == null
+        || (typeof issueRecord.homeBackgroundObjectKey === 'string'
+          && this.isManagedMediaObjectKey(issueRecord.homeBackgroundObjectKey)
+          && issueRecord.homeBackgroundObjectKey.startsWith('content/image/'))));
     const validModules = root.modules === undefined || (Array.isArray(root.modules) && root.modules.length <= 40 && root.modules.every((module) => {
       if (!module || typeof module !== 'object' || Array.isArray(module)) return false;
       const record = module as Record<string, unknown>;
       if (typeof record.id !== 'string' || typeof record.type !== 'string' || !Number.isSafeInteger(record.order) || typeof record.enabled !== 'boolean') return false;
+      if (record.introduction !== undefined && (!this.boundedText(record.introduction, 120) || /[\r\n<>]/.test(String(record.introduction)))) return false;
       if (record.linkType !== undefined) {
         if (record.linkType === 'page') {
           if (!this.boundedText(record.linkPath, 512, 1) || String(record.linkPath).includes('..')
@@ -874,16 +969,23 @@ export class ContentController {
           if (!this.boundedText(record.linkUrl, 2048, 8) || !/^https:\/\/[^\s<>]+$/i.test(String(record.linkUrl))) return false;
         } else if (record.linkType !== 'none') return false;
         if (record.linkLabel !== undefined && (!this.boundedText(record.linkLabel, 40, 1) || /[\r\n]/.test(String(record.linkLabel)))) return false;
+        if (!this.isOptionalRichText(record.linkLabelRichText)) return false;
+      }
+      if (issueModuleTypes.includes(record.type as IssueModuleType)) {
+        const richFields = issueRichTextFields[record.type as IssueModuleType];
+        if (!richFields.every((field) => this.isOptionalRichText(record[`${field}RichText`]))) return false;
       }
       if (record.tracks === undefined) return true;
-      return record.type === 'audio' && Array.isArray(record.tracks) && record.tracks.length <= 3 && record.tracks.every((track) => {
+      return record.type === 'audio' && Array.isArray(record.tracks) && record.tracks.length <= maxIssueAudioTracks && record.tracks.every((track) => {
         if (!track || typeof track !== 'object' || Array.isArray(track)) return false;
         const audioTrack = track as Record<string, unknown>;
         const mediaType = audioTrack.mediaType === 'video' ? 'video' : 'audio';
         const objectKey = mediaType === 'video' ? audioTrack.videoObjectKey : audioTrack.audioObjectKey;
         return typeof audioTrack.id === 'string' && /^[a-z0-9][a-z0-9-]{1,63}$/.test(audioTrack.id)
           && typeof objectKey === 'string' && this.isManagedMediaObjectKey(objectKey)
-          && objectKey.startsWith(mediaType === 'video' ? 'content/video/' : 'content/audio/');
+          && objectKey.startsWith(mediaType === 'video' ? 'content/video/' : 'content/audio/')
+          && issueAudioTrackRichTextFields.every((field) => this.isOptionalRichText(audioTrack[`${field}RichText`]))
+          && this.isValidIssueAudioActions(audioTrack.actions);
       });
     }));
     return this.boundedText(root.question, 500)
@@ -894,9 +996,10 @@ export class ContentController {
   }
 
   private async materializePublicHome(cache: PublicHomeCache): Promise<PublicHomeResponse> {
-    const [cover, voice] = await Promise.all([
+    const [cover, voice, background] = await Promise.all([
       this.createDownloadUrlIfAvailable(cache.issue?.coverObjectKey ?? undefined),
       this.createDownloadUrlIfAvailable(cache.issue?.microVoiceObjectKey ?? undefined),
+      this.createDownloadUrlIfAvailable(cache.issue?.homeBackgroundObjectKey ?? undefined),
     ]);
     const modules = await Promise.all((cache.modules ?? []).filter((item) => item.enabled).map(async (module) => {
       const publicModule = { ...module };
@@ -931,16 +1034,23 @@ export class ContentController {
       issue: cache.issue ? {
         code: cache.issue.code,
         label: cache.issue.label,
+        labelRichText: cache.issue.labelRichText ?? '',
         month: cache.issue.month,
+        monthRichText: cache.issue.monthRichText ?? '',
         theme: cache.issue.theme,
+        themeRichText: cache.issue.themeRichText ?? '',
         question: cache.issue.question,
+        questionRichText: cache.issue.questionRichText ?? '',
         microVoiceTitle: cache.issue.microVoiceTitle,
         microVoiceDuration: cache.issue.microVoiceDuration,
         homeMetaRichText: cache.issue.homeMetaRichText,
         homeMetaFontSize: cache.issue.homeMetaFontSize,
         homeMetaColor: cache.issue.homeMetaColor,
         homeCoverCaptionLeft: cache.issue.homeCoverCaptionLeft,
+        homeCoverCaptionLeftRichText: cache.issue.homeCoverCaptionLeftRichText ?? '',
         homeCoverCaptionRight: cache.issue.homeCoverCaptionRight,
+        homeCoverCaptionRightRichText: cache.issue.homeCoverCaptionRightRichText ?? '',
+        homeBackgroundUrl: background?.url ?? '',
       } : null,
       question: cache.question,
       coverUrl: cover?.url ?? '',
@@ -999,19 +1109,24 @@ export class ContentController {
 
   private safeHomeMetaRichText(value: string | undefined) {
     if (value === undefined) return undefined;
-    if (value.length > 2000) throw new BadRequestException('首页期刊信息富文本不能超过 2000 个字符');
-    const allowedTags = new Set(['b', 'strong', 'i', 'em', 'u', 'br', 'p', 'span']);
-    const withoutExecutableContent = value.replace(/<(script|style|iframe|object)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
-    return withoutExecutableContent.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (tag, name: string) => {
-      const safeName = name.toLowerCase();
-      if (!allowedTags.has(safeName)) return '';
-      if (/^<\s*\//.test(tag)) return safeName === 'br' ? '' : `</${safeName}>`;
-      return safeName === 'br' ? '<br/>' : `<${safeName}>`;
-    }).trim();
+    return sanitizeRichText(value, 24000, '首页期刊信息富文本', issueRichTextOptions);
   }
 
   private normalizeIssueInput(body: IssueDto | UpdateIssueDto, requireCoreFields: boolean) {
     const normalized = { ...body } as IssueDto & UpdateIssueDto;
+    const richCoreFields = [
+      ['labelRichText', 'label', '期刊标签富文本', 80],
+      ['monthRichText', 'month', '期刊月份富文本', 40],
+      ['themeRichText', 'theme', '期刊主题富文本', 200],
+      ['questionRichText', 'question', '本期问题富文本', 500],
+    ] as const;
+    for (const [richKey, plainKey, label, maximum] of richCoreFields) {
+      const value = normalized[richKey];
+      if (value === undefined) continue;
+      const richText = sanitizeRichText(value, maximum, label, issueRichTextOptions);
+      normalized[richKey] = richText as never;
+      normalized[plainKey] = plainTextFromRichText(richText) as never;
+    }
     const coreFields = [
       ['code', '期刊编号', 2, 64],
       ['label', '期刊标签', 2, 80],
@@ -1031,7 +1146,19 @@ export class ContentController {
     normalized.microVoiceDuration = this.optionalText(normalized.microVoiceDuration, '微声音时长', 20) as never;
     normalized.coverObjectKey = this.optionalText(normalized.coverObjectKey, '封面媒体路径', 512) as never;
     normalized.microVoiceObjectKey = this.optionalText(normalized.microVoiceObjectKey, '音频媒体路径', 512) as never;
+    normalized.homeBackgroundObjectKey = this.optionalText(normalized.homeBackgroundObjectKey, '首页底图路径', 512) as never;
     normalized.homeMetaRichText = this.safeHomeMetaRichText(normalized.homeMetaRichText) as never;
+    const richCaptionFields = [
+      ['homeCoverCaptionLeftRichText', 'homeCoverCaptionLeft', '封面左侧说明富文本'],
+      ['homeCoverCaptionRightRichText', 'homeCoverCaptionRight', '封面右侧说明富文本'],
+    ] as const;
+    for (const [richKey, plainKey, label] of richCaptionFields) {
+      const value = normalized[richKey];
+      if (value === undefined) continue;
+      const richText = sanitizeRichText(value, 80, label, issueRichTextOptions);
+      normalized[richKey] = richText as never;
+      normalized[plainKey] = plainTextFromRichText(richText) as never;
+    }
     const coverCaptionDefaults = { homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面' };
     for (const key of ['homeCoverCaptionLeft', 'homeCoverCaptionRight'] as const) {
       const value = normalized[key];
@@ -1065,11 +1192,12 @@ export class ContentController {
     return new ConflictException({ code: 'content_issue_conflict', message: '期刊保存发生并发冲突，请刷新后重试' });
   }
 
-  private async validateMediaKeys(input: { coverObjectKey?: string; microVoiceObjectKey?: string; videoObjectKey?: string }) {
+  private async validateMediaKeys(input: { coverObjectKey?: string; microVoiceObjectKey?: string; videoObjectKey?: string; homeBackgroundObjectKey?: string }) {
     if (input.coverObjectKey && (!this.isManagedMediaObjectKey(input.coverObjectKey) || !input.coverObjectKey.startsWith('content/image/'))) throw new BadRequestException('封面媒体路径无效');
     if (input.microVoiceObjectKey && (!this.isManagedMediaObjectKey(input.microVoiceObjectKey) || !input.microVoiceObjectKey.startsWith('content/audio/'))) throw new BadRequestException('音频媒体路径无效');
     if (input.videoObjectKey && (!this.isManagedMediaObjectKey(input.videoObjectKey) || !input.videoObjectKey.startsWith('content/video/'))) throw new BadRequestException('视频媒体路径无效');
-    const mediaKeys = [input.coverObjectKey, input.microVoiceObjectKey, input.videoObjectKey].filter((key): key is string => Boolean(key));
+    if (input.homeBackgroundObjectKey && (!this.isManagedMediaObjectKey(input.homeBackgroundObjectKey) || !input.homeBackgroundObjectKey.startsWith('content/image/'))) throw new BadRequestException('首页底图路径无效');
+    const mediaKeys = [input.coverObjectKey, input.microVoiceObjectKey, input.videoObjectKey, input.homeBackgroundObjectKey].filter((key): key is string => Boolean(key));
     const metadata = await Promise.all(mediaKeys.map((key) => this.storage.objectMetadata(key)));
     if (metadata.some((value) => !value?.contentType)) throw new BadRequestException('期刊引用的媒体对象不存在');
     if (metadata.some((value) => typeof value?.contentLength !== 'number' || value.contentLength <= 0)) throw new BadRequestException('无法读取有效的期刊媒体大小');
@@ -1184,7 +1312,7 @@ export class ContentController {
         const references = await transaction.query(
           `select exists (
              select 1 from content_issues
-             where cover_object_key = $1 or micro_voice_object_key = $1
+             where cover_object_key = $1 or micro_voice_object_key = $1 or home_background_object_key = $1
            ) or exists (
              select 1 from content_issues issue,
                jsonb_array_elements(coalesce(issue.draft_content->'sections', '[]'::jsonb)) module
@@ -1195,6 +1323,9 @@ export class ContentController {
                jsonb_array_elements(coalesce(publication.snapshot->'sections', '[]'::jsonb)) module
              where module->>'imageObjectKey' = $1 or module->>'audioObjectKey' = $1
                 or exists (select 1 from jsonb_array_elements(coalesce(module->'tracks', '[]'::jsonb)) track where track->>'audioObjectKey' = $1)
+           ) or exists (
+             select 1 from content_issue_publications publication
+             where publication.snapshot->'issue'->>'homeBackgroundObjectKey' = $1
            ) or exists (
              select 1 from content_daily_objects daily,
                jsonb_array_elements(coalesce(daily.content->'products', '[]'::jsonb)) product
@@ -1269,7 +1400,7 @@ export class ContentController {
          from unnest($1::text[]) as listed(object_key)
          where exists (
            select 1 from content_issues
-           where cover_object_key = listed.object_key or micro_voice_object_key = listed.object_key
+           where cover_object_key = listed.object_key or micro_voice_object_key = listed.object_key or home_background_object_key = listed.object_key
          ) or exists (
            select 1 from content_issues issue,
              jsonb_array_elements(coalesce(issue.draft_content->'sections', '[]'::jsonb)) module
@@ -1280,6 +1411,9 @@ export class ContentController {
              jsonb_array_elements(coalesce(publication.snapshot->'sections', '[]'::jsonb)) module
            where module->>'imageObjectKey' = listed.object_key or module->>'audioObjectKey' = listed.object_key
               or exists (select 1 from jsonb_array_elements(coalesce(module->'tracks', '[]'::jsonb)) track where track->>'audioObjectKey' = listed.object_key)
+         ) or exists (
+           select 1 from content_issue_publications publication
+           where publication.snapshot->'issue'->>'homeBackgroundObjectKey' = listed.object_key
          ) or exists (
            select 1 from content_daily_objects daily,
              jsonb_array_elements(coalesce(daily.content->'products', '[]'::jsonb)) product
@@ -1341,18 +1475,25 @@ export class ContentController {
       const publicIssue = issue ? {
         code: issue.code,
         label: issue.label,
+        labelRichText: issue.labelRichText ?? '',
         month: issue.month,
+        monthRichText: issue.monthRichText ?? '',
         theme: issue.theme,
+        themeRichText: issue.themeRichText ?? '',
         question: issue.question,
+        questionRichText: issue.questionRichText ?? '',
         microVoiceTitle: issue.microVoiceTitle,
         microVoiceDuration: issue.microVoiceDuration,
         homeMetaRichText: issue.homeMetaRichText,
         homeMetaFontSize: issue.homeMetaFontSize,
         homeMetaColor: issue.homeMetaColor,
         homeCoverCaptionLeft: issue.homeCoverCaptionLeft,
+        homeCoverCaptionLeftRichText: issue.homeCoverCaptionLeftRichText ?? '',
         homeCoverCaptionRight: issue.homeCoverCaptionRight,
+        homeCoverCaptionRightRichText: issue.homeCoverCaptionRightRichText ?? '',
         coverObjectKey: issue.coverObjectKey,
         microVoiceObjectKey: issue.microVoiceObjectKey,
+        homeBackgroundObjectKey: issue.homeBackgroundObjectKey ?? null,
       } : null;
       const modules = (publication?.snapshot.sections ?? []).slice().sort((left, right) => left.order - right.order);
       const response: PublicHomeCache = {
@@ -1375,9 +1516,13 @@ export class ContentController {
     const result = await this.database.query(
       `select publication.snapshot->'issue'->>'code' as code,
               publication.snapshot->'issue'->>'label' as label,
+              coalesce(publication.snapshot->'issue'->>'labelRichText', '') as "labelRichText",
               publication.snapshot->'issue'->>'month' as month,
+              coalesce(publication.snapshot->'issue'->>'monthRichText', '') as "monthRichText",
               publication.snapshot->'issue'->>'theme' as theme,
+              coalesce(publication.snapshot->'issue'->>'themeRichText', '') as "themeRichText",
               publication.snapshot->'issue'->>'question' as question,
+              coalesce(publication.snapshot->'issue'->>'questionRichText', '') as "questionRichText",
               issue.status as status,
               publication.version as version,
               publication.published_at as "publishedAt"
@@ -1431,7 +1576,7 @@ export class ContentController {
        union all
        select 1 from content_issues issue
        join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version
-       where issue.status = 'published' and (publication.snapshot->'issue'->>'coverObjectKey' = $1 or publication.snapshot->'issue'->>'microVoiceObjectKey' = $1)
+       where issue.status = 'published' and (publication.snapshot->'issue'->>'coverObjectKey' = $1 or publication.snapshot->'issue'->>'microVoiceObjectKey' = $1 or publication.snapshot->'issue'->>'homeBackgroundObjectKey' = $1)
        union all
        select 1 from content_daily_objects daily,
          jsonb_array_elements(coalesce(daily.content->'products', '[]'::jsonb)) product
@@ -1481,11 +1626,15 @@ export class ContentController {
     );
     const independentPage = independent.rows[0];
     const independentContent = independentPage?.content ? validateDiscussionContent(independentPage.content) : null;
+    const editorialContent = independentContent
+      ?? (publication.snapshot.discussion === undefined ? defaultDiscussionContent() : validateDiscussionContent(publication.snapshot.discussion));
+    const content = this.encryption
+      ? await mergePublishedCommunityContent(this.database, editorialContent, publication.snapshot.issue.code, this.encryption)
+      : editorialContent;
     return {
       issueCode: publication.snapshot.issue.code, issueLabel: publication.snapshot.issue.label,
       publishedVersion: independentContent ? independentPage.version : publication.version,
-      content: independentContent
-        ?? (publication.snapshot.discussion === undefined ? defaultDiscussionContent() : validateDiscussionContent(publication.snapshot.discussion)),
+      content,
     };
   }
 
@@ -1495,19 +1644,27 @@ export class ContentController {
   async issues() {
     const result = await this.database.query(`select issue.id, issue.code, issue.label, issue.month, issue.theme, issue.question, issue.status,
       issue.edit_version as "editVersion", issue.micro_voice_title as "microVoiceTitle", issue.micro_voice_duration as "microVoiceDuration",
-      issue.cover_object_key as "coverObjectKey", issue.micro_voice_object_key as "microVoiceObjectKey", issue.home_meta_rich_text as "homeMetaRichText",
+      issue.cover_object_key as "coverObjectKey", issue.micro_voice_object_key as "microVoiceObjectKey", issue.home_background_object_key as "homeBackgroundObjectKey", issue.home_meta_rich_text as "homeMetaRichText",
+      issue.label_rich_text as "labelRichText", issue.month_rich_text as "monthRichText", issue.theme_rich_text as "themeRichText", issue.question_rich_text as "questionRichText",
       issue.home_meta_font_size as "homeMetaFontSize", issue.home_meta_color as "homeMetaColor", issue.home_cover_caption_left as "homeCoverCaptionLeft",
-      issue.home_cover_caption_right as "homeCoverCaptionRight", issue.draft_content as "draftContent", issue.published_version as "publishedVersion",
+      issue.home_cover_caption_left_rich_text as "homeCoverCaptionLeftRichText", issue.home_cover_caption_right as "homeCoverCaptionRight",
+      issue.home_cover_caption_right_rich_text as "homeCoverCaptionRightRichText", issue.draft_content as "draftContent", issue.published_version as "publishedVersion",
       publication.snapshot->'issue'->>'label' as "publishedLabel", publication.snapshot->'issue'->>'month' as "publishedMonth",
       publication.snapshot->'issue'->>'code' as "publishedCode", publication.snapshot->'issue'->>'theme' as "publishedTheme",
       publication.snapshot->'issue'->>'question' as "publishedQuestion",
+      coalesce(publication.snapshot->'issue'->>'labelRichText', '') as "publishedLabelRichText",
+      coalesce(publication.snapshot->'issue'->>'monthRichText', '') as "publishedMonthRichText",
+      coalesce(publication.snapshot->'issue'->>'themeRichText', '') as "publishedThemeRichText",
+      coalesce(publication.snapshot->'issue'->>'questionRichText', '') as "publishedQuestionRichText",
       publication.snapshot->'issue'->>'microVoiceTitle' as "publishedMicroVoiceTitle",
       publication.snapshot->'issue'->>'microVoiceDuration' as "publishedMicroVoiceDuration",
       publication.snapshot->'issue'->>'homeMetaRichText' as "publishedHomeMetaRichText",
       (publication.snapshot->'issue'->>'homeMetaFontSize')::int as "publishedHomeMetaFontSize",
       publication.snapshot->'issue'->>'homeMetaColor' as "publishedHomeMetaColor",
       publication.snapshot->'issue'->>'homeCoverCaptionLeft' as "publishedHomeCoverCaptionLeft",
+      publication.snapshot->'issue'->>'homeCoverCaptionLeftRichText' as "publishedHomeCoverCaptionLeftRichText",
       publication.snapshot->'issue'->>'homeCoverCaptionRight' as "publishedHomeCoverCaptionRight",
+      publication.snapshot->'issue'->>'homeCoverCaptionRightRichText' as "publishedHomeCoverCaptionRightRichText",
       issue.updated_at as "updatedAt"
       from content_issues issue left join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version
       order by issue.updated_at desc`);
@@ -1564,7 +1721,13 @@ export class ContentController {
     const result = await this.database.query(
       `select coalesce(publication.snapshot->'issue'->>'code', issue.code) as code,
               coalesce(publication.snapshot->'issue'->>'label', issue.label) as label,
-              coalesce(publication.snapshot->'issue'->>'question', issue.question) as question
+              coalesce(publication.snapshot->'issue'->>'labelRichText', issue.label_rich_text, '') as "labelRichText",
+              coalesce(publication.snapshot->'issue'->>'month', issue.month) as month,
+              coalesce(publication.snapshot->'issue'->>'monthRichText', issue.month_rich_text, '') as "monthRichText",
+              coalesce(publication.snapshot->'issue'->>'theme', issue.theme) as theme,
+              coalesce(publication.snapshot->'issue'->>'themeRichText', issue.theme_rich_text, '') as "themeRichText",
+              coalesce(publication.snapshot->'issue'->>'question', issue.question) as question,
+              coalesce(publication.snapshot->'issue'->>'questionRichText', issue.question_rich_text, '') as "questionRichText"
        from content_issues issue
        left join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version
        where issue.status = 'published' and (issue.code = $1 or publication.snapshot->'issue'->>'code' = $1)`, [normalizedCode],
@@ -1585,11 +1748,12 @@ export class ContentController {
         await this.validateMediaKeys({
           coverObjectKey: normalized.coverObjectKey ?? undefined,
           microVoiceObjectKey: normalized.microVoiceObjectKey ?? undefined,
+          homeBackgroundObjectKey: normalized.homeBackgroundObjectKey ?? undefined,
         });
         const result = await client.query(
-          `insert into content_issues (code, label, month, theme, question, micro_voice_title, micro_voice_duration, cover_object_key, micro_voice_object_key, home_meta_rich_text, home_meta_font_size, home_meta_color, home_cover_caption_left, home_cover_caption_right, status, draft_content)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'draft',$15::jsonb) returning id, code, label, month, theme, question, status, edit_version as "editVersion", draft_content as "draftContent", cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", home_meta_rich_text as "homeMetaRichText", home_meta_font_size as "homeMetaFontSize", home_meta_color as "homeMetaColor", home_cover_caption_left as "homeCoverCaptionLeft", home_cover_caption_right as "homeCoverCaptionRight"`,
-          [normalized.code, normalized.label, normalized.month, normalized.theme, normalized.question, normalized.microVoiceTitle ?? null, normalized.microVoiceDuration ?? null, normalized.coverObjectKey ?? null, normalized.microVoiceObjectKey ?? null, normalized.homeMetaRichText ?? '', normalized.homeMetaFontSize ?? 16, normalized.homeMetaColor ?? '#40362f', normalized.homeCoverCaptionLeft, normalized.homeCoverCaptionRight, JSON.stringify(draftContent)],
+          `insert into content_issues (code, label, label_rich_text, month, month_rich_text, theme, theme_rich_text, question, question_rich_text, micro_voice_title, micro_voice_duration, cover_object_key, micro_voice_object_key, home_background_object_key, home_meta_rich_text, home_meta_font_size, home_meta_color, home_cover_caption_left, home_cover_caption_left_rich_text, home_cover_caption_right, home_cover_caption_right_rich_text, status, draft_content)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'draft',$22::jsonb) returning id, code, label, label_rich_text as "labelRichText", month, month_rich_text as "monthRichText", theme, theme_rich_text as "themeRichText", question, question_rich_text as "questionRichText", status, edit_version as "editVersion", draft_content as "draftContent", cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", home_background_object_key as "homeBackgroundObjectKey", home_meta_rich_text as "homeMetaRichText", home_meta_font_size as "homeMetaFontSize", home_meta_color as "homeMetaColor", home_cover_caption_left as "homeCoverCaptionLeft", home_cover_caption_left_rich_text as "homeCoverCaptionLeftRichText", home_cover_caption_right as "homeCoverCaptionRight", home_cover_caption_right_rich_text as "homeCoverCaptionRightRichText"`,
+          [normalized.code, normalized.label, normalized.labelRichText ?? '', normalized.month, normalized.monthRichText ?? '', normalized.theme, normalized.themeRichText ?? '', normalized.question, normalized.questionRichText ?? '', normalized.microVoiceTitle ?? null, normalized.microVoiceDuration ?? null, normalized.coverObjectKey ?? null, normalized.microVoiceObjectKey ?? null, normalized.homeBackgroundObjectKey ?? null, normalized.homeMetaRichText ?? '', normalized.homeMetaFontSize ?? 16, normalized.homeMetaColor ?? '#40362f', normalized.homeCoverCaptionLeft, normalized.homeCoverCaptionLeftRichText ?? '', normalized.homeCoverCaptionRight, normalized.homeCoverCaptionRightRichText ?? '', JSON.stringify(draftContent)],
         );
         const issue = result.rows[0];
         await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'content.issue.created', resourceType: 'content_issue', resourceId: issue?.id, metadata: { code: normalized.code, status: 'draft' } }, client);
@@ -1604,7 +1768,7 @@ export class ContentController {
     }
   }
 
-  /** 草稿可以保留未上传音频的条目；发布时只保留有音频的条目，1–3 段均可。 */
+  /** 草稿可以保留未上传音频的条目；发布时只保留有音频的条目，最多 20 段。 */
   private isPlayableAudioTrack(track: Partial<IssueAudioTrack>) {
     const key = track.mediaType === 'video' ? track.videoObjectKey : track.audioObjectKey;
     return typeof key === 'string' && key.trim().length > 0;
@@ -1627,6 +1791,12 @@ export class ContentController {
       module.quote = first.quote;
       module.subtitle = first.subtitle;
       module.transcript = first.transcript;
+      module.titleRichText = first.titleRichText;
+      module.detailTitleRichText = first.detailTitleRichText;
+      module.descriptionRichText = first.descriptionRichText;
+      module.quoteRichText = first.quoteRichText;
+      module.subtitleRichText = first.subtitleRichText;
+      module.transcriptRichText = first.transcriptRichText;
     }
   }
 
@@ -1639,10 +1809,11 @@ export class ContentController {
       return await this.database.withTransaction(async (client) => {
         await client.query(`select pg_advisory_xact_lock(hashtext('myriad-she-content-media'))`);
         const selected = await client.query<Record<string, any>>(
-          `select id, code, label, month, theme, question, micro_voice_title as "microVoiceTitle", micro_voice_duration as "microVoiceDuration",
-                  cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", home_meta_rich_text as "homeMetaRichText",
+          `select id, code, label, label_rich_text as "labelRichText", month, month_rich_text as "monthRichText", theme, theme_rich_text as "themeRichText", question, question_rich_text as "questionRichText", micro_voice_title as "microVoiceTitle", micro_voice_duration as "microVoiceDuration",
+                  cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", home_background_object_key as "homeBackgroundObjectKey", home_meta_rich_text as "homeMetaRichText",
                   home_meta_font_size as "homeMetaFontSize", home_meta_color as "homeMetaColor", home_cover_caption_left as "homeCoverCaptionLeft",
-                  home_cover_caption_right as "homeCoverCaptionRight", draft_content as "draftContent", edit_version as "editVersion", published_version as "publishedVersion", status
+                  home_cover_caption_left_rich_text as "homeCoverCaptionLeftRichText", home_cover_caption_right as "homeCoverCaptionRight",
+                  home_cover_caption_right_rich_text as "homeCoverCaptionRightRichText", draft_content as "draftContent", edit_version as "editVersion", published_version as "publishedVersion", status
            from content_issues where id = $1 for update`, [id],
         );
         const issue = selected.rows[0];
@@ -1655,6 +1826,7 @@ export class ContentController {
           if (!enabled.some((item) => item.type === type)) throw new BadRequestException(`发布内容缺少必需栏目：${type}`);
         }
         const question = enabled.find((item) => item.type === 'question');
+        const issueMeta = enabled.find((item) => item.type === 'issueMeta');
         const coverStory = enabled.find((item) => item.type === 'coverStory');
         const opener = coverStory ?? enabled.find((item) => item.type === 'opener');
         if (!this.boundedText(question?.title, 500, 2) || !this.boundedText(opener?.title, 200, 2)) throw new BadRequestException('本期主题与问题不能为空');
@@ -1681,18 +1853,34 @@ export class ContentController {
             if (typeof track.videoObjectKey === 'string' && track.videoObjectKey) await this.validateMediaKeys({ videoObjectKey: track.videoObjectKey });
           }
         }
+        if (issue.homeBackgroundObjectKey) await this.validateMediaKeys({ homeBackgroundObjectKey: issue.homeBackgroundObjectKey });
         const coverSection = draft.sections.find((item) => item.type === 'coverStory' || item.type === 'cover');
         const audio = draft.sections.find((item) => item.type === 'audio');
         const snapshot = {
           issue: {
-            code: issue.code, label: issue.label, month: issue.month, theme: issue.theme,
-            question: String(question.title), microVoiceTitle: audio?.title ?? issue.microVoiceTitle,
+            code: issue.code,
+            label: issue.label,
+            labelRichText: typeof issueMeta?.eyebrowRichText === 'string' ? issueMeta.eyebrowRichText : (issue.labelRichText ?? ''),
+            month: typeof issueMeta?.month === 'string' && issueMeta.month ? issueMeta.month : issue.month,
+            monthRichText: typeof issueMeta?.monthRichText === 'string' ? issueMeta.monthRichText : (issue.monthRichText ?? ''),
+            theme: String(opener?.title || issue.theme),
+            themeRichText: typeof opener?.titleRichText === 'string' ? opener.titleRichText : (issue.themeRichText ?? ''),
+            question: String(question.title),
+            questionRichText: typeof question?.titleRichText === 'string' ? question.titleRichText : (issue.questionRichText ?? ''),
+            microVoiceTitle: audio?.title ?? issue.microVoiceTitle,
             microVoiceDuration: audio?.duration ?? issue.microVoiceDuration,
             homeMetaRichText: issue.homeMetaRichText, homeMetaFontSize: issue.homeMetaFontSize, homeMetaColor: issue.homeMetaColor,
             homeCoverCaptionLeft: coverSection?.captionLeft ?? issue.homeCoverCaptionLeft,
+            homeCoverCaptionLeftRichText: typeof coverSection?.captionLeftRichText === 'string'
+              ? coverSection.captionLeftRichText
+              : (issue.homeCoverCaptionLeftRichText ?? ''),
             homeCoverCaptionRight: coverSection?.captionRight ?? issue.homeCoverCaptionRight,
+            homeCoverCaptionRightRichText: typeof coverSection?.captionRightRichText === 'string'
+              ? coverSection.captionRightRichText
+              : (issue.homeCoverCaptionRightRichText ?? ''),
             coverObjectKey: coverSection?.imageObjectKey ?? issue.coverObjectKey,
             microVoiceObjectKey: audio?.audioObjectKey ?? issue.microVoiceObjectKey,
+            homeBackgroundObjectKey: issue.homeBackgroundObjectKey || null,
           },
           sections: draft.sections,
           discussion: draft.discussion,
@@ -1716,17 +1904,19 @@ export class ContentController {
   async updateIssue(@Req() request: Request & { user?: { sub: string } }, @Param('id', ParseUUIDPipe) id: string, @Body() body: UpdateIssueDto) {
     if (!Number.isSafeInteger(body.editVersion) || body.editVersion < 1) throw new BadRequestException('期刊版本无效，请刷新列表后重新打开再编辑');
     const normalized = this.normalizeIssueInput(body, false);
-    const allowed: Record<string, string> = { code: 'code', label: 'label', month: 'month', theme: 'theme', question: 'question', microVoiceTitle: 'micro_voice_title', microVoiceDuration: 'micro_voice_duration', coverObjectKey: 'cover_object_key', microVoiceObjectKey: 'micro_voice_object_key', homeMetaRichText: 'home_meta_rich_text', homeMetaFontSize: 'home_meta_font_size', homeMetaColor: 'home_meta_color', homeCoverCaptionLeft: 'home_cover_caption_left', homeCoverCaptionRight: 'home_cover_caption_right', draftContent: 'draft_content' };
+    const allowed: Record<string, string> = { code: 'code', label: 'label', labelRichText: 'label_rich_text', month: 'month', monthRichText: 'month_rich_text', theme: 'theme', themeRichText: 'theme_rich_text', question: 'question', questionRichText: 'question_rich_text', microVoiceTitle: 'micro_voice_title', microVoiceDuration: 'micro_voice_duration', coverObjectKey: 'cover_object_key', microVoiceObjectKey: 'micro_voice_object_key', homeBackgroundObjectKey: 'home_background_object_key', homeMetaRichText: 'home_meta_rich_text', homeMetaFontSize: 'home_meta_font_size', homeMetaColor: 'home_meta_color', homeCoverCaptionLeft: 'home_cover_caption_left', homeCoverCaptionLeftRichText: 'home_cover_caption_left_rich_text', homeCoverCaptionRight: 'home_cover_caption_right', homeCoverCaptionRightRichText: 'home_cover_caption_right_rich_text', draftContent: 'draft_content' };
     const fields = Object.entries(normalized).filter(([key, value]) => allowed[key] && value !== undefined);
     if (!fields.length) return { updated: false };
-    const values = fields.map(([key, value]) => key === 'draftContent' ? JSON.stringify(this.validateIssueDraft(value)) : value);
+    const values = fields.map(([key, value]) => key === 'draftContent'
+      ? JSON.stringify(this.validateIssueDraft(value))
+      : key === 'homeBackgroundObjectKey' && !value ? null : value);
     const assignments = fields.map(([key], index) => `${allowed[key]} = $${index + 1}${key === 'draftContent' ? '::jsonb' : ''}`);
     values.push(id);
     try {
       const issue = await this.database.withTransaction(async (client) => {
         await client.query(`select pg_advisory_xact_lock(hashtext('myriad-she-content-media'))`);
-        const current = await client.query<{ coverObjectKey: string | null; microVoiceObjectKey: string | null; code: string; status: 'draft' | 'published' | 'archived'; editVersion: number }>(
-          `select cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", code, status, edit_version as "editVersion"
+        const current = await client.query<{ coverObjectKey: string | null; microVoiceObjectKey: string | null; homeBackgroundObjectKey: string | null; code: string; status: 'draft' | 'published' | 'archived'; editVersion: number }>(
+          `select cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", home_background_object_key as "homeBackgroundObjectKey", code, status, edit_version as "editVersion"
            from content_issues where id = $1 for update`, [id],
         );
         if (!current.rows[0]) return { updated: false };
@@ -1735,13 +1925,15 @@ export class ContentController {
         }
         const coverChanged = normalized.coverObjectKey !== undefined && normalized.coverObjectKey !== current.rows[0].coverObjectKey;
         const voiceChanged = normalized.microVoiceObjectKey !== undefined && normalized.microVoiceObjectKey !== current.rows[0].microVoiceObjectKey;
-        if (coverChanged || voiceChanged) {
+        const backgroundChanged = normalized.homeBackgroundObjectKey !== undefined && normalized.homeBackgroundObjectKey !== current.rows[0].homeBackgroundObjectKey;
+        if (coverChanged || voiceChanged || backgroundChanged) {
           await this.validateMediaKeys({
             ...(coverChanged ? { coverObjectKey: normalized.coverObjectKey || undefined } : {}),
             ...(voiceChanged ? { microVoiceObjectKey: normalized.microVoiceObjectKey || undefined } : {}),
+            ...(backgroundChanged ? { homeBackgroundObjectKey: normalized.homeBackgroundObjectKey || undefined } : {}),
           });
         }
-        const result = await client.query(`update content_issues set ${assignments.join(', ')}, edit_version = edit_version + 1, updated_at = now() where id = $${values.length} returning id, code, label, month, theme, question, status, edit_version as "editVersion", cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", home_meta_rich_text as "homeMetaRichText", home_meta_font_size as "homeMetaFontSize", home_meta_color as "homeMetaColor", home_cover_caption_left as "homeCoverCaptionLeft", home_cover_caption_right as "homeCoverCaptionRight"`, values);
+        const result = await client.query(`update content_issues set ${assignments.join(', ')}, edit_version = edit_version + 1, updated_at = now() where id = $${values.length} returning id, code, label, label_rich_text as "labelRichText", month, month_rich_text as "monthRichText", theme, theme_rich_text as "themeRichText", question, question_rich_text as "questionRichText", status, edit_version as "editVersion", cover_object_key as "coverObjectKey", micro_voice_object_key as "microVoiceObjectKey", home_background_object_key as "homeBackgroundObjectKey", home_meta_rich_text as "homeMetaRichText", home_meta_font_size as "homeMetaFontSize", home_meta_color as "homeMetaColor", home_cover_caption_left as "homeCoverCaptionLeft", home_cover_caption_left_rich_text as "homeCoverCaptionLeftRichText", home_cover_caption_right as "homeCoverCaptionRight", home_cover_caption_right_rich_text as "homeCoverCaptionRightRichText"`, values);
         if (result.rows[0]) {
           await this.audit.record({
             actorType: 'admin',
@@ -2294,22 +2486,22 @@ export class ContentController {
       throw new BadRequestException('标题、说明和入口文案不能为空');
     }
     const titleRichText = sanitizeMinePageRichText(body.titleRichText ?? title, 80, '实践页面标题');
-    const normalizedTitle = decodeMineTextEntities(titleRichText.replace(/<br\s*\/?\s*>/gi, ' ').replace(/<[^>]*>/g, '')).trim();
+    const normalizedTitle = plainTextFromRichText(titleRichText);
     if (!normalizedTitle || normalizedTitle.length > 80) throw new BadRequestException('实践页面标题需为有效文字');
     const introRichText = sanitizeMinePageRichText(body.introRichText ?? intro, 240, '实践页面说明');
-    const normalizedIntro = decodeMineTextEntities(introRichText.replace(/<br\s*\/?\s*>/gi, ' ').replace(/<[^>]*>/g, '')).trim();
+    const normalizedIntro = plainTextFromRichText(introRichText);
     if (!normalizedIntro || normalizedIntro.length > 240) throw new BadRequestException('实践页面说明需为有效文字');
     const metaLeftRichText = sanitizeMinePageRichText(body.metaLeftRichText ?? '实践', 80, '实践页左侧页眉');
     const metaRightRichText = sanitizeMinePageRichText(body.metaRightRichText ?? '此刻归安', 80, '实践页右侧页眉');
     const observationCopy = sanitizeObservationCopy(body.observationCopy);
     const sharedPracticeCopy = normalizeSharedPracticeCopy(body.sharedPracticeCopy);
-    const entries = body.entries.map((entry) => {
+    const normalizedEntries = body.entries.map((entry) => {
       const contextRichText = sanitizeMinePageRichText(entry.contextRichText ?? '', 240, '实践目录情境文案');
       const titleRichText = sanitizeMinePageRichText(entry.titleRichText ?? entry.title, 80, '实践目录名称');
       const rawDescription = entry.descriptionRichText ?? entry.description;
       const descriptionRichText = sanitizeMinePageRichText(rawDescription, 240, '实践目录补充说明');
-      const title = decodeMineTextEntities(titleRichText.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '')).trim();
-      const description = decodeMineTextEntities(descriptionRichText.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '')).trim();
+      const title = plainTextFromRichText(titleRichText);
+      const description = plainTextFromRichText(descriptionRichText);
       if (!title || title.length > 80 || !description || description.length > 240) throw new BadRequestException('实践目录名称与补充说明需为有效文字');
       const target = entry.target && ['observation', 'shared-practice', 'daily-goods', 'none'].includes(entry.target) ? entry.target : entry.key;
       return {
@@ -2340,12 +2532,26 @@ export class ContentController {
       if (currentVersion !== body.editVersion) {
         throw new ConflictException({ code: 'practice_content_changed', message: '实践页面内容已被其他管理员更新，请重新载入后再保存。' });
       }
+      let entries = normalizedEntries;
+      if (publishDraft) {
+        // 系统设置里的 store_enabled 是商城总状态。发布实践目录时以它为准，
+        // 防止旧草稿中的 daily-goods.enabled 把已经同步好的开关再次改回。
+        const store = await client.query<{ enabled: boolean }>(
+          `select value = 'true'::jsonb as enabled from system_settings where key = 'store_enabled'`,
+        );
+        const storeEnabled = store.rows[0]?.enabled === true;
+        entries = normalizedEntries.map((entry) => (
+          entry.target === 'daily-goods' || entry.key === 'daily-goods'
+            ? { ...entry, enabled: storeEnabled }
+            : entry
+        ));
+      }
       // 目录允许新增 / 删除：这里不再拦截缺失的 key，下面按前端数组重写整张表。
       if (!publishDraft && request.user?.role) {
         const nextVersion = currentVersion + 1;
         const draftContent = {
           editVersion: nextVersion, title: normalizedTitle, titleRichText, titleFontSize: body.titleFontSize ?? 12, titleColor: body.titleColor ?? '#8b6b58',
-          intro: normalizedIntro, introRichText, introFontSize: body.introFontSize ?? 28, introColor: body.introColor ?? '#40362f',
+          intro: normalizedIntro, introRichText, introFontSize: body.introFontSize ?? 32, introColor: body.introColor ?? '#40362f',
           metaLeftRichText, metaLeftFontSize: body.metaLeftFontSize ?? 12, metaLeftColor: body.metaLeftColor ?? '#8b6b58',
           metaRightRichText, metaRightFontSize: body.metaRightFontSize ?? 12, metaRightColor: body.metaRightColor ?? '#8b6b58',
           observationCopy, sharedPracticeCopy, entries,
@@ -2368,7 +2574,7 @@ export class ContentController {
          where id = 1 returning title, title_rich_text as "titleRichText", title_font_size as "titleFontSize", title_color as "titleColor", intro, intro_rich_text as "introRichText", intro_font_size as "introFontSize", intro_color as "introColor",
            meta_left_rich_text as "metaLeftRichText", meta_left_font_size as "metaLeftFontSize", meta_left_color as "metaLeftColor",
            meta_right_rich_text as "metaRightRichText", meta_right_font_size as "metaRightFontSize", meta_right_color as "metaRightColor", observation_copy as "observationCopy", shared_practice_copy as "sharedPracticeCopy", edit_version as "editVersion"`,
-        [normalizedTitle, titleRichText, body.titleFontSize ?? 12, body.titleColor ?? '#8b6b58', normalizedIntro, introRichText, body.introFontSize ?? 28, body.introColor ?? '#40362f', metaLeftRichText, body.metaLeftFontSize ?? 12, body.metaLeftColor ?? '#8b6b58', metaRightRichText, body.metaRightFontSize ?? 12, body.metaRightColor ?? '#8b6b58', JSON.stringify(observationCopy), JSON.stringify(sharedPracticeCopy)],
+        [normalizedTitle, titleRichText, body.titleFontSize ?? 12, body.titleColor ?? '#8b6b58', normalizedIntro, introRichText, body.introFontSize ?? 32, body.introColor ?? '#40362f', metaLeftRichText, body.metaLeftFontSize ?? 12, body.metaLeftColor ?? '#8b6b58', metaRightRichText, body.metaRightFontSize ?? 12, body.metaRightColor ?? '#8b6b58', JSON.stringify(observationCopy), JSON.stringify(sharedPracticeCopy)],
       );
       if (!page.rows[0]) throw new NotFoundException('实践页面内容尚未初始化');
       await client.query(`delete from content_practice_entries where key <> all($1::text[])`, [keys]);

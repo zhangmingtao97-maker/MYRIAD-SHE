@@ -12,12 +12,40 @@ const server = await createServer({ root, configFile: false, plugins: [vue()], s
 await server.listen();
 let browser;
 try {
+  const { createDefaultDiscussionContent } = await server.ssrLoadModule('/src/discussion-content.ts');
+  const timestamp = '2026-11-04T04:30:00Z';
+  const publishedQuestion = '线上首页正在展示的问题';
+  const draftQuestion = '草稿里尚未发布的新问题';
+  const publishedIssue = {
+    id: 'issue-02', code: 'issue-02', label: 'ISSUE 02', labelRichText: '', month: 'Sep 2026', monthRichText: '', theme: '手指一根一根松开', themeRichText: '',
+    question: draftQuestion, questionRichText: '', status: 'published', editVersion: 2,
+    microVoiceTitle: null, microVoiceDuration: null, coverObjectKey: null, microVoiceObjectKey: null,
+    homeBackgroundObjectKey: null, homeMetaRichText: '把目光放回日常', homeMetaFontSize: 16,
+    homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '本期封面', homeCoverCaptionRightRichText: '',
+    updatedAt: timestamp, publishedVersion: 1,
+    publishedTheme: '手指一根一根松开', publishedQuestion, publishedLabelRichText: '', publishedMonthRichText: '', publishedThemeRichText: '', publishedQuestionRichText: '', publishedLabel: 'ISSUE 02', publishedMonth: 'Sep 2026',
+    publishedCode: 'issue-02', publishedMicroVoiceTitle: null, publishedMicroVoiceDuration: null,
+    publishedHomeMetaRichText: '把目光放回日常', publishedHomeMetaFontSize: 16, publishedHomeMetaColor: '#40362f',
+    publishedHomeCoverCaptionLeft: '人物纪实', publishedHomeCoverCaptionLeftRichText: '', publishedHomeCoverCaptionRight: '本期封面', publishedHomeCoverCaptionRightRichText: '',
+    draftContent: {
+      discussion: createDefaultDiscussionContent(),
+      sections: [{ id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: 'ISSUE 02', month: 'Sep 2026' }],
+    },
+  };
+  const publishedHome = {
+    issue: {
+      code: 'issue-02', label: 'ISSUE 02', labelRichText: '', month: 'Sep 2026', monthRichText: '', theme: '手指一根一根松开', themeRichText: '', question: publishedQuestion, questionRichText: '',
+      microVoiceTitle: null, microVoiceDuration: null, homeMetaRichText: '把目光放回日常', homeMetaFontSize: 16,
+      homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '本期封面', homeCoverCaptionRightRichText: '', homeBackgroundUrl: '',
+    },
+    question: publishedQuestion, coverUrl: '', sections: [],
+    microVoice: { title: '', duration: '', url: '', enabled: false }, publishedVersion: 1,
+  };
   browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const permissions = ['journal', 'contributions', 'observations', 'members', 'privacy', 'audit'];
-  const timestamp = '2026-11-04T04:30:00Z';
   let memberTotal = 1286;
   let slowRefresh = false;
   let failRefresh = false;
@@ -35,14 +63,15 @@ try {
     const send = (json) => route.fulfill({ json });
     if (failRefresh && path === '/content/home') return route.fulfill({ status: 500, json: { message: 'Test refresh failure' } });
     if (path === '/admin/me') return send({ id: 'test-admin', username: 'editor', displayName: 'Test Editor', role: 'super_admin', permissions });
-    if (path === '/content/home') return send({ issue: null, question: '', coverUrl: '', sections: [], microVoice: { title: '', duration: '', url: '', enabled: false } });
-    if (path === '/content/issues') return send([]);
-    if (path === '/content/issues/summary') return send({ draftCount: 0, publishedCount: 0, archivedCount: 0, publishedCode: null, publishedUpdatedAt: null });
+    if (path === '/admin/notifications/unread-count') return send({ unreadCount: 0 });
+    if (path === '/content/home') return send(publishedHome);
+    if (path === '/content/issues') return send([publishedIssue]);
+    if (path === '/content/issues/summary') return send({ draftCount: 0, publishedCount: 1, archivedCount: 0, publishedCode: 'issue-02', publishedUpdatedAt: timestamp });
     if (path === '/admin/observations/lifecycle') return send({ retentionDays: 90, draftCount: 12, savedCount: 328, realityCount: 200, seasonCount: 140, wellFormedEnvelopeCount: 340, legacyPlaintextCount: 0, invalidEnvelopeCount: 0, staleDraftCount: 2, oldestDraftAt: timestamp });
     if (path === '/admin/observations') return send(pageData([], 328));
     if (path === '/admin/privacy-requests') return send({ ...pageData(), summary: { pendingCount: 3, duePendingCount: 1, leasedCount: 0, expiredLeaseCount: 0, failedCount: 0, completedCount: 12, cancelledCount: 1, oldestPendingAt: timestamp, nextDueAt: timestamp } });
     if (path === '/admin/audit-logs') return send({ rows: emptyAudit ? [] : Array.from({ length: 6 }, (_, i) => ({ id: `audit-${i}`, actorType: 'admin', actorId: 'test-admin', action: ['admin.auth.login_succeeded', 'member.listed', 'audit.logs.viewed'][i % 3], resourceType: ['admin_login', 'users', 'audit_logs'][i % 3], resourceId: null, createdAt: timestamp })), total: emptyAudit ? 0 : 2458, limit: 50, offset: 0 });
-    if (path === '/admin/discussion-contributions') return send(pageData());
+    if (path === '/admin/discussion-contributions') return send({ ...pageData(), summary: { pending: 0, published: 0, hidden: 0, rejected: 0 } });
     if (path === '/admin/users') return send(pageData([{ id: 'member-1', nickname: 'Test Member', createdAt: timestamp, status: 'active' }], memberTotal));
     return route.fulfill({ status: 404, json: { message: `Unexpected fixture request: ${path}` } });
   });
@@ -52,8 +81,7 @@ try {
   await overview.locator('.overview-sync-message').filter({ hasText: '更新于' }).waitFor();
   await page.waitForFunction(() => document.querySelectorAll('.animated-number > [aria-hidden=true]')[2]?.textContent === '1,286');
   assert.equal(await overview.locator('.overview-metric').count(), 6);
-  assert.equal(await overview.locator('.overview-chip.granted').count(), 6);
-  assert.equal(await overview.locator('.overview-list li').count(), 6);
+  assert.match(await overview.locator('.overview-hero-copy > .muted').innerText(), /已授权 6 \/ \d+ 个模块/);
   const output = resolve(root, '.test-artifacts');
   await mkdir(output, { recursive: true });
   await page.evaluate(async () => { await document.fonts.ready; });
@@ -78,8 +106,8 @@ try {
   await page.locator('#member-directory').waitFor();
   await page.getByRole('button', { name: '工作台', exact: true }).click();
   await overview.waitFor();
-  await overview.getByRole('button', { name: '全部记录' }).click();
-  await page.waitForFunction(() => !document.querySelector('#overview-panel'));
+  await overview.getByRole('button', { name: '查看操作记录', exact: true }).click();
+  await page.locator('#audit-logs').waitFor();
   assert.ok(requests.includes('/admin/audit-logs'));
   await page.getByRole('button', { name: '工作台', exact: true }).click();
   await overview.waitFor();
@@ -101,8 +129,12 @@ try {
   assert.equal(await overview.locator('.animated-number > [aria-hidden=true]').nth(2).innerText(), '1,298');
   emptyAudit = true; memberTotal = 0;
   await overview.getByRole('button', { name: '刷新数据', exact: true }).click();
-  await overview.getByText('还没有操作记录，新的动态会出现在这里。').waitFor();
-  assert.equal(await overview.locator('.animated-number > [aria-hidden=true]').nth(2).innerText(), '0');
+  await page.waitForFunction(() => document.querySelectorAll('.animated-number > [aria-hidden=true]')[2]?.textContent === '0');
+  assert.equal(await overview.locator('.animated-number > [aria-hidden=true]').nth(4).innerText(), '0');
+  await overview.getByRole('button', { name: '查看操作记录', exact: true }).click();
+  await page.locator('#audit-logs .audit-empty-state').getByText('当前筛选条件下没有操作记录').waitFor();
+  await page.getByRole('button', { name: '工作台', exact: true }).click();
+  await overview.waitFor();
   failRefresh = true;
   await overview.getByRole('button', { name: '刷新数据', exact: true }).click();
   await overview.getByText('数据同步未完成，请重试', { exact: true }).waitFor();
@@ -110,8 +142,22 @@ try {
   failRefresh = false;
   await overview.getByRole('button', { name: '刷新数据', exact: true }).click();
   await overview.locator('.overview-sync-message').filter({ hasText: '更新于' }).waitFor();
+
+  // A published snapshot may differ from the current draft. The dashboard must
+  // compare homepage fields with published* fields and keep the issue list usable.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.keyboard.press('Control+k');
+  const quickNavigation = page.getByRole('dialog', { name: '快速前往' });
+  await quickNavigation.waitFor();
+  await quickNavigation.getByRole('combobox').fill('期刊列表');
+  await quickNavigation.getByRole('option').filter({ has: page.getByText('期刊列表', { exact: true }) }).click();
+  await quickNavigation.waitFor({ state: 'detached' });
+  await page.locator('#journal-list .issue-list-item').waitFor();
+  assert.equal(await page.locator('#journal-list .issue-list-item').count(), 1);
+  assert.match(await page.locator('#journal-list .issue-list-item').innerText(), /ISSUE 02/);
+  assert.equal(await page.getByText('期刊列表、生命周期摘要与首页发布内容不一致，请刷新后核实').count(), 0);
   assert.deepEqual(errors, []);
-  console.log('PASS: dashboard metrics, authorization, timeline, hover/focus, refresh/loading/retry, navigation, 5 responsive widths, zero states, and reduced motion.');
+  console.log('PASS: dashboard consistency with unpublished draft changes, journal list loading, metrics, authorization, audit navigation and empty state, hover/focus, refresh/loading/retry, navigation, 5 responsive widths, zero states, and reduced motion.');
 } finally {
   await browser?.close();
   await server.close();

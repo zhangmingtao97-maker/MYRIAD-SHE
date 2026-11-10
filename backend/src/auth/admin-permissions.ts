@@ -1,4 +1,4 @@
-﻿import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 
 export const adminModuleIds = [
   'journal',
@@ -91,12 +91,17 @@ export const adminModules: AdminModuleDefinition[] = [
   },
   {
     id: 'contributions',
-    label: '用户经历审核',
-    description: '本期讨论的经历与回复留言列表、详情与审核状态',
+    label: '讨论管理',
+    description: '读者分享的发布、精华与用户参与限制管理',
     rules: [
       { method: 'GET', pattern: /^\/admin\/discussion-contributions$/ },
       { method: 'GET', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}$`) },
       { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}/status$`) },
+      { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}/publication$`) },
+      { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}/featured$`) },
+      { method: 'GET', pattern: /^\/admin\/discussion-restrictions$/ },
+      { method: 'POST', pattern: /^\/admin\/discussion-restrictions$/ },
+      { method: 'PATCH', pattern: new RegExp(`^/admin/discussion-restrictions/${uuid}/revoke$`) },
     ],
   },
   {
@@ -167,6 +172,7 @@ export const adminModules: AdminModuleDefinition[] = [
     rules: [
       { method: 'GET', pattern: /^\/admin\/system-settings$/ },
       { method: 'GET', pattern: /^\/admin\/system\/migrations$/ },
+      { method: 'GET', pattern: /^\/admin\/module-states$/ },
     ],
   },
 ];

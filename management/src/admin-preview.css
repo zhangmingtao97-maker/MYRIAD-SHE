@@ -96,6 +96,8 @@
 }
 
 .phone-statusbar {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -131,6 +133,35 @@
   scrollbar-width: thin;
 }
 
+.phone-screen-inner.has-background { background: transparent; }
+.phone-screen-inner.has-tabbar {
+  bottom: 64px;
+  padding-bottom: 0;
+}
+
+.phone-background-image,
+.phone-background-scrim {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 30px);
+  pointer-events: none;
+}
+
+.phone-background-image {
+  z-index: 0;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.phone-background-scrim {
+  z-index: 1;
+  background: rgba(244, 236, 224, .68);
+}
+
 
 .preview-hint {
   margin: 0;
@@ -140,6 +171,7 @@
 }
 
 /* 预览里的每一个可编辑区块：整块可点，hover / 选中都有明确的红框反馈。 */
+.phone-screen-inner .preview-home-introduction { margin: 10px 0 0; color: #75675d; font-size: 12px; line-height: 1.7; }
 .phone-screen-inner .preview-block {
   position: relative;
   cursor: pointer;
@@ -240,9 +272,9 @@
 }
 
 .practice-preview-intro {
-  margin: 0;
+  margin: 10px 0 0;
   font-family: Georgia, "Songti SC", serif;
-  line-height: 1.8;
+  line-height: 1.4;
   white-space: pre-wrap;
 }
 
@@ -319,20 +351,150 @@
   font-size: 10px;
 }
 
+.practice-phone-preview .phone-screen,
+.practice-phone-preview .phone-screen-inner {
+  background: #e7dfd1;
+}
+
 .practice-preview-signature {
-  padding: 20px 0 8px;
-  color: #8b6b58;
+  position: relative;
+  min-height: 309px;
+  margin-top: 24px;
+  padding: 28px 0 0;
+  border-top: 1px solid #cdbbae;
+  box-sizing: border-box;
 }
 
-.practice-preview-signature small {
-  font-size: 9px;
-  letter-spacing: .16em;
+.practice-preview-signature-grid {
+  display: grid;
+  grid-template-columns: 101px minmax(0, 1fr);
+  align-items: baseline;
+  row-gap: 22px;
 }
 
-.practice-preview-signature p {
-  margin: 6px 0 0;
+.practice-preview-signature-grid small {
+  color: #5c493c;
+  font-family: "MYRIAD Garamond", Garamond, "Times New Roman", "MYRIAD Song", "Source Han Serif CN", "Songti SC", serif;
   font-size: 11px;
-  line-height: 1.8;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: .04em;
+}
+
+.practice-preview-signature-grid strong {
+  color: #40362f;
+  font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.practice-preview-signature-flower {
+  position: absolute;
+  right: 0;
+  bottom: 66px;
+  display: block;
+  width: 70px;
+  height: 76px;
+  opacity: .31;
+}
+
+.practice-preview-tabbar {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 64px;
+  padding: 0 12px;
+  border-top: 1px solid #c6bbad;
+  background: #e7dfd1;
+  box-sizing: border-box;
+}
+
+.practice-preview-tab-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  color: #928276;
+}
+
+.practice-preview-tab-item.is-selected { color: #8e493c; }
+
+.practice-preview-tab-icon {
+  position: relative;
+  display: flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.practice-preview-tab-home {
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.practice-preview-tab-home i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.practice-preview-tab-practice {
+  flex-direction: column;
+  gap: 3px;
+}
+
+.practice-preview-tab-practice i {
+  display: block;
+  width: 18px;
+  height: 6px;
+  border-top: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.practice-preview-tab-mine {
+  overflow: hidden;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.practice-preview-tab-head {
+  position: absolute;
+  top: 4px;
+  left: 7px;
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.practice-preview-tab-shoulders {
+  position: absolute;
+  bottom: -4px;
+  left: 3px;
+  width: 13px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 50% 50% 0 0;
+}
+
+.practice-preview-tab-label {
+  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .practice-preview-empty {
@@ -1084,6 +1246,46 @@
   font-size: 13px !important;
 }
 
+.audio-preview-actions {
+  margin-top: 20px;
+  padding: 0 0 2px;
+}
+
+.audio-preview-action-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.audio-preview-action {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 3px;
+  border: 1px solid rgba(102, 49, 36, .46);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, .4);
+  color: #663124;
+  font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.audio-preview-action-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* 微声音编辑区的定位高亮与视图切换 */
 .audio-preview-switch {
   display: flex;
@@ -1231,6 +1433,64 @@
 
 .issue-audio-track > header {
   margin-bottom: 10px;
+}
+
+/* 微声音详情页操作模块编辑：一条一个模块，窄屏自动纵向排列 */
+.issue-audio-actions-editor {
+  margin-top: 8px;
+}
+
+.issue-audio-actions-editor[open] {
+  display: grid;
+  gap: 12px;
+}
+
+.issue-audio-action-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .55fr) minmax(150px, 1fr) minmax(220px, 1.6fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2d8cc;
+  border-radius: 6px;
+  background: #fffdf9;
+}
+
+.issue-audio-action-row label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: #6e594a;
+  font-size: 12px;
+}
+
+.issue-audio-action-row select,
+.issue-audio-action-row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.issue-audio-action-row > button {
+  grid-column: 4;
+  justify-self: end;
+  min-height: 40px;
+}
+
+.issue-audio-action-row:focus-within {
+  border-color: rgba(200, 85, 61, .62);
+  box-shadow: 0 0 0 2px rgba(200, 85, 61, .12);
+}
+
+@media (max-width: 760px) {
+  .issue-audio-action-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .issue-audio-action-row > button {
+    grid-column: 1;
+    justify-self: start;
+  }
 }
 /* 预览页头右侧：说明文字 + 页面切换按钮同一行 */
 .phone-preview-head-right {
@@ -1962,12 +2222,59 @@
 }
 
 .practice-directory-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 26px;
+  margin: -2px -7px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
   color: #4b7a52;
+  font: inherit;
   font-size: 11.5px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, opacity .16s ease;
+}
+
+.practice-directory-state::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+  flex: 0 0 auto;
+}
+
+.practice-directory-state:hover:not(:disabled) {
+  border-color: rgba(75, 122, 82, .2);
+  background: rgba(75, 122, 82, .08);
+}
+
+.practice-directory-state:focus-visible {
+  outline: 2px solid rgba(200, 85, 61, .55);
+  outline-offset: 2px;
 }
 
 .practice-directory-state.off {
   color: #a98b74;
+}
+
+.practice-directory-state.off:hover:not(:disabled) {
+  border-color: rgba(169, 139, 116, .25);
+  background: rgba(169, 139, 116, .1);
+}
+
+.practice-directory-state.saving {
+  opacity: .65;
+}
+
+.practice-directory-state:disabled {
+  cursor: not-allowed;
+  opacity: .5;
 }
 
 .practice-directory-actions {
@@ -2019,4 +2326,13 @@
 .dashboard-workspace > .content-area > :is(.filters, .life-card-view-filters, .employee-toolbar) {
   position: relative;
   z-index: 3;
+}
+
+.rich-text-view {
+  display: block;
+  white-space: normal;
+}
+
+.rich-text-view.is-inline {
+  display: inline;
 }

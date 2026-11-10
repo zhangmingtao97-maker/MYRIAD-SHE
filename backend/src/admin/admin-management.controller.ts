@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Header, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors, NotFoundException, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Header, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors, NotFoundException, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -410,6 +410,10 @@ export class AdminManagementController {
         values[key] = value.trim();
       }
     }
+    const storeEnabled = values.store_enabled;
+    if (storeEnabled !== undefined && request.user?.role !== 'super_admin') {
+      throw new ForbiddenException('仅超级管理员可以修改商城开放状态');
+    }
     await this.database.withTransaction(async (client) => {
       const previous = await client.query<{ key: string; value: unknown }>(
         `select key, value from system_settings where key = any($1::text[])`, [Object.keys(values)],
@@ -419,7 +423,54 @@ export class AdminManagementController {
         await client.query(`insert into system_settings (key, value, updated_by) values ($1, $2::jsonb, $3)
           on conflict (key) do update set value = excluded.value, updated_by = excluded.updated_by, updated_at = now()`, [key, JSON.stringify(value), request.user?.sub ?? null]);
       }
-      await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'system.settings.updated', resourceType: 'system_settings', metadata: { previous: previousValues, next: values } }, client);
+
+      // 商城开放与实践目录的 daily-goods 入口是同一个业务状态。这里在同一事务内同步，
+      // 避免只改到一处后小程序仍显示未开放，或旧草稿发布后把状态覆盖回去。
+      if (typeof storeEnabled === 'boolean') {
+        await client.query(
+          `update content_practice_entries
+              set enabled = $1, updated_at = now()
+            where coalesce(target, key) = 'daily-goods'`,
+          [storeEnabled],
+        );
+        const draft = await client.query<{ content: unknown }>(
+          `select content from admin_content_drafts where content_key = 'practice' for update`,
+        );
+        const draftContent = draft.rows[0]?.content;
+        if (draftContent && typeof draftContent === 'object' && !Array.isArray(draftContent)) {
+          const record = draftContent as Record<string, unknown>;
+          const draftEntries = Array.isArray(record.entries) ? record.entries : null;
+          let changed = false;
+          const synchronizedEntries = draftEntries?.map((entry) => {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+            const item = entry as Record<string, unknown>;
+            if (item.target !== 'daily-goods' && item.key !== 'daily-goods') return entry;
+            changed = true;
+            return { ...item, enabled: storeEnabled };
+          });
+          if (draftEntries && synchronizedEntries && changed) {
+            // 保持草稿版本号不变，避免其他已打开的管理页面无谓地进入版本冲突。
+            await client.query(
+              `update admin_content_drafts
+                  set content = $1::jsonb, updated_by = $2, updated_at = now()
+                where content_key = 'practice'`,
+              [JSON.stringify({ ...record, entries: synchronizedEntries }), request.user?.sub ?? null],
+            );
+          }
+        }
+      }
+
+      await this.audit.record({
+        actorType: 'admin',
+        actorId: request.user?.sub,
+        action: 'system.settings.updated',
+        resourceType: 'system_settings',
+        metadata: {
+          previous: previousValues,
+          next: values,
+          ...(typeof storeEnabled === 'boolean' ? { synchronizedPracticeEntry: 'daily-goods', synchronizedDraft: true } : {}),
+        },
+      }, client);
     });
     return this.getSettings();
   }

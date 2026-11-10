@@ -38,7 +38,16 @@ export class AdminAuthGuard implements CanActivate {
       const passwordChangeEndpoint = request.method === 'PATCH' && path === '/admin/me/password';
       const profileEndpoint = request.method === 'GET' && path === '/admin/me';
       const ownAvatarEndpoint = ['POST', 'DELETE'].includes(request.method) && path === '/admin/me/avatar';
-      if (passwordChangeEndpoint || profileEndpoint || ownAvatarEndpoint) {
+      // 通知属于所有后台登录账号的基础工作台能力，不额外依赖业务模块授权。
+      const notificationEndpoint = (
+        request.method === 'GET' && ['/admin/notifications', '/admin/notifications/unread-count'].includes(path)
+      ) || (
+        request.method === 'POST' && (
+          path === '/admin/notifications/read-all'
+          || /^\/admin\/notifications\/[0-9a-fA-F-]{36}\/read$/.test(path)
+        )
+      );
+      if (passwordChangeEndpoint || profileEndpoint || ownAvatarEndpoint || notificationEndpoint) {
         request.user = { sub: payload.sub, role: payload.role };
         return true;
       }

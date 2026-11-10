@@ -1,0 +1,63 @@
+<view class="page contributions-page">
+  <view class="contributions-topbar" style="padding-top: {{statusBarHeight}}px">
+    <view class="contributions-nav">
+      <view class="contributions-back" role="button" aria-role="button" aria-label="返回我的页面" tabindex="0" bindtap="goBack">‹</view>
+      <view class="contributions-title">我保存的经历</view>
+      <view class="contributions-count">{{loading ? '…' : cloudContributions.length}}</view>
+    </view>
+  </view>
+
+  <view class="contributions-content">
+    <view class="contributions-intro">
+      <text class="contributions-kicker">CONVERSATIONS</text>
+      <text class="contributions-heading">我参与的讨论</text>
+      <text class="contributions-note">保存后进入运营审核，不会自动公开。</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="contributions-state" role="status" aria-live="polite">正在读取已保存经历…</view>
+    <view wx:elif="{{error}}" class="contributions-state contributions-error" role="alert">
+      <text>{{error}}</text>
+      <view class="contributions-retry" role="button" aria-role="button" tabindex="0" bindtap="loadCloudContributions">重新加载</view>
+    </view>
+    <block wx:else>
+      <view wx:if="{{!cloudContributions.length && !localContributions.length}}" class="contributions-empty">
+        <view class="contributions-empty-title">还没有留下发言</view>
+        <view class="contributions-empty-copy">先读一读别人的经验，也可以等想好以后再说。</view>
+        <view class="contributions-current" role="button" aria-role="button" aria-label="看看本期讨论" tabindex="0" bindtap="openCurrentDiscussion">看看本期讨论</view>
+      </view>
+
+      <view wx:for="{{cloudContributions}}" wx:key="id" class="contribution-card">
+        <view class="contribution-meta">
+          <text class="contribution-issue">{{item.issueLabel || item.issueCode}}</text>
+          <text class="status-pill status-{{item.status}}">{{item.status === 'pending' ? '待处理' : item.status === 'handled' ? '已处理' : '不采纳'}}</text>
+        </view>
+        <view class="contribution-body">{{item.body}}</view>
+        <view class="contribution-actions">
+          <text wx:if="{{item.threadAuthor}}" class="contribution-note">回复 {{item.threadAuthor}}</text>
+          <text wx:else class="contribution-note">已保存经历</text>
+          <view class="contribution-delete" role="button" aria-role="button" aria-disabled="{{deletingId === item.id}}" aria-label="删除这段已保存经历" tabindex="0" data-id="{{item.id}}" catchtap="deleteCloudContribution">{{deletingId === item.id ? '删除中…' : '删除'}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{localContributions.length}}" class="legacy-group">
+        <view class="legacy-label">这台设备中的旧版记录</view>
+        <view wx:for="{{localContributions}}" wx:key="id" class="contribution-card">
+          <view class="contribution-meta">
+            <text class="contribution-issue">{{item.issueCode}}</text>
+            <text class="contribution-note">{{item.threadId ? '回复 · 本机保存' : '本机记录'}}</text>
+          </view>
+          <view class="contribution-body">{{item.body}}</view>
+          <view class="contribution-actions">
+            <view class="contribution-continue" role="button" aria-role="button" aria-label="继续本期讨论{{item.issueCode}}" tabindex="0" data-issue-code="{{item.issueCode}}" bindtap="openLocalDiscussion">继续本期讨论</view>
+            <view class="contribution-delete" role="button" aria-role="button" aria-label="删除这段本机发言" tabindex="0" data-id="{{item.id}}" catchtap="deleteLocalContribution">删除</view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{cloudContributions.length || localContributions.length}}" class="contributions-footer">
+        <view class="contributions-current" role="button" aria-role="button" aria-label="看看本期讨论" tabindex="0" bindtap="openCurrentDiscussion">看看本期讨论</view>
+        <view class="contributions-footnote">本期讨论独立于个人观察。示例装载的发言不会计入你的参与。</view>
+      </view>
+    </block>
+  </view>
+</view>

@@ -4,9 +4,9 @@ import type { LifeCard, PracticeContent, PublishedIssue } from '../../utils/cont
 import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation, ObservationMethod } from '../../utils/observation';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { cacheSeasonPaused, readSeasonPaused, saveSeasonPaused, subscribeSeasonPaused } from '../../utils/season-preference';
 
 const app = getApp<IAppOption>();
-const SEASON_PAUSED_KEY = 'myriad_she_season_paused';
 
 Page({
   data: {
@@ -68,6 +68,7 @@ Page({
   cardViewRecorded: false,
   accountOperationGeneration: 0,
   knownAuthGeneration: 0,
+  seasonPausedUnsubscribe: null as (() => void) | null,
   isCurrentAccountOperation(operationGeneration: number, authGeneration: number) {
     return operationGeneration === this.accountOperationGeneration
       && authGeneration === app.globalData.authGeneration
@@ -76,6 +77,9 @@ Page({
   onLoad(options: Record<string, string>) {
     enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
+    this.seasonPausedUnsubscribe = subscribeSeasonPaused((paused) => {
+      if (paused !== this.data.seasonPaused) this.setData({ seasonPaused: paused });
+    });
     this.knownAuthGeneration = app.globalData.authGeneration;
     void this.loadObservationCopy();
     if (app.globalData.accountDeleted) {
@@ -282,6 +286,8 @@ Page({
     const method = event.currentTarget.dataset.method as ObservationMethod;
     // 四时气韵需要先采集月/日，统一从生日入口页进入。
     if (method === 'season') {
+      // 从这里重新开始即视为恢复四时气韵，返回观察页时不再保留暂停文案。
+      this.clearSeasonPaused();
       this.openSeasonIntro();
       return;
     }
@@ -295,21 +301,18 @@ Page({
     wx.setNavigationBarTitle({ title: method === 'reality' ? '从现实处境开始' : '从四时气韵开始' });
   },
   syncSeasonPaused() {
-    let paused = false;
-    try {
-      paused = wx.getStorageSync(SEASON_PAUSED_KEY) === true;
-    } catch {
-      paused = false;
-    }
+    const paused = readSeasonPaused();
     if (paused !== this.data.seasonPaused) this.setData({ seasonPaused: paused });
   },
   clearSeasonPaused() {
-    try {
-      wx.removeStorageSync(SEASON_PAUSED_KEY);
-    } catch {
-      // 本机存储不可用时忽略，不影响进入观察。
-    }
+    const wasPaused = this.data.seasonPaused || readSeasonPaused();
+    cacheSeasonPaused(false);
     if (this.data.seasonPaused) this.setData({ seasonPaused: false });
+    if (wasPaused) {
+      void saveSeasonPaused(false).catch(() => {
+        wx.showToast({ title: '已在本机恢复，云端同步失败', icon: 'none' });
+      });
+    }
   },
   openSeasonGuide() {
     this.setData({ seasonGuideOpen: true });
@@ -318,8 +321,11 @@ Page({
     this.setData({ seasonGuideOpen: false });
   },
   openSeasonIntro() {
-    this.setData({ seasonGuideOpen: false });
-    wx.navigateTo({ url: '/pages/season-intro/index' });
+    // 保留说明弹层直到观察页完成隐藏，避免跳转动画前先露出整页内容。
+    wx.navigateTo({
+      url: '/pages/season-intro/index',
+      fail: () => this.setData({ seasonGuideOpen: false }),
+    });
   },
   startRealityFromGuide() {
     this.setData({ seasonGuideOpen: false });
@@ -752,6 +758,7 @@ Page({
     });
   },
   onHide() {
+    if (this.data.seasonGuideOpen) this.setData({ seasonGuideOpen: false });
     if (this.autosaveTimer) {
       clearTimeout(this.autosaveTimer);
       this.autosaveTimer = null;
@@ -759,6 +766,8 @@ Page({
     if (!app.globalData.accountDeleted && this.data.phase === 'form' && this.data.syncState === 'pending') void this.flushAutosave();
   },
   onUnload() {
+    this.seasonPausedUnsubscribe?.();
+    this.seasonPausedUnsubscribe = null;
     if (!app.globalData.accountDeleted && this.data.phase === 'form' && this.data.syncState === 'pending') void this.flushAutosave();
   },
   viewSavedRecord() {

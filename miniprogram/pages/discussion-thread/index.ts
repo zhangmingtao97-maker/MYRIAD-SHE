@@ -3,9 +3,25 @@ import { isPublicDiscussion } from '../../utils/discussion-content';
 import type { DiscussionReply, PublicDiscussion } from '../../utils/discussion-content';
 import { readLocalDiscussion } from '../../utils/discussion-storage';
 import type { LocalContribution } from '../../utils/discussion-storage';
+import { richTextHtml } from '../../utils/rich-text';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
-interface ConversationThread { author: string; body: string; replies: DiscussionReply[] }
+type ConversationReply = DiscussionReply & { bodyHtml: string };
+interface ConversationThread {
+  author: string;
+  body: string;
+  bodyRichText?: string;
+  bodyHtml: string;
+  replies: ConversationReply[];
+  source?: 'editorial' | 'community';
+  featured?: boolean;
+  contributionId?: string;
+}
+type DisplayLocalReply = LocalContribution & { bodyHtml: string };
+
+function trustedBodyHtml(item: { body: string; bodyRichText?: string; source?: 'editorial' | 'community'; contributionId?: string }) {
+  return richTextHtml(item.source !== 'community' && !item.contributionId ? item.bodyRichText : '', item.body);
+}
 interface CloudReport { threadId: string; status: 'pending' | 'handled' | 'dismissed' }
 const reportReasons = [
   { code: 'inappropriate', label: '不适当内容' },
@@ -20,8 +36,8 @@ function decodeQueryValue(value: string) {
 
 Page({
   data: {
-    statusBarHeight: 0, issueCode: '', threadId: '', number: '',
-    intro: '', thread: null as ConversationThread | null, localReplies: [] as LocalContribution[],
+    statusBarHeight: 0, issueCode: '', threadId: '', number: '', numberHtml: '',
+    intro: '', introHtml: '', thread: null as ConversationThread | null, localReplies: [] as DisplayLocalReply[],
     loading: true, error: '', reported: false, reporting: false,
   },
   requestGeneration: 0,
@@ -42,7 +58,8 @@ Page({
     this.setData({
       localReplies: readLocalDiscussion().contributions
         .filter((entry) => entry.issueCode === this.data.issueCode && entry.threadId === this.data.threadId)
-        .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt)),
+        .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+        .map((entry) => ({ ...entry, bodyHtml: richTextHtml('', entry.body) })),
     });
   },
   async load() {
@@ -57,8 +74,19 @@ Page({
       if (!thread) throw new Error('这段对话暂时无法读取');
       this.setData({
         number: data.content.copy.number,
+        numberHtml: richTextHtml(data.content.copyRichText?.number, data.content.copy.number),
         intro: data.content.copy.intro,
-        thread: { author: thread.author, body: thread.body, replies: thread.replies },
+        introHtml: richTextHtml(data.content.copyRichText?.intro, data.content.copy.intro),
+        thread: {
+          author: thread.author,
+          body: thread.body,
+          bodyRichText: thread.bodyRichText,
+          bodyHtml: trustedBodyHtml(thread),
+          replies: thread.replies.map((reply) => ({ ...reply, bodyHtml: trustedBodyHtml(reply) })),
+          source: thread.source,
+          featured: thread.featured,
+          contributionId: thread.contributionId,
+        },
         loading: false,
         error: '',
       });
@@ -78,19 +106,20 @@ Page({
   },
   handleBack() { wx.navigateBack({ delta: 1, fail: () => wx.redirectTo({ url: `/pages/discussion/index?issueCode=${encodeURIComponent(this.data.issueCode)}` }) }); },
   handleMore() {
-    wx.showModal({ title: '讨论说明', content: '本页中的经历与追问是排版示例。保存的新经历会进入运营后台供编辑团队查看和处理，不会自动公开；举报会连同本期讨论一起提交到运营后台，由编辑团队核实处理。', showCancel: false });
+    wx.showModal({ title: '讨论说明', content: '新经历会进入运营后台，审核通过后才会公开；举报会提交给编辑团队核实处理。', showCancel: false });
   },
   replyTo(event: WechatMiniprogram.CustomEvent) {
     const author = decodeQueryValue(String(event.currentTarget.dataset.author || '')) || this.data.thread?.author || '';
-    this.openComposer(author);
+    const contributionId = String(event.currentTarget.dataset.contributionId || '');
+    this.openComposer(author, contributionId);
   },
-  openComposer(author: string) {
-    const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(this.data.threadId)}&threadAuthor=${encodeURIComponent(author)}`;
+  openComposer(author: string, contributionId = '') {
+    const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(this.data.threadId)}&threadAuthor=${encodeURIComponent(author)}${contributionId ? `&parentContributionId=${encodeURIComponent(contributionId)}` : ''}`;
     wx.navigateTo({ url: `/pages/discussion-compose/index?${query}` });
   },
   continueTalk() {
     if (!this.data.thread) return;
-    this.openComposer(this.data.thread.author);
+    this.openComposer(this.data.thread.author, this.data.thread.contributionId || '');
   },
   viewOtherThreads() {
     wx.navigateBack({ delta: 1, fail: () => wx.redirectTo({ url: `/pages/discussion/index?issueCode=${encodeURIComponent(this.data.issueCode)}` }) });

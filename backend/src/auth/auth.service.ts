@@ -479,24 +479,47 @@ export class AuthService {
     const errorMessage = typeof result.errmsg === 'string' && result.errmsg.trim() ? result.errmsg.slice(0, 512) : '微信登录失败';
     if (!openid || openid.length > 256 || (unionid !== null && unionid.length > 256)) throw new UnauthorizedException(errorMessage);
 
-    const user = await this.database.query<{ id: string }>(
+    const user = await this.database.query<{ id: string; created: boolean }>(
       `insert into users (wechat_openid, wechat_unionid) values ($1, $2)
        on conflict (wechat_openid) do update set wechat_unionid = coalesce(excluded.wechat_unionid, users.wechat_unionid), updated_at = now()
-       returning id`,
+       returning id, (xmax = 0) as created`,
       [openid, unionid || null],
     );
+    const currentUser = user.rows[0];
+    if (!currentUser) throw new UnauthorizedException('微信登录服务返回无效数据');
+    if (currentUser.created) {
+      try {
+        await this.audit.record({
+          actorType: 'user',
+          actorId: currentUser.id,
+          action: 'user.created',
+          resourceType: 'user',
+          resourceId: currentUser.id,
+        });
+      } catch {
+        // 新用户通知失败不能阻止正常登录。
+      }
+    }
     const expiresIn = this.sessionTtlSeconds('JWT_ACCESS_TTL_SECONDS', 3600);
-    const token = await this.jwt.signAsync({ sub: user.rows[0].id, role: 'user' }, { expiresIn });
-    return { accessToken: token, userId: user.rows[0].id, expiresIn };
+    const token = await this.jwt.signAsync({ sub: currentUser.id, role: 'user' }, { expiresIn });
+    return { accessToken: token, userId: currentUser.id, expiresIn };
   }
 
-  private async getWechatAccessToken() {
-    if (this.wechatAccessToken && this.wechatAccessToken.expiresAt > Date.now() + 60_000) return this.wechatAccessToken.value;
-    if (this.wechatAccessTokenPromise) return this.wechatAccessTokenPromise;
+  async getWechatAccessToken(forceRefresh = false) {
+    if (forceRefresh) {
+      this.wechatAccessToken = null;
+      if (this.wechatAccessTokenPromise) {
+        await this.wechatAccessTokenPromise.catch(() => undefined);
+        this.wechatAccessToken = null;
+      }
+    } else {
+      if (this.wechatAccessToken && this.wechatAccessToken.expiresAt > Date.now() + 60_000) return this.wechatAccessToken.value;
+      if (this.wechatAccessTokenPromise) return this.wechatAccessTokenPromise;
+    }
     const pending = (async () => {
       const appId = this.config.get<string>('WECHAT_MINI_APP_ID');
       const secret = this.config.get<string>('WECHAT_MINI_APP_SECRET');
-      if (!appId || !secret) throw new ServiceUnavailableException('微信手机号服务配置未完成');
+      if (!appId || !secret) throw new ServiceUnavailableException('微信服务配置未完成');
       const query = new URLSearchParams({ grant_type: 'client_credential', appid: appId, secret });
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), this.upstreamTimeoutMs());
@@ -513,7 +536,7 @@ export class AuthService {
         this.wechatAccessToken = { value: tokenResult.access_token, expiresAt: Date.now() + (tokenResult.expires_in - 60) * 1000 };
         return tokenResult.access_token;
       } catch {
-        throw new ServiceUnavailableException('微信手机号服务暂时不可用');
+        throw new ServiceUnavailableException('微信服务暂时不可用');
       } finally {
         clearTimeout(timeout);
       }

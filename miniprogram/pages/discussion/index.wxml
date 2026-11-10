@@ -8,35 +8,35 @@
   <view wx:elif="{{error}}" class="discussion-state discussion-error" role="alert"><text>{{error}}</text><view class="discussion-retry" role="button" aria-label="重新读取本期讨论" tabindex="0" bindtap="load">重新读取</view></view>
   <block wx:elif="{{content}}">
     <view class="discussion-intro">
-      <view class="discussion-meta"><text class="discussion-number">{{content.copy.number}}</text><text class="discussion-kicker">{{content.copy.kicker}}</text></view>
-      <view class="discussion-issue-line">{{content.copy.issueLine}}</view>
-      <view class="discussion-title">{{content.copy.title}}</view>
-      <view class="discussion-lead">{{content.copy.intro}}</view>
-      <view class="discussion-description">{{content.copy.paragraph1}}</view>
-      <view class="discussion-description">{{content.copy.paragraph2}}</view>
-      <view class="discussion-description">{{content.copy.paragraph3}}</view>
-      <view class="discussion-write" role="button" aria-label="{{content.copy.writeAction}}" tabindex="0" bindtap="writeExperience"><text>{{content.copy.writeAction}}</text><text class="discussion-external" aria-hidden="true">↗</text></view>
+      <view class="discussion-meta"><rich-text class="discussion-number" nodes="{{copyHtml.number}}"></rich-text><rich-text class="discussion-kicker" nodes="{{copyHtml.kicker}}"></rich-text></view>
+      <rich-text class="discussion-issue-line" nodes="{{copyHtml.issueLine}}"></rich-text>
+      <rich-text class="discussion-title" nodes="{{copyHtml.title}}"></rich-text>
+      <rich-text class="discussion-lead" nodes="{{copyHtml.intro}}"></rich-text>
+      <rich-text class="discussion-description" nodes="{{copyHtml.paragraph1}}"></rich-text>
+      <rich-text class="discussion-description" nodes="{{copyHtml.paragraph2}}"></rich-text>
+      <rich-text class="discussion-description" nodes="{{copyHtml.paragraph3}}"></rich-text>
+      <view class="discussion-write" role="button" aria-label="{{content.copy.writeAction}}" tabindex="0" bindtap="writeExperience"><rich-text class="discussion-action-copy" nodes="{{copyHtml.writeAction}}"></rich-text><text class="discussion-external" aria-hidden="true">↗</text></view>
       <view wx:if="{{draft}}" class="discussion-draft" role="button" aria-label="继续未完成的草稿" tabindex="0" bindtap="continueDraft"><text>继续未完成的草稿</text><text class="discussion-draft-arrow" aria-hidden="true">→</text></view>
     </view>
     <view class="discussion-voices">
-      <view class="discussion-section-heading"><text>{{content.copy.voicesTitle}}</text><text class="discussion-example-badge">{{content.copy.exampleBadge}}</text></view>
-      <view class="discussion-example-note">{{content.copy.exampleNotice}}</view>
+      <view class="discussion-section-heading"><rich-text class="discussion-section-title" nodes="{{copyHtml.voicesTitle}}"></rich-text><rich-text class="discussion-example-badge" nodes="{{copyHtml.exampleBadge}}"></rich-text></view>
+      <rich-text class="discussion-example-note" nodes="{{copyHtml.exampleNotice}}"></rich-text>
       <view wx:for="{{threads}}" wx:key="id" class="discussion-thread">
-        <view class="discussion-thread-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">示例</text></view>
-        <view class="discussion-thread-body">{{item.body}}</view>
+        <view class="discussion-thread-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">{{item.source === 'community' ? '读者分享' : '示例'}}</text><text wx:if="{{item.featured}}" class="discussion-featured-label">精华</text></view>
+        <rich-text class="discussion-thread-body" nodes="{{item.bodyHtml}}"></rich-text>
         <view class="discussion-thread-actions"><view class="discussion-reply-action" role="button" aria-label="回复{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="replyToThread">回复{{item.author}} <text>↗</text></view><view class="discussion-report" role="button" aria-label="{{item.reported ? '已举报' : '举报'}}{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="reportThread">{{item.reported ? '已举报' : '举报'}}</view></view>
         <view wx:if="{{item.replies.length}}" class="discussion-expand" role="button" aria-label="查看{{item.author}}这段对话" tabindex="0" data-thread-id="{{item.id}}" bindtap="openConversation">查看这段对话<text>→</text></view>
       </view>
     </view>
     <view class="discussion-my-posts" wx:if="{{myPosts.length}}">
       <view class="discussion-section-heading"><text>我的本机发言</text><text class="discussion-example-badge">{{myPosts.length}} 条</text></view>
-      <view wx:for="{{myPosts}}" wx:key="id" class="discussion-my-post"><view class="discussion-reply-meta">你 · 本机演示</view><view class="discussion-reply-body">{{item.body}}</view></view>
+      <view wx:for="{{myPosts}}" wx:key="id" class="discussion-my-post"><view class="discussion-reply-meta">你 · 本机演示</view><rich-text class="discussion-reply-body" nodes="{{item.bodyHtml}}"></rich-text></view>
     </view>
     <view class="discussion-private">
-      <view class="discussion-private-eyebrow">{{content.copy.selfEyebrow}}</view>
-      <view class="discussion-private-title">{{content.copy.selfTitle}}</view>
-      <view class="discussion-private-body">{{content.copy.selfBody}}</view>
-      <view class="discussion-private-action" role="button" aria-label="{{content.copy.selfAction}}" tabindex="0" bindtap="openPrivateObservation">{{content.copy.selfAction}}<text>→</text></view>
+      <rich-text class="discussion-private-eyebrow" nodes="{{copyHtml.selfEyebrow}}"></rich-text>
+      <rich-text class="discussion-private-title" nodes="{{copyHtml.selfTitle}}"></rich-text>
+      <rich-text class="discussion-private-body" nodes="{{copyHtml.selfBody}}"></rich-text>
+      <view class="discussion-private-action" role="button" aria-label="{{content.copy.selfAction}}" tabindex="0" bindtap="openPrivateObservation"><rich-text class="discussion-action-copy" nodes="{{copyHtml.selfAction}}"></rich-text><text>→</text></view>
     </view>
   </block>
   <view class="discussion-tabbar" role="tablist" aria-label="小程序底部导航">

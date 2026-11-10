@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
+import ModuleStateMachine from './components/ModuleStateMachine.vue';
 import AnimatedNumber from './components/AnimatedNumber.vue';
 import AdminCommandMenu from './components/AdminCommandMenu.vue';
 import { useAdminDialogs } from './composables/useAdminDialogs';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
 import DatePickerField from './components/DatePickerField.vue';
 import RichTextEditor from './components/RichTextEditor.vue';
+import JournalRichTextField from './components/JournalRichTextField.vue';
+import RichTextView from './components/RichTextView.vue';
 import JournalHomePreview from './components/JournalHomePreview.vue';
 import PracticePagePreview from './components/PracticePagePreview.vue';
 import DailyObjectsPreview from './components/DailyObjectsPreview.vue';
@@ -19,10 +22,10 @@ import PracticeEntryEditor from './components/PracticeEntryEditor.vue';
 import PracticeSaveBar from './components/PracticeSaveBar.vue';
 import { practiceEntryFixedStyle, practiceEntryText } from './practiceEntry';
 import { createDefaultDiscussionContent } from './discussion-content';
-import type { DiscussionContent } from './discussion-content';
+import type { DiscussionContent, DiscussionCopy } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
-import { isAdminLoginResult, isAuditPage, isIssueDashboardConsistent, isManagedIssueList, isManagedMediaKey, isManagedObservationDetail, isManagedObservationPage, isMediaAudioPage, isMediaDeleteResult, isMediaOrphanPage, isMediaUploadTarget, isMediaViewTarget, isObservationLifecycle, isPrivacyProcessResult, isPrivacyRequestPage, isPublicHome, isReencryptResult, isRetryResult } from './api-shapes';
-import type { AuditEntry, IssueLifecycle, ManagedAudioTrack, ManagedIssue, ManagedIssueModule, ManagedObservation, ManagedObservationDetail, MediaOrphan, ObservationLifecycle, PrivacyLifecycle, PrivacyRequest, PublicHome } from './api-shapes';
+import { isAdminLoginResult, isAdminNotificationPage, isAdminNotificationReadResult, isAdminUnreadCount, isAuditPage, isIssueDashboardConsistent, isManagedIssueList, isManagedMediaKey, isManagedObservationDetail, isManagedObservationPage, isMediaAudioPage, isMediaDeleteResult, isMediaOrphanPage, isMediaUploadTarget, isMediaViewTarget, isObservationLifecycle, isPrivacyProcessResult, isPrivacyRequestPage, isPublicHome, isReencryptResult, isRetryResult } from './api-shapes';
+import type { AdminNotification, AuditEntry, IssueLifecycle, ManagedAudioAction, ManagedAudioTrack, ManagedIssue, ManagedIssueModule, ManagedObservation, ManagedObservationDetail, MediaOrphan, ObservationLifecycle, PrivacyLifecycle, PrivacyRequest, PublicHome } from './api-shapes';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.32:61021/api';
 useAdminDialogs();
@@ -93,6 +96,7 @@ type AboutPageContent = { editVersion: number; brandIntro: string; contentSource
 type PublishedRevision = { version: number; publishedAt: string; publishedBy: string | null; content: Record<string, unknown> | null };
 const privacyDocumentManager = ref<InstanceType<typeof LegalDocumentManager> | null>(null);
 const agreementDocumentManager = ref<InstanceType<typeof LegalDocumentManager> | null>(null);
+const moduleStateMachine = ref<InstanceType<typeof ModuleStateMachine> | null>(null);
 const legalHistoryPanel = ref<InstanceType<typeof LegalHistoryPanel> | null>(null);
 const privacyPageContent = ref<AboutPageContent | null>(null);
 const privacyPagePublishedVersion = ref(1);
@@ -131,6 +135,7 @@ const practiceContentSaving = ref(false);
 const practiceContentConflict = ref(false);
 const practiceContentMessage = ref('');
 const practiceContentError = ref('');
+const storeToggleSaving = ref(false);
 type MinePageContent = {
   editVersion: number;
   title: string;
@@ -158,9 +163,10 @@ const minePageContentMessage = ref('');
 const minePageContentError = ref('');
 type MinePageEditorTab = 'intro' | 'observations' | 'discussions' | 'practice' | 'privacy';
 const minePageEditorTab = ref<MinePageEditorTab>('intro');
+const defaultHomeIntroduction = '记录女性的真实经历，也邀请你观察自己的生活';
 function createDefaultIssueModules(): ManagedIssueModule[] {
   return [
-    { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '本期策展', month: '' },
+    { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '本期策展', month: '', introduction: defaultHomeIntroduction },
     { id: 'cover-story', type: 'coverStory', order: 1, enabled: true, imageObjectKey: '', altText: '', captionLeft: '人物纪实·时雨', captionRight: '本期封面', eyebrow: '本期主题', title: '', titleFontSize: 72, titleColor: '#59483d', body: '', bodyFontSize: 30, bodyColor: '#40362f', byline: '策展与编辑 · MYRIAD SHE' },
     { id: 'quote', type: 'quote', order: 2, enabled: true, text: '我后来才知道，放下不等于认输。', attribution: '' },
     { id: 'story', type: 'story', order: 3, enabled: true, eyebrow: '人物纪实·时雨', title: '', body: '', imageObjectKey: '', altText: '', captionLeft: '纪实剪辑·时雨', captionRight: '恢复并不是回到从前，而是慢慢学会全新的方式生活。' },
@@ -175,55 +181,147 @@ function createDefaultIssueModules(): ManagedIssueModule[] {
     { id: 'brand-footer', type: 'brandFooter', order: 12, enabled: true, title: '我有我的时节', body: '记录真实的女性经验，也为看见之后的生活留下一条可行的路。' },
   ];
 }
+const maxIssueAudioTracks = 20;
+const maxIssueAudioActions = 8;
+
+function createEditorRecordId(prefix: string) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+const DECORATIVE_ACTION_ARROWS = /[↗→›»➜➝➞➡⟶➔]/g;
+function cleanIssueAudioActionLabel(value: string) {
+  return value.replace(DECORATIVE_ACTION_ARROWS, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+function createIssueAudioAction(number: number, source: Partial<ManagedAudioAction> = {}): ManagedAudioAction {
+  const kind: ManagedAudioAction['kind'] = source.kind === 'web' || source.kind === 'share' ? source.kind : 'page';
+  return {
+    id: source.id || `action-${String(number).padStart(2, '0')}`,
+    label: cleanIssueAudioActionLabel(typeof source.label === 'string' ? source.label : '') || (kind === 'share' ? '分享给朋友' : '了解更多'),
+    ...(source.labelRichText !== undefined ? { labelRichText: source.labelRichText } : {}),
+    kind,
+    ...(kind === 'page' ? { path: source.path || '' } : {}),
+    ...(kind === 'web' ? { url: source.url || '' } : {}),
+  };
+}
+
 function createIssueAudioTrack(number: number, source: Partial<ManagedAudioTrack> = {}): ManagedAudioTrack {
   const mediaType: 'audio' | 'video' = source.mediaType === 'video' || (!source.mediaType && Boolean(source.videoObjectKey) && !source.audioObjectKey) ? 'video' : 'audio';
+  const actions = Array.isArray(source.actions)
+    ? source.actions.slice(0, maxIssueAudioActions).map((action, index) => createIssueAudioAction(index + 1, action))
+    : [createIssueAudioAction(1, { kind: 'share', label: '分享给朋友' })];
   return {
     id: source.id || `voice-${String(number).padStart(2, '0')}`,
     title: source.title || `微声音 ${String(number).padStart(2, '0')}`,
+    ...(source.titleRichText !== undefined ? { titleRichText: source.titleRichText } : {}),
     duration: source.duration || '',
     mediaType,
     audioObjectKey: source.audioObjectKey || '',
     videoObjectKey: source.videoObjectKey || '',
     detailTitle: source.detailTitle || '',
+    ...(source.detailTitleRichText !== undefined ? { detailTitleRichText: source.detailTitleRichText } : {}),
     description: source.description || '',
+    ...(source.descriptionRichText !== undefined ? { descriptionRichText: source.descriptionRichText } : {}),
     quote: source.quote || '',
+    ...(source.quoteRichText !== undefined ? { quoteRichText: source.quoteRichText } : {}),
     subtitle: source.subtitle || '',
+    ...(source.subtitleRichText !== undefined ? { subtitleRichText: source.subtitleRichText } : {}),
     transcript: source.transcript || '',
+    ...(source.transcriptRichText !== undefined ? { transcriptRichText: source.transcriptRichText } : {}),
+    actions,
   };
 }
+function legacyAudioModuleLinkAction(module: ManagedIssueModule): ManagedAudioAction | null {
+  const label = cleanIssueAudioActionLabel(String(module.linkLabel || '')).slice(0, 40) || '了解更多';
+  const labelRichText = typeof module.linkLabelRichText === 'string' ? module.linkLabelRichText : undefined;
+  if (module.linkType === 'page') {
+    const path = String(module.linkPath || '').trim();
+    if (!path || path.length > 512 || path.includes('..') || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(path)) return null;
+    return { id: 'module-link', label, ...(labelRichText !== undefined ? { labelRichText } : {}), kind: 'page', path };
+  }
+  if (module.linkType === 'web') {
+    const url = String(module.linkUrl || '').trim();
+    if (!url || url.length > 2048 || !/^https:\/\/[^\s<>]+$/i.test(url)) return null;
+    return { id: 'module-link', label, ...(labelRichText !== undefined ? { labelRichText } : {}), kind: 'web', url };
+  }
+  return null;
+}
+function mergeLegacyAudioModuleLink(tracks: ManagedAudioTrack[], link: ManagedAudioAction | null) {
+  if (!link || !tracks.length) return;
+  const first = tracks[0];
+  const current = Array.isArray(first.actions) ? first.actions : [];
+  const duplicate = current.some((action) => action.kind === link.kind
+    && (link.kind === 'page' ? action.path === link.path : action.url === link.url));
+  if (duplicate) return;
+  const actions = current.slice(0, maxIssueAudioActions);
+  if (actions.length >= maxIssueAudioActions) actions.pop();
+  const ids = new Set(actions.map((action) => action.id));
+  let id = link.id;
+  let suffix = 2;
+  while (ids.has(id)) id = `module-link-${suffix++}`;
+  first.actions = [...actions, { ...link, id }];
+}
 function normalizeIssueAudioModule(module: ManagedIssueModule): ManagedIssueModule {
-  const tracks = Array.isArray(module.tracks)
-    ? module.tracks.slice(0, 3).map((track, index) => createIssueAudioTrack(index + 1, track))
+  const legacyActions = Array.isArray(module.actions) ? module.actions as ManagedAudioAction[] : undefined;
+  const sourceTracks = Array.isArray(module.tracks) ? module.tracks.slice(0, maxIssueAudioTracks) : [];
+  const tracks = sourceTracks.length
+    ? sourceTracks.map((track, index) => createIssueAudioTrack(index + 1, index === 0 && legacyActions && !Array.isArray(track.actions)
+      ? { ...track, actions: legacyActions }
+      : track))
     : [createIssueAudioTrack(1, {
       id: 'voice-01', title: String(module.title || ''), duration: String(module.duration || ''),
+      ...(typeof module.titleRichText === 'string' ? { titleRichText: module.titleRichText } : {}),
       mediaType: module.mediaType === 'video' ? 'video' : 'audio',
       audioObjectKey: String(module.audioObjectKey || ''), videoObjectKey: String(module.videoObjectKey || ''),
       detailTitle: String(module.detailTitle || ''), description: String(module.description || ''),
+      ...(typeof module.detailTitleRichText === 'string' ? { detailTitleRichText: module.detailTitleRichText } : {}),
+      ...(typeof module.descriptionRichText === 'string' ? { descriptionRichText: module.descriptionRichText } : {}),
       quote: String(module.quote || ''), subtitle: String(module.subtitle || ''), transcript: String(module.transcript || ''),
+      ...(typeof module.quoteRichText === 'string' ? { quoteRichText: module.quoteRichText } : {}),
+      ...(typeof module.subtitleRichText === 'string' ? { subtitleRichText: module.subtitleRichText } : {}),
+      ...(typeof module.transcriptRichText === 'string' ? { transcriptRichText: module.transcriptRichText } : {}),
+      ...(legacyActions ? { actions: legacyActions } : {}),
     })];
-  return { ...module, tracks };
+  mergeLegacyAudioModuleLink(tracks, legacyAudioModuleLinkAction(module));
+  const normalized: ManagedIssueModule = { ...module, tracks };
+  delete normalized.actions;
+  delete normalized.linkType;
+  delete normalized.linkPath;
+  delete normalized.linkUrl;
+  delete normalized.linkLabel;
+  delete normalized.linkLabelRichText;
+  return normalized;
 }
 function issueAudioTrackPayload(track: ManagedAudioTrack): ManagedAudioTrack {
   return {
     id: track.id,
     title: track.title || '',
+    ...(track.titleRichText !== undefined ? { titleRichText: track.titleRichText } : {}),
     duration: track.duration || '',
     mediaType: track.mediaType === 'video' ? 'video' : 'audio',
     audioObjectKey: track.audioObjectKey || '',
     videoObjectKey: track.videoObjectKey || '',
     detailTitle: track.detailTitle || '',
+    ...(track.detailTitleRichText !== undefined ? { detailTitleRichText: track.detailTitleRichText } : {}),
     description: track.description || '',
+    ...(track.descriptionRichText !== undefined ? { descriptionRichText: track.descriptionRichText } : {}),
     quote: track.quote || '',
+    ...(track.quoteRichText !== undefined ? { quoteRichText: track.quoteRichText } : {}),
     subtitle: track.subtitle || '',
+    ...(track.subtitleRichText !== undefined ? { subtitleRichText: track.subtitleRichText } : {}),
     transcript: track.transcript || '',
+    ...(track.transcriptRichText !== undefined ? { transcriptRichText: track.transcriptRichText } : {}),
+    actions: (track.actions || []).slice(0, maxIssueAudioActions).map((action, index) => createIssueAudioAction(index + 1, action)),
   };
 }
 function issueDraftContentPayload(content: ManagedIssue['draftContent']): ManagedIssue['draftContent'] {
   return {
     ...content,
-    sections: content.sections.map((module) => module.type === 'audio' && module.tracks
-      ? { ...module, tracks: module.tracks.map(issueAudioTrackPayload) }
-      : module),
+    sections: content.sections.map((module) => {
+      if (module.type !== 'audio') return module;
+      const normalized = normalizeIssueAudioModule(module);
+      return { ...normalized, tracks: (normalized.tracks || []).map(issueAudioTrackPayload) };
+    }),
   };
 }
 function combineCoverAndOpener(modules: ManagedIssueModule[]) {
@@ -236,15 +334,19 @@ function combineCoverAndOpener(modules: ManagedIssueModule[]) {
     const combined: ManagedIssueModule = cover.type === 'coverStory' ? cover : {
       id: 'cover-story', type: 'coverStory', order: Math.min(cover.order, opener.order), enabled: cover.enabled || opener.enabled,
       imageObjectKey: cover.imageObjectKey || '', altText: cover.altText || '', captionLeft: cover.captionLeft || '', captionRight: cover.captionRight || '',
+      ...(typeof cover.captionLeftRichText === 'string' ? { captionLeftRichText: cover.captionLeftRichText } : {}),
+      ...(typeof cover.captionRightRichText === 'string' ? { captionRightRichText: cover.captionRightRichText } : {}),
       eyebrow: opener.eyebrow || '本期主题', title: opener.title || '', titleFontSize: opener.titleFontSize || 72, titleColor: opener.titleColor || '#59483d', body: opener.body || '', bodyFontSize: opener.bodyFontSize || 30, bodyColor: opener.bodyColor || '#40362f', byline: cover.byline || '策展与编辑 · MYRIAD SHE',
+      ...(typeof opener.eyebrowRichText === 'string' ? { eyebrowRichText: opener.eyebrowRichText } : {}),
+      ...(typeof opener.titleRichText === 'string' ? { titleRichText: opener.titleRichText } : {}),
+      ...(typeof opener.bodyRichText === 'string' ? { bodyRichText: opener.bodyRichText } : {}),
+      ...(typeof cover.bylineRichText === 'string' ? { bylineRichText: cover.bylineRichText } : {}),
     };
     normalizedModules = modules.filter((module) => module !== cover && module !== opener).concat(combined).sort((left, right) => left.order - right.order).map((module, order) => ({ ...module, order }));
   }
   return normalizedModules.map((rawModule) => {
     const module = rawModule.type === 'audio' ? normalizeIssueAudioModule(rawModule) : rawModule;
-    return module.type === 'question'
-    ? { ...module, eyebrow: module.eyebrow || '从她的经验，回到你的此刻' }
-    : module.type === 'audio' ? { ...module, quote: module.quote || '', subtitle: module.subtitle || '' } : module;
+    return module.type === 'audio' ? { ...module, quote: module.quote || '', subtitle: module.subtitle || '' } : module;
   });
 }
 function issuePreviewContents(module: ManagedIssueModule) {
@@ -286,7 +388,10 @@ function issuePreviewIssueEdition(module: ManagedIssueModule) {
   const month = previewIssueText(module.month) || previewIssueText(issueForm.value.month);
   return month ? `${expandPreviewIssueMonth(month)} · ${issuePreviewTagline}` : issuePreviewTagline;
 }
-const issueForm = ref({ code: '', label: '', month: '', theme: '', question: '', status: 'draft', microVoiceTitle: '', microVoiceDuration: '', coverObjectKey: '', microVoiceObjectKey: '', homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面', draftContent: { sections: createDefaultIssueModules(), discussion: createDefaultDiscussionContent() } });
+function issuePreviewRichText(module: ManagedIssueModule, field: string) {
+  return previewIssueText(module[field]);
+}
+const issueForm = ref({ code: '', label: '', labelRichText: '', month: '', monthRichText: '', theme: '', themeRichText: '', question: '', questionRichText: '', status: 'draft', microVoiceTitle: '', microVoiceDuration: '', coverObjectKey: '', microVoiceObjectKey: '', homeBackgroundObjectKey: '', homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '本期封面', homeCoverCaptionRightRichText: '', draftContent: { sections: createDefaultIssueModules(), discussion: createDefaultDiscussionContent() } });
 type IssueForm = typeof issueForm.value;
 const originalIssueForm = ref<IssueForm>({ ...issueForm.value });
 function cloneIssueForm(form: IssueForm): IssueForm { return JSON.parse(JSON.stringify(form)) as IssueForm; }
@@ -297,6 +402,7 @@ const originalIssueStatus = ref('');
 const issueConflict = ref(false);
 const issueConflictResolved = ref('');
 const issueSaveMessage = ref('');
+const issueValidationMessage = ref('');
 const issueHistory = ref<Array<{ version: number; publishedAt: string; publishedBy: string | null; snapshot: unknown }>>([]);
 const issueModulePreviewUrls = ref<Record<string, string>>({});
 const selectedIssueModuleId = ref('cover-story');
@@ -486,13 +592,46 @@ const observationHasMore = ref(false);
 const observationLoadingMore = ref(false);
 const observationMoreError = ref('');
 const observationPageSize = 50;
-type DiscussionContributionStatus = 'pending' | 'handled' | 'dismissed';
-type ManagedDiscussionContribution = { id: string; revision: number; issueCode: string; issueLabel: string; threadId: string; threadAuthor: string | null; bodyPreview: string; status: DiscussionContributionStatus; createdAt: string; updatedAt: string };
+type DiscussionPublicationStatus = 'pending' | 'published' | 'hidden' | 'rejected';
+type DiscussionManagementView = 'content' | 'restrictions';
+type ManagedDiscussionContribution = {
+  id: string;
+  revision: number;
+  issueCode: string;
+  issueLabel: string;
+  threadId: string;
+  threadAuthor: string | null;
+  publicationStatus: DiscussionPublicationStatus;
+  userId: string;
+  nickname: string | null;
+  publishedAt: string | null;
+  featuredAt: string | null;
+  featuredOrder: number;
+  bodyPreview: string;
+  createdAt: string;
+  updatedAt: string;
+};
 type ManagedDiscussionContributionDetail = ManagedDiscussionContribution & { body: string };
+type DiscussionRestrictionStatus = 'active' | 'scheduled' | 'expired' | 'revoked';
+type ManagedDiscussionRestriction = {
+  id: string;
+  userId: string;
+  nickname: string | null;
+  reason: string;
+  startsAt: string;
+  endsAt: string | null;
+  createdBy: string;
+  createdAt: string;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  effectiveStatus: DiscussionRestrictionStatus;
+};
+const discussionManagementView = ref<DiscussionManagementView>('content');
 const discussionContributions = ref<ManagedDiscussionContribution[]>([]);
-const discussionContributionStatus = ref<DiscussionContributionStatus | ''>('pending');
+const discussionContributionPublicationStatus = ref<DiscussionPublicationStatus | ''>('pending');
 const discussionContributionKind = ref<'' | 'experience' | 'reply'>('');
 const discussionContributionIssueCode = ref('');
+const discussionContributionSummary = ref<Record<DiscussionPublicationStatus, number>>({ pending: 0, published: 0, hidden: 0, rejected: 0 });
 const discussionContributionTotal = ref(0);
 const discussionContributionOffset = ref(0);
 const discussionContributionHasMore = ref(false);
@@ -505,8 +644,28 @@ const selectedDiscussionContributionLoading = ref(false);
 const selectedDiscussionContributionError = ref('');
 const discussionContributionSaving = ref(false);
 const discussionContributionActionMessage = ref('');
+const discussionContributionFeaturedOrder = ref('10');
 const discussionContributionPageSize = 50;
 let discussionContributionGeneration = 0;
+const discussionRestrictions = ref<ManagedDiscussionRestriction[]>([]);
+const discussionRestrictionStatus = ref<DiscussionRestrictionStatus | ''>('active');
+const discussionRestrictionSummary = ref<Record<DiscussionRestrictionStatus, number>>({ active: 0, scheduled: 0, expired: 0, revoked: 0 });
+const discussionRestrictionTotal = ref(0);
+const discussionRestrictionOffset = ref(0);
+const discussionRestrictionHasMore = ref(false);
+const discussionRestrictionLoading = ref(false);
+const discussionRestrictionLoadingMore = ref(false);
+const discussionRestrictionMoreError = ref('');
+const discussionRestrictionError = ref('');
+const discussionRestrictionActionMessage = ref('');
+const discussionRestrictionSavingId = ref('');
+const discussionRestrictionCreating = ref(false);
+const discussionRestrictionCreateMessage = ref('');
+const discussionRestrictionCreateError = ref('');
+const discussionRestrictionPrefillNickname = ref('');
+const discussionRestrictionForm = ref({ userId: '', reason: '', endsAt: '' });
+const discussionRestrictionPageSize = 50;
+let discussionRestrictionGeneration = 0;
 type DiscussionReportStatus = 'pending' | 'handled' | 'dismissed';
 type ManagedDiscussionReport = { id: string; revision: number; issueCode: string; issueLabel: string; threadId: string; threadAuthor: string | null; threadBody: string | null; reason: string; detail: string | null; status: DiscussionReportStatus; createdAt: string; updatedAt: string };
 const discussionReports = ref<ManagedDiscussionReport[]>([]);
@@ -544,6 +703,7 @@ const auditLoadingMore = ref(false);
 const auditMoreError = ref('');
 const auditActorType = ref('');
 const auditAction = ref('');
+const auditExpandedId = ref('');
 type MemberAddress = { userName: string; telNumber: string; provinceName: string; cityName: string; countyName: string; detailInfo: string; postalCode?: string; nationalCode?: string };
 type Member = { id: string; status: 'active' | 'suspended'; createdAt: string; updatedAt: string; observationCount: number; nickname: string | null; avatarUrl: string | null; phoneMasked: string | null; phoneNumber?: string | null; birthMonth: number | null; birthDay: number | null; address?: MemberAddress | null };
 type MemberDetail = Member & { openId: string; maskedUnionId: string | null; phoneNumber?: string | null; privacyRequests: Array<{ id: string; status: string; requestedAt: string; scheduledFor: string }> };
@@ -730,12 +890,12 @@ const adminModules = [
   { id: 'practice', label: '实践页面与目录', description: '实践文案、目录设置、共同实践与日常之物' },
   { id: 'pages', label: '页面与协议', description: '隐私政策、用户协议、关于 MYRIAD SHE 与发布历史' },
   { id: 'media', label: '媒体库', description: '上传图片与音频、查询孤儿媒体与预览地址' },
-  { id: 'contributions', label: '用户经历审核', description: '本期讨论的经历与回复留言列表、详情与审核状态' },
+  { id: 'contributions', label: '讨论管理', description: '讨论内容发布、精华设置与用户投稿限制' },
   { id: 'discussion-reports', label: '用户举报', description: '用户举报的讨论内容、原因与处理状态' },
   { id: 'observations', label: '观察记录管理', description: '私密观察记录列表、生命周期统计与详情' },
   { id: 'privacy', label: '隐私申请', description: '账户删除申请的处理与重试' },
   { id: 'members', label: '会员列表', description: '会员目录与会员详情（停用仍仅超级管理员）' },
-  { id: 'audit', label: '审计日志', description: '后台操作审计日志查询' },
+  { id: 'audit', label: '操作记录', description: '查看谁在什么时候做了什么' },
   { id: 'life-cards', label: '生命牌文案', description: '生命牌文案的查看、导入与逐日编辑' },
   { id: 'life-card-views', label: '生命牌查看记录', description: '小程序生命牌查看记录' },
   { id: 'settings', label: '系统设置', description: '业务设置只读与数据库迁移状态' },
@@ -800,7 +960,7 @@ const employeeStatusFilter = ref<'all' | 'active' | 'disabled'>('all');
 const employeeRoleFilter = ref<'all' | Employee['role']>('all');
 const employeeRoleGuides = [
   { role: 'super_admin' as const, label: '超级管理员', scope: '全部权限', detail: '系统设置、员工与权限、会员敏感操作、内容发布与审计。' },
-  { role: 'content_editor' as const, label: '内容编辑', scope: '内容与审核', detail: '期刊、实践页面、日常之物、关于页面和用户经历审核。' },
+  { role: 'content_editor' as const, label: '内容编辑', scope: '内容与审核', detail: '期刊、实践页面、日常之物、关于页面和讨论管理。' },
   { role: 'support_readonly' as const, label: '客服只读', scope: '只读查询', detail: '仅可查看会员目录和业务设置，不能修改内容或员工权限。' },
 ];
 const employeeStats = computed(() => {
@@ -877,6 +1037,15 @@ const adminIdentity = computed(() => {
   };
 });
 const accountMenuOpen = ref(false);
+const sidebarAccountMenuOpen = ref(false);
+const notificationsOpen = ref(false);
+const notificationItems = ref<AdminNotification[]>([]);
+const notificationUnreadCount = ref(0);
+const notificationsLoading = ref(false);
+const notificationsError = ref('');
+const notificationsMarkingId = ref('');
+const notificationsMarkingAll = ref(false);
+let notificationPollTimer: ReturnType<typeof setInterval> | null = null;
 const profileDialogOpen = ref(false);
 const profileAvatarSaving = ref(false);
 const profileAvatarError = ref('');
@@ -889,10 +1058,185 @@ const passwordMessage = ref('');
 
 function closeAccountMenu() {
   accountMenuOpen.value = false;
+  sidebarAccountMenuOpen.value = false;
+}
+
+function toggleAccountMenu() {
+  sidebarAccountMenuOpen.value = false;
+  notificationsOpen.value = false;
+  accountMenuOpen.value = !accountMenuOpen.value;
+}
+
+function toggleSidebarAccountMenu() {
+  accountMenuOpen.value = false;
+  notificationsOpen.value = false;
+  sidebarAccountMenuOpen.value = !sidebarAccountMenuOpen.value;
+}
+
+function notificationTimeLabel(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const elapsed = Math.max(0, Date.now() - date.getTime());
+  if (elapsed < 60_000) return '刚刚';
+  if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)} 分钟前`;
+  if (elapsed < 86_400_000) return `${Math.floor(elapsed / 3_600_000)} 小时前`;
+  if (elapsed < 7 * 86_400_000) return `${Math.floor(elapsed / 86_400_000)} 天前`;
+  return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+function notificationExactTime(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+    : '';
+}
+
+function stopNotificationPolling() {
+  if (notificationPollTimer) clearInterval(notificationPollTimer);
+  notificationPollTimer = null;
+}
+
+function resetAdminNotifications() {
+  stopNotificationPolling();
+  notificationsOpen.value = false;
+  notificationItems.value = [];
+  notificationUnreadCount.value = 0;
+  notificationsLoading.value = false;
+  notificationsError.value = '';
+  notificationsMarkingId.value = '';
+  notificationsMarkingAll.value = false;
+}
+
+async function refreshNotificationUnreadCount(silent = true) {
+  if (!loggedIn.value || adminPasswordChangeRequired.value) return;
+  const session = sessionGeneration;
+  try {
+    const response = await apiFetch(`${apiBase}/admin/notifications/unread-count`, { headers: adminHeaders() });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) {
+      if (!silent && session === sessionGeneration) notificationsError.value = await responseMessage(response, '无法读取未读通知数量');
+      return;
+    }
+    const result: unknown = await response.json().catch(() => null);
+    if (!isAdminUnreadCount(result)) {
+      if (!silent && session === sessionGeneration) notificationsError.value = '通知服务返回了无效数据';
+      return;
+    }
+    if (session === sessionGeneration && loggedIn.value) notificationUnreadCount.value = result.unreadCount;
+  } catch (caught) {
+    if (!silent && session === sessionGeneration && loggedIn.value) {
+      notificationsError.value = caught instanceof Error ? caught.message : '无法读取未读通知数量';
+    }
+  }
+}
+
+function startNotificationPolling() {
+  stopNotificationPolling();
+  if (!loggedIn.value || adminPasswordChangeRequired.value) return;
+  void refreshNotificationUnreadCount();
+  notificationPollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') void refreshNotificationUnreadCount();
+  }, 30_000);
+}
+
+async function loadNotifications() {
+  if (!loggedIn.value || adminPasswordChangeRequired.value || notificationsLoading.value) return;
+  const session = sessionGeneration;
+  notificationsLoading.value = true;
+  notificationsError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/notifications?limit=30&offset=0`, { headers: adminHeaders() });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法读取通知'));
+    const result: unknown = await response.json().catch(() => null);
+    if (!isAdminNotificationPage(result)) throw new Error('通知服务返回了无效数据');
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    notificationItems.value = result.items;
+    notificationUnreadCount.value = result.unreadCount;
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      notificationsError.value = caught instanceof Error ? caught.message : '无法读取通知';
+    }
+  } finally {
+    if (session === sessionGeneration) notificationsLoading.value = false;
+  }
+}
+
+function closeNotificationPanel() {
+  notificationsOpen.value = false;
+}
+
+function toggleNotificationPanel() {
+  if (notificationsOpen.value) {
+    closeNotificationPanel();
+    return;
+  }
+  closeAccountMenu();
+  commandMenuOpen.value = false;
+  notificationsOpen.value = true;
+  void loadNotifications();
+}
+
+function handleNotificationWindowFocus() {
+  if (document.visibilityState !== 'visible' || !loggedIn.value || adminPasswordChangeRequired.value) return;
+  void refreshNotificationUnreadCount();
+  if (notificationsOpen.value) void loadNotifications();
+}
+
+async function markNotificationRead(notification: AdminNotification) {
+  if (!loggedIn.value || notification.isRead || notificationsMarkingId.value || notificationsMarkingAll.value) return;
+  const session = sessionGeneration;
+  notificationsMarkingId.value = notification.id;
+  notificationsError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/notifications/${encodeURIComponent(notification.id)}/read`, {
+      method: 'POST',
+      headers: adminHeaders(),
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '通知未能标记为已读'));
+    const result: unknown = await response.json().catch(() => null);
+    if (!isAdminNotificationReadResult(result)) throw new Error('通知服务返回了无效数据');
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    notificationItems.value = notificationItems.value.map((item) => item.id === notification.id ? { ...item, isRead: true } : item);
+    notificationUnreadCount.value = result.unreadCount;
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      notificationsError.value = caught instanceof Error ? caught.message : '通知未能标记为已读';
+    }
+  } finally {
+    if (session === sessionGeneration) notificationsMarkingId.value = '';
+  }
+}
+
+async function markAllNotificationsRead() {
+  if (!loggedIn.value || notificationsMarkingAll.value || notificationsMarkingId.value || notificationUnreadCount.value === 0) return;
+  const session = sessionGeneration;
+  notificationsMarkingAll.value = true;
+  notificationsError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/notifications/read-all`, {
+      method: 'POST',
+      headers: adminHeaders(),
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '通知未能全部标记为已读'));
+    const result: unknown = await response.json().catch(() => null);
+    if (!isAdminNotificationReadResult(result)) throw new Error('通知服务返回了无效数据');
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    notificationItems.value = notificationItems.value.map((item) => ({ ...item, isRead: true }));
+    notificationUnreadCount.value = result.unreadCount;
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      notificationsError.value = caught instanceof Error ? caught.message : '通知未能全部标记为已读';
+    }
+  } finally {
+    if (session === sessionGeneration) notificationsMarkingAll.value = false;
+  }
 }
 
 function openProfileDialog() {
-  accountMenuOpen.value = false;
+  closeAccountMenu();
   profileAvatarError.value = '';
   profileAvatarMessage.value = '';
   profileDialogOpen.value = true;
@@ -988,7 +1332,7 @@ async function removeMyAvatar() {
 }
 
 function openPasswordDialog() {
-  accountMenuOpen.value = false;
+  closeAccountMenu();
   passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' };
   passwordError.value = '';
   passwordMessage.value = '';
@@ -1023,6 +1367,7 @@ async function submitPasswordChange() {
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' };
     passwordDialogOpen.value = false;
     passwordMessage.value = '密码已更新';
+    startNotificationPolling();
     window.setTimeout(() => { passwordMessage.value = ''; }, 4000);
   } catch (caught) {
     passwordError.value = caught instanceof Error ? caught.message : '密码修改失败';
@@ -1045,38 +1390,138 @@ const overviewGreeting = computed(() => {
   const period = hour < 6 ? '夜深了' : hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
   return `${period}，${adminIdentity.value.name}`;
 });
-const overviewAuditActions: Record<string, string> = {
-  'admin.auth.login_succeeded': '管理员登录成功',
-  'admin.auth.login_failed': '管理员登录失败',
-  'admin.auth.provisioned': '扫码自动创建管理员',
-  'audit.logs.viewed': '查看审计日志',
-  'member.listed': '查看会员列表',
-  'member.viewed': '查看会员详情',
-  'member.phone.viewed': '查看会员手机号',
-  'member.suspended': '停用会员',
-  'member.active': '恢复会员',
-  'privacy.requests.listed': '查看删除申请',
-  'admin.employee.created': '创建员工账号',
-  'admin.employee.updated': '更新员工账号',
-  'admin.employees.listed': '查看员工列表',
-  'admin.password.changed': '修改登录密码',
-  'observation.listed': '查看观察记录',
+type AuditCategory = '内容发布' | '讨论管理' | '会员操作' | '观察记录' | '账户与权限' | '隐私与安全' | '系统设置';
+type AuditActionDefinition = { label: string; category: AuditCategory };
+const auditActionDefinitions: Record<string, AuditActionDefinition> = {
+  'admin.auth.login_succeeded': { label: '成功登录后台', category: '账户与权限' },
+  'admin.auth.login_failed': { label: '登录后台失败', category: '账户与权限' },
+  'admin.auth.provisioned': { label: '首次扫码并创建了管理员账号', category: '账户与权限' },
+  'admin.password.changed': { label: '修改了登录密码', category: '账户与权限' },
+  'admin.profile.avatar.updated': { label: '更换了个人头像', category: '账户与权限' },
+  'admin.profile.avatar.removed': { label: '移除了个人头像', category: '账户与权限' },
+  'admin.employee.created': { label: '创建了员工账号', category: '账户与权限' },
+  'admin.employee.updated': { label: '修改了员工账号权限', category: '账户与权限' },
+  'admin.employee.avatar.updated': { label: '更换了员工头像', category: '账户与权限' },
+  'admin.employee.avatar.removed': { label: '移除了员工头像', category: '账户与权限' },
+  'admin.employees.listed': { label: '查看了员工列表', category: '账户与权限' },
+  'audit.logs.viewed': { label: '查看了操作记录', category: '账户与权限' },
+  'user.created': { label: '创建了账号', category: '账户与权限' },
+  'user.profile.updated': { label: '修改了个人资料', category: '账户与权限' },
+  'user.address.updated': { label: '修改了收货地址', category: '账户与权限' },
+  'user.phone_number.updated': { label: '修改了绑定手机号', category: '账户与权限' },
+  'user.settings.updated': { label: '修改了个人设置', category: '账户与权限' },
+  'member.listed': { label: '查看了会员列表', category: '会员操作' },
+  'member.viewed': { label: '查看了会员详情', category: '会员操作' },
+  'member.phone.viewed': { label: '查看了会员手机号', category: '会员操作' },
+  'member.addresses.viewed': { label: '查看了会员收货地址', category: '会员操作' },
+  'member.address.viewed': { label: '查看了会员收货地址', category: '会员操作' },
+  'member.suspended': { label: '停用了会员账号', category: '会员操作' },
+  'member.active': { label: '恢复了会员账号', category: '会员操作' },
+  'observation.listed': { label: '查看了观察记录列表', category: '观察记录' },
+  'observation.admin.viewed': { label: '查看了观察记录详情', category: '观察记录' },
+  'observation.created': { label: '新建了观察记录', category: '观察记录' },
+  'observation.saved': { label: '保存了观察记录', category: '观察记录' },
+  'observation.updated': { label: '更新了观察记录', category: '观察记录' },
+  'observation.deleted': { label: '删除了观察记录', category: '观察记录' },
+  'observation.answers.reencrypted': { label: '重新加密了观察记录', category: '观察记录' },
+  'discussion_contribution.saved': { label: '提交了讨论内容', category: '讨论管理' },
+  'discussion_contribution.deleted': { label: '删除了讨论内容', category: '讨论管理' },
+  'discussion_contribution.admin.viewed': { label: '查看了讨论内容', category: '讨论管理' },
+  'discussion_contribution.publication.updated': { label: '调整了讨论发布状态', category: '讨论管理' },
+  'discussion_contribution.status.updated': { label: '调整了讨论状态', category: '讨论管理' },
+  'discussion_contribution.featured.updated': { label: '调整了精华内容', category: '讨论管理' },
+  'discussion_report.created': { label: '提交了用户举报', category: '讨论管理' },
+  'discussion_report.status.updated': { label: '处理了用户举报', category: '讨论管理' },
+  'discussion_restriction.created': { label: '新增了用户投稿限制', category: '讨论管理' },
+  'discussion_restriction.revoked': { label: '撤销了用户投稿限制', category: '讨论管理' },
+  'privacy.requests.listed': { label: '查看了删除申请', category: '隐私与安全' },
+  'privacy.deletion.requested': { label: '申请了删除账号', category: '隐私与安全' },
+  'privacy.deletion.cancelled': { label: '取消了删除账号', category: '隐私与安全' },
+  'privacy.deletion.started': { label: '开始执行账号删除', category: '隐私与安全' },
+  'privacy.deletion.completed': { label: '完成了账号删除', category: '隐私与安全' },
+  'privacy.deletion.failed': { label: '账号删除失败', category: '隐私与安全' },
+  'privacy.deletion.retry_requested': { label: '重新处理账号删除', category: '隐私与安全' },
+  'privacy.deletion.orphan_reconciled': { label: '清理了未完成的账号删除', category: '隐私与安全' },
+  'privacy.data.exported': { label: '导出了个人数据', category: '隐私与安全' },
+  'content.about.draft_saved': { label: '保存了关于页面草稿', category: '内容发布' },
+  'content.about.published': { label: '发布了关于页面', category: '内容发布' },
+  'content.daily_objects.draft_saved': { label: '保存了日常之物草稿', category: '内容发布' },
+  'content.daily_objects.published': { label: '发布了日常之物', category: '内容发布' },
+  'content.discussion.draft_saved': { label: '保存了本期讨论草稿', category: '内容发布' },
+  'content.discussion.published': { label: '发布了本期讨论', category: '内容发布' },
+  'content.issue_practice_copy.copied': { label: '复制了期刊实践文案', category: '内容发布' },
+  'content.issue_practice_copy.saved': { label: '保存了期刊实践文案', category: '内容发布' },
+  'content.issue.auto_archived': { label: '自动归档了期刊', category: '内容发布' },
+  'content.issue.created': { label: '创建了期刊', category: '内容发布' },
+  'content.issue.published': { label: '发布了期刊', category: '内容发布' },
+  'content.issue.updated': { label: '更新了期刊', category: '内容发布' },
+  'content.legal_document.draft_saved': { label: '保存了协议草稿', category: '内容发布' },
+  'content.legal_document.published': { label: '发布了协议页面', category: '内容发布' },
+  'content.life_card.updated': { label: '更新了生命牌文案', category: '内容发布' },
+  'content.life_cards.imported': { label: '导入了生命牌文案', category: '内容发布' },
+  'content.media.deleted': { label: '删除了媒体文件', category: '内容发布' },
+  'content.media.deletion_failed': { label: '删除媒体文件失败', category: '内容发布' },
+  'content.media.deletion_requested': { label: '发起了媒体文件删除', category: '内容发布' },
+  'content.mine_page.updated': { label: '更新了“我的页面”', category: '内容发布' },
+  'content.practice.draft_saved': { label: '保存了实践页面草稿', category: '内容发布' },
+  'content.practice.published': { label: '发布了实践页面', category: '内容发布' },
+  'content.practice.updated': { label: '更新了实践页面', category: '内容发布' },
+  'system.settings.updated': { label: '修改了系统设置', category: '系统设置' },
 };
-const overviewAuditResources: Record<string, string> = {
-  admin_login: '登录',
-  audit_logs: '审计日志',
-  users: '会员',
-  user: '会员',
-  admin_account: '员工账号',
-  admin_accounts: '员工账号',
-  privacy_requests: '删除申请',
+const auditCategoryOrder: AuditCategory[] = ['内容发布', '讨论管理', '会员操作', '观察记录', '账户与权限', '隐私与安全', '系统设置'];
+const auditActionGroups = auditCategoryOrder.map((category) => ({
+  category,
+  actions: Object.entries(auditActionDefinitions)
+    .filter(([, definition]) => definition.category === category)
+    .map(([value, definition]) => ({ value, label: definition.label }))
+    .sort((left, right) => left.label.localeCompare(right.label, 'zh-CN')),
+}));
+const auditResourceLabels: Record<string, string> = {
+  about_content: '关于页面',
+  admin_account: '管理员账号',
+  admin_accounts: '管理员账号列表',
+  admin_login: '后台登录',
+  audit_logs: '操作记录',
+  content_discussion_page: '本期讨论',
+  content_issue: '期刊',
+  content_life_card: '生命牌文案',
+  content_media: '媒体文件',
+  daily_objects_content: '日常之物',
+  discussion_contribution: '讨论内容',
+  discussion_contributions: '讨论内容',
+  discussion_report: '用户举报',
+  discussion_user_restriction: '用户投稿限制',
+  legal_document: '协议页面',
+  mine_page_content: '我的页面',
+  observation: '观察记录',
+  observation_batch: '观察记录',
   observations: '观察记录',
-  discussion_contributions: '用户经历',
-  content_issues: '期刊',
+  practice_content: '实践页面',
+  privacy_request: '删除申请',
+  privacy_requests: '删除申请',
   system_settings: '系统设置',
+  user: '会员',
+  user_export: '个人数据',
+  user_profile: '个人资料',
+  user_settings: '个人设置',
+  users: '会员列表',
 };
-function overviewAuditAction(action: string) { return overviewAuditActions[action] ?? action; }
-function overviewAuditResource(resourceType: string) { return overviewAuditResources[resourceType] ?? resourceType; }
+function auditActionLabel(action: string) { return auditActionDefinitions[action]?.label ?? '执行了一项后台操作'; }
+function auditActionCategory(action: string) { return auditActionDefinitions[action]?.category ?? '其他操作'; }
+function auditResourceLabel(resourceType: string) { return auditResourceLabels[resourceType] ?? '后台数据'; }
+function auditActorLabel(actorType: AuditEntry['actorType']) { return actorType === 'admin' ? '管理员' : actorType === 'user' ? '用户' : '系统'; }
+function auditActorInitial(actorType: AuditEntry['actorType']) { return actorType === 'admin' ? '管' : actorType === 'user' ? '用' : '系'; }
+function auditMetadataText(value: unknown) {
+  if (value === null || value === undefined) return '无附加信息';
+  try {
+    const text = JSON.stringify(value, null, 2);
+    return text && text !== '{}' ? text : '无附加信息';
+  } catch {
+    return String(value);
+  }
+}
+function overviewAuditAction(action: string) { return auditActionLabel(action); }
+function overviewAuditResource(resourceType: string) { return auditResourceLabel(resourceType); }
 function canAccessModule(id: AdminModuleId) { return adminModuleList.value.includes(id); }
 const observationStatus = ref('');
 const observationMethod = ref('');
@@ -1087,20 +1532,22 @@ const dashboardLoading = ref(false);
 const overviewUpdatedAt = ref('');
 const overviewSyncError = ref('');
 const currentPageRefreshing = ref(false);
-type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'employees' | 'life-cards' | 'life-card-views';
+type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'status-machine' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
 type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'legal-history' | 'privacy-page' | 'about-history';
 type PracticeSection = 'practice' | 'practice-directory' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
-const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'employees', 'life-cards', 'life-card-views']);
+const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'status-machine', 'employees', 'life-cards', 'life-card-views']);
 const contentSectionKeys = new Set<ContentSection>(['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'legal-history', 'privacy-page', 'about-history'];
 const practiceSections: PracticeSection[] = ['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects'];
 const operationsSections = ['contributions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
-const systemSections = ['settings', 'life-cards', 'life-card-views', 'employees'] as const;
+const systemSections = ['settings', 'status-machine', 'employees'] as const;
+const lifeCardSections = ['life-cards', 'life-card-views'] as const;
 type OperationsSection = typeof operationsSections[number];
 type SystemSection = typeof systemSections[number];
+type LifeCardSection = typeof lifeCardSections[number];
 const operationsSectionModules: Record<OperationsSection, AdminModuleId> = {
   contributions: 'contributions',
   'discussion-reports': 'discussion-reports',
@@ -1113,6 +1560,9 @@ function isOperationsSection(section: DashboardSection | string): section is Ope
 }
 function isSystemSection(section: DashboardSection | string): section is SystemSection {
   return (systemSections as readonly string[]).includes(section);
+}
+function isLifeCardSection(section: DashboardSection | string): section is LifeCardSection {
+  return (lifeCardSections as readonly string[]).includes(section);
 }
 const journalModuleSections = ['journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'] as const;
 function isJournalSection(section: ContentSection | string): section is JournalSection { return (journalSections as string[]).includes(section); }
@@ -1147,6 +1597,7 @@ const staffLandingCandidates: Array<{ section: DashboardSection; contentSection:
   { section: 'audit', contentSection: 'practice', module: 'audit' },
   { section: 'members', contentSection: 'practice', module: 'members' },
   { section: 'settings', contentSection: 'practice', module: 'settings' },
+  { section: 'status-machine', contentSection: 'practice', module: 'settings' },
   { section: 'life-cards', contentSection: 'practice', module: 'life-cards' },
   { section: 'life-card-views', contentSection: 'practice', module: 'life-card-views' },
 ];
@@ -1184,6 +1635,7 @@ watch(sidebarCollapsed, (collapsed) => localStorage.setItem('myriad_she_admin_si
 const commandMenuOpen = ref(false);
 function openCommandMenu() {
   closeAccountMenu();
+  notificationsOpen.value = false;
   commandMenuOpen.value = true;
 }
 function handleWorkspaceShortcut(event: KeyboardEvent) {
@@ -1194,7 +1646,10 @@ function handleWorkspaceShortcut(event: KeyboardEvent) {
     if (commandMenuOpen.value) commandMenuOpen.value = false;
     else openCommandMenu();
   }
-  if (event.key === 'Escape') closeAccountMenu();
+  if (event.key === 'Escape') {
+    closeAccountMenu();
+    closeNotificationPanel();
+  }
 }
 // 回到顶部：滚动超过一屏后出现，避免长表格页无处可回去。
 const showBackToTop = ref(false);
@@ -1211,6 +1666,7 @@ const journalNavigationExpanded = ref(initialDashboardLocation.section === 'cont
 const pageNavigationExpanded = ref(initialDashboardLocation.section === 'content' && isPageSection(initialDashboardLocation.contentSection));
 const operationsNavigationExpanded = ref(isOperationsSection(initialDashboardLocation.section));
 const systemNavigationExpanded = ref(isSystemSection(initialDashboardLocation.section));
+const lifeCardNavigationExpanded = ref(isLifeCardSection(initialDashboardLocation.section));
 function openJournalNavigation() {
   const onJournal = activeSection.value === 'content' && (isJournalSection(activeContentSection.value) || activeContentSection.value === 'media');
   const shouldCollapse = !sidebarCollapsed.value && onJournal && journalNavigationExpanded.value;
@@ -1220,6 +1676,7 @@ function openJournalNavigation() {
   pageNavigationExpanded.value = false;
   operationsNavigationExpanded.value = false;
   systemNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   if (!shouldCollapse && !onJournal) activeContentSection.value = 'journal-list';
 }
 async function openJournalSubsection(section: JournalSection | 'media') {
@@ -1227,6 +1684,7 @@ async function openJournalSubsection(section: JournalSection | 'media') {
   activeContentSection.value = section;
   journalNavigationExpanded.value = true;
   pageNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   issueSaveMessage.value = '';
   if (!editingIssueId.value && (journalSections as string[]).includes(section) && section !== 'journal-list') {
     const preferred = issues.value.find((issue) => issue.status === 'published') || issues.value[0];
@@ -1251,6 +1709,7 @@ function openPageNavigation() {
   journalNavigationExpanded.value = false;
   operationsNavigationExpanded.value = false;
   systemNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   if (!shouldCollapse && !onPage) activeContentSection.value = isSuperAdmin.value ? 'mine' : 'privacy-policy';
 }
 async function restoreLegalVersion(payload: { key: LegalKey; content: LegalContent }) {
@@ -1258,6 +1717,7 @@ async function restoreLegalVersion(payload: { key: LegalKey; content: LegalConte
   activeSection.value = 'content';
   activeContentSection.value = payload.key;
   pageNavigationExpanded.value = true;
+  lifeCardNavigationExpanded.value = false;
   await nextTick();
   await target?.restore(payload.content);
 }
@@ -1271,6 +1731,7 @@ function openPracticeNavigation() {  const shouldCollapse = !sidebarCollapsed.va
   pageNavigationExpanded.value = false;
   operationsNavigationExpanded.value = false;
   systemNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   if (!shouldCollapse && !isPracticeSection(activeContentSection.value)) {
     activeContentSection.value = 'practice';
   }
@@ -1285,6 +1746,7 @@ function openOperationsNavigation() {
   }
   operationsNavigationExpanded.value = !shouldCollapse;
   systemNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   practiceNavigationExpanded.value = false;
   journalNavigationExpanded.value = false;
   pageNavigationExpanded.value = false;
@@ -1294,6 +1756,7 @@ function openOperationsSubsection(section: OperationsSection) {
   activeSection.value = section;
   operationsNavigationExpanded.value = true;
   systemNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   practiceNavigationExpanded.value = false;
   journalNavigationExpanded.value = false;
   pageNavigationExpanded.value = false;
@@ -1302,6 +1765,7 @@ function openMembersNavigation() {
   sidebarCollapsed.value = false;
   activeSection.value = 'members';
   systemNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   operationsNavigationExpanded.value = false;
   practiceNavigationExpanded.value = false;
   journalNavigationExpanded.value = false;
@@ -1315,7 +1779,7 @@ function openSystemNavigation() {
   if (!onSystem) {
     const first = systemSections.find((section) => {
       if (section === 'employees') return isSuperAdmin.value;
-      return canAccessModule(section);
+      return canAccessModule(section === 'status-machine' ? 'settings' : section);
     });
     if (first) activeSection.value = first;
   }
@@ -1333,10 +1797,36 @@ function openSystemSubsection(section: SystemSection) {
   practiceNavigationExpanded.value = false;
   journalNavigationExpanded.value = false;
   pageNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   if (section === 'settings') void loadSystemSettings();
+  if (section === 'employees') void loadEmployees();
+}
+function openLifeCardNavigation() {
+  const onLifeCard = isLifeCardSection(activeSection.value);
+  const shouldCollapse = !sidebarCollapsed.value && onLifeCard && lifeCardNavigationExpanded.value;
+  sidebarCollapsed.value = false;
+  if (!onLifeCard) {
+    const first = lifeCardSections.find((section) => canAccessModule(section));
+    if (first) activeSection.value = first;
+  }
+  lifeCardNavigationExpanded.value = !shouldCollapse;
+  systemNavigationExpanded.value = false;
+  operationsNavigationExpanded.value = false;
+  practiceNavigationExpanded.value = false;
+  journalNavigationExpanded.value = false;
+  pageNavigationExpanded.value = false;
+}
+function openLifeCardSubsection(section: LifeCardSection) {
+  sidebarCollapsed.value = false;
+  activeSection.value = section;
+  lifeCardNavigationExpanded.value = true;
+  systemNavigationExpanded.value = false;
+  operationsNavigationExpanded.value = false;
+  practiceNavigationExpanded.value = false;
+  journalNavigationExpanded.value = false;
+  pageNavigationExpanded.value = false;
   if (section === 'life-cards') void loadLifeCards();
   if (section === 'life-card-views') void loadLifeCardViews();
-  if (section === 'employees') void loadEmployees();
 }
 function enterSubnav(element: Element) {
   const nav = element as HTMLElement;
@@ -1370,6 +1860,7 @@ watch([activeSection, activeContentSection], ([section, contentSection]) => {
 watch(activeSection, (section) => {
   if (isOperationsSection(section)) operationsNavigationExpanded.value = true;
   if (isSystemSection(section)) systemNavigationExpanded.value = true;
+  if (isLifeCardSection(section)) lifeCardNavigationExpanded.value = true;
   if (section === 'contributions' && loggedIn.value) void refreshDiscussionContributions();
   if (section === 'discussion-reports' && loggedIn.value) void refreshDiscussionReports();
 });
@@ -1410,12 +1901,13 @@ const currentView = computed(() => {
   const views: Record<Exclude<DashboardSection, 'content' | 'practice'>, { eyebrow: string; title: string }> = {
     overview: { eyebrow: 'WORKSPACE / OVERVIEW', title: '工作台' },
     observations: { eyebrow: 'OBSERVATIONS / MANAGEMENT', title: '观察记录管理' },
-    contributions: { eyebrow: 'DISCUSSION / MODERATION', title: '用户经历审核' },
+    contributions: { eyebrow: 'DISCUSSION / MODERATION', title: '讨论管理' },
     'discussion-reports': { eyebrow: 'DISCUSSION / REPORTS', title: '用户举报' },
     privacy: { eyebrow: 'PRIVACY / REQUESTS', title: '隐私申请' },
-    audit: { eyebrow: 'SECURITY / AUDIT LOG', title: '审计日志' },
+    audit: { eyebrow: 'AUDIT LOG / 操作记录', title: '操作记录' },
     members: { eyebrow: 'MEMBERS / DIRECTORY', title: '会员列表' },
     settings: { eyebrow: 'SYSTEM / SETTINGS', title: '系统设置' },
+    'status-machine': { eyebrow: 'SYSTEM / MODULE STATES', title: '模块状态机' },
     employees: { eyebrow: 'SYSTEM / EMPLOYEES', title: '员工与权限' },
     'life-cards': { eyebrow: 'CONTENT / LIFE CARDS', title: '生命牌文案' },
     'life-card-views': { eyebrow: 'CONTENT / LIFE CARD VIEWS', title: '生命牌查看' },
@@ -1461,17 +1953,18 @@ const adminDestinations: AdminDestination[] = [
   ] as const).map(([id, label, description]) => ({ id, label, description, group: '页面与协议', keywords: 'pages legal privacy agreement', section: 'content' as const, contentSection: id, module: 'pages' as const, superOnly: id === 'mine' })),
   { id: 'members', label: '会员列表', group: '会员', description: '按昵称与注册时间查找会员，查看账号详情。', keywords: 'users members', section: 'members', module: 'members' },
   ...([
-    ['contributions', '用户经历审核', '处理用户经历与回复，照看社区表达。'],
+    ['contributions', '讨论管理', '审核讨论内容、设置精华并管理用户投稿限制。'],
     ['discussion-reports', '用户举报', '核对举报原因与讨论内容，跟进处理状态。'],
     ['observations', '观察记录管理', '筛选观察记录，查看记录状态与生命周期。'],
     ['privacy', '隐私申请', '跟进账户删除申请与处理进度。'],
-    ['audit', '审计日志', '按操作者与动作追溯后台操作。'],
+    ['audit', '操作记录', '查看谁在什么时候做了什么，需要时再展开技术详情。'],
   ] as const).map(([id, label, description]) => ({ id, label, description, group: '运营管理', keywords: 'operations review', section: id, module: id })),
   ...([
-    ['settings', '系统设置', '管理业务开关、维护提示与支持联系方式。'],
     ['life-cards', '生命牌文案', '按月份与日期编辑生命牌的说明和观察提示。'],
     ['life-card-views', '生命牌查看', '筛选生命牌的查看记录与使用情况。'],
-  ] as const).map(([id, label, description]) => ({ id, label, description, group: '系统管理', keywords: 'system cards settings', section: id, module: id })),
+  ] as const).map(([id, label, description]) => ({ id, label, description, group: '生命牌', keywords: 'life cards', section: id, module: id })),
+  { id: 'settings', label: '系统设置', group: '系统管理', description: '管理业务开关、维护提示与支持联系方式。', keywords: 'system settings', section: 'settings', module: 'settings' },
+  { id: 'status-machine', label: '模块状态机', group: '系统管理', description: '观察各模块运行状态、维护窗口与最近变化。', keywords: 'system module states runtime', section: 'status-machine', module: 'settings' },
   { id: 'employees', label: '员工与权限', group: '系统管理', description: '管理员工账号、角色与模块授权。', keywords: 'admin employees permissions', section: 'employees', superOnly: true },
 ];
 const navigationItems = computed(() => adminDestinations
@@ -1494,6 +1987,7 @@ async function selectAdminDestination(id: string) {
       practiceNavigationExpanded.value = false;
       operationsNavigationExpanded.value = false;
       systemNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
     }
   } else if (target.section === 'practice') {
     activeSection.value = 'practice';
@@ -1502,6 +1996,7 @@ async function selectAdminDestination(id: string) {
     if (target.contentSection === 'daily-objects') openDailyObjectsEditor();
   } else if (target.section === 'members') openMembersNavigation();
   else if (isOperationsSection(target.section)) openOperationsSubsection(target.section);
+  else if (isLifeCardSection(target.section)) openLifeCardSubsection(target.section);
   else if (isSystemSection(target.section)) openSystemSubsection(target.section);
   else activeSection.value = target.section;
   await nextTick();
@@ -1517,10 +2012,15 @@ const reencryptCursor = ref<{ updatedAt: string; id: string } | null>(null);
 const reencryptMessage = ref('');
 const coverFile = ref<File | null>(null);
 const voiceFile = ref<File | null>(null);
-const originalMediaKeys = ref({ cover: '', voice: [] as string[] });
+const originalMediaKeys = ref({ cover: '', background: '', voice: [] as string[] });
 const mediaPreviewUrls = ref({ cover: '', voice: '' });
 const mediaPreviewLoading = ref<'cover' | 'voice' | ''>('');
 const mediaPreviewError = ref('');
+const homeBackgroundFileInput = ref<HTMLInputElement | null>(null);
+const homeBackgroundPreviewUrl = ref('');
+const homeBackgroundPreviewLoading = ref(false);
+const homeBackgroundError = ref('');
+let homeBackgroundPreviewGeneration = 0;
 const orphanMedia = ref<MediaOrphan[]>([]);
 const orphanMediaToken = ref('');
 const orphanMediaHasMore = ref(false);
@@ -1550,7 +2050,8 @@ function closeAdminError() {
 const adminErrorSources = [
   error, privacyPageError, dailyObjectsError, practiceContentError, minePageContentError,
   practiceCopyError, selectedObservationError, observationMoreError, discussionContributionMoreError,
-  discussionContributionError, selectedDiscussionContributionError, privacyMoreError, privacyActionError,
+  discussionContributionError, selectedDiscussionContributionError, discussionRestrictionMoreError,
+  discussionRestrictionError, discussionRestrictionCreateError, privacyMoreError, privacyActionError,
   auditMoreError, memberError, lifeCardsError, lifeCardViewsError, settingsError, employeeError,
   passwordRotationError, passwordError, mediaPreviewError, orphanMediaError, audioLibraryError,
 ];
@@ -1609,7 +2110,34 @@ const journalCurrentIssue = computed(() => issues.value.find((issue) => issue.id
 const journalCoverModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'coverStory' || module.type === 'cover') || null);
 const journalQuestionModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'question') || null);
 const journalCoverTitle = computed(() => String(journalCoverModule.value?.title || issueForm.value.theme || '').trim());
+const journalCoverTitleRichText = computed(() => {
+  const moduleTitle = String(journalCoverModule.value?.title || '').trim();
+  return moduleTitle
+    ? String(journalCoverModule.value?.titleRichText || '').trim()
+    : String(issueForm.value.themeRichText || '').trim();
+});
 const journalQuestionTitle = computed(() => String(journalQuestionModule.value?.title || issueForm.value.question || '').trim());
+const journalQuestionTitleRichText = computed(() => {
+  const moduleTitle = String(journalQuestionModule.value?.title || '').trim();
+  return moduleTitle
+    ? String(journalQuestionModule.value?.titleRichText || '').trim()
+    : String(issueForm.value.questionRichText || '').trim();
+});
+watch(
+  () => [
+    issueForm.value.code,
+    issueForm.value.label,
+    issueForm.value.month,
+    issueForm.value.theme,
+    issueForm.value.question,
+    journalCoverTitle.value,
+    journalCoverTitleRichText.value,
+    journalQuestionTitle.value,
+    journalQuestionTitleRichText.value,
+  ],
+  () => { issueValidationMessage.value = ''; },
+  { flush: 'sync' },
+);
 const journalPastIssues = computed(() => [...issues.value]
   .filter((issue) => (issue.status === 'published' || issue.status === 'archived') && issue.id !== editingIssueId.value)
   .sort((left, right) => (right.publishedVersion || 0) - (left.publishedVersion || 0) || right.month.localeCompare(left.month)));
@@ -1617,7 +2145,7 @@ const journalSectionDescription = computed(() => {
   switch (activeContentSection.value) {
     case 'journal-home': return '刊期信息、封面主题、首页栏目顺序与整期手机预览。';
     case 'journal-story': return '分两个编辑页：「首页入口」改首页那张人物纪实卡片（图片、引言、图上说明），「详情页」改点进去之后的正文、图片说明与公众号链接。标题与导语来自「首页策展」的本期主题，保存后一起生效。';
-    case 'journal-audio': return '本期可放 1–3 段微声音，每段可以是声音或视频；至少 1 段有可播放文件即可。进入详情页后显示单独标题与解释。';
+    case 'journal-audio': return '本期最多可放 20 段微声音，每段可以是声音或视频；至少 1 段有可播放文件即可。每段详情页还可配置多个页面、网站或分享操作。';
     case 'journal-discussion': return '讨论页固定文案、示例经历与写作页预览；可在讨论页单独保存/发布，也可随整期发布。';
     case 'journal-archive': return '首页「策展档案」入口文案，以及已发布/已归档期次列表。';
     case 'journal-list': return '期号创建、线上状态、整期发布与发布记录。';
@@ -1683,11 +2211,34 @@ const showJournalPreview = computed(() => activeContentSection.value !== 'journa
 const journalIssueMetaModule = computed(
   () => issueForm.value.draftContent.sections.find((module) => module.type === 'issueMeta') || null,
 );
+const journalHomeIntroduction = computed({
+  get: () => typeof journalIssueMetaModule.value?.introduction === 'string'
+    ? journalIssueMetaModule.value.introduction : defaultHomeIntroduction,
+  set: (value: string) => {
+    let meta = journalIssueMetaModule.value;
+    if (!meta) {
+      const sections = issueForm.value.draftContent.sections;
+      const ids = new Set(sections.map((module) => module.id));
+      let id = 'issue-meta';
+      for (let suffix = 2; ids.has(id); suffix += 1) id = `issue-meta-${suffix}`;
+      meta = { id, type: 'issueMeta', order: 0, enabled: true, eyebrow: issueForm.value.label, month: issueForm.value.month };
+      sections.unshift(meta);
+      sections.forEach((module, order) => { module.order = order; });
+    }
+    meta.introduction = value;
+  },
+});
 const journalPreviewIssueNumber = computed(
   () => (journalIssueMetaModule.value ? issuePreviewIssueNumber(journalIssueMetaModule.value) : ''),
 );
 const journalPreviewIssueEdition = computed(
   () => (journalIssueMetaModule.value ? issuePreviewIssueEdition(journalIssueMetaModule.value) : ''),
+);
+const journalPreviewIssueNumberRichText = computed(
+  () => (journalIssueMetaModule.value ? issuePreviewRichText(journalIssueMetaModule.value, 'eyebrowRichText') : ''),
+);
+const journalPreviewIssueEditionRichText = computed(
+  () => (journalIssueMetaModule.value ? issuePreviewRichText(journalIssueMetaModule.value, 'monthRichText') : ''),
 );
 // 点预览里的区块：切到对应栏目，并把右侧那张卡片滚进视野、闪一下。
 function focusIssueModule(key: string) {
@@ -1732,15 +2283,29 @@ async function startNewIssue() {
   activeContentSection.value = 'journal-list';
   journalNavigationExpanded.value = true;
   pageNavigationExpanded.value = false;
+  lifeCardNavigationExpanded.value = false;
   issueSaveMessage.value = '';
 }
 function seedIssueModulesFromForm() {
   if (editingIssueId.value) return;
   const sections = issueForm.value.draftContent.sections;
+  const meta = sections.find((module) => module.type === 'issueMeta');
+  if (meta) {
+    meta.eyebrow = issueForm.value.label;
+    meta.eyebrowRichText = issueForm.value.labelRichText;
+    meta.month = issueForm.value.month;
+    meta.monthRichText = issueForm.value.monthRichText;
+  }
   const cover = sections.find((module) => module.type === 'coverStory' || module.type === 'cover');
-  if (cover && !String(cover.title || '').trim() && issueForm.value.theme.trim()) cover.title = issueForm.value.theme.trim();
+  if (cover && !String(cover.title || '').trim() && issueForm.value.theme.trim()) {
+    cover.title = issueForm.value.theme.trim();
+    cover.titleRichText = issueForm.value.themeRichText;
+  }
   const question = sections.find((module) => module.type === 'question');
-  if (question && !String(question.title || '').trim() && issueForm.value.question.trim()) question.title = issueForm.value.question.trim();
+  if (question && !String(question.title || '').trim() && issueForm.value.question.trim()) {
+    question.title = issueForm.value.question.trim();
+    question.titleRichText = issueForm.value.questionRichText;
+  }
 }
 watch(activeContentSection, () => {
   ensureJournalModuleSelection();
@@ -2188,6 +2753,7 @@ const activeAudioKey = ref('');
 
 const journalAudioModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'audio') || null);
 const journalAudioTracks = computed(() => journalAudioModule.value?.tracks || []);
+const audioPreviewTracks = journalAudioTracks;
 
 const audioPreviewMediaUrls = computed<Record<string, string>>(() => {
   const module = journalAudioModule.value;
@@ -2209,6 +2775,7 @@ const audioDetailFieldMap: Record<string, string> = {
   description: 'description',
   quote: 'quote',
   transcript: 'transcript',
+  actions: 'actions',
 };
 
 function setAudioPreviewView(view: 'list' | 'detail') {
@@ -2278,7 +2845,8 @@ const storyEditorTab = ref<'home' | 'detail'>('home');
 const activeStoryDetailKey = ref('');
 
 const storyDetailModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'story') || null);
-const storyDetailIntro = computed(() => String(journalCoverModule.value?.body || issueForm.value.homeMetaRichText || '').trim());
+const storyDetailIntro = computed(() => String(journalCoverModule.value?.body || issueForm.value.theme || '').trim());
+const storyDetailIntroRichText = computed(() => String(journalCoverModule.value?.bodyRichText || issueForm.value.themeRichText || '').trim());
 const storyDetailImageUrl = computed(() => {
   const module = storyDetailModule.value;
   return module ? issueModulePreviewUrls.value[module.id] || '' : '';
@@ -2312,11 +2880,57 @@ function editStoryHeadlineFromHome() {
   goToJournalSection('journal-home');
 }
 
-function togglePracticeEntryEnabled(entry: PracticeEntry | null) {
-  if (!entry) return;
-  if (!practiceContent.value || practiceContentSaving.value || practiceContentConflict.value) return;
-  entry.enabled = !entry.enabled;
-  markPracticeContentDirty();
+function isDailyGoodsPracticeEntry(entry: PracticeEntry) {
+  return (entry.target || entry.key) === 'daily-goods';
+}
+
+function syncStoreEnabledState(enabled: boolean) {
+  for (const entry of practiceContent.value?.entries ?? []) {
+    if (isDailyGoodsPracticeEntry(entry)) entry.enabled = enabled;
+  }
+  systemSettings.value = { ...systemSettings.value, store_enabled: enabled };
+  systemSettingsOriginal.value = { ...systemSettingsOriginal.value, store_enabled: enabled };
+}
+
+async function togglePracticeEntryEnabled(entry: PracticeEntry | null) {
+  if (!entry || !practiceContent.value || practiceContentSaving.value || practiceContentConflict.value || storeToggleSaving.value) return;
+  if (!isDailyGoodsPracticeEntry(entry)) {
+    entry.enabled = !entry.enabled;
+    markPracticeContentDirty();
+    return;
+  }
+  if (!isSuperAdmin.value) {
+    practiceContentError.value = '仅超级管理员可以修改商城开放状态。';
+    return;
+  }
+
+  const enabled = !entry.enabled;
+  const session = sessionGeneration;
+  storeToggleSaving.value = true;
+  practiceContentError.value = '';
+  practiceContentMessage.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/system-settings`, {
+      method: 'PATCH',
+      headers: adminHeaders(true),
+      body: JSON.stringify({ store_enabled: enabled }),
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    assertSession(session);
+    if (!response.ok) throw new Error(await responseMessage(response, '商城开放状态更新失败'));
+    const saved = await response.json();
+    if (typeof saved.store_enabled?.value !== 'boolean') throw new Error('服务器未返回商城开放状态');
+    syncStoreEnabledState(saved.store_enabled.value);
+    practiceContentMessage.value = saved.store_enabled.value
+      ? '商城已开启，系统设置已同步。'
+      : '商城已关闭，系统设置已同步。';
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      practiceContentError.value = caught instanceof Error ? caught.message : '商城开放状态更新失败';
+    }
+  } finally {
+    storeToggleSaving.value = false;
+  }
 }
 
 function isMinePageContent(raw: unknown): raw is MinePageContent {
@@ -2435,25 +3049,36 @@ async function loadPrivacy(generation = privacyRequestGeneration, expectedSessio
   privacyMoreError.value = '';
 }
 
+function toggleAuditDetail(id: string) {
+  auditExpandedId.value = auditExpandedId.value === id ? '' : id;
+}
+
+function resetAuditFilters() {
+  auditActorType.value = '';
+  auditAction.value = '';
+  void refreshAudit();
+}
+
 async function refreshAudit() {
   const session = sessionGeneration;
   const generation = ++auditRequestGeneration;
   auditLoadingMore.value = false;
   auditMoreError.value = '';
+  auditExpandedId.value = '';
   try {
     await loadAudit(generation, session);
   } catch (caught) {
     if (generation !== auditRequestGeneration || session !== sessionGeneration || !loggedIn.value) return;
-    auditMoreError.value = caught instanceof Error ? caught.message : '无法读取操作审计';
+    auditMoreError.value = caught instanceof Error ? caught.message : '无法读取操作记录';
   }
 }
 
 async function loadAudit(generation = auditRequestGeneration, expectedSession = sessionGeneration) {
   const response = await apiFetch(`${apiBase}/admin/audit-logs?${auditQuery(0)}`, { headers: { Authorization: `Bearer ${token.value}` } });
   if (handleAdminUnauthorized(response, expectedSession)) return;
-  if (!response.ok) throw new Error(await responseMessage(response, '无法读取操作审计'));
+  if (!response.ok) throw new Error(await responseMessage(response, '无法读取操作记录'));
   const result = await response.json();
-  if (!isAuditPage(result)) throw new Error('操作审计列表格式无效');
+  if (!isAuditPage(result)) throw new Error('操作记录列表格式无效');
   if (generation !== auditRequestGeneration || expectedSession !== sessionGeneration || !loggedIn.value) return;
   auditLogs.value = result.rows;
   auditTotal.value = result.total;
@@ -2579,8 +3204,11 @@ async function saveSystemSettings() {
     if (!window.confirm('确认保存系统设置？变更会立即生效并记录到审计日志。')) return;
     const response = await apiFetch(`${apiBase}/admin/system-settings`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify(systemSettings.value) });
     if (!response.ok) throw new Error(await responseMessage(response, '系统设置保存失败'));
+    const saved = await response.json();
+    if (typeof saved.store_enabled?.value !== 'boolean') throw new Error('服务器未返回商城开放状态');
+    syncStoreEnabledState(saved.store_enabled.value);
     systemSettingsOriginal.value = { ...systemSettings.value };
-    settingsMessage.value = '设置已保存，并已记录操作审计。';
+    settingsMessage.value = '设置已保存，日常之物入口已同步。';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '系统设置保存失败'; }
   finally { settingsSaving.value = false; }
 }
@@ -2866,8 +3494,10 @@ async function applyAdminLogin(result: { accessToken: string; expiresIn: number 
   scheduleSessionExpiry(Number(result.expiresIn));
   await loadAdminProfile();
   if (adminPasswordChangeRequired.value) {
+    stopNotificationPolling();
     passwordRotationError.value = '';
   } else {
+    startNotificationPolling();
     await enterDashboardByPermissions();
   }
 }
@@ -3054,7 +3684,7 @@ async function loadDashboard() {
   const observationGeneration = ++observationRequestGeneration;
   const privacyGeneration = ++privacyRequestGeneration;
   const auditGeneration = ++auditRequestGeneration;
-  observationLoadingMore.value = false;
+ observationLoadingMore.value = false;
   observationMoreError.value = '';
   privacyLoadingMore.value = false;
   privacyRefreshing.value = false;
@@ -3070,7 +3700,7 @@ async function loadDashboard() {
   const canObservations = canAccessModule('observations');
   const canPrivacy = canAccessModule('privacy');
   const canAudit = canAccessModule('audit');
-  const optionalFetch = (enabled: boolean, url: string) => (enabled ? apiFetch(url, { headers: authHeaders }) : Promise.resolve(null));
+ const optionalFetch = (enabled: boolean, url: string) => (enabled ? apiFetch(url, { headers: authHeaders }) : Promise.resolve(null));
   try {
     const [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse] = await Promise.all([
       optionalFetch(canJournal, `${apiBase}/content/home`),
@@ -3083,7 +3713,7 @@ async function loadDashboard() {
       optionalFetch(canObservations, `${apiBase}/admin/observations/lifecycle`),
       optionalFetch(canPrivacy, `${apiBase}/admin/privacy-requests?${privacyQuery(0)}`),
       optionalFetch(canAudit, `${apiBase}/admin/audit-logs?${auditQuery(0)}`),
-    ]);
+   ]);
     const responses = [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse].filter((response): response is Response => response !== null);
     if (responses.some((response) => response.status === 401)) {
       if (session === sessionGeneration && loggedIn.value) logout('后台登录已过期，请重新登录。');
@@ -3158,7 +3788,7 @@ async function loadDashboard() {
     }
     if (canAudit && auditResponse) {
       const auditResult = await auditResponse.json();
-      if (!isAuditPage(auditResult)) throw new Error('操作审计列表格式无效');
+      if (!isAuditPage(auditResult)) throw new Error('操作记录列表格式无效');
       if (auditGeneration === auditRequestGeneration) {
         auditLogs.value = auditResult.rows;
         auditTotal.value = auditResult.total;
@@ -3240,7 +3870,8 @@ async function refreshCurrentPage() {
     } else if (location.section === 'employees') {
       await loadEmployees();
     } else if (location.section === 'contributions') {
-      await refreshDiscussionContributions();
+      if (discussionManagementView.value === 'restrictions') await refreshDiscussionRestrictions();
+      else await refreshDiscussionContributions();
     } else if (location.section === 'discussion-reports') {
       await refreshDiscussionReports();
     } else if (location.section === 'life-cards') {
@@ -3795,27 +4426,98 @@ async function viewObservation(record: ManagedObservation) {
   }
 }
 
-function isDiscussionContributionPage(value: unknown): value is { items: ManagedDiscussionContribution[]; total: number; limit: number; offset: number } {
+const discussionPublicationStatuses: DiscussionPublicationStatus[] = ['pending', 'published', 'hidden', 'rejected'];
+const discussionRestrictionStatuses: DiscussionRestrictionStatus[] = ['active', 'scheduled', 'expired', 'revoked'];
+const discussionContributionGrandTotal = computed(() =>
+  discussionPublicationStatuses.reduce(
+    (total, status) => total + discussionContributionSummary.value[status],
+    0,
+  ),
+);
+const discussionRestrictionGrandTotal = computed(() =>
+  discussionRestrictionStatuses.reduce(
+    (total, status) => total + discussionRestrictionSummary.value[status],
+    0,
+  ),
+);
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
+
+function discussionContributionPublicationLabel(status: DiscussionPublicationStatus) {
+  return ({ pending: '待审核', published: '已公开', hidden: '已隐藏', rejected: '已拒绝' })[status];
+}
+
+function discussionContributionAuthor(record: Pick<ManagedDiscussionContribution, 'nickname' | 'userId'>) {
+  return record.nickname?.trim() || `${record.userId.slice(0, 8)}…`;
+}
+
+function discussionRestrictionStatusLabel(status: DiscussionRestrictionStatus) {
+  return ({ active: '生效中', scheduled: '待生效', expired: '已到期', revoked: '已撤销' })[status];
+}
+
+function discussionRestrictionPeriod(record: Pick<ManagedDiscussionRestriction, 'startsAt' | 'endsAt'>) {
+  return record.endsAt ? `${displayDate(record.startsAt)} 至 ${displayDate(record.endsAt)}` : `${displayDate(record.startsAt)} 起，长期`;
+}
+
+function isManagedDiscussionContribution(value: unknown): value is ManagedDiscussionContribution {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.id === 'string'
+    && Number.isSafeInteger(item.revision)
+    && typeof item.issueCode === 'string'
+    && typeof item.issueLabel === 'string'
+    && typeof item.threadId === 'string'
+    && isNullableString(item.threadAuthor)
+    && discussionPublicationStatuses.includes(item.publicationStatus as DiscussionPublicationStatus)
+    && typeof item.userId === 'string'
+    && isNullableString(item.nickname)
+    && isNullableString(item.publishedAt)
+    && isNullableString(item.featuredAt)
+    && Number.isSafeInteger(item.featuredOrder)
+    && typeof item.bodyPreview === 'string'
+    && typeof item.createdAt === 'string'
+    && typeof item.updatedAt === 'string';
+}
+
+function isDiscussionContributionPage(value: unknown): value is { items: ManagedDiscussionContribution[]; total: number; limit: number; offset: number; summary: Record<DiscussionPublicationStatus, number> } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const page = value as Record<string, unknown>;
   return Number.isSafeInteger(page.total) && Number.isSafeInteger(page.limit) && Number.isSafeInteger(page.offset)
-    && Array.isArray(page.items) && page.items.every((item) => Boolean(item && typeof item === 'object' && !Array.isArray(item)
-      && typeof (item as Record<string, unknown>).id === 'string'
-      && Number.isSafeInteger((item as Record<string, unknown>).revision)
-      && typeof (item as Record<string, unknown>).issueCode === 'string'
-      && typeof (item as Record<string, unknown>).issueLabel === 'string'
-      && typeof (item as Record<string, unknown>).threadId === 'string'
-      && ((item as Record<string, unknown>).threadAuthor === null || typeof (item as Record<string, unknown>).threadAuthor === 'string')
-      && ['pending', 'handled', 'dismissed'].includes(String((item as Record<string, unknown>).status))
-      && typeof (item as Record<string, unknown>).createdAt === 'string'
-      && typeof (item as Record<string, unknown>).updatedAt === 'string'));
+    && Boolean(page.summary && typeof page.summary === 'object' && discussionPublicationStatuses.every((status) => Number.isSafeInteger((page.summary as Record<string, unknown>)[status])))
+    && Array.isArray(page.items) && page.items.every(isManagedDiscussionContribution);
+}
+
+function isManagedDiscussionRestriction(value: unknown): value is ManagedDiscussionRestriction {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.id === 'string'
+    && typeof item.userId === 'string'
+    && isNullableString(item.nickname)
+    && typeof item.reason === 'string'
+    && typeof item.startsAt === 'string'
+    && isNullableString(item.endsAt)
+    && typeof item.createdBy === 'string'
+    && typeof item.createdAt === 'string'
+    && isNullableString(item.revokedAt)
+    && isNullableString(item.revokedBy)
+    && discussionRestrictionStatuses.includes(item.effectiveStatus as DiscussionRestrictionStatus);
+}
+
+function isDiscussionRestrictionPage(value: unknown): value is { items: ManagedDiscussionRestriction[]; total: number; limit: number; offset: number; summary: Record<DiscussionRestrictionStatus, number> } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const page = value as Record<string, unknown>;
+  return Number.isSafeInteger(page.total) && Number.isSafeInteger(page.limit) && Number.isSafeInteger(page.offset)
+    && Boolean(page.summary && typeof page.summary === 'object' && discussionRestrictionStatuses.every((status) => Number.isSafeInteger((page.summary as Record<string, unknown>)[status])))
+    && Array.isArray(page.items) && page.items.every(isManagedDiscussionRestriction);
 }
 
 function discussionContributionQuery(offset = 0) {
   return new URLSearchParams({
     limit: String(discussionContributionPageSize),
     offset: String(offset),
-    ...(discussionContributionStatus.value ? { status: discussionContributionStatus.value } : {}),
+    ...(discussionContributionPublicationStatus.value ? { publicationStatus: discussionContributionPublicationStatus.value } : {}),
     ...(discussionContributionKind.value ? { kind: discussionContributionKind.value } : {}),
     ...(discussionContributionIssueCode.value ? { issueCode: discussionContributionIssueCode.value } : {}),
   });
@@ -3832,17 +4534,18 @@ async function refreshDiscussionContributions() {
   try {
     const response = await apiFetch(`${apiBase}/admin/discussion-contributions?${discussionContributionQuery(0)}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法读取用户经历'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法读取讨论内容'));
     const result = await response.json();
-    if (!isDiscussionContributionPage(result)) throw new Error('用户经历列表格式无效');
+    if (!isDiscussionContributionPage(result)) throw new Error('讨论内容列表格式无效');
     if (generation !== discussionContributionGeneration || session !== sessionGeneration || !loggedIn.value) return;
     discussionContributions.value = result.items;
     discussionContributionTotal.value = result.total;
     discussionContributionOffset.value = result.offset + result.items.length;
     discussionContributionHasMore.value = discussionContributionOffset.value < result.total;
+    discussionContributionSummary.value = result.summary;
   } catch (caught) {
     if (generation !== discussionContributionGeneration || session !== sessionGeneration || !loggedIn.value) return;
-    discussionContributionError.value = caught instanceof Error ? caught.message : '无法读取用户经历';
+    discussionContributionError.value = caught instanceof Error ? caught.message : '无法读取讨论内容';
   } finally {
     if (generation === discussionContributionGeneration && session === sessionGeneration) discussionContributionLoading.value = false;
   }
@@ -3857,17 +4560,18 @@ async function loadMoreDiscussionContributions() {
   try {
     const response = await apiFetch(`${apiBase}/admin/discussion-contributions?${discussionContributionQuery(discussionContributionOffset.value)}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法加载更多经历'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法加载更多讨论内容'));
     const result = await response.json();
-    if (!isDiscussionContributionPage(result)) throw new Error('用户经历列表格式无效');
+    if (!isDiscussionContributionPage(result)) throw new Error('讨论内容列表格式无效');
     if (generation !== discussionContributionGeneration || session !== sessionGeneration || !loggedIn.value) return;
     discussionContributions.value = [...discussionContributions.value, ...result.items];
     discussionContributionTotal.value = result.total;
     discussionContributionOffset.value = result.offset + result.items.length;
     discussionContributionHasMore.value = discussionContributionOffset.value < result.total;
+    discussionContributionSummary.value = result.summary;
   } catch (caught) {
     if (generation !== discussionContributionGeneration || session !== sessionGeneration || !loggedIn.value) return;
-    discussionContributionMoreError.value = caught instanceof Error ? caught.message : '无法加载更多经历';
+    discussionContributionMoreError.value = caught instanceof Error ? caught.message : '无法加载更多讨论内容';
   } finally {
     if (generation === discussionContributionGeneration && session === sessionGeneration) discussionContributionLoadingMore.value = false;
   }
@@ -3882,46 +4586,247 @@ async function viewDiscussionContribution(record: ManagedDiscussionContribution)
   try {
     const response = await apiFetch(`${apiBase}/admin/discussion-contributions/${encodeURIComponent(record.id)}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法读取经历内容'));
-    const result = await response.json() as ManagedDiscussionContributionDetail | null;
-    if (!result || typeof result.body !== 'string'
-      || !['pending', 'handled', 'dismissed'].includes(result.status)) throw new Error('经历详情格式无效');
+    if (!response.ok) throw new Error(await responseMessage(response, '无法读取讨论内容'));
+    const result = await response.json() as unknown;
+    if (!isManagedDiscussionContribution(result) || typeof (result as Record<string, unknown>).body !== 'string') throw new Error('讨论内容详情格式无效');
     if (session !== sessionGeneration || !loggedIn.value) return;
-    selectedDiscussionContribution.value = result;
+    selectedDiscussionContribution.value = result as ManagedDiscussionContributionDetail;
+    discussionContributionFeaturedOrder.value = String(result.featuredOrder || 10);
   } catch (caught) {
     if (session !== sessionGeneration || !loggedIn.value) return;
-    selectedDiscussionContributionError.value = caught instanceof Error ? caught.message : '无法读取经历内容';
+    selectedDiscussionContributionError.value = caught instanceof Error ? caught.message : '无法读取讨论内容';
   } finally {
     if (session === sessionGeneration) selectedDiscussionContributionLoading.value = false;
   }
 }
 
-async function updateDiscussionContributionStatus(status: DiscussionContributionStatus) {
-  const record = selectedDiscussionContribution.value;
-  if (!record || discussionContributionSaving.value || record.status === status) return;
+async function updateDiscussionContributionPublication(record: ManagedDiscussionContribution, publicationStatus: DiscussionPublicationStatus) {
+  if (discussionContributionSaving.value || record.publicationStatus === publicationStatus) return;
   const session = sessionGeneration;
   discussionContributionSaving.value = true;
   discussionContributionActionMessage.value = '';
   selectedDiscussionContributionError.value = '';
   try {
-    const response = await apiFetch(`${apiBase}/admin/discussion-contributions/${encodeURIComponent(record.id)}/status`, {
+    const response = await apiFetch(`${apiBase}/admin/discussion-contributions/${encodeURIComponent(record.id)}/publication`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
-      body: JSON.stringify({ status, revision: record.revision }),
+      body: JSON.stringify({ publicationStatus, revision: record.revision }),
     });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法更新处理状态'));
-    const result = await response.json() as ManagedDiscussionContribution;
-    if (!result || result.id !== record.id || !['pending', 'handled', 'dismissed'].includes(result.status)) throw new Error('处理结果格式无效');
+    if (!response.ok) throw new Error(await responseMessage(response, '无法更新发布状态'));
+    const result = await response.json() as Partial<ManagedDiscussionContribution>;
+    if (!result || result.id !== record.id || !discussionPublicationStatuses.includes(result.publicationStatus as DiscussionPublicationStatus) || !Number.isSafeInteger(result.revision)) throw new Error('发布状态更新结果格式无效');
     if (session !== sessionGeneration || !loggedIn.value) return;
-    selectedDiscussionContribution.value = { ...record, ...result };
-    discussionContributionActionMessage.value = status === 'handled' ? '已标记为已处理。' : status === 'dismissed' ? '已标记为不采纳。' : '已重新打开。';
+    if (selectedDiscussionContribution.value?.id === record.id) {
+      selectedDiscussionContribution.value = { ...selectedDiscussionContribution.value, ...result } as ManagedDiscussionContributionDetail;
+      discussionContributionFeaturedOrder.value = String(result.featuredOrder || 10);
+    }
+    discussionContributionActionMessage.value = publicationStatus === 'published'
+      ? '已公开发布这条讨论内容。'
+      : publicationStatus === 'hidden'
+        ? '已隐藏这条讨论内容。'
+        : publicationStatus === 'rejected'
+          ? '已拒绝这条讨论内容。'
+          : '已恢复为待审核。';
     await refreshDiscussionContributions();
   } catch (caught) {
     if (session !== sessionGeneration || !loggedIn.value) return;
-    selectedDiscussionContributionError.value = caught instanceof Error ? caught.message : '无法更新处理状态';
+    discussionContributionError.value = caught instanceof Error ? caught.message : '无法更新发布状态';
   } finally {
     if (session === sessionGeneration) discussionContributionSaving.value = false;
+  }
+}
+
+async function updateDiscussionContributionFeatured(record: ManagedDiscussionContributionDetail, featured: boolean) {
+  if (discussionContributionSaving.value || record.threadId || record.publicationStatus !== 'published') return;
+  const order = Number(discussionContributionFeaturedOrder.value);
+  if (featured && (!Number.isSafeInteger(order) || order < 0 || order > 999)) {
+    discussionContributionError.value = '精华顺序需为 0–999 的整数。';
+    return;
+  }
+  if (!featured && !record.featuredAt) return;
+  const session = sessionGeneration;
+  discussionContributionSaving.value = true;
+  discussionContributionActionMessage.value = '';
+  selectedDiscussionContributionError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/discussion-contributions/${encodeURIComponent(record.id)}/featured`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({ featured, ...(featured ? { featuredOrder: order } : {}), revision: record.revision }),
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法更新精华状态'));
+    const result = await response.json() as Partial<ManagedDiscussionContribution>;
+    if (!result || result.id !== record.id || !Number.isSafeInteger(result.revision) || !isNullableString(result.featuredAt)) throw new Error('精华状态更新结果格式无效');
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    if (selectedDiscussionContribution.value?.id === record.id) {
+      selectedDiscussionContribution.value = { ...selectedDiscussionContribution.value, ...result } as ManagedDiscussionContributionDetail;
+      discussionContributionFeaturedOrder.value = String(result.featuredOrder || 0);
+    }
+    discussionContributionActionMessage.value = featured ? '已更新精华展示。' : '已取消精华展示。';
+    await refreshDiscussionContributions();
+  } catch (caught) {
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    discussionContributionError.value = caught instanceof Error ? caught.message : '无法更新精华状态';
+  } finally {
+    if (session === sessionGeneration) discussionContributionSaving.value = false;
+  }
+}
+
+function discussionRestrictionQuery(offset = 0) {
+  return new URLSearchParams({
+    limit: String(discussionRestrictionPageSize),
+    offset: String(offset),
+    ...(discussionRestrictionStatus.value ? { status: discussionRestrictionStatus.value } : {}),
+  });
+}
+
+async function refreshDiscussionRestrictions() {
+  if (!loggedIn.value) return;
+  const session = sessionGeneration;
+  const generation = ++discussionRestrictionGeneration;
+  discussionRestrictionLoading.value = true;
+  discussionRestrictionLoadingMore.value = false;
+  discussionRestrictionMoreError.value = '';
+  discussionRestrictionError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/discussion-restrictions?${discussionRestrictionQuery(0)}`, { headers: { Authorization: `Bearer ${token.value}` } });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法读取用户限制'));
+    const result = await response.json();
+    if (!isDiscussionRestrictionPage(result)) throw new Error('用户限制列表格式无效');
+    if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictions.value = result.items;
+    discussionRestrictionTotal.value = result.total;
+    discussionRestrictionOffset.value = result.offset + result.items.length;
+    discussionRestrictionHasMore.value = discussionRestrictionOffset.value < result.total;
+    discussionRestrictionSummary.value = result.summary;
+  } catch (caught) {
+    if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictionError.value = caught instanceof Error ? caught.message : '无法读取用户限制';
+  } finally {
+    if (generation === discussionRestrictionGeneration && session === sessionGeneration) discussionRestrictionLoading.value = false;
+  }
+}
+
+async function loadMoreDiscussionRestrictions() {
+  if (discussionRestrictionLoadingMore.value || !discussionRestrictionHasMore.value) return;
+  const session = sessionGeneration;
+  const generation = ++discussionRestrictionGeneration;
+  discussionRestrictionLoadingMore.value = true;
+  discussionRestrictionMoreError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/discussion-restrictions?${discussionRestrictionQuery(discussionRestrictionOffset.value)}`, { headers: { Authorization: `Bearer ${token.value}` } });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法加载更多用户限制'));
+    const result = await response.json();
+    if (!isDiscussionRestrictionPage(result)) throw new Error('用户限制列表格式无效');
+    if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictions.value = [...discussionRestrictions.value, ...result.items];
+    discussionRestrictionTotal.value = result.total;
+    discussionRestrictionOffset.value = result.offset + result.items.length;
+    discussionRestrictionHasMore.value = discussionRestrictionOffset.value < result.total;
+    discussionRestrictionSummary.value = result.summary;
+  } catch (caught) {
+    if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictionMoreError.value = caught instanceof Error ? caught.message : '无法加载更多用户限制';
+  } finally {
+    if (generation === discussionRestrictionGeneration && session === sessionGeneration) discussionRestrictionLoadingMore.value = false;
+  }
+}
+
+async function setDiscussionManagementView(view: DiscussionManagementView) {
+  discussionManagementView.value = view;
+  if (view === 'content') await refreshDiscussionContributions();
+  else await refreshDiscussionRestrictions();
+}
+
+function prefillDiscussionRestriction(record: ManagedDiscussionContribution) {
+  discussionRestrictionForm.value = { userId: record.userId, reason: '', endsAt: '' };
+  discussionRestrictionPrefillNickname.value = discussionContributionAuthor(record);
+  discussionRestrictionCreateMessage.value = '';
+  discussionRestrictionCreateError.value = '';
+  discussionManagementView.value = 'restrictions';
+  void refreshDiscussionRestrictions().then(() => {
+    void nextTick(() => {
+      document.getElementById('discussion-restriction-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('discussion-restriction-user')?.focus({ preventScroll: true });
+    });
+  });
+}
+
+async function createDiscussionRestriction() {
+  if (discussionRestrictionCreating.value) return;
+  const userId = discussionRestrictionForm.value.userId.trim();
+  const reason = discussionRestrictionForm.value.reason.trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+    discussionRestrictionCreateError.value = '请输入有效的用户 UUID。';
+    return;
+  }
+  if (reason.length < 2 || reason.length > 200) {
+    discussionRestrictionCreateError.value = '限制原因需为 2–200 个字。';
+    return;
+  }
+  let endsAt: string | undefined;
+  if (discussionRestrictionForm.value.endsAt) {
+    const parsed = new Date(discussionRestrictionForm.value.endsAt);
+    if (!Number.isFinite(parsed.getTime()) || parsed.getTime() <= Date.now()) {
+      discussionRestrictionCreateError.value = '结束时间必须晚于当前时间。';
+      return;
+    }
+    endsAt = parsed.toISOString();
+  }
+  const session = sessionGeneration;
+  discussionRestrictionCreating.value = true;
+  discussionRestrictionCreateMessage.value = '';
+  discussionRestrictionCreateError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/discussion-restrictions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({ userId, reason, ...(endsAt ? { endsAt } : {}) }),
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法创建用户限制'));
+    const result = await response.json();
+    if (!isManagedDiscussionRestriction(result)) throw new Error('用户限制创建结果格式无效');
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictionForm.value = { userId: '', reason: '', endsAt: '' };
+    discussionRestrictionPrefillNickname.value = '';
+    discussionRestrictionCreateMessage.value = `已限制 ${result.nickname || result.userId.slice(0, 8)} 的讨论投稿。`;
+    await refreshDiscussionRestrictions();
+  } catch (caught) {
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictionCreateError.value = caught instanceof Error ? caught.message : '无法创建用户限制';
+  } finally {
+    if (session === sessionGeneration) discussionRestrictionCreating.value = false;
+  }
+}
+
+async function revokeDiscussionRestriction(record: ManagedDiscussionRestriction) {
+  if (discussionRestrictionSavingId.value || record.effectiveStatus === 'revoked') return;
+  const session = sessionGeneration;
+  discussionRestrictionSavingId.value = record.id;
+  discussionRestrictionActionMessage.value = '';
+  discussionRestrictionError.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/admin/discussion-restrictions/${encodeURIComponent(record.id)}/revoke`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token.value}` },
+    });
+    if (handleAdminUnauthorized(response, session)) return;
+    if (!response.ok) throw new Error(await responseMessage(response, '无法撤销用户限制'));
+    const result = await response.json();
+    if (!isManagedDiscussionRestriction(result) || result.effectiveStatus !== 'revoked') throw new Error('用户限制撤销结果格式无效');
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictionActionMessage.value = `已撤销 ${result.nickname || result.userId.slice(0, 8)} 的讨论投稿限制。`;
+    await refreshDiscussionRestrictions();
+  } catch (caught) {
+    if (session !== sessionGeneration || !loggedIn.value) return;
+    discussionRestrictionError.value = caught instanceof Error ? caught.message : '无法撤销用户限制';
+  } finally {
+    if (session === sessionGeneration) discussionRestrictionSavingId.value = '';
   }
 }
 
@@ -4044,9 +4949,9 @@ async function loadMoreAudit() {
   try {
     const response = await apiFetch(`${apiBase}/admin/audit-logs?${auditQuery(auditOffset.value)}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法加载更多审计记录'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法加载更多操作记录'));
     const result = await response.json();
-    if (!isAuditPage(result)) throw new Error('操作审计列表格式无效');
+    if (!isAuditPage(result)) throw new Error('操作记录列表格式无效');
     if (generation !== auditRequestGeneration || session !== sessionGeneration || !loggedIn.value) return;
     auditLogs.value = [...auditLogs.value, ...result.rows];
     auditTotal.value = result.total;
@@ -4054,7 +4959,7 @@ async function loadMoreAudit() {
     auditHasMore.value = auditOffset.value < result.total;
   } catch (caught) {
     if (generation !== auditRequestGeneration || session !== sessionGeneration || !loggedIn.value) return;
-    auditMoreError.value = caught instanceof Error ? caught.message : '无法加载更多审计记录';
+    auditMoreError.value = caught instanceof Error ? caught.message : '无法加载更多操作记录';
   } finally {
     if (generation === auditRequestGeneration && session === sessionGeneration) auditLoadingMore.value = false;
   }
@@ -4182,19 +5087,24 @@ function clearIssueForm() {
   editingIssueId.value = '';
   editingIssueEditVersion.value = 0;
   originalIssueStatus.value = '';
-  issueForm.value = { code: '', label: '', month: '', theme: '', question: '', status: 'draft', microVoiceTitle: '', microVoiceDuration: '', coverObjectKey: '', microVoiceObjectKey: '', homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面', draftContent: { sections: createDefaultIssueModules(), discussion: createDefaultDiscussionContent() } };
+  issueForm.value = { code: '', label: '', labelRichText: '', month: '', monthRichText: '', theme: '', themeRichText: '', question: '', questionRichText: '', status: 'draft', microVoiceTitle: '', microVoiceDuration: '', coverObjectKey: '', microVoiceObjectKey: '', homeBackgroundObjectKey: '', homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '本期封面', homeCoverCaptionRightRichText: '', draftContent: { sections: createDefaultIssueModules(), discussion: createDefaultDiscussionContent() } };
   selectedIssueModuleId.value = 'cover-story';
   originalIssueForm.value = cloneIssueForm(issueForm.value);
   issueConflict.value = false;
   issueConflictResolved.value = '';
   issueSaveMessage.value = '';
+  issueValidationMessage.value = '';
   issueHistory.value = [];
-  originalMediaKeys.value = { cover: '', voice: [] };
+  originalMediaKeys.value = { cover: '', background: '', voice: [] };
   coverFile.value = null;
   voiceFile.value = null;
   mediaPreviewUrls.value = { cover: '', voice: '' };
   mediaPreviewLoading.value = '';
   mediaPreviewError.value = '';
+  homeBackgroundPreviewGeneration += 1;
+  homeBackgroundPreviewUrl.value = '';
+  homeBackgroundPreviewLoading.value = false;
+  homeBackgroundError.value = '';
 }
 
 function syncIssueFieldsToModules() {
@@ -4205,16 +5115,26 @@ function syncIssueFieldsToModules() {
   const audio = modules.find((item) => item.type === 'audio');
   const question = modules.find((item) => item.type === 'question');
   const meta = modules.find((item) => item.type === 'issueMeta');
-  if (meta) { meta.eyebrow = issueForm.value.label; meta.month = issueForm.value.month; }
+  if (meta) {
+    meta.eyebrow = issueForm.value.label;
+    meta.eyebrowRichText = issueForm.value.labelRichText;
+    meta.month = issueForm.value.month;
+    meta.monthRichText = issueForm.value.monthRichText;
+  }
   if (cover) {
     issueForm.value.coverObjectKey = String(cover.imageObjectKey || '');
     issueForm.value.homeCoverCaptionLeft = String(cover.captionLeft || '');
+    issueForm.value.homeCoverCaptionLeftRichText = typeof cover.captionLeftRichText === 'string' ? cover.captionLeftRichText : '';
     issueForm.value.homeCoverCaptionRight = String(cover.captionRight || '');
+    issueForm.value.homeCoverCaptionRightRichText = typeof cover.captionRightRichText === 'string' ? cover.captionRightRichText : '';
   }
   if (opener) {
     const nextTheme = String(opener.title || '').trim();
-    if (nextTheme) issueForm.value.theme = nextTheme;
-    issueForm.value.homeMetaRichText = String(opener.body || '');
+    if (nextTheme) {
+      issueForm.value.theme = nextTheme;
+      issueForm.value.themeRichText = typeof opener.titleRichText === 'string' ? opener.titleRichText : '';
+    }
+    issueForm.value.homeMetaRichText = typeof opener.bodyRichText === 'string' ? opener.bodyRichText : String(opener.body || '');
   }
   if (audio) {
     const firstTrack = audio.tracks?.[0];
@@ -4222,12 +5142,18 @@ function syncIssueFieldsToModules() {
     audio.audioObjectKey = String(firstTrack?.audioObjectKey || '');
     audio.videoObjectKey = String(firstTrack?.videoObjectKey || '');
     audio.title = String(firstTrack?.title || '');
+    audio.titleRichText = firstTrack?.titleRichText || '';
     audio.duration = String(firstTrack?.duration || '');
     audio.detailTitle = String(firstTrack?.detailTitle || '');
+    audio.detailTitleRichText = firstTrack?.detailTitleRichText || '';
     audio.description = String(firstTrack?.description || '');
+    audio.descriptionRichText = firstTrack?.descriptionRichText || '';
     audio.quote = String(firstTrack?.quote || '');
+    audio.quoteRichText = firstTrack?.quoteRichText || '';
     audio.subtitle = String(firstTrack?.subtitle || '');
+    audio.subtitleRichText = firstTrack?.subtitleRichText || '';
     audio.transcript = String(firstTrack?.transcript || '');
+    audio.transcriptRichText = firstTrack?.transcriptRichText || '';
     issueForm.value.microVoiceObjectKey = String(firstTrack?.audioObjectKey || '');
     issueForm.value.microVoiceTitle = String(firstTrack?.title || '');
     issueForm.value.microVoiceDuration = String(firstTrack?.duration || '');
@@ -4235,7 +5161,10 @@ function syncIssueFieldsToModules() {
   }
   if (question) {
     const nextQuestion = String(question.title || '').trim();
-    if (nextQuestion) issueForm.value.question = nextQuestion;
+    if (nextQuestion) {
+      issueForm.value.question = nextQuestion;
+      issueForm.value.questionRichText = typeof question.titleRichText === 'string' ? question.titleRichText : '';
+    }
   }
 }
 
@@ -4261,6 +5190,16 @@ function issueModuleSummary(module: ManagedIssueModule) {
   return typeof summary === 'string' ? summary : '';
 }
 
+function issueModuleSummaryRichText(module: ManagedIssueModule) {
+  if (module.type === 'audio') return '';
+  if (module.title) return String(module.titleRichText || '');
+  if (module.body) return String(module.bodyRichText || '');
+  if (module.text) return String(module.textRichText || '');
+  if (module.caption) return String(module.captionRichText || '');
+  if (module.eyebrow) return String(module.eyebrowRichText || '');
+  return '';
+}
+
 function removeIssueModule(index: number) {
   const sections = issueForm.value.draftContent.sections;
   if (index < 0 || index >= sections.length) return;
@@ -4269,6 +5208,95 @@ function removeIssueModule(index: number) {
   if (!sections.some((module) => module.id === selectedIssueModuleId.value)) {
     selectedIssueModuleId.value = sections[Math.min(index, sections.length - 1)]?.id || '';
   }
+}
+
+function issueModuleString(module: ManagedIssueModule, field: string) {
+  const value = module[field];
+  return typeof value === 'string' ? value : '';
+}
+
+type IssueBaseField = 'label' | 'month' | 'theme' | 'question';
+type IssueBaseRichField = 'labelRichText' | 'monthRichText' | 'themeRichText' | 'questionRichText';
+
+function issueBaseRichField(field: IssueBaseField): IssueBaseRichField {
+  return `${field}RichText` as IssueBaseRichField;
+}
+
+function issueBaseModuleTarget(field: IssueBaseField) {
+  const modules = issueForm.value.draftContent.sections;
+  if (field === 'label' || field === 'month') {
+    return modules.find((module) => module.type === 'issueMeta') || null;
+  }
+  if (field === 'theme') {
+    return modules.find((module) => module.type === 'coverStory') || modules.find((module) => module.type === 'cover') || null;
+  }
+  return modules.find((module) => module.type === 'question') || null;
+}
+
+function issueBaseModuleField(field: IssueBaseField) {
+  if (field === 'label') return 'eyebrow';
+  if (field === 'month') return 'month';
+  return 'title';
+}
+
+function setIssueBaseField(field: IssueBaseField, value: string) {
+  issueForm.value[field] = value;
+  const module = issueBaseModuleTarget(field);
+  if (module) module[issueBaseModuleField(field)] = value;
+}
+
+function setIssueBaseRichText(field: IssueBaseField, value: string) {
+  issueForm.value[issueBaseRichField(field)] = value;
+  const module = issueBaseModuleTarget(field);
+  if (module) module[`${issueBaseModuleField(field)}RichText`] = value;
+}
+
+function setIssueModuleString(module: ManagedIssueModule, field: string, value: string) {
+  module[field] = value;
+  if (module.type === 'issueMeta') {
+    if (field === 'eyebrow') setIssueBaseField('label', value);
+    else if (field === 'eyebrowRichText') setIssueBaseRichText('label', value);
+    else if (field === 'month') setIssueBaseField('month', value);
+    else if (field === 'monthRichText') setIssueBaseRichText('month', value);
+  } else if (module.type === 'coverStory' || module.type === 'cover') {
+    if (field === 'title') setIssueBaseField('theme', value);
+    else if (field === 'titleRichText') setIssueBaseRichText('theme', value);
+    else if (field === 'captionLeft') issueForm.value.homeCoverCaptionLeft = value;
+    else if (field === 'captionLeftRichText') issueForm.value.homeCoverCaptionLeftRichText = value;
+    else if (field === 'captionRight') issueForm.value.homeCoverCaptionRight = value;
+    else if (field === 'captionRightRichText') issueForm.value.homeCoverCaptionRightRichText = value;
+  } else if (module.type === 'question') {
+    if (field === 'title') setIssueBaseField('question', value);
+    else if (field === 'titleRichText') setIssueBaseRichText('question', value);
+  }
+}
+
+function issueAudioTrackString(track: ManagedAudioTrack, field: 'title' | 'detailTitle' | 'description' | 'quote' | 'subtitle' | 'transcript') {
+  return track[field] || '';
+}
+
+function setIssueAudioTrackRichText(track: ManagedAudioTrack, field: 'title' | 'detailTitle' | 'description' | 'quote' | 'subtitle' | 'transcript', value: string) {
+  track[`${field}RichText`] = value;
+}
+
+function setIssueAudioTrackPlainText(track: ManagedAudioTrack, field: 'title' | 'detailTitle' | 'description' | 'quote' | 'subtitle' | 'transcript', value: string) {
+  track[field] = value;
+}
+
+function discussionCopyText(field: keyof DiscussionCopy) {
+  return issueForm.value.draftContent.discussion.copy[field] || '';
+}
+
+function discussionCopyRichText(field: keyof DiscussionCopy) {
+  return issueForm.value.draftContent.discussion.copyRichText?.[field] || '';
+}
+
+function setDiscussionCopyRichText(field: keyof DiscussionCopy, value: string) {
+  const discussion = issueForm.value.draftContent.discussion;
+  const next = { ...(discussion.copyRichText || {}) };
+  if (value.trim()) next[field] = value;
+  else delete next[field];
+  discussion.copyRichText = Object.keys(next).length ? next : undefined;
 }
 
 function addDiscussionThread() {
@@ -4404,7 +5432,10 @@ function setIssueModuleLinkType(module: ManagedIssueModule, event: Event) {
   module.linkType = target.value;
   if (target.value !== 'page') module.linkPath = '';
   if (target.value !== 'web') module.linkUrl = '';
-  if (target.value === 'none') module.linkLabel = '';
+  if (target.value === 'none') {
+    module.linkLabel = '';
+    module.linkLabelRichText = '';
+  }
 }
 
 let issuePreviewGeneration = 0;
@@ -4468,9 +5499,46 @@ function setIssueAudioTrackMediaType(track: ManagedAudioTrack, module: ManagedIs
 
 function addIssueAudioTrack(module: ManagedIssueModule) {
   if (!Array.isArray(module.tracks)) module.tracks = [];
-  if (module.tracks.length >= 3) return;
-  const id = `voice-${Date.now().toString(36)}`;
-  module.tracks.push(createIssueAudioTrack(module.tracks.length + 1, { id }));
+  if (module.tracks.length >= maxIssueAudioTracks) return;
+  module.tracks.push(createIssueAudioTrack(module.tracks.length + 1, { id: createEditorRecordId('voice') }));
+}
+
+function addIssueAudioAction(track: ManagedAudioTrack) {
+  if (!Array.isArray(track.actions)) track.actions = [];
+  if (track.actions.length >= maxIssueAudioActions) return;
+  track.actions.push(createIssueAudioAction(track.actions.length + 1, {
+    id: createEditorRecordId('action'),
+    kind: 'page',
+    label: '了解更多',
+  }));
+}
+
+function removeIssueAudioAction(track: ManagedAudioTrack, index: number) {
+  if (!Array.isArray(track.actions) || index < 0 || index >= track.actions.length) return;
+  track.actions.splice(index, 1);
+}
+
+function setIssueAudioActionKind(action: ManagedAudioAction, event: Event) {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  const kind: ManagedAudioAction['kind'] = target.value === 'web' || target.value === 'share' ? target.value : 'page';
+  action.kind = kind;
+  if (kind !== 'page') delete action.path;
+  if (kind !== 'web') delete action.url;
+  if (kind === 'share' && !action.label.trim()) action.label = '分享给朋友';
+}
+
+function setIssueAudioActionText(action: ManagedAudioAction, field: 'label' | 'path' | 'url', event: Event) {
+  const target = event.target;
+  if (target instanceof HTMLInputElement) action[field] = target.value;
+}
+
+function setIssueAudioActionLabelRichText(action: ManagedAudioAction, value: string) {
+  action.labelRichText = value;
+}
+
+function setIssueAudioActionLabel(action: ManagedAudioAction, value: string) {
+  action.label = value;
 }
 
 function removeIssueAudioTrack(module: ManagedIssueModule, index: number) {
@@ -4575,6 +5643,88 @@ async function previewMedia(kind: 'cover' | 'voice') {
   } finally {
     if (session === sessionGeneration) mediaPreviewLoading.value = '';
   }
+}
+
+async function loadHomeBackgroundPreview(objectKey = issueForm.value.homeBackgroundObjectKey, expectedSession = sessionGeneration) {
+  const generation = ++homeBackgroundPreviewGeneration;
+  homeBackgroundError.value = '';
+  if (!objectKey) {
+    homeBackgroundPreviewUrl.value = '';
+    homeBackgroundPreviewLoading.value = false;
+    return;
+  }
+  if (!isManagedMediaKey(objectKey, 'content/image/')) {
+    homeBackgroundPreviewUrl.value = '';
+    homeBackgroundPreviewLoading.value = false;
+    homeBackgroundError.value = '首页底图路径无效，请重新上传。';
+    return;
+  }
+  homeBackgroundPreviewLoading.value = true;
+  try {
+    const params = new URLSearchParams({ objectKey });
+    const response = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
+    if (handleAdminUnauthorized(response, expectedSession)) return;
+    assertSession(expectedSession);
+    if (!response.ok) throw new Error(await responseMessage(response, '无法生成首页底图预览'));
+    const result = await response.json();
+    if (!isMediaViewTarget(result)) throw new Error('服务器未返回有效的首页底图预览地址');
+    if (generation === homeBackgroundPreviewGeneration && expectedSession === sessionGeneration) {
+      homeBackgroundPreviewUrl.value = result.url;
+    }
+  } catch (caught) {
+    if (generation === homeBackgroundPreviewGeneration && expectedSession === sessionGeneration && loggedIn.value) {
+      homeBackgroundPreviewUrl.value = '';
+      homeBackgroundError.value = caught instanceof Error ? caught.message : '无法生成首页底图预览';
+    }
+  } finally {
+    if (generation === homeBackgroundPreviewGeneration && expectedSession === sessionGeneration) {
+      homeBackgroundPreviewLoading.value = false;
+    }
+  }
+}
+
+function openHomeBackgroundPicker() {
+  if (uploading.value || issueConflict.value) return;
+  homeBackgroundFileInput.value?.click();
+}
+
+async function selectHomeBackgroundFile(event: Event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || uploading.value || issueConflict.value) return;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    homeBackgroundError.value = '首页底图仅支持 JPG、PNG 或 WebP。';
+    return;
+  }
+  const session = sessionGeneration;
+  uploading.value = true;
+  homeBackgroundError.value = '';
+  try {
+    const objectKey = await uploadMedia(file, 'image', session);
+    assertSession(session);
+    issueForm.value.homeBackgroundObjectKey = objectKey;
+    await loadHomeBackgroundPreview(objectKey, session);
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      homeBackgroundError.value = caught instanceof Error ? caught.message : '首页底图上传失败';
+    }
+  } finally {
+    if (session === sessionGeneration) {
+      uploading.value = false;
+      homeBackgroundPreviewLoading.value = false;
+    }
+  }
+}
+
+function removeHomeBackground() {
+  if (uploading.value || issueConflict.value) return;
+  issueForm.value.homeBackgroundObjectKey = '';
+  homeBackgroundPreviewGeneration += 1;
+  homeBackgroundPreviewUrl.value = '';
+  homeBackgroundPreviewLoading.value = false;
+  homeBackgroundError.value = '';
 }
 
 async function deleteUnusedMedia(objectKey: string, purpose: 'orphan' | 'temporary', cleanupToken?: string, expectedSession = sessionGeneration) {
@@ -4784,20 +5934,23 @@ async function editIssue(issue: ManagedIssue) {
   discussionPageError.value = '';
   editingIssueEditVersion.value = issue.editVersion;
   originalIssueStatus.value = issue.status;
-  issueForm.value = { code: issue.code, label: issue.label, month: issue.month, theme: issue.theme, question: issue.question, status: issue.status, microVoiceTitle: issue.microVoiceTitle || '', microVoiceDuration: issue.microVoiceDuration || '', coverObjectKey: issue.coverObjectKey || '', microVoiceObjectKey: issue.microVoiceObjectKey || '', homeMetaRichText: issue.homeMetaRichText, homeMetaFontSize: issue.homeMetaFontSize, homeMetaColor: issue.homeMetaColor, homeCoverCaptionLeft: issue.homeCoverCaptionLeft, homeCoverCaptionRight: issue.homeCoverCaptionRight, draftContent: { sections: combineCoverAndOpener(issue.draftContent?.sections || createDefaultIssueModules()), discussion: issue.draftContent?.discussion || createDefaultDiscussionContent() } };
+  issueForm.value = { code: issue.code, label: issue.label, labelRichText: issue.labelRichText || '', month: issue.month, monthRichText: issue.monthRichText || '', theme: issue.theme, themeRichText: issue.themeRichText || '', question: issue.question, questionRichText: issue.questionRichText || '', status: issue.status, microVoiceTitle: issue.microVoiceTitle || '', microVoiceDuration: issue.microVoiceDuration || '', coverObjectKey: issue.coverObjectKey || '', microVoiceObjectKey: issue.microVoiceObjectKey || '', homeBackgroundObjectKey: issue.homeBackgroundObjectKey || '', homeMetaRichText: issue.homeMetaRichText, homeMetaFontSize: issue.homeMetaFontSize, homeMetaColor: issue.homeMetaColor, homeCoverCaptionLeft: issue.homeCoverCaptionLeft, homeCoverCaptionLeftRichText: issue.homeCoverCaptionLeftRichText || '', homeCoverCaptionRight: issue.homeCoverCaptionRight, homeCoverCaptionRightRichText: issue.homeCoverCaptionRightRichText || '', draftContent: { sections: combineCoverAndOpener(issue.draftContent?.sections || createDefaultIssueModules()), discussion: issue.draftContent?.discussion || createDefaultDiscussionContent() } };
   selectedIssueModuleId.value = issueForm.value.draftContent.sections.find((module) => module.type === 'coverStory')?.id || issueForm.value.draftContent.sections[0]?.id || '';
   originalIssueForm.value = cloneIssueForm(issueForm.value);
   issueConflict.value = false;
   issueConflictResolved.value = '';
   issueSaveMessage.value = '';
+  issueValidationMessage.value = '';
   originalMediaKeys.value = {
     cover: issue.coverObjectKey || '',
+    background: issue.homeBackgroundObjectKey || '',
     voice: [...new Set([issue.microVoiceObjectKey || '', ...issueDraftMediaKeys(issueForm.value.draftContent.sections).filter((key) => key.startsWith('content/audio/'))].filter(Boolean))],
   };
   coverFile.value = null;
   voiceFile.value = null;
   mediaPreviewUrls.value = { cover: '', voice: '' };
   mediaPreviewError.value = '';
+  void loadHomeBackgroundPreview(issue.homeBackgroundObjectKey || '', session);
   ensureJournalModuleSelection();
   if (activeContentSection.value === 'journal-discussion') void loadDiscussionPageDraft();
   void previewIssueModules().catch(() => { mediaPreviewError.value = '部分草稿媒体暂时无法预览'; });
@@ -4906,16 +6059,41 @@ async function selectIssueAudioTrackFile(module: ManagedIssueModule, track: Mana
   }
 }
 
+const issueRequiredFields: Array<{ key: 'code' | 'label' | 'month' | 'theme' | 'question'; label: string; maxLength: number }> = [
+  { key: 'code', label: '期刊编号', maxLength: 64 },
+  { key: 'label', label: '期刊标签', maxLength: 80 },
+  { key: 'month', label: '刊期月份', maxLength: 40 },
+  { key: 'theme', label: '本期主题', maxLength: 200 },
+  { key: 'question', label: '本期问题', maxLength: 500 },
+];
+function validateIssueRequiredFields() {
+  const missing: string[] = [];
+  const invalid: string[] = [];
+  for (const field of issueRequiredFields) {
+    const value = String(issueForm.value[field.key] ?? '').trim();
+    if (!value) missing.push(field.label);
+    else if (value.length < 2) invalid.push(`${field.label}（至少 2 个字符）`);
+    else if (value.length > field.maxLength) invalid.push(`${field.label}（最多 ${field.maxLength} 个字符）`);
+  }
+  const messages: string[] = [];
+  if (missing.length) messages.push(`请补充以下必要信息：${missing.join('、')}`);
+  if (invalid.length) messages.push(`请检查字段长度：${invalid.join('；')}`);
+  issueValidationMessage.value = messages.length ? `${messages.join('。')}。` : '';
+  return messages.length === 0;
+}
+
 async function saveIssue() {
   if (uploading.value || issueConflict.value) return;
-  uploading.value = true;
-  const session = sessionGeneration;
   error.value = '';
   issueConflictResolved.value = '';
+  issueValidationMessage.value = '';
+  seedIssueModulesFromForm();
+  syncIssueFieldsToModules();
+  if (!validateIssueRequiredFields()) return;
+  uploading.value = true;
+  const session = sessionGeneration;
   let saved = false;
   try {
-    seedIssueModulesFromForm();
-    syncIssueFieldsToModules();
     const payload: Omit<typeof issueForm.value, 'status'> & { editVersion?: number } = { ...issueForm.value };
     delete (payload as Partial<typeof issueForm.value>).status;
     if (editingIssueId.value) payload.editVersion = editingIssueEditVersion.value;
@@ -4958,9 +6136,9 @@ async function saveIssue() {
     else if (savedIssue?.id) editingIssueEditVersion.value += 1;
     if (typeof savedIssue?.status === 'string' && ['draft', 'published', 'archived'].includes(savedIssue.status)) issueForm.value.status = savedIssue.status;
     saved = true;
-    const savedKeys = issueDraftMediaKeys(issueForm.value.draftContent.sections);
+    const savedKeys = [...issueDraftMediaKeys(issueForm.value.draftContent.sections), issueForm.value.homeBackgroundObjectKey].filter((key): key is string => Boolean(key));
     const unsavedUploadedKeys = uploadedMediaKeys.value.filter((key) => !savedKeys.includes(key));
-    const obsoleteKeys = [...new Set([...unsavedUploadedKeys, originalMediaKeys.value.cover].filter((key) => key && !savedKeys.includes(key) && !key.startsWith('content/audio/') && !key.startsWith('content/video/')))];
+    const obsoleteKeys = [...new Set([...unsavedUploadedKeys, originalMediaKeys.value.cover, originalMediaKeys.value.background].filter((key) => key && !savedKeys.includes(key) && !key.startsWith('content/audio/') && !key.startsWith('content/video/')))];
     const candidates = obsoleteKeys.map((objectKey): MediaCleanupCandidate => {
       const cleanupToken = mediaCleanupTokens.value[objectKey];
       return cleanupToken ? { objectKey, purpose: 'temporary', cleanupToken } : { objectKey, purpose: 'orphan' };
@@ -4969,12 +6147,14 @@ async function saveIssue() {
     persistCleanupKeys();
     originalMediaKeys.value = {
       cover: issueForm.value.coverObjectKey || '',
+      background: issueForm.value.homeBackgroundObjectKey || '',
       voice: [...new Set([issueForm.value.microVoiceObjectKey || '', ...savedKeys.filter((key) => key.startsWith('content/audio/'))].filter(Boolean))],
     };
     originalIssueForm.value = cloneIssueForm(issueForm.value);
     originalIssueStatus.value = issueForm.value.status;
     issueConflict.value = false;
     issueConflictResolved.value = '';
+    issueValidationMessage.value = '';
     issueSaveMessage.value = '草稿已保存。期号、首页、人物、声音与往期入口共用这份草稿；本期讨论也可在讨论页单独保存/发布，整期发布时仍会一并写入期刊快照。';
     const cleanup = await cleanupMedia(candidates, session);
     assertSession(session);
@@ -4995,7 +6175,7 @@ async function saveIssue() {
   } catch (caught) {
     if (session === sessionGeneration && loggedIn.value) {
       if (saved) issueSaveMessage.value = '期刊已保存，但临时媒体文件清理失败。重新开始编辑时可以重试。';
-      else error.value = caught instanceof Error ? caught.message : '保存期刊失败';
+      else issueValidationMessage.value = caught instanceof Error ? caught.message : '保存期刊失败';
     }
   } finally {
     if (session === sessionGeneration) uploading.value = false;
@@ -5023,37 +6203,54 @@ async function rebaseIssueEdits() {
     const latestForm: IssueForm = {
       code: latest.code,
       label: latest.label,
+      labelRichText: latest.labelRichText || '',
       month: latest.month,
+      monthRichText: latest.monthRichText || '',
       theme: latest.theme,
+      themeRichText: latest.themeRichText || '',
       question: latest.question,
+      questionRichText: latest.questionRichText || '',
       status: latest.status,
       microVoiceTitle: latest.microVoiceTitle || '',
       microVoiceDuration: latest.microVoiceDuration || '',
       coverObjectKey: latest.coverObjectKey || '',
       microVoiceObjectKey: latest.microVoiceObjectKey || '',
+      homeBackgroundObjectKey: latest.homeBackgroundObjectKey || '',
       homeMetaRichText: latest.homeMetaRichText,
       homeMetaFontSize: latest.homeMetaFontSize,
       homeMetaColor: latest.homeMetaColor,
       homeCoverCaptionLeft: latest.homeCoverCaptionLeft,
+      homeCoverCaptionLeftRichText: latest.homeCoverCaptionLeftRichText || '',
       homeCoverCaptionRight: latest.homeCoverCaptionRight,
-      draftContent: latest.draftContent,
+      homeCoverCaptionRightRichText: latest.homeCoverCaptionRightRichText || '',
+      draftContent: {
+        sections: combineCoverAndOpener(latest.draftContent?.sections || createDefaultIssueModules()),
+        discussion: latest.draftContent?.discussion || createDefaultDiscussionContent(),
+      },
     };
     issueForm.value = {
       code: local.code !== original.code ? local.code : latestForm.code,
       label: local.label !== original.label ? local.label : latestForm.label,
+      labelRichText: local.labelRichText !== original.labelRichText ? local.labelRichText : latestForm.labelRichText,
       month: local.month !== original.month ? local.month : latestForm.month,
+      monthRichText: local.monthRichText !== original.monthRichText ? local.monthRichText : latestForm.monthRichText,
       theme: local.theme !== original.theme ? local.theme : latestForm.theme,
+      themeRichText: local.themeRichText !== original.themeRichText ? local.themeRichText : latestForm.themeRichText,
       question: local.question !== original.question ? local.question : latestForm.question,
+      questionRichText: local.questionRichText !== original.questionRichText ? local.questionRichText : latestForm.questionRichText,
       status: local.status !== original.status ? local.status : latestForm.status,
       microVoiceTitle: local.microVoiceTitle !== original.microVoiceTitle ? local.microVoiceTitle : latestForm.microVoiceTitle,
       microVoiceDuration: local.microVoiceDuration !== original.microVoiceDuration ? local.microVoiceDuration : latestForm.microVoiceDuration,
       coverObjectKey: local.coverObjectKey !== original.coverObjectKey ? local.coverObjectKey : latestForm.coverObjectKey,
       microVoiceObjectKey: local.microVoiceObjectKey !== original.microVoiceObjectKey ? local.microVoiceObjectKey : latestForm.microVoiceObjectKey,
+      homeBackgroundObjectKey: local.homeBackgroundObjectKey !== original.homeBackgroundObjectKey ? local.homeBackgroundObjectKey : latestForm.homeBackgroundObjectKey,
       homeMetaRichText: local.homeMetaRichText !== original.homeMetaRichText ? local.homeMetaRichText : latestForm.homeMetaRichText,
       homeMetaFontSize: local.homeMetaFontSize !== original.homeMetaFontSize ? local.homeMetaFontSize : latestForm.homeMetaFontSize,
       homeMetaColor: local.homeMetaColor !== original.homeMetaColor ? local.homeMetaColor : latestForm.homeMetaColor,
       homeCoverCaptionLeft: local.homeCoverCaptionLeft !== original.homeCoverCaptionLeft ? local.homeCoverCaptionLeft : latestForm.homeCoverCaptionLeft,
+      homeCoverCaptionLeftRichText: local.homeCoverCaptionLeftRichText !== original.homeCoverCaptionLeftRichText ? local.homeCoverCaptionLeftRichText : latestForm.homeCoverCaptionLeftRichText,
       homeCoverCaptionRight: local.homeCoverCaptionRight !== original.homeCoverCaptionRight ? local.homeCoverCaptionRight : latestForm.homeCoverCaptionRight,
+      homeCoverCaptionRightRichText: local.homeCoverCaptionRightRichText !== original.homeCoverCaptionRightRichText ? local.homeCoverCaptionRightRichText : latestForm.homeCoverCaptionRightRichText,
       draftContent: JSON.stringify(local.draftContent) !== JSON.stringify(original.draftContent) ? local.draftContent : latestForm.draftContent,
     };
     originalIssueForm.value = cloneIssueForm(latestForm);
@@ -5061,10 +6258,12 @@ async function rebaseIssueEdits() {
     editingIssueEditVersion.value = latest.editVersion;
     originalMediaKeys.value = {
       cover: latest.coverObjectKey || '',
+      background: latest.homeBackgroundObjectKey || '',
       voice: [...new Set([latest.microVoiceObjectKey || '', ...issueDraftMediaKeys(latestForm.draftContent.sections).filter((key) => key.startsWith('content/audio/'))].filter(Boolean))],
     };
     mediaPreviewUrls.value = { cover: '', voice: '' };
     mediaPreviewError.value = '';
+    void loadHomeBackgroundPreview(issueForm.value.homeBackgroundObjectKey, session);
     issues.value = latestIssues;
     issueConflict.value = false;
     issueConflictResolved.value = '已载入云端最新版本，并保留本表单中与原版本不同的字段；请核对后再保存。';
@@ -5082,6 +6281,8 @@ function logout(message = '') {
   minePageContentRequestGeneration += 1;
   observationRequestGeneration += 1;
   discussionContributionGeneration += 1;
+  discussionRestrictionGeneration += 1;
+  discussionReportGeneration += 1;
   privacyRequestGeneration += 1;
   auditRequestGeneration += 1;
   orphanMediaRequestGeneration += 1;
@@ -5112,10 +6313,28 @@ function logout(message = '') {
   discussionContributionTotal.value = 0;
   discussionContributionOffset.value = 0;
   discussionContributionHasMore.value = false;
+  discussionContributionSummary.value = { pending: 0, published: 0, hidden: 0, rejected: 0 };
   selectedDiscussionContribution.value = null;
   selectedDiscussionContributionError.value = '';
   discussionContributionError.value = '';
   discussionContributionActionMessage.value = '';
+  discussionManagementView.value = 'content';
+  discussionRestrictions.value = [];
+  discussionRestrictionSummary.value = { active: 0, scheduled: 0, expired: 0, revoked: 0 };
+  discussionRestrictionTotal.value = 0;
+  discussionRestrictionOffset.value = 0;
+  discussionRestrictionHasMore.value = false;
+  discussionRestrictionLoading.value = false;
+  discussionRestrictionLoadingMore.value = false;
+  discussionRestrictionMoreError.value = '';
+  discussionRestrictionError.value = '';
+  discussionRestrictionActionMessage.value = '';
+  discussionRestrictionSavingId.value = '';
+  discussionRestrictionCreating.value = false;
+  discussionRestrictionCreateMessage.value = '';
+  discussionRestrictionCreateError.value = '';
+  discussionRestrictionPrefillNickname.value = '';
+  discussionRestrictionForm.value = { userId: '', reason: '', endsAt: '' };
   privacyRequests.value = [];
   privacyLifecycle.value = null;
   privacyTotal.value = 0;
@@ -5182,6 +6401,8 @@ function logout(message = '') {
   privacyPageMessage.value = '';
   privacyPageError.value = '';
   adminProfile.value = null;
+  closeAccountMenu();
+  resetAdminNotifications();
   profileDialogOpen.value = false;
   profileAvatarError.value = '';
   profileAvatarMessage.value = '';
@@ -5205,6 +6426,8 @@ function handleAdminUnauthorized(response: Response, expectedSession = sessionGe
 onMounted(() => {
   window.addEventListener('scroll', handleWorkspaceScroll, { passive: true });
   window.addEventListener('keydown', handleWorkspaceShortcut);
+  window.addEventListener('focus', handleNotificationWindowFocus);
+  document.addEventListener('visibilitychange', handleNotificationWindowFocus);
   handleWorkspaceScroll();
   if (!token.value || !sessionExpiresAt.value || sessionExpiresAt.value > Date.now() + maxAdminSessionSeconds * 1000) {
     localStorage.removeItem('myriad_she_admin_token');
@@ -5229,6 +6452,7 @@ onMounted(() => {
   const initialLoad = (async () => {
     await loadAdminProfile();
     if (!loggedIn.value || session !== sessionGeneration || adminPasswordChangeRequired.value) return;
+    startNotificationPolling();
     await enterDashboardByPermissions();
   })();
   initialLoad.catch((caught) => {
@@ -5239,6 +6463,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleWorkspaceScroll);
   window.removeEventListener('keydown', handleWorkspaceShortcut);
+  window.removeEventListener('focus', handleNotificationWindowFocus);
+  document.removeEventListener('visibilitychange', handleNotificationWindowFocus);
+  resetAdminNotifications();
   wecomQrInstance?.destroyed?.();
   wecomQrInstance = null;
 });
@@ -5340,25 +6567,51 @@ onBeforeUnmount(() => {
               <div v-if="canAccessModule('contributions') || canAccessModule('discussion-reports') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-group operations-nav-group" :class="{ expanded: isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: isOperationsSection(activeSection) }" :aria-label="sidebarCollapsed ? '运营管理' : undefined" :title="sidebarCollapsed ? '运营管理' : undefined" :aria-expanded="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" aria-controls="operations-navigation" @click.stop="openOperationsNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM8 7.5V5h8v2.5M8 12h8M8 16h5" /></svg><span>运营管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" id="operations-navigation" class="dashboard-subnav" aria-label="运营管理子菜单">
-                  <button v-if="canAccessModule('contributions')" class="dashboard-subtab" :class="{ active: activeSection === 'contributions' }" :aria-current="activeSection === 'contributions' ? 'page' : undefined" @click="openOperationsSubsection('contributions')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>用户经历审核</span></button>
+                  <button v-if="canAccessModule('contributions')" class="dashboard-subtab" :class="{ active: activeSection === 'contributions' }" :aria-current="activeSection === 'contributions' ? 'page' : undefined" @click="openOperationsSubsection('contributions')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>讨论管理</span></button>
                   <button v-if="canAccessModule('discussion-reports')" class="dashboard-subtab" :class="{ active: activeSection === 'discussion-reports' }" :aria-current="activeSection === 'discussion-reports' ? 'page' : undefined" @click="openOperationsSubsection('discussion-reports')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 20 6v6c0 4.3-3.2 7.2-8 8.2-4.8-1-8-3.9-8-8.2V6z"/><path d="M12 8v4.6"/><circle cx="12" cy="15.6" r=".7"/></svg><span>用户举报</span></button>
                   <button v-if="canAccessModule('observations')" class="dashboard-subtab" :class="{ active: activeSection === 'observations' }" :aria-current="activeSection === 'observations' ? 'page' : undefined" @click="openOperationsSubsection('observations')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
                   <button v-if="canAccessModule('privacy')" class="dashboard-subtab" :class="{ active: activeSection === 'privacy' }" :aria-current="activeSection === 'privacy' ? 'page' : undefined" @click="openOperationsSubsection('privacy')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
-                  <button v-if="canAccessModule('audit')" class="dashboard-subtab" :class="{ active: activeSection === 'audit' }" :aria-current="activeSection === 'audit' ? 'page' : undefined" @click="openOperationsSubsection('audit')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>审计日志</span></button>
+                  <button v-if="canAccessModule('audit')" class="dashboard-subtab" :class="{ active: activeSection === 'audit' }" :aria-current="activeSection === 'audit' ? 'page' : undefined" @click="openOperationsSubsection('audit')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6m-6 4h6m-6 4h3m4 1 1.5 1.5L21 15" /></svg><span>操作记录</span></button>
                 </nav></Transition>
               </div>
-              <div v-if="isSuperAdmin || canAccessModule('settings') || canAccessModule('life-cards') || canAccessModule('life-card-views')" class="dashboard-nav-group system-nav-group" :class="{ expanded: isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed }">
+              <div v-if="canAccessModule('life-cards') || canAccessModule('life-card-views')" class="dashboard-nav-group life-card-nav-group" :class="{ expanded: isLifeCardSection(activeSection) && lifeCardNavigationExpanded && !sidebarCollapsed }">
+                <button type="button" class="dashboard-tab" :class="{ active: isLifeCardSection(activeSection) }" :aria-label="sidebarCollapsed ? '生命牌' : undefined" :title="sidebarCollapsed ? '生命牌' : undefined" :aria-current="isLifeCardSection(activeSection) ? 'page' : undefined" :aria-expanded="isLifeCardSection(activeSection) && lifeCardNavigationExpanded && !sidebarCollapsed" aria-controls="life-card-navigation" @click.stop="openLifeCardNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
+                <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isLifeCardSection(activeSection) && lifeCardNavigationExpanded && !sidebarCollapsed" id="life-card-navigation" class="dashboard-subnav" aria-label="生命牌子菜单">
+                  <button v-if="canAccessModule('life-cards')" class="dashboard-subtab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" @click="openLifeCardSubsection('life-cards')"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button>
+                  <button v-if="canAccessModule('life-card-views')" class="dashboard-subtab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" @click="openLifeCardSubsection('life-card-views')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
+                </nav></Transition>
+              </div>
+              <div v-if="isSuperAdmin || canAccessModule('settings')" class="dashboard-nav-group system-nav-group" :class="{ expanded: isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: isSystemSection(activeSection) }" :aria-label="sidebarCollapsed ? '系统管理' : undefined" :title="sidebarCollapsed ? '系统管理' : undefined" :aria-expanded="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" aria-controls="system-navigation" @click.stop="openSystemNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M8 14v6" /></svg><span>系统管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" id="system-navigation" class="dashboard-subnav" aria-label="系统管理子菜单">
                   <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" @click="openSystemSubsection('settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button>
-                  <button v-if="canAccessModule('life-cards')" class="dashboard-subtab" :class="{ active: activeSection === 'life-cards' }" :aria-current="activeSection === 'life-cards' ? 'page' : undefined" @click="openSystemSubsection('life-cards')"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="12" height="17" rx="1.5"/><path d="M18.5 6.5H20v14H8v-1.5M8 8h4M8 12h4"/></svg><span>生命牌文案</span></button>
-                  <button v-if="canAccessModule('life-card-views')" class="dashboard-subtab" :class="{ active: activeSection === 'life-card-views' }" :aria-current="activeSection === 'life-card-views' ? 'page' : undefined" @click="openSystemSubsection('life-card-views')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.2-6.5 8.5-6.5S20.5 12 20.5 12s-3.2 6.5-8.5 6.5S3.5 12 3.5 12Z"/><circle cx="12" cy="12" r="2.6"/></svg><span>生命牌查看</span></button>
+                  <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'status-machine' }" :aria-current="activeSection === 'status-machine' ? 'page' : undefined" @click="openSystemSubsection('status-machine')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.5 7.5l4.2 8.7M17.5 7.5l-4.2 8.7"/></svg><span>模块状态机</span></button>
                   <button v-if="isSuperAdmin" class="dashboard-subtab" :class="{ active: activeSection === 'employees' }" :aria-current="activeSection === 'employees' ? 'page' : undefined" @click="openSystemSubsection('employees')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>员工与权限</span></button>
                 </nav></Transition>
               </div>
             </div>
           </nav>
-          <div class="dashboard-nav-footer"><span class="admin-workspace-mark" aria-hidden="true">M</span><div><strong>管理工作空间</strong><small>{{ adminIdentity.roleLabel }}</small></div><span class="admin-workspace-dot" aria-hidden="true"></span></div>
+          <div class="sidebar-account-menu">
+            <button type="button" class="dashboard-nav-footer" :class="{ active: sidebarAccountMenuOpen }" :aria-expanded="sidebarAccountMenuOpen" aria-haspopup="menu" aria-controls="sidebar-account-menu" :aria-label="`管理工作空间，${adminIdentity.name}，${adminIdentity.roleLabel}`" @click="toggleSidebarAccountMenu">
+              <span class="admin-workspace-mark" aria-hidden="true"><img v-if="adminIdentity.avatarUrl" :src="adminIdentity.avatarUrl" alt="" /><span v-else>M</span></span>
+              <div class="admin-workspace-copy"><strong>管理工作空间</strong><small>{{ adminIdentity.roleLabel }}</small></div>
+              <span class="admin-workspace-dot" aria-hidden="true"></span>
+              <svg class="admin-workspace-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+            </button>
+            <div v-if="sidebarAccountMenuOpen" class="account-menu-backdrop" @click="closeAccountMenu"></div>
+            <div v-if="sidebarAccountMenuOpen" id="sidebar-account-menu" class="account-menu-panel sidebar-account-menu-panel" role="menu" aria-label="管理工作空间账号菜单">
+              <div class="account-menu-head">
+                <span class="account-menu-avatar">
+                  <img v-if="adminIdentity.avatarUrl" :src="adminIdentity.avatarUrl" alt="" />
+                  <span v-else aria-hidden="true">M</span>
+                </span>
+                <span class="account-menu-copy"><strong>{{ adminIdentity.name }}</strong><small>{{ adminIdentity.roleLabel }}</small></span>
+              </div>
+              <button type="button" class="account-menu-item" role="menuitem" @click="openProfileDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg><span>个人资料</span></button>
+              <button type="button" class="account-menu-item" role="menuitem" @click="openPasswordDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M5.5 11h13v9h-13z"/></svg><span>修改密码</span></button>
+              <button type="button" class="account-menu-item" role="menuitem" @click="logoutFromButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4.5H6.8A1.3 1.3 0 0 0 5.5 5.8v12.4a1.3 1.3 0 0 0 1.3 1.3h7.7M13.5 12H20m0 0-2.8-2.8M20 12l-2.8 2.8"/></svg><span>退出登录</span></button>
+            </div>
+          </div>
         </aside>
         <div class="dashboard-workspace">
           <header class="topbar">
@@ -5366,8 +6619,79 @@ onBeforeUnmount(() => {
             <div class="topbar-actions">
               <button type="button" class="quiet admin-command-trigger" aria-label="快捷导航" aria-keyshortcuts="Control+k Meta+k" @click="openCommandMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><span>快速前往</span><kbd>⌘ / Ctrl K</kbd></button>
               <button v-if="activeSection !== 'overview'" type="button" class="quiet admin-page-refresh" :disabled="currentPageRefreshing || dashboardLoading" :aria-busy="currentPageRefreshing" :aria-label="currentPageRefreshing ? '刷新中…' : '刷新页面'" title="刷新页面" @click="refreshCurrentPage"><svg :class="{ spinning: currentPageRefreshing }" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 11.5-1L20 9M4 15l2.5 3A7 7 0 0 0 18 17"/></svg><span>{{ currentPageRefreshing ? '刷新中…' : '刷新页面' }}</span></button>
-              <div class="account-menu">
-  <button type="button" class="account-avatar-button" :aria-expanded="accountMenuOpen" aria-haspopup="menu" :aria-label="`账号菜单，${adminIdentity.name}`" @click="accountMenuOpen = !accountMenuOpen">
+              <div class="admin-notification">
+                <button
+                  type="button"
+                  class="quiet admin-notification-trigger"
+                  :aria-expanded="notificationsOpen"
+                  aria-haspopup="dialog"
+                  :aria-label="notificationUnreadCount ? `通知，${notificationUnreadCount} 条未读` : '通知'"
+                  @click="toggleNotificationPanel"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 7-2.5 8.5h17C20.5 16 18 16 18 9Z"/><path d="M9.5 20a2.8 2.8 0 0 0 5 0"/></svg>
+                  <span v-if="notificationUnreadCount" class="admin-notification-badge">{{ notificationUnreadCount > 99 ? '99+' : notificationUnreadCount }}</span>
+                </button>
+                <div v-if="notificationsOpen" class="admin-notification-backdrop" @click="closeNotificationPanel"></div>
+                <section
+                  v-if="notificationsOpen"
+                  class="admin-notification-panel"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="admin-notification-title"
+                  @keydown.esc.stop="closeNotificationPanel"
+                >
+                  <header class="admin-notification-head">
+                    <div class="admin-notification-heading">
+                      <p class="eyebrow">USER ACTIVITY</p>
+                      <h2 id="admin-notification-title">
+                        通知
+                        <span v-if="notificationUnreadCount" class="admin-notification-count">{{ notificationUnreadCount > 99 ? '99+' : notificationUnreadCount }} 条未读</span>
+                        <span v-else class="admin-notification-count is-empty">全部已读</span>
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      class="quiet admin-notification-read-all"
+                      :disabled="notificationUnreadCount === 0 || notificationsMarkingAll || Boolean(notificationsMarkingId)"
+                      @click="markAllNotificationsRead"
+                    >
+                      {{ notificationsMarkingAll ? '处理中…' : '全部已读' }}
+                    </button>
+                  </header>
+                  <div class="admin-notification-body" aria-live="polite">
+                    <p v-if="notificationsLoading && notificationItems.length === 0" class="admin-notification-state">正在读取通知…</p>
+                    <p v-else-if="notificationsError && notificationItems.length === 0" class="admin-notification-state is-error" role="alert">{{ notificationsError }}</p>
+                    <p v-else-if="notificationItems.length === 0" class="admin-notification-state">
+                      <strong>还没有用户操作通知</strong>
+                      <span>新用户加入、保存观察或提交内容后，会在这里提醒你。</span>
+                    </p>
+                    <template v-else>
+                      <p v-if="notificationsError" class="admin-notification-inline-error" role="alert">{{ notificationsError }}</p>
+                      <div class="admin-notification-list">
+                        <button
+                          v-for="item in notificationItems"
+                          :key="item.id"
+                          type="button"
+                          class="admin-notification-item"
+                          :class="{ 'is-read': item.isRead, 'is-marking': notificationsMarkingId === item.id }"
+                          :aria-label="`${item.title}，${item.content}${item.isRead ? '，已读' : '，未读'}`"
+                          @click="markNotificationRead(item)"
+                        >
+                          <span class="admin-notification-dot" :class="{ 'is-read': item.isRead }" aria-hidden="true"></span>
+                          <span class="admin-notification-copy">
+                            <strong>{{ item.title }}</strong>
+                            <span>{{ item.content }}</span>
+                            <time :datetime="item.createdAt" :title="notificationExactTime(item.createdAt)">
+                              {{ notificationsMarkingId === item.id ? '正在标记已读…' : notificationTimeLabel(item.createdAt) }}
+                            </time>
+                          </span>
+                        </button>
+                      </div>
+                    </template>
+                  </div>
+                </section>
+              </div>              <div class="account-menu">
+  <button type="button" class="account-avatar-button" :aria-expanded="accountMenuOpen" aria-haspopup="menu" :aria-label="`账号菜单，${adminIdentity.name}`" @click="toggleAccountMenu">
     <img v-if="adminIdentity.avatarUrl" :src="adminIdentity.avatarUrl" alt="" />
     <span v-else aria-hidden="true">M</span>
   </button>
@@ -5452,7 +6776,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="overview-hero-actions">
             <button v-if="canAccessModule('journal')" type="button" @click="openJournalSubsection('journal-list')">期刊工作台 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-            <button v-if="canAccessModule('contributions')" type="button" class="quiet" @click="activeSection = 'contributions'; refreshDiscussionContributions()">审核用户经历</button>
+            <button v-if="canAccessModule('contributions')" type="button" class="quiet" @click="activeSection = 'contributions'; refreshDiscussionContributions()">管理讨论内容</button>
             <button v-if="canAccessModule('observations')" type="button" class="quiet" @click="activeSection = 'observations'; refreshObservations()">观察记录</button>
             <button v-if="isSuperAdmin" type="button" class="quiet" @click="activeSection = 'employees'; loadEmployees()">员工与权限</button>
             <span class="overview-sync-message" :class="{ 'has-error': Boolean(overviewSyncError) }" role="status">{{ dashboardLoading ? '正在同步最新数据' : overviewSyncError ? '数据同步未完成，请重试' : overviewUpdatedAt ? '更新于 ' + displayDate(overviewUpdatedAt) : '等待同步数据' }}</span>
@@ -5477,7 +6801,7 @@ onBeforeUnmount(() => {
 
           <article v-if="canAccessModule('contributions')" class="panel overview-metric">
             <div class="overview-metric-top"><p class="eyebrow">REVIEW / 经历审核</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h12v15H8zM4 7v14h12M11 10l2 2 4-4"/></svg></span></div>
-            <strong><AnimatedNumber :value="discussionContributionTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">条待审核</span></strong>
+            <strong><AnimatedNumber :value="discussionContributionSummary.pending" :loading="dashboardLoading" /><span class="overview-metric-unit">条待审核</span></strong>
             <p class="overview-metric-line">本期讨论里用户主动保存的经历</p>
             <small v-if="discussionContributions[0]">最近提交：{{ displayDate(discussionContributions[0].createdAt) }}</small>
             <small v-else>暂时没有待审核内容</small>
@@ -5509,66 +6833,43 @@ onBeforeUnmount(() => {
           </article>
 
           <article v-if="canAccessModule('audit')" class="panel overview-metric">
-            <div class="overview-metric-top"><p class="eyebrow">AUDIT / 操作审计</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"/></svg></span></div>
+            <div class="overview-metric-top"><p class="eyebrow">AUDIT / 操作记录</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"/></svg></span></div>
             <strong><AnimatedNumber :value="auditTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">条操作记录</span></strong>
             <p class="overview-metric-line">覆盖用户、管理员与系统动作</p>
             <small>{{ auditLogs[0] ? '最近动作 ' + displayDate(auditLogs[0].createdAt) : '暂无审计记录' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'audit'; refreshAudit()"><span>查看审计日志</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
+            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'audit'; refreshAudit()"><span>查看操作记录</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
           </article>
         </div>
 
-        <div class="overview-columns">
-          <section v-if="canAccessModule('audit')" class="panel overview-recent">
-            <div class="section-heading"><div><p class="eyebrow">RECENT ACTIVITY</p><h3>最近操作</h3></div><button type="button" class="quiet overview-audit-link" @click="activeSection = 'audit'; refreshAudit()">全部记录<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button></div>
-            <ul class="overview-list">
-              <li v-for="entry in auditLogs.slice(0, 6)" :key="entry.id">
-                <div><strong>{{ overviewAuditAction(entry.action) }}</strong><small>{{ entry.actorType === 'admin' ? '管理员' : entry.actorType === 'user' ? '用户' : '系统' }} · {{ overviewAuditResource(entry.resourceType) }}<template v-if="entry.resourceId"> · {{ entry.resourceId.slice(0, 8) }}</template></small></div>
-                <time :datetime="entry.createdAt">{{ displayDate(entry.createdAt) }}</time>
-              </li>
-            </ul>
-            <p v-if="!auditLogs.length" class="overview-activity-empty">{{ dashboardLoading ? '正在读取最近操作…' : '还没有操作记录，新的动态会出现在这里。' }}</p>
-          </section>
-
-          <section class="panel overview-access">
-            <div class="section-heading"><div><p class="eyebrow">ACCESS</p><h3>当前授权模块</h3></div><small>{{ adminModuleList.length }} / {{ adminModules.length }}</small></div>
-            <div class="overview-access-summary">
-              <svg class="overview-access-ring" viewBox="0 0 40 40" aria-hidden="true"><circle class="ring-track" cx="20" cy="20" r="16"/><circle class="ring-value" cx="20" cy="20" r="16" pathLength="100" :stroke-dasharray="`${adminModuleList.length / adminModules.length * 100} 100`"/></svg>
-              <div><strong>{{ adminModuleList.length }} <span class="overview-metric-unit">/ {{ adminModules.length }}</span></strong><small>个模块已授权，可在左侧导航访问</small></div>
-            </div>
-            <div class="overview-chips">
-              <span v-for="module in adminModules" :key="module.id" class="overview-chip" :class="{ granted: adminModuleList.includes(module.id) }"><svg v-if="adminModuleList.includes(module.id)" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>{{ module.label }}<span class="overview-visually-hidden">{{ adminModuleList.includes(module.id) ? '（已授权）' : '（未授权）' }}</span></span>
-            </div>
-            <p class="muted overview-access-note">模块授权由超级管理员在「员工与权限 → 授权模块」中按人调整，保存后立即生效。</p>
-          </section>
-        </div>
       </section>
       <section v-if="activeSection === 'content' && activeContentSection === 'journal-list'" id="journal-list" class="content-area">
         <div class="journal-list-layout">
           <aside class="panel issue-list-panel">
             <div class="section-heading"><h3>全部期次</h3><div class="issue-list-heading-actions"><small>{{ issues.length }} 期</small><button type="button" class="quiet" @click="startNewIssue">＋ 新建期刊</button></div></div>
-            <button v-for="item in issues" :key="item.id" type="button" class="issue-list-item" :class="{ active: editingIssueId === item.id }" @click="editIssue(item)"><strong>{{ item.label }} · {{ item.theme }}</strong><small>{{ item.month }} · {{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</small></button>
+            <button v-for="item in issues" :key="item.id" type="button" class="issue-list-item" :class="{ active: editingIssueId === item.id }" @click="editIssue(item)"><strong><RichTextView inline :text="item.label" :rich-text="item.labelRichText" /> · <RichTextView inline :text="item.theme" :rich-text="item.themeRichText" /></strong><small><RichTextView inline :text="item.month" :rich-text="item.monthRichText" /> · {{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</small></button>
             <p v-if="!issues.length" class="muted">还没有期刊。先新建一份草稿。</p>
             <details class="issue-live-home"><summary>当前线上首页 <span>v{{ home?.publishedVersion || 0 }}</span></summary>
-              <div v-if="home?.issue" class="issue-live-home-body"><strong>{{ home.issue.label }} · {{ home.issue.theme }}</strong><small>{{ home.issue.month }} · {{ home.issue.code }}</small>
-                <ol><li v-for="(module, index) in (home.modules || []).filter((item) => item.enabled)" :key="module.id"><span>{{ String(index + 1).padStart(2, '0') }}</span><div><strong>{{ issueModuleLabel(module) }}</strong><small>{{ issueModuleSummary(module) || '无摘要' }}</small></div></li></ol>
+              <div v-if="home?.issue" class="issue-live-home-body"><strong><RichTextView inline :text="home.issue.label" :rich-text="home.issue.labelRichText" /> · <RichTextView inline :text="home.issue.theme" :rich-text="home.issue.themeRichText" /></strong><small><RichTextView inline :text="home.issue.month" :rich-text="home.issue.monthRichText" /> · {{ home.issue.code }}</small>
+                <ol><li v-for="(module, index) in (home.modules || []).filter((item) => item.enabled)" :key="module.id"><span>{{ String(index + 1).padStart(2, '0') }}</span><div><strong>{{ issueModuleLabel(module) }}</strong><small><RichTextView inline :text="issueModuleSummary(module)" :rich-text="issueModuleSummaryRichText(module)" :fallback="'无摘要'" /></small></div></li></ol>
               </div><p v-else class="muted">当前没有已发布期刊。</p>
             </details>
           </aside>
           <div class="journal-list-main">
-            <form v-if="!editingIssueId" class="panel issue-editor-form journal-create-form" @submit.prevent="saveIssue">
+            <form v-if="!editingIssueId" class="panel issue-editor-form journal-create-form" novalidate @submit.prevent="saveIssue">
               <div class="section-heading"><div><p class="eyebrow">NEW ISSUE</p><h3>新建期刊草稿</h3></div><small>只在后台保存，不会立即上线</small></div>
-              <div class="form-grid"><label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" placeholder="例如：issue-03" /></label><label>期刊标签<input v-model="issueForm.label" required minlength="2" maxlength="80" placeholder="例如：第三期" /></label><label>刊期月份<input v-model="issueForm.month" required minlength="2" maxlength="40" placeholder="例如：2026 年 11 月" /></label></div>
-              <div class="form-grid issue-create-basics"><label>本期主题<input v-model="issueForm.theme" required minlength="2" maxlength="200" placeholder="例如：手指一根一根松开" /></label><label>本期问题<input v-model="issueForm.question" required minlength="2" maxlength="500" placeholder="留给本期观察的问题" /></label></div>
+              <div class="form-grid"><label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" placeholder="例如：issue-03" /></label><div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div><div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div></div>
+              <div class="form-grid issue-create-basics"><div><JournalRichTextField :model-value="issueForm.theme" :rich-text="issueForm.themeRichText" label="本期主题" @update:model-value="setIssueBaseField('theme', $event)" @update:rich-text="setIssueBaseRichText('theme', $event)" /></div><div><JournalRichTextField :model-value="issueForm.question" :rich-text="issueForm.questionRichText" label="本期问题" @update:model-value="setIssueBaseField('question', $event)" @update:rich-text="setIssueBaseRichText('question', $event)" /></div></div>
               <p class="field-help">创建后进入「首页策展」继续补充封面、人物、声音与讨论。这里填写的主题与问题会成为封面标题和「本期问题」栏目的初始值；这些模块共用同一份草稿。</p>
+              <p v-if="issueValidationMessage" class="error issue-validation-message" role="alert">{{ issueValidationMessage }}</p>
               <div class="form-actions"><button type="submit" :disabled="uploading">{{ uploading ? '创建中…' : '创建草稿并继续' }}</button><button type="button" class="quiet" @click="startNewIssue">清空</button></div>
             </form>
             <template v-else>
               <section class="panel journal-overview">
-                <div class="section-heading"><div><p class="eyebrow">CURRENT ISSUE</p><h3>{{ issueForm.label }} · {{ issueForm.month }}</h3></div><span class="journal-status-pill" :class="'is-' + issueForm.status">{{ journalIssueStatusLabel(issueForm.status) }}</span></div>
+                <div class="section-heading"><div><p class="eyebrow">CURRENT ISSUE</p><h3><RichTextView inline :text="issueForm.label" :rich-text="issueForm.labelRichText" /> · <RichTextView inline :text="issueForm.month" :rich-text="issueForm.monthRichText" /></h3></div><span class="journal-status-pill" :class="'is-' + issueForm.status">{{ journalIssueStatusLabel(issueForm.status) }}</span></div>
                 <div class="journal-overview-meta">
                   <div><small>期刊编号</small><strong>{{ issueForm.code }}</strong></div>
-                  <div><small>本期主题</small><strong>{{ journalCoverTitle || '尚未填写封面标题' }}</strong></div>
-                  <div><small>本期问题</small><strong>{{ journalQuestionTitle || '尚未填写问题栏目' }}</strong></div>
+                  <div><small>本期主题</small><strong><RichTextView inline :text="journalCoverTitle" :rich-text="journalCoverTitleRichText" fallback="尚未填写封面标题" /></strong></div>
+                  <div><small>本期问题</small><strong><RichTextView inline :text="journalQuestionTitle" :rich-text="journalQuestionTitleRichText" fallback="尚未填写问题栏目" /></strong></div>
                   <div><small>线上版本</small><strong>v{{ journalCurrentIssue?.publishedVersion || 0 }}</strong></div>
                   <div><small>草稿版本</small><strong>v{{ editingIssueEditVersion || 1 }}</strong></div>
                   <div><small>最近更新</small><strong>{{ displayDate(journalCurrentIssue?.updatedAt) }}</strong></div>
@@ -5588,6 +6889,7 @@ onBeforeUnmount(() => {
                 </div>
               </section>
               <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p>
+              <p v-if="issueValidationMessage" class="error issue-validation-message" role="alert">{{ issueValidationMessage }}</p>
               <p v-if="issueConflict" class="error" role="alert">{{ issueConflictResolved || '云端草稿已变化，请先载入最新版本核对后再保存。' }} <button type="button" class="quiet" :disabled="uploading" @click="rebaseIssueEdits">载入最新版本</button></p>
               <ol v-if="issueHistory.length" class="issue-history"><li v-for="item in issueHistory" :key="item.version"><details><summary>v{{ item.version }} · {{ displayDate(item.publishedAt) }} · {{ item.publishedBy || '系统' }}</summary><pre>{{ JSON.stringify(item.snapshot, null, 2) }}</pre></details></li></ol>
             </template>
@@ -5602,9 +6904,11 @@ onBeforeUnmount(() => {
                 :view="audioPreviewView"
                 :active-key="activeAudioKey"
                 :track-id="audioPreviewTrack?.id || ''"
-                :tracks="journalAudioTracks"
+                :tracks="audioPreviewTracks"
                 :title="String(journalAudioModule?.title || '')"
+                :title-rich-text="String(journalAudioModule?.titleRichText || '')"
                 :subtitle="String(journalAudioModule?.subtitle || '')"
+                :subtitle-rich-text="String(journalAudioModule?.subtitleRichText || '')"
                 :issue-code="String(issueForm.code || '')"
                 :media-urls="audioPreviewMediaUrls"
                 @pick="pickAudioKey"
@@ -5617,15 +6921,23 @@ onBeforeUnmount(() => {
                 :active-key="activeStoryDetailKey"
                 :issue-code="String(issueForm.code || '')"
                 :title="journalCoverTitle"
+                :title-rich-text="journalCoverTitleRichText"
                 :intro="storyDetailIntro"
+                :intro-rich-text="storyDetailIntroRichText"
                 :image-url="storyDetailImageUrl"
                 :alt-text="String(storyDetailModule?.altText || '')"
                 :caption-left="String(storyDetailModule?.detailCaptionLeft || storyDetailModule?.captionLeft || '')"
+                :caption-left-rich-text="String(storyDetailModule?.detailCaptionLeftRichText || storyDetailModule?.captionLeftRichText || '')"
                 :caption-right="String(storyDetailModule?.detailCaptionRight || '人物纪实')"
+                :caption-right-rich-text="String(storyDetailModule?.detailCaptionRightRichText || '')"
                 :source="String(storyDetailModule?.detailSource || '')"
+                :source-rich-text="String(storyDetailModule?.detailSourceRichText || '')"
                 :paragraph1="String(storyDetailModule?.detailParagraph1 || '')"
+                :paragraph1-rich-text="String(storyDetailModule?.detailParagraph1RichText || '')"
                 :paragraph2="String(storyDetailModule?.detailParagraph2 || '')"
+                :paragraph2-rich-text="String(storyDetailModule?.detailParagraph2RichText || '')"
                 :quote="String(storyDetailModule?.detailQuote || '')"
+                :quote-rich-text="String(storyDetailModule?.detailQuoteRichText || '')"
                 :official-article-url="String(storyDetailModule?.officialArticleUrl || '')"
                 @pick="pickStoryDetailKey"
                 @pick-from-home="editStoryHeadlineFromHome"
@@ -5635,20 +6947,25 @@ onBeforeUnmount(() => {
               <JournalHomePreview
                 :modules="issueForm.draftContent.sections"
                 :image-urls="issueModulePreviewUrls"
+                :background-image-url="homeBackgroundPreviewUrl"
                 :active-key="selectedIssueModuleId"
                 :issue-number="journalPreviewIssueNumber"
+                :issue-number-rich-text="journalPreviewIssueNumberRichText"
                 :issue-edition="journalPreviewIssueEdition"
+                :issue-edition-rich-text="journalPreviewIssueEditionRichText"
                 :question-fallback="issueForm.question"
+                :question-fallback-rich-text="issueForm.questionRichText"
                 :theme-fallback="issueForm.theme"
+                :theme-fallback-rich-text="issueForm.themeRichText"
                 @pick="focusIssueModule"
               />
             </template>
           </aside>
-          <form class="panel issue-editor-form journal-module-form" @submit.prevent="saveIssue" @focusin="focusModuleFromEditor">
+          <form class="panel issue-editor-form journal-module-form" novalidate @submit.prevent="saveIssue" @focusin="focusModuleFromEditor">
           <div class="journal-context">
             <div class="journal-context-copy">
               <p class="eyebrow">CURRENT ISSUE</p>
-              <strong>{{ issueForm.label || '未选择期刊' }}<span v-if="issueForm.month" class="journal-context-month">{{ issueForm.month }}</span></strong>
+              <strong><RichTextView inline :text="issueForm.label" :rich-text="issueForm.labelRichText" fallback="未选择期刊" /><span v-if="issueForm.month || issueForm.monthRichText" class="journal-context-month"><RichTextView inline :text="issueForm.month" :rich-text="issueForm.monthRichText" /></span></strong>
               <div class="journal-context-meta">
                 <span class="journal-status-pill" :class="'is-' + issueForm.status">{{ journalIssueStatusLabel(issueForm.status) }}</span>
                 <small>{{ issueForm.code || '未设置期号' }}</small>
@@ -5663,13 +6980,30 @@ onBeforeUnmount(() => {
           <template v-else>
             <section v-if="activeContentSection === 'journal-home'" class="journal-meta-panel">
               <div class="section-heading"><div><p class="eyebrow">ISSUE META</p><h3>刊期信息</h3></div><small>首页顶部显示</small></div>
-              <div class="form-grid"><label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" /></label><label>期刊标签<input v-model="issueForm.label" required minlength="2" maxlength="80" /></label><label>刊期月份<input v-model="issueForm.month" required minlength="2" maxlength="40" /></label></div>
+              <label>首页顶部介绍<input v-model="journalHomeIntroduction" maxlength="120" aria-describedby="home-introduction-help" /></label>
+              <p id="home-introduction-help" class="field-help">显示在首页品牌栏下方，最多 120 字。留空则隐藏；保存整份草稿并确认发布后生效。</p>
+              <div class="form-grid"><label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" /></label><div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div><div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div></div>
               <div class="journal-derived-grid">
-                <div><small>本期主题 · 取自封面标题</small><strong>{{ journalCoverTitle || '尚未填写' }}</strong><button type="button" class="quiet" :disabled="!journalCoverModule" @click="selectJournalModule(journalCoverModule)">去修改封面</button></div>
-                <div><small>本期问题 · 取自主页问题栏目</small><strong>{{ journalQuestionTitle || '尚未填写' }}</strong><button type="button" class="quiet" :disabled="!journalQuestionModule" @click="selectJournalModule(journalQuestionModule)">去修改问题</button></div>
+                <div><small>本期主题 · 取自封面标题</small><strong><RichTextView inline :text="journalCoverTitle" :rich-text="journalCoverTitleRichText" fallback="尚未填写" /></strong><button type="button" class="quiet" :disabled="!journalCoverModule" @click="selectJournalModule(journalCoverModule)">去修改封面</button></div>
+                <div><small>本期问题 · 取自主页问题栏目</small><strong><RichTextView inline :text="journalQuestionTitle" :rich-text="journalQuestionTitleRichText" fallback="尚未填写" /></strong><button type="button" class="quiet" :disabled="!journalQuestionModule" @click="selectJournalModule(journalQuestionModule)">去修改问题</button></div>
               </div>
-              <p class="field-help">主题与问题只保留一个来源：封面标题和「本期问题」栏目。这里只读展示，避免同一句话在两处维护后不一致。</p>
-              <p class="field-help">小程序首页第一栏固定排成三行：<strong>当期策展</strong> / 期刊标签 / 刊期月份 · A CURATED EDITION。英文月份缩写会自动展开为大写全称（Sep 2026 → SEPTEMBER 2026），中文写法原样保留。</p>
+            </section>
+            <section v-if="activeContentSection === 'journal-home'" class="journal-background-panel" aria-labelledby="home-background-title">
+              <div class="journal-background-thumb" :class="{ 'is-loading': homeBackgroundPreviewLoading }">
+                <img v-if="homeBackgroundPreviewUrl" :src="homeBackgroundPreviewUrl" alt="首页底图预览" />
+                <span v-else-if="homeBackgroundPreviewLoading">正在载入…</span>
+                <svg v-else class="journal-background-mark" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="7" width="32" height="34" rx="3"/><circle cx="18" cy="17" r="3"/><path d="m11 34 9-10 6 6 4-4 7 8"/></svg>
+              </div>
+              <div class="journal-background-copy">
+                <p class="eyebrow">HOME BACKGROUND</p>
+                <h3 id="home-background-title">首页底图</h3>
+              </div>
+              <div class="journal-background-actions">
+                <button type="button" :disabled="uploading || issueConflict || homeBackgroundPreviewLoading" @click="openHomeBackgroundPicker">{{ issueForm.homeBackgroundObjectKey ? '替换底图' : '上传底图' }}</button>
+                <button v-if="issueForm.homeBackgroundObjectKey" type="button" class="quiet" :disabled="uploading || issueConflict" @click="removeHomeBackground">移除</button>
+              </div>
+              <p v-if="homeBackgroundError" class="error" role="alert">{{ homeBackgroundError }}</p>
+              <input ref="homeBackgroundFileInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" @change="selectHomeBackgroundFile" />
             </section>
             <div v-if="activeContentSection === 'journal-story'" class="story-editor-tabs">
               <div class="story-editor-tab-group" role="tablist" aria-label="人物故事编辑页面">
@@ -5690,7 +7024,7 @@ onBeforeUnmount(() => {
               <div class="discussion-save-bar">
                 <div>
                   <strong>独立保存与发布</strong>
-                  <p class="field-help">这里只更新本期讨论页，不需要重发整期期刊。发布后小程序会读取新版讨论内容；用户经历仍需在「用户经历审核」中单独处理。</p>
+                  <p class="field-help">这里只更新本期讨论页，不需要重发整期期刊。发布后小程序会读取新版讨论内容；读者分享的发布、精华与用户限制仍在「讨论管理」中处理。</p>
                   <p v-if="discussionPageLoading" class="muted" role="status">正在读取本期讨论的独立草稿…</p>
                   <p v-else-if="discussionPagePublishedVersion" class="field-help">线上：第 {{ discussionPagePublishedVersion }} 版<span v-if="discussionPagePublishedAt"> · {{ displayDate(discussionPagePublishedAt) }}</span></p>
                   <p v-else class="field-help">线上尚未单独发布；小程序当前仍显示整期发布时的讨论内容。</p>
@@ -5703,39 +7037,39 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <div class="discussion-copy-grid">
-                <label>栏目序号<input v-model="issueForm.draftContent.discussion.copy.number" required maxlength="20" /></label>
-                <label>栏目眉题<input v-model="issueForm.draftContent.discussion.copy.kicker" required maxlength="200" /></label>
-                <label class="discussion-field-wide">期刊提示<input v-model="issueForm.draftContent.discussion.copy.issueLine" required maxlength="200" /></label>
-                <label class="discussion-field-wide">主标题<textarea v-model="issueForm.draftContent.discussion.copy.title" required rows="2" maxlength="2000" /></label>
-                <label class="discussion-field-wide">开场提问<textarea v-model="issueForm.draftContent.discussion.copy.intro" required rows="2" maxlength="2000" /></label>
-                <label>第一段<textarea v-model="issueForm.draftContent.discussion.copy.paragraph1" required rows="3" maxlength="2000" /></label>
-                <label>第二段<textarea v-model="issueForm.draftContent.discussion.copy.paragraph2" required rows="3" maxlength="2000" /></label>
-                <label class="discussion-field-wide">第三段<textarea v-model="issueForm.draftContent.discussion.copy.paragraph3" required rows="2" maxlength="2000" /></label>
-                <label>写入按钮<input v-model="issueForm.draftContent.discussion.copy.writeAction" required maxlength="2000" /></label>
-                <label>讨论区标题<input v-model="issueForm.draftContent.discussion.copy.voicesTitle" required maxlength="2000" /></label>
-                <label>示例标记<input v-model="issueForm.draftContent.discussion.copy.exampleBadge" required maxlength="2000" /></label>
-                <label class="discussion-field-wide">示例说明<textarea v-model="issueForm.draftContent.discussion.copy.exampleNotice" required rows="2" maxlength="2000" /></label>
-                <label>私密观察眉题<input v-model="issueForm.draftContent.discussion.copy.selfEyebrow" required maxlength="2000" /></label>
-                <label>私密观察标题<textarea v-model="issueForm.draftContent.discussion.copy.selfTitle" required rows="2" maxlength="2000" /></label>
-                <label class="discussion-field-wide">私密观察说明<textarea v-model="issueForm.draftContent.discussion.copy.selfBody" required rows="2" maxlength="2000" /></label>
-                <label>私密观察按钮<input v-model="issueForm.draftContent.discussion.copy.selfAction" required maxlength="2000" /></label>
-                <label class="discussion-field-wide">写作页标题<input v-model="issueForm.draftContent.discussion.copy.composeTitle" required maxlength="2000" /></label>
-                <label class="discussion-field-wide">写作页主标题<textarea v-model="issueForm.draftContent.discussion.copy.composeHeading" required rows="2" maxlength="2000" /></label>
-                <label>写作字段名称<input v-model="issueForm.draftContent.discussion.copy.composeFieldLabel" required maxlength="2000" /></label>
-                <label class="discussion-field-wide">输入提示<textarea v-model="issueForm.draftContent.discussion.copy.composePlaceholder" required rows="2" maxlength="2000" /></label>
-                <label>预览操作文字<input v-model="issueForm.draftContent.discussion.copy.composePreviewAction" required maxlength="2000" /></label>
-                <label>保存操作文字<input v-model="issueForm.draftContent.discussion.copy.composeSaveAction" required maxlength="2000" /></label>
-                <label>放弃操作文字<input v-model="issueForm.draftContent.discussion.copy.composeDiscardAction" required maxlength="2000" /></label>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.number" :rich-text="discussionCopyRichText('number')" label="栏目序号" @update:rich-text="setDiscussionCopyRichText('number', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.kicker" :rich-text="discussionCopyRichText('kicker')" label="栏目眉题" @update:rich-text="setDiscussionCopyRichText('kicker', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.issueLine" :rich-text="discussionCopyRichText('issueLine')" label="期刊提示" @update:rich-text="setDiscussionCopyRichText('issueLine', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.title" :rich-text="discussionCopyRichText('title')" label="主标题" @update:rich-text="setDiscussionCopyRichText('title', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.intro" :rich-text="discussionCopyRichText('intro')" label="开场提问" @update:rich-text="setDiscussionCopyRichText('intro', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.paragraph1" :rich-text="discussionCopyRichText('paragraph1')" label="第一段" @update:rich-text="setDiscussionCopyRichText('paragraph1', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.paragraph2" :rich-text="discussionCopyRichText('paragraph2')" label="第二段" @update:rich-text="setDiscussionCopyRichText('paragraph2', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.paragraph3" :rich-text="discussionCopyRichText('paragraph3')" label="第三段" @update:rich-text="setDiscussionCopyRichText('paragraph3', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.writeAction" :rich-text="discussionCopyRichText('writeAction')" label="写入按钮" @update:rich-text="setDiscussionCopyRichText('writeAction', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.voicesTitle" :rich-text="discussionCopyRichText('voicesTitle')" label="讨论区标题" @update:rich-text="setDiscussionCopyRichText('voicesTitle', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.exampleBadge" :rich-text="discussionCopyRichText('exampleBadge')" label="示例标记" @update:rich-text="setDiscussionCopyRichText('exampleBadge', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.exampleNotice" :rich-text="discussionCopyRichText('exampleNotice')" label="示例说明" @update:rich-text="setDiscussionCopyRichText('exampleNotice', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.selfEyebrow" :rich-text="discussionCopyRichText('selfEyebrow')" label="私密观察眉题" @update:rich-text="setDiscussionCopyRichText('selfEyebrow', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.selfTitle" :rich-text="discussionCopyRichText('selfTitle')" label="私密观察标题" @update:rich-text="setDiscussionCopyRichText('selfTitle', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.selfBody" :rich-text="discussionCopyRichText('selfBody')" label="私密观察说明" @update:rich-text="setDiscussionCopyRichText('selfBody', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.selfAction" :rich-text="discussionCopyRichText('selfAction')" label="私密观察按钮" @update:rich-text="setDiscussionCopyRichText('selfAction', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeTitle" :rich-text="discussionCopyRichText('composeTitle')" label="写作页标题" @update:rich-text="setDiscussionCopyRichText('composeTitle', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeHeading" :rich-text="discussionCopyRichText('composeHeading')" label="写作页主标题" @update:rich-text="setDiscussionCopyRichText('composeHeading', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeFieldLabel" :rich-text="discussionCopyRichText('composeFieldLabel')" label="写作字段名称" @update:rich-text="setDiscussionCopyRichText('composeFieldLabel', $event)" /></div>
+                <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composePlaceholder" :rich-text="discussionCopyRichText('composePlaceholder')" label="输入提示" @update:rich-text="setDiscussionCopyRichText('composePlaceholder', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composePreviewAction" :rich-text="discussionCopyRichText('composePreviewAction')" label="预览操作文字" @update:rich-text="setDiscussionCopyRichText('composePreviewAction', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeSaveAction" :rich-text="discussionCopyRichText('composeSaveAction')" label="保存操作文字" @update:rich-text="setDiscussionCopyRichText('composeSaveAction', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeDiscardAction" :rich-text="discussionCopyRichText('composeDiscardAction')" label="放弃操作文字" @update:rich-text="setDiscussionCopyRichText('composeDiscardAction', $event)" /></div>
               </div>
               <div class="discussion-thread-toolbar"><h4>读者经历与回应</h4><button type="button" class="quiet" :disabled="issueForm.draftContent.discussion.threads.length >= 20" @click="addDiscussionThread">＋ 添加示例经历</button></div>
               <article v-for="(thread, threadIndex) in issueForm.draftContent.discussion.threads" :key="thread.id" class="discussion-thread-editor">
                 <header><strong>{{ String(threadIndex + 1).padStart(2, '0') }} · 示例经历</strong><button type="button" class="quiet" :disabled="threadIndex === 0" aria-label="上移示例经历" @click="moveDiscussionThread(threadIndex, -1)">↑</button><button type="button" class="quiet" :disabled="threadIndex === issueForm.draftContent.discussion.threads.length - 1" aria-label="下移示例经历" @click="moveDiscussionThread(threadIndex, 1)">↓</button><button type="button" class="quiet danger" @click="removeDiscussionThread(threadIndex)">删除经历</button></header>
                 <label>示例称呼<input v-model="thread.author" required maxlength="40" /></label>
-                <label>经历正文<textarea v-model="thread.body" required rows="4" maxlength="4000" /></label>
+                <div><JournalRichTextField v-model="thread.body" v-model:rich-text="thread.bodyRichText" label="经历正文" /></div>
                 <div class="discussion-thread-toolbar"><strong>编辑回应</strong><button type="button" class="quiet" :disabled="thread.replies.length >= 20" @click="addDiscussionReply(threadIndex)">＋ 添加回应</button></div>
                 <div v-for="(reply, replyIndex) in thread.replies" :key="reply.id" class="discussion-reply-editor">
                   <div class="discussion-reply-toolbar"><label>回应署名<input v-model="reply.author" required maxlength="40" /></label><button type="button" class="quiet" :disabled="replyIndex === 0" aria-label="上移回应" @click="moveDiscussionReply(threadIndex, replyIndex, -1)">↑</button><button type="button" class="quiet" :disabled="replyIndex === thread.replies.length - 1" aria-label="下移回应" @click="moveDiscussionReply(threadIndex, replyIndex, 1)">↓</button><button type="button" class="quiet danger" @click="removeDiscussionReply(threadIndex, replyIndex)">删除回应</button></div>
-                  <label>回应正文<textarea v-model="reply.body" required rows="3" maxlength="4000" /></label>
+                  <div><JournalRichTextField v-model="reply.body" v-model:rich-text="reply.bodyRichText" label="回应正文" /></div>
                 </div>
               </article>
               <details class="issue-preview-disclosure discussion-live-preview">
@@ -5743,29 +7077,29 @@ onBeforeUnmount(() => {
                 <div class="discussion-phone-preview">
                   <header><span>‹</span><strong>本期讨论</strong><span>···</span></header>
                   <div class="discussion-phone-body">
-                    <small>{{ issueForm.draftContent.discussion.copy.number }}　{{ issueForm.draftContent.discussion.copy.kicker }}</small>
-                    <p class="discussion-phone-issue">{{ issueForm.draftContent.discussion.copy.issueLine }}</p>
-                    <h3>{{ issueForm.draftContent.discussion.copy.title }}</h3><p>{{ issueForm.draftContent.discussion.copy.intro }}</p>
-                    <p>{{ issueForm.draftContent.discussion.copy.paragraph1 }}</p><p>{{ issueForm.draftContent.discussion.copy.paragraph2 }}</p><p>{{ issueForm.draftContent.discussion.copy.paragraph3 }}</p>
-                    <div class="discussion-phone-link">{{ issueForm.draftContent.discussion.copy.writeAction }} <span>↗</span></div>
-                    <section v-for="thread in issueForm.draftContent.discussion.threads" :key="thread.id"><small>{{ thread.author }}　示例</small><p>{{ thread.body }}</p><article v-for="reply in thread.replies" :key="reply.id"><small>{{ reply.author }} · 示例</small><p>{{ reply.body }}</p></article></section>
-                    <section><small>{{ issueForm.draftContent.discussion.copy.selfEyebrow }}</small><h3>{{ issueForm.draftContent.discussion.copy.selfTitle }}</h3><p>{{ issueForm.draftContent.discussion.copy.selfBody }}</p></section>
+                    <small><RichTextView inline :text="discussionCopyText('number')" :rich-text="discussionCopyRichText('number')" />　<RichTextView inline :text="discussionCopyText('kicker')" :rich-text="discussionCopyRichText('kicker')" /></small>
+                    <p class="discussion-phone-issue"><RichTextView inline :text="discussionCopyText('issueLine')" :rich-text="discussionCopyRichText('issueLine')" /></p>
+                    <h3><RichTextView inline :text="discussionCopyText('title')" :rich-text="discussionCopyRichText('title')" /></h3><p><RichTextView inline :text="discussionCopyText('intro')" :rich-text="discussionCopyRichText('intro')" /></p>
+                    <p><RichTextView inline :text="discussionCopyText('paragraph1')" :rich-text="discussionCopyRichText('paragraph1')" /></p><p><RichTextView inline :text="discussionCopyText('paragraph2')" :rich-text="discussionCopyRichText('paragraph2')" /></p><p><RichTextView inline :text="discussionCopyText('paragraph3')" :rich-text="discussionCopyRichText('paragraph3')" /></p>
+                    <div class="discussion-phone-link"><RichTextView inline :text="discussionCopyText('writeAction')" :rich-text="discussionCopyRichText('writeAction')" /> <span>↗</span></div>
+                    <section v-for="thread in issueForm.draftContent.discussion.threads" :key="thread.id"><small>{{ thread.author }}　示例</small><RichTextView :text="thread.body" :rich-text="thread.bodyRichText || ''" /><article v-for="reply in thread.replies" :key="reply.id"><small>{{ reply.author }} · 示例</small><RichTextView :text="reply.body" :rich-text="reply.bodyRichText || ''" /></article></section>
+                    <section><small><RichTextView inline :text="discussionCopyText('selfEyebrow')" :rich-text="discussionCopyRichText('selfEyebrow')" /></small><h3><RichTextView inline :text="discussionCopyText('selfTitle')" :rich-text="discussionCopyRichText('selfTitle')" /></h3><p><RichTextView inline :text="discussionCopyText('selfBody')" :rich-text="discussionCopyRichText('selfBody')" /></p></section>
                   </div>
                 </div>
               </details>
               <details class="issue-preview-disclosure discussion-live-preview">
                 <summary><span>写作页面手机预览</span><span>草稿文案预览，不会发布</span></summary>
                 <div class="discussion-phone-preview discussion-compose-phone-preview">
-                  <header><span>‹</span><strong>{{ issueForm.draftContent.discussion.copy.composeTitle }}</strong><span>···</span></header>
+                  <header><span>‹</span><strong><RichTextView inline :text="discussionCopyText('composeTitle')" :rich-text="discussionCopyRichText('composeTitle')" /></strong><span>···</span></header>
                   <div class="discussion-phone-body">
-                    <small>{{ issueForm.draftContent.discussion.copy.number }}　{{ issueForm.draftContent.discussion.copy.composeTitle }}</small>
-                    <h3>{{ issueForm.draftContent.discussion.copy.composeHeading }}</h3>
-                    <p>{{ issueForm.draftContent.discussion.copy.intro }}</p>
-                    <div class="discussion-compose-preview-label">{{ issueForm.draftContent.discussion.copy.composeFieldLabel }}</div>
-                    <div class="discussion-compose-preview-input">{{ issueForm.draftContent.discussion.copy.composePlaceholder }}</div>
+                    <small><RichTextView inline :text="discussionCopyText('number')" :rich-text="discussionCopyRichText('number')" />　<RichTextView inline :text="discussionCopyText('composeTitle')" :rich-text="discussionCopyRichText('composeTitle')" /></small>
+                    <h3><RichTextView inline :text="discussionCopyText('composeHeading')" :rich-text="discussionCopyRichText('composeHeading')" /></h3>
+                    <p><RichTextView inline :text="discussionCopyText('intro')" :rich-text="discussionCopyRichText('intro')" /></p>
+                    <div class="discussion-compose-preview-label"><RichTextView inline :text="discussionCopyText('composeFieldLabel')" :rich-text="discussionCopyRichText('composeFieldLabel')" /></div>
+                    <div class="discussion-compose-preview-input"><RichTextView inline :text="discussionCopyText('composePlaceholder')" :rich-text="discussionCopyRichText('composePlaceholder')" /></div>
                     <div class="discussion-compose-preview-count">0 / 2000</div>
-                    <div class="discussion-phone-link">{{ issueForm.draftContent.discussion.copy.composePreviewAction }} <span>→</span></div>
-                    <div class="discussion-compose-preview-actions"><span>{{ issueForm.draftContent.discussion.copy.composeSaveAction }}</span><span>{{ issueForm.draftContent.discussion.copy.composeDiscardAction }}</span></div>
+                    <div class="discussion-phone-link"><RichTextView inline :text="discussionCopyText('composePreviewAction')" :rich-text="discussionCopyRichText('composePreviewAction')" /> <span>→</span></div>
+                    <div class="discussion-compose-preview-actions"><span><RichTextView inline :text="discussionCopyText('composeSaveAction')" :rich-text="discussionCopyRichText('composeSaveAction')" /></span><span><RichTextView inline :text="discussionCopyText('composeDiscardAction')" :rich-text="discussionCopyRichText('composeDiscardAction')" /></span></div>
                   </div>
                 </div>
               </details>
@@ -5775,13 +7109,13 @@ onBeforeUnmount(() => {
               <div class="section-heading"><div><p class="eyebrow">STORY DETAIL</p><h3>人物故事详情页</h3></div><small>小程序 pages/story-detail</small></div>
               <template v-if="storyDetailModule">
                 <div class="form-grid">
-                  <label data-story-field="caption-left">详情图片左侧说明<input :value="String(storyDetailModule.detailCaptionLeft || '')" maxlength="160" placeholder="留空时用首页卡片的图片左侧说明" @input="setIssueModuleText(storyDetailModule, 'detailCaptionLeft', $event)" /></label>
-                  <label data-story-field="caption-right">详情图片右侧说明<input :value="String(storyDetailModule.detailCaptionRight || '')" maxlength="160" placeholder="留空时为「人物纪实」" @input="setIssueModuleText(storyDetailModule, 'detailCaptionRight', $event)" /></label>
-                  <label data-story-field="source">文章来源说明<input :value="String(storyDetailModule.detailSource || '')" maxlength="500" placeholder="原载于 MYRIAD SHE 公众号 · 小程序策展节选" @input="setIssueModuleText(storyDetailModule, 'detailSource', $event)" /></label>
+                  <div data-story-field="caption-left"><JournalRichTextField :model-value="issueModuleString(storyDetailModule, 'detailCaptionLeft')" :rich-text="issueModuleString(storyDetailModule, 'detailCaptionLeftRichText')" label="详情图片左侧说明" @update:model-value="setIssueModuleString(storyDetailModule, 'detailCaptionLeft', $event)" @update:rich-text="setIssueModuleString(storyDetailModule, 'detailCaptionLeftRichText', $event)" /></div>
+                  <div data-story-field="caption-right"><JournalRichTextField :model-value="issueModuleString(storyDetailModule, 'detailCaptionRight')" :rich-text="issueModuleString(storyDetailModule, 'detailCaptionRightRichText')" label="详情图片右侧说明" @update:model-value="setIssueModuleString(storyDetailModule, 'detailCaptionRight', $event)" @update:rich-text="setIssueModuleString(storyDetailModule, 'detailCaptionRightRichText', $event)" /></div>
+                  <div data-story-field="source"><JournalRichTextField :model-value="issueModuleString(storyDetailModule, 'detailSource')" :rich-text="issueModuleString(storyDetailModule, 'detailSourceRichText')" label="文章来源说明" @update:model-value="setIssueModuleString(storyDetailModule, 'detailSource', $event)" @update:rich-text="setIssueModuleString(storyDetailModule, 'detailSourceRichText', $event)" /></div>
                   <label data-story-field="article-url">公众号文章链接<input type="url" :value="String(storyDetailModule.officialArticleUrl || '')" maxlength="2048" placeholder="https://mp.weixin.qq.com/s/..." @input="setIssueModuleText(storyDetailModule, 'officialArticleUrl', $event)" /></label>
-                  <label data-story-field="paragraph1">故事正文第一段<textarea :value="String(storyDetailModule.detailParagraph1 || '')" rows="5" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailParagraph1', $event)" /></label>
-                  <label data-story-field="paragraph2">故事正文第二段<textarea :value="String(storyDetailModule.detailParagraph2 || '')" rows="5" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailParagraph2', $event)" /></label>
-                  <label data-story-field="quote">结尾引言<textarea :value="String(storyDetailModule.detailQuote || '')" rows="3" maxlength="6000" @input="setIssueModuleText(storyDetailModule, 'detailQuote', $event)" /></label>
+                  <div data-story-field="paragraph1"><JournalRichTextField :model-value="issueModuleString(storyDetailModule, 'detailParagraph1')" :rich-text="issueModuleString(storyDetailModule, 'detailParagraph1RichText')" label="故事正文第一段" @update:model-value="setIssueModuleString(storyDetailModule, 'detailParagraph1', $event)" @update:rich-text="setIssueModuleString(storyDetailModule, 'detailParagraph1RichText', $event)" /></div>
+                  <div data-story-field="paragraph2"><JournalRichTextField :model-value="issueModuleString(storyDetailModule, 'detailParagraph2')" :rich-text="issueModuleString(storyDetailModule, 'detailParagraph2RichText')" label="故事正文第二段" @update:model-value="setIssueModuleString(storyDetailModule, 'detailParagraph2', $event)" @update:rich-text="setIssueModuleString(storyDetailModule, 'detailParagraph2RichText', $event)" /></div>
+                  <div data-story-field="quote"><JournalRichTextField :model-value="issueModuleString(storyDetailModule, 'detailQuote')" :rich-text="issueModuleString(storyDetailModule, 'detailQuoteRichText')" label="结尾引言" @update:model-value="setIssueModuleString(storyDetailModule, 'detailQuote', $event)" @update:rich-text="setIssueModuleString(storyDetailModule, 'detailQuoteRichText', $event)" /></div>
                 </div>
               </template>
               <p v-else class="field-help">这一期还没有「人物纪实」栏目，先到「首页策展」补一个再回来。</p>
@@ -5789,31 +7123,31 @@ onBeforeUnmount(() => {
 <div v-if="activeContentSection !== 'journal-discussion' && (activeContentSection !== 'journal-story' || storyEditorTab === 'home')" class="issue-module-list"><article v-for="(module, index) in issueForm.draftContent.sections" v-show="selectedIssueModuleId === module.id && isIssueModuleVisibleInJournalSection(module)" :key="module.id" :data-issue-module="module.id" class="issue-module-card">
               <header><span>{{ String(index + 1).padStart(2, '0') }} · {{ issueModuleLabel(module) }}</span><label class="issue-module-toggle"><input v-model="module.enabled" type="checkbox" />启用</label><button type="button" class="quiet" :disabled="index === 0" aria-label="上移栏目" @click="moveIssueModule(index, -1)">↑</button><button type="button" class="quiet" :disabled="index === issueForm.draftContent.sections.length - 1" aria-label="下移栏目" @click="moveIssueModule(index, 1)">↓</button><button v-if="!['issueMeta','coverStory','cover','opener','question','observationAction','sharedPracticeAction'].includes(module.type)" type="button" class="quiet danger" aria-label="删除栏目" @click="removeIssueModule(index)">删除</button></header>
               <div v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'" class="form-grid"><label v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'">上传 / 替换图片<input type="file" accept="image/jpeg,image/png,image/webp" @change="selectIssueModuleFile(module, $event)" /></label><label>图片对象路径<input :value="String(module.imageObjectKey || '')" placeholder="content/image/..." @input="setIssueModuleText(module, 'imageObjectKey', $event)" /></label><label>图片替代文本<input :value="String(module.altText || '')" @input="setIssueModuleText(module, 'altText', $event)" /></label></div>
-              <label v-if="module.type === 'coverStory' || module.type === 'story'">{{ module.type === 'coverStory' ? '本期主题标题' : '人物引言' }}（换行会保留）<textarea :value="String(module.title || '')" rows="2" maxlength="500" @input="setIssueModuleText(module, 'title', $event)" /></label>
-              <label v-else-if="module.type === 'contents'">目录标题<input :value="String(module.title || '')" maxlength="500" @input="setIssueModuleText(module, 'title', $event)" /></label>
-              <label v-else-if="module.type === 'archive'">档案区标题<input :value="String(module.title || '')" maxlength="500" @input="setIssueModuleText(module, 'title', $event)" /></label>
-              <label v-else-if="module.type !== 'issueMeta' && module.type !== 'audio'">标题 / 引言<input :value="String(module.title || '')" maxlength="500" @input="setIssueModuleText(module, 'title', $event)" /></label>
-              <label v-if="module.type === 'issueMeta' || module.type === 'coverStory' || module.type === 'story' || module.type === 'question'">栏目眉题<input :value="String(module.eyebrow || '')" @input="setIssueModuleText(module, 'eyebrow', $event)" /></label>
-              <div v-if="module.type === 'story'" class="form-grid"><label>图片左侧说明<input :value="String(module.captionLeft || '')" maxlength="160" @input="setIssueModuleText(module, 'captionLeft', $event)" /></label><label>图片右侧说明<input :value="String(module.captionRight || '')" maxlength="160" @input="setIssueModuleText(module, 'captionRight', $event)" /></label></div>
+              <div v-if="module.type === 'coverStory' || module.type === 'story'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="标题 / 人物引言" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
+              <div v-else-if="module.type === 'contents'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="目录标题" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
+              <div v-else-if="module.type === 'archive'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="档案区标题" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
+              <div v-else-if="module.type !== 'issueMeta' && module.type !== 'audio'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="标题 / 引言" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
+              <div v-if="module.type === 'issueMeta' || module.type === 'coverStory' || module.type === 'story' || module.type === 'question'"><div><JournalRichTextField :model-value="issueModuleString(module, 'eyebrow')" :rich-text="issueModuleString(module, 'eyebrowRichText')" label="栏目眉题" @update:model-value="setIssueModuleString(module, 'eyebrow', $event)" @update:rich-text="setIssueModuleString(module, 'eyebrowRichText', $event)" /></div></div>
+              <div v-if="module.type === 'story'" class="form-grid"><div><JournalRichTextField :model-value="issueModuleString(module, 'captionLeft')" :rich-text="issueModuleString(module, 'captionLeftRichText')" label="图片左侧说明" @update:model-value="setIssueModuleString(module, 'captionLeft', $event)" @update:rich-text="setIssueModuleString(module, 'captionLeftRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'captionRight')" :rich-text="issueModuleString(module, 'captionRightRichText')" label="图片右侧说明" @update:model-value="setIssueModuleString(module, 'captionRight', $event)" @update:rich-text="setIssueModuleString(module, 'captionRightRichText', $event)" /></div></div>
               <button v-if="module.type === 'story'" type="button" class="quiet story-card-detail-link" @click="setStoryEditorTab('detail')">编辑详情页正文 →</button>
               <div v-if="module.type === 'storyAction'" class="form-grid"><label>跳转目标栏目<input :value="String(module.targetId || 'story')" maxlength="64" @input="setIssueModuleText(module, 'targetId', $event)" /></label></div>
-              <label v-if="module.type === 'issueMeta'">月份文字<input :value="String(module.month || '')" @input="setIssueModuleText(module, 'month', $event)" /></label>
-              <label v-if="module.body !== undefined || ['coverStory','opener','story','question','observationAction','sharedPracticeAction','brandFooter'].includes(module.type)">{{ module.type === 'coverStory' ? '主题说明' : '正文 / 说明' }}<textarea :value="String(module.body || '')" rows="4" maxlength="6000" @input="setIssueModuleText(module, 'body', $event)" /></label>
-              <details v-if="module.type === 'contents'" class="issue-module-details"><summary>编辑四条目录内容</summary><div class="form-grid"><label>01 栏目<input :value="String(module.entry1Label || '')" maxlength="80" @input="setIssueModuleText(module, 'entry1Label', $event)" /></label><label>01 说明<input :value="String(module.entry1Summary || '')" maxlength="160" @input="setIssueModuleText(module, 'entry1Summary', $event)" /></label><label>02 栏目<input :value="String(module.entry2Label || '')" maxlength="80" @input="setIssueModuleText(module, 'entry2Label', $event)" /></label><label>02 说明<input :value="String(module.entry2Summary || '')" maxlength="160" @input="setIssueModuleText(module, 'entry2Summary', $event)" /></label><label>03 栏目<input :value="String(module.entry3Label || '')" maxlength="80" @input="setIssueModuleText(module, 'entry3Label', $event)" /></label><label>03 说明<input :value="String(module.entry3Summary || '')" maxlength="160" @input="setIssueModuleText(module, 'entry3Summary', $event)" /></label><label>04 栏目<input :value="String(module.entry4Label || '')" maxlength="80" @input="setIssueModuleText(module, 'entry4Label', $event)" /></label><label>04 说明<input :value="String(module.entry4Summary || '')" maxlength="160" @input="setIssueModuleText(module, 'entry4Summary', $event)" /></label></div><p class="field-help">四项分别链接到人物、微声音、观察和共同实践；目标由小程序固定，不接收自定义路由。</p></details>
-              <details v-if="module.type === 'archive'" class="issue-module-details"><summary>编辑策展条目</summary><div class="form-grid"><label>刊期说明<input :value="String(module.entryLabel || '')" maxlength="160" @input="setIssueModuleText(module, 'entryLabel', $event)" /></label><label>档案标题<input :value="String(module.entryTitle || '')" maxlength="160" @input="setIssueModuleText(module, 'entryTitle', $event)" /></label></div><p class="field-help">当前只展示档案预告；旧期详情入口尚未开放。</p></details>
+              <div v-if="module.type === 'issueMeta'"><div><JournalRichTextField :model-value="issueModuleString(module, 'month')" :rich-text="issueModuleString(module, 'monthRichText')" label="月份文字" @update:model-value="setIssueModuleString(module, 'month', $event)" @update:rich-text="setIssueModuleString(module, 'monthRichText', $event)" /></div></div>
+              <div v-if="module.body !== undefined || ['coverStory','opener','story','question','observationAction','sharedPracticeAction','brandFooter'].includes(module.type)"><div><JournalRichTextField :model-value="issueModuleString(module, 'body')" :rich-text="issueModuleString(module, 'bodyRichText')" label="正文 / 说明" @update:model-value="setIssueModuleString(module, 'body', $event)" @update:rich-text="setIssueModuleString(module, 'bodyRichText', $event)" /></div></div>
+              <details v-if="module.type === 'contents'" class="issue-module-details"><summary>编辑四条目录内容</summary><div class="form-grid"><div><JournalRichTextField :model-value="issueModuleString(module, 'entry1Label')" :rich-text="issueModuleString(module, 'entry1LabelRichText')" label="01 栏目" @update:model-value="setIssueModuleString(module, 'entry1Label', $event)" @update:rich-text="setIssueModuleString(module, 'entry1LabelRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entry1Summary')" :rich-text="issueModuleString(module, 'entry1SummaryRichText')" label="01 说明" @update:model-value="setIssueModuleString(module, 'entry1Summary', $event)" @update:rich-text="setIssueModuleString(module, 'entry1SummaryRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entry2Label')" :rich-text="issueModuleString(module, 'entry2LabelRichText')" label="02 栏目" @update:model-value="setIssueModuleString(module, 'entry2Label', $event)" @update:rich-text="setIssueModuleString(module, 'entry2LabelRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entry2Summary')" :rich-text="issueModuleString(module, 'entry2SummaryRichText')" label="02 说明" @update:model-value="setIssueModuleString(module, 'entry2Summary', $event)" @update:rich-text="setIssueModuleString(module, 'entry2SummaryRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entry3Label')" :rich-text="issueModuleString(module, 'entry3LabelRichText')" label="03 栏目" @update:model-value="setIssueModuleString(module, 'entry3Label', $event)" @update:rich-text="setIssueModuleString(module, 'entry3LabelRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entry3Summary')" :rich-text="issueModuleString(module, 'entry3SummaryRichText')" label="03 说明" @update:model-value="setIssueModuleString(module, 'entry3Summary', $event)" @update:rich-text="setIssueModuleString(module, 'entry3SummaryRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entry4Label')" :rich-text="issueModuleString(module, 'entry4LabelRichText')" label="04 栏目" @update:model-value="setIssueModuleString(module, 'entry4Label', $event)" @update:rich-text="setIssueModuleString(module, 'entry4LabelRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entry4Summary')" :rich-text="issueModuleString(module, 'entry4SummaryRichText')" label="04 说明" @update:model-value="setIssueModuleString(module, 'entry4Summary', $event)" @update:rich-text="setIssueModuleString(module, 'entry4SummaryRichText', $event)" /></div></div><p class="field-help">四项分别链接到人物、微声音、观察和共同实践；目标由小程序固定，不接收自定义路由。</p></details>
+              <details v-if="module.type === 'archive'" class="issue-module-details"><summary>编辑策展条目</summary><div class="form-grid"><div><JournalRichTextField :model-value="issueModuleString(module, 'entryLabel')" :rich-text="issueModuleString(module, 'entryLabelRichText')" label="刊期说明" @update:model-value="setIssueModuleString(module, 'entryLabel', $event)" @update:rich-text="setIssueModuleString(module, 'entryLabelRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'entryTitle')" :rich-text="issueModuleString(module, 'entryTitleRichText')" label="档案标题" @update:model-value="setIssueModuleString(module, 'entryTitle', $event)" @update:rich-text="setIssueModuleString(module, 'entryTitleRichText', $event)" /></div></div><p class="field-help">当前只展示档案预告；旧期详情入口尚未开放。</p></details>
               <div v-if="module.type === 'coverStory'" class="form-grid cover-story-typography"><label>主题标题字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.titleFontSize || 72)" @input="setIssueModuleText(module, 'titleFontSize', $event)" /></label><label>主题标题颜色<input type="color" :value="String(module.titleColor || '#59483d')" @input="setIssueModuleText(module, 'titleColor', $event)" /></label><label>主题说明字号（rpx）<input type="number" min="20" max="120" step="1" :value="Number(module.bodyFontSize || 30)" @input="setIssueModuleText(module, 'bodyFontSize', $event)" /></label><label>主题说明颜色<input type="color" :value="String(module.bodyColor || '#40362f')" @input="setIssueModuleText(module, 'bodyColor', $event)" /></label></div>
-              <div v-if="module.type === 'coverStory'" class="form-grid"><label>封面左侧说明<input :value="String(module.captionLeft || '')" @input="setIssueModuleText(module, 'captionLeft', $event)" /></label><label>封面右侧说明<input :value="String(module.captionRight || '')" @input="setIssueModuleText(module, 'captionRight', $event)" /></label><label>策展署名<input :value="String(module.byline || '')" @input="setIssueModuleText(module, 'byline', $event)" /></label></div>
+              <div v-if="module.type === 'coverStory'" class="form-grid"><div><JournalRichTextField :model-value="issueModuleString(module, 'captionLeft')" :rich-text="issueModuleString(module, 'captionLeftRichText')" label="封面左侧说明" @update:model-value="setIssueModuleString(module, 'captionLeft', $event)" @update:rich-text="setIssueModuleString(module, 'captionLeftRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'captionRight')" :rich-text="issueModuleString(module, 'captionRightRichText')" label="封面右侧说明" @update:model-value="setIssueModuleString(module, 'captionRight', $event)" @update:rich-text="setIssueModuleString(module, 'captionRightRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'byline')" :rich-text="issueModuleString(module, 'bylineRichText')" label="策展署名" @update:model-value="setIssueModuleString(module, 'byline', $event)" @update:rich-text="setIssueModuleString(module, 'bylineRichText', $event)" /></div></div>
               <section v-if="module.type === 'audio'" class="issue-audio-editor" @focusin="focusAudioField">
-                <p class="field-help">可添加 1–3 段，每段可以是声音或视频；至少 1 段有可播放文件即可。视频建议使用 MP4（H.264），单个文件不超过 200 MB。发布后小程序才会显示更新。</p>
+                <p class="field-help">最多可添加 20 段，每段可以是声音或视频；至少 1 段有可播放文件即可。每段可配置最多 8 个详情页操作模块（小程序页面、网站或分享）。视频建议使用 MP4（H.264），单个文件不超过 200 MB。发布后小程序才会显示更新。</p>
                 <div class="form-grid">
-                  <label data-audio-field="hero:title">列表页标题<input :value="String(module.title || '')" maxlength="120" placeholder="默认显示「微声音」" @input="setIssueModuleText(module, 'title', $event)" /></label>
-                  <label data-audio-field="hero:subtitle">列表页副标题<input :value="String(module.subtitle || '')" maxlength="160" placeholder="留空时使用第一段的副标题" @input="setIssueModuleText(module, 'subtitle', $event)" /></label>
+                  <div data-audio-field="hero:title"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="列表页标题" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
+                  <div data-audio-field="hero:subtitle"><div><JournalRichTextField :model-value="issueModuleString(module, 'subtitle')" :rich-text="issueModuleString(module, 'subtitleRichText')" label="列表页副标题" @update:model-value="setIssueModuleString(module, 'subtitle', $event)" @update:rich-text="setIssueModuleString(module, 'subtitleRichText', $event)" /></div></div>
                 </div>
                 <article v-for="(track, trackIndex) in issueAudioTracks(module)" :key="track.id" :data-audio-track="track.id" class="issue-audio-track">
                   <header><strong>{{ trackIndex === 0 ? '主微声音' : `更多微声音 ${String(trackIndex + 1).padStart(2, '0')}` }}</strong><span class="issue-audio-kind">{{ track.mediaType === 'video' ? '视频' : '声音' }}</span><button v-if="trackIndex > 0" type="button" class="quiet danger" :disabled="uploading" @click="removeIssueAudioTrack(module, trackIndex)">移除</button></header>
                   <div class="form-grid">
                     <label :data-audio-field="`track:${track.id}:type`">媒体类型<select :value="track.mediaType" :disabled="uploading" @change="setIssueAudioTrackMediaType(track, module, $event)"><option value="audio">声音</option><option value="video">视频</option></select></label>
-                    <label :data-audio-field="`track:${track.id}:title`">列表标题<input :value="track.title" maxlength="120" @input="setIssueAudioTrackText(track, 'title', $event)" /></label>
+                    <div :data-audio-field="`track:${track.id}:title`"><JournalRichTextField :model-value="issueAudioTrackString(track, 'title')" :rich-text="track.titleRichText || ''" label="列表标题" @update:model-value="setIssueAudioTrackPlainText(track, 'title', $event)" @update:rich-text="setIssueAudioTrackRichText(track, 'title', $event)" /></div>
                     <label :data-audio-field="`track:${track.id}:duration`">时长文字<input :value="track.duration" maxlength="20" placeholder="01:12" @input="setIssueAudioTrackText(track, 'duration', $event)" /></label>
                     <label :data-audio-field="`track:${track.id}:file`">上传 / 替换{{ track.mediaType === 'video' ? '视频' : '音频' }}<input type="file" :accept="track.mediaType === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'audio/mpeg,audio/mp4,audio/wav,audio/x-m4a'" :disabled="uploading" @change="selectIssueAudioTrackFile(module, track, $event)" /></label>
                     <label :data-audio-field="`track:${track.id}:file`">媒体对象路径<input :value="track.mediaType === 'video' ? String(track.videoObjectKey || '') : String(track.audioObjectKey || '')" :placeholder="track.mediaType === 'video' ? 'content/video/...' : 'content/audio/...'" readonly /></label>
@@ -5821,24 +7155,37 @@ onBeforeUnmount(() => {
                   <video v-if="track.mediaType === 'video' && issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-video" controls preload="metadata" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持视频预览</video>
                   <audio v-else-if="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]" class="media-preview-audio" controls preload="none" :src="issueModulePreviewUrls[issueAudioTrackPreviewKey(module.id, track.id)]">当前浏览器不支持音频试听</audio>
                   <div class="audio-field-grid">
-                    <label :data-audio-field="`track:${track.id}:detailTitle`">详情页标题<input :value="track.detailTitle" maxlength="120" placeholder="留空时使用列表标题" @input="setIssueAudioTrackText(track, 'detailTitle', $event)" /></label>
-                    <label :data-audio-field="`track:${track.id}:subtitle`">引言说明<textarea :value="track.subtitle" rows="2" maxlength="500" placeholder="显示在播放器标题下方" @input="setIssueAudioTrackText(track, 'subtitle', $event)" /></label>
-                    <label :data-audio-field="`track:${track.id}:description`">这段声音 / 视频的解释<textarea :value="track.description" rows="3" maxlength="6000" placeholder="进入详情页后，显示在声音或视频下方" @input="setIssueAudioTrackText(track, 'description', $event)" /></label>
-                    <label :data-audio-field="`track:${track.id}:quote`">引言<textarea :value="track.quote" rows="3" maxlength="500" @input="setIssueAudioTrackText(track, 'quote', $event)" /></label>
-                    <label class="audio-field-wide" :data-audio-field="`track:${track.id}:transcript`">音频文字稿<textarea :value="track.transcript" rows="3" maxlength="6000" @input="setIssueAudioTrackText(track, 'transcript', $event)" /></label>
+                    <div :data-audio-field="`track:${track.id}:detailTitle`"><JournalRichTextField :model-value="issueAudioTrackString(track, 'detailTitle')" :rich-text="track.detailTitleRichText || ''" label="详情页标题" @update:model-value="setIssueAudioTrackPlainText(track, 'detailTitle', $event)" @update:rich-text="setIssueAudioTrackRichText(track, 'detailTitle', $event)" /></div>
+                    <div :data-audio-field="`track:${track.id}:subtitle`"><JournalRichTextField :model-value="issueAudioTrackString(track, 'subtitle')" :rich-text="track.subtitleRichText || ''" label="引言说明" @update:model-value="setIssueAudioTrackPlainText(track, 'subtitle', $event)" @update:rich-text="setIssueAudioTrackRichText(track, 'subtitle', $event)" /></div>
+                    <div :data-audio-field="`track:${track.id}:description`"><JournalRichTextField :model-value="issueAudioTrackString(track, 'description')" :rich-text="track.descriptionRichText || ''" label="这段声音 / 视频的解释" @update:model-value="setIssueAudioTrackPlainText(track, 'description', $event)" @update:rich-text="setIssueAudioTrackRichText(track, 'description', $event)" /></div>
+                    <div :data-audio-field="`track:${track.id}:quote`"><JournalRichTextField :model-value="issueAudioTrackString(track, 'quote')" :rich-text="track.quoteRichText || ''" label="引言" @update:model-value="setIssueAudioTrackPlainText(track, 'quote', $event)" @update:rich-text="setIssueAudioTrackRichText(track, 'quote', $event)" /></div>
+                    <div class="audio-field-wide" :data-audio-field="`track:${track.id}:transcript`"><JournalRichTextField :model-value="issueAudioTrackString(track, 'transcript')" :rich-text="track.transcriptRichText || ''" label="音频文字稿" @update:model-value="setIssueAudioTrackPlainText(track, 'transcript', $event)" @update:rich-text="setIssueAudioTrackRichText(track, 'transcript', $event)" /></div>
                   </div>
+                  <details class="issue-module-details issue-audio-actions-editor" :data-audio-field="`track:${track.id}:actions`" open>
+                    <summary>详情页操作模块 · 可添加多个分享或跳转（{{ (track.actions || []).length }}/{{ maxIssueAudioActions }}）</summary>
+                    <p class="field-help">这些按钮会显示在微声音正文下方，并可按顺序添加多个。小程序页面须以 /pages/ 开头；网站须为 HTTPS；分享会打开微信分享面板。</p>
+                    <div v-for="(action, actionIndex) in (track.actions || [])" :key="action.id" class="issue-audio-action-row">
+                      <label>操作类型<select :value="action.kind" :disabled="uploading" @change="setIssueAudioActionKind(action, $event)"><option value="page">小程序页面</option><option value="web">网站</option><option value="share">分享给朋友</option></select></label>
+                      <div><JournalRichTextField :model-value="action.label" :rich-text="action.labelRichText || ''" label="按钮文字" @update:model-value="setIssueAudioActionLabel(action, $event)" @update:rich-text="setIssueAudioActionLabelRichText(action, $event)" /></div>
+                      <label v-if="action.kind === 'page'">小程序页面路径<input list="issue-module-page-presets" :value="action.path || ''" maxlength="512" placeholder="/pages/story-detail/index?id=story" @input="setIssueAudioActionText(action, 'path', $event)" /></label>
+                      <label v-if="action.kind === 'web'">网站链接（HTTPS）<input type="url" :value="action.url || ''" maxlength="2048" placeholder="https://example.com/article" @input="setIssueAudioActionText(action, 'url', $event)" /></label>
+                      <button type="button" class="quiet danger" :disabled="uploading" :aria-label="`移除操作模块 ${action.label || actionIndex + 1}`" @click="removeIssueAudioAction(track, actionIndex)">移除</button>
+                    </div>
+                    <button v-if="(track.actions || []).length < maxIssueAudioActions" type="button" class="quiet" :disabled="uploading" @click="addIssueAudioAction(track)">＋ 添加操作模块</button>
+                  </details>
                 </article>
-                <button v-if="issueAudioTracks(module).length < 3" type="button" class="secondary" :disabled="uploading" @click="addIssueAudioTrack(module)">＋ 添加微声音</button>
+                <button v-if="issueAudioTracks(module).length < maxIssueAudioTracks" type="button" class="secondary" :disabled="uploading" @click="addIssueAudioTrack(module)">＋ 添加微声音</button>
+                <p v-else class="field-help">已达到 20 段上限。</p>
               </section>
-              <label v-if="module.transcript !== undefined && module.type !== 'audio'">音频文字稿<textarea :value="String(module.transcript || '')" rows="3" maxlength="6000" @input="setIssueModuleText(module, 'transcript', $event)" /></label>
-              <label v-if="module.text !== undefined">引言内容<textarea :value="String(module.text || '')" rows="3" maxlength="1000" @input="setIssueModuleText(module, 'text', $event)" /></label>
-              <label v-if="module.attribution !== undefined">引言署名<input :value="String(module.attribution || '')" @input="setIssueModuleText(module, 'attribution', $event)" /></label>
-              <label v-if="module.caption !== undefined">图片说明<input :value="String(module.caption || '')" @input="setIssueModuleText(module, 'caption', $event)" /></label>
-              <details class="issue-module-details issue-module-link-editor">
+              <div v-if="module.transcript !== undefined && module.type !== 'audio'"><div><JournalRichTextField :model-value="issueModuleString(module, 'transcript')" :rich-text="issueModuleString(module, 'transcriptRichText')" label="音频文字稿" @update:model-value="setIssueModuleString(module, 'transcript', $event)" @update:rich-text="setIssueModuleString(module, 'transcriptRichText', $event)" /></div></div>
+              <div v-if="module.text !== undefined"><div><JournalRichTextField :model-value="issueModuleString(module, 'text')" :rich-text="issueModuleString(module, 'textRichText')" label="引言内容" @update:model-value="setIssueModuleString(module, 'text', $event)" @update:rich-text="setIssueModuleString(module, 'textRichText', $event)" /></div></div>
+              <div v-if="module.attribution !== undefined"><div><JournalRichTextField :model-value="issueModuleString(module, 'attribution')" :rich-text="issueModuleString(module, 'attributionRichText')" label="引言署名" @update:model-value="setIssueModuleString(module, 'attribution', $event)" @update:rich-text="setIssueModuleString(module, 'attributionRichText', $event)" /></div></div>
+              <div v-if="module.caption !== undefined"><div><JournalRichTextField :model-value="issueModuleString(module, 'caption')" :rich-text="issueModuleString(module, 'captionRichText')" label="图片说明" @update:model-value="setIssueModuleString(module, 'caption', $event)" @update:rich-text="setIssueModuleString(module, 'captionRichText', $event)" /></div></div>
+              <details v-if="module.type !== 'audio'" class="issue-module-details issue-module-link-editor">
                 <summary>模块跳转（小程序页面 / 网站）</summary>
                 <div class="form-grid">
                   <label>跳转类型<select :value="String(module.linkType || 'none')" @change="setIssueModuleLinkType(module, $event)"><option value="none">不跳转</option><option value="page">小程序页面</option><option value="web">网站</option></select></label>
-                  <label>入口文字<input :value="String(module.linkLabel || '')" maxlength="40" placeholder="了解更多" @input="setIssueModuleText(module, 'linkLabel', $event)" /></label>
+                  <div><div><JournalRichTextField :model-value="issueModuleString(module, 'linkLabel')" :rich-text="issueModuleString(module, 'linkLabelRichText')" label="入口文字" @update:model-value="setIssueModuleString(module, 'linkLabel', $event)" @update:rich-text="setIssueModuleString(module, 'linkLabelRichText', $event)" /></div></div>
                 </div>
                 <label v-if="module.linkType === 'page'">小程序页面路径<input list="issue-module-page-presets" :value="String(module.linkPath || '')" maxlength="512" placeholder="/pages/story-detail/index?id=story" @input="setIssueModuleText(module, 'linkPath', $event)" /></label>
                 <label v-if="module.linkType === 'web'">网站链接（HTTPS）<input type="url" :value="String(module.linkUrl || '')" maxlength="2048" placeholder="https://example.com/article" @input="setIssueModuleText(module, 'linkUrl', $event)" /></label>
@@ -5850,12 +7197,13 @@ onBeforeUnmount(() => {
               <p class="field-help">这里只读展示当前期之外的线上与归档期次；「策展档案」栏目的入口文案在上方编辑。旧期正文仍按各自发布版本保留。</p>
               <div class="journal-past-list">
                 <article v-for="item in journalPastIssues" :key="item.id">
-                  <div><small>{{ item.month }} · {{ item.code }}</small><strong>{{ item.theme }}</strong><span>{{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</span></div>
+                  <div><small><RichTextView inline :text="item.publishedMonth || item.month" :rich-text="item.publishedMonthRichText || item.monthRichText" /> · {{ item.code }}</small><strong><RichTextView inline :text="item.publishedTheme || item.theme" :rich-text="item.publishedThemeRichText || item.themeRichText" /></strong><span>{{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</span></div>
                   <button type="button" class="quiet" @click="editIssue(item)">载入此期</button>
                 </article>
                 <p v-if="!journalPastIssues.length" class="muted">还没有其他往期或归档期次。</p>
               </div>
             </section>
+            <p v-if="issueValidationMessage" class="error issue-validation-message" role="alert">{{ issueValidationMessage }}</p>
             <p v-if="issueConflict" class="error" role="alert">草稿已被其他管理员修改；本地内容已保留，请载入最新版本后核对。 <button type="button" class="quiet" :disabled="uploading" @click="rebaseIssueEdits">载入最新版本</button></p>
             <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p>
             <footer class="journal-savebar" :class="{ 'is-dirty': issueDraftDirty }">
@@ -5968,7 +7316,16 @@ onBeforeUnmount(() => {
                   <small>{{ practiceEntryText(entry.contextRichText) }}</small>
                 </span>
                 <span class="practice-directory-target">{{ practiceEntrySectionLabel(entry) }}</span>
-                <span class="practice-directory-state" :class="{ off: !entry.enabled }">{{ entry.enabled ? '开启' : '关闭' }}</span>
+                <button
+                  type="button"
+                  class="practice-directory-state"
+                  :class="{ off: !entry.enabled, saving: storeToggleSaving && isDailyGoodsPracticeEntry(entry) }"
+                  :disabled="practiceContentSaving || practiceContentConflict || storeToggleSaving || (isDailyGoodsPracticeEntry(entry) && !isSuperAdmin)"
+                  :aria-pressed="entry.enabled"
+                  :aria-label="`${practiceEntryText(entry.titleRichText) || '目录入口'}${entry.enabled ? '已开启，点击关闭' : '已关闭，点击开启'}`"
+                  :title="isDailyGoodsPracticeEntry(entry) && !isSuperAdmin ? '仅超级管理员可切换商城开放状态' : entry.enabled ? '点击关闭' : '点击开启'"
+                  @click="togglePracticeEntryEnabled(entry)"
+                >{{ storeToggleSaving && isDailyGoodsPracticeEntry(entry) ? '同步中…' : entry.enabled ? '开启' : '关闭' }}</button>
                 <span class="practice-directory-actions">
                   <button type="button" class="practice-directory-move" :disabled="index === 0 || practiceContentSaving || practiceContentConflict" aria-label="上移" @click="movePracticeEntry(entry, -1)">↑</button>
                   <button type="button" class="practice-directory-move" :disabled="index === practiceContent.entries.length - 1 || practiceContentSaving || practiceContentConflict" aria-label="下移" @click="movePracticeEntry(entry, 1)">↓</button>
@@ -5983,7 +7340,7 @@ onBeforeUnmount(() => {
             <PracticeSaveBar
               :dirty="practiceContentDirty"
               :conflict="practiceContentConflict"
-              :saving="practiceContentSaving"
+              :saving="practiceContentSaving || storeToggleSaving"
               label="实践目录 · 顺序、入口与状态"
               :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
               reload-label="放弃修改并载入最新版本"
@@ -6152,7 +7509,7 @@ onBeforeUnmount(() => {
               <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || (practiceContent?.entries.length ?? 0) >= 100" @click="addPracticeEntry('daily-goods')">＋ 新增目录</button>
             </div>
             <p v-if="!practiceEntriesFor('daily-objects').length" class="muted">这一页还没有入口卡片，先新增一个。</p>
-            <PracticeEntryEditor v-for="entry in practiceEntriesFor('daily-objects')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
+            <PracticeEntryEditor v-for="entry in practiceEntriesFor('daily-objects')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict || (isDailyGoodsPracticeEntry(entry) && (!isSuperAdmin || storeToggleSaving))" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
@@ -6312,50 +7669,134 @@ onBeforeUnmount(() => {
         </div>
 </Teleport>
       </section>
-      <section v-if="activeSection === 'contributions'" id="discussion-contributions" class="content-area">
-        <div class="section-heading"><div><p class="eyebrow">DISCUSSION / MODERATION</p><h2>用户经历审核</h2></div><div class="section-tools"><button type="button" class="quiet" :disabled="discussionContributionLoading" @click="refreshDiscussionContributions">{{ discussionContributionLoading ? '刷新中…' : '刷新' }}</button></div></div>
-        
-        <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
-        <p v-if="discussionContributionError" class="error" role="alert">{{ discussionContributionError }}</p>
-        <div class="filters" aria-label="用户经历筛选"><label>处理状态<select v-model="discussionContributionStatus" @change="refreshDiscussionContributions"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>类型<select v-model="discussionContributionKind" @change="refreshDiscussionContributions"><option value="">全部</option><option value="experience">经历</option><option value="reply">回复留言</option></select></label><label>期刊<select v-model="discussionContributionIssueCode" @change="refreshDiscussionContributions"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
-        <div class="discussion-contribution-table" aria-live="polite">
-          <div class="discussion-contribution-head"><span>期刊 / 类型</span><span>内容摘要</span><span>状态</span><span>更新时间</span><span>操作</span></div>
-          <div v-for="record in discussionContributions" :key="record.id" class="discussion-contribution-row">
-            <span><strong>{{ record.issueLabel || record.issueCode }}</strong><small>{{ record.threadAuthor ? `回复留言 · ${record.threadAuthor}` : '经历' }}</small></span>
-            <span class="discussion-contribution-preview">{{ record.bodyPreview || '正文需要打开后查看' }}</span>
-            <span>{{ record.status === 'pending' ? '待处理' : record.status === 'handled' ? '已处理' : '不采纳' }}</span>
-            <span>{{ displayDate(record.updatedAt) }}</span>
-            <span><button type="button" class="quiet observation-view-button" @click="viewDiscussionContribution(record)">查看正文</button></span>
-          </div>
-          <p v-if="discussionContributionLoading && !discussionContributions.length" class="muted" role="status">正在读取用户经历…</p>
-          <p v-else-if="!discussionContributionLoading && !discussionContributions.length" class="muted">当前筛选下没有用户经历或回复留言。</p>
-          <div v-if="discussionContributionHasMore || discussionContributionMoreError" class="table-actions"><button type="button" class="quiet" :disabled="discussionContributionLoadingMore" @click="discussionContributionMoreError ? refreshDiscussionContributions() : loadMoreDiscussionContributions()">{{ discussionContributionLoadingMore ? '加载中…' : discussionContributionMoreError || '加载更多经历' }}</button></div>
+      <section v-if="activeSection === 'contributions'" id="discussion-contributions" class="content-area discussion-management">
+        <div class="section-heading">
+          <div><p class="eyebrow">DISCUSSION / MODERATION</p><h2>讨论管理</h2></div>
         </div>
-        <Teleport to="body">
-<div v-if="selectedDiscussionContributionLoading || selectedDiscussionContributionError || selectedDiscussionContribution" class="observation-modal-backdrop" @click.self="selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">
-          <section class="observation-detail-panel discussion-contribution-detail" role="dialog" aria-modal="true" aria-labelledby="discussion-contribution-title" aria-live="polite" tabindex="-1" @keydown.esc="selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">
-            <div class="section-heading"><div><p class="eyebrow">USER EXPERIENCE</p><h3 id="discussion-contribution-title">经历正文</h3></div><button type="button" class="quiet" aria-label="关闭经历正文" @click="selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">关闭</button></div>
-          <div class="panel-body">
-            <p v-if="selectedDiscussionContributionLoading" class="muted" role="status">正在读取并解密经历…</p>
-            <p v-else-if="selectedDiscussionContributionError" class="error" role="alert">{{ selectedDiscussionContributionError }}</p>
-            <template v-else-if="selectedDiscussionContribution">
-              <p class="muted observation-detail-meta">{{ selectedDiscussionContribution.issueLabel }} · {{ selectedDiscussionContribution.threadAuthor ? `回复留言 · ${selectedDiscussionContribution.threadAuthor}` : '经历' }} · {{ selectedDiscussionContribution.status === 'pending' ? '待处理' : selectedDiscussionContribution.status === 'handled' ? '已处理' : '不采纳' }}</p>
-              <article class="discussion-contribution-body">{{ selectedDiscussionContribution.body }}</article>
-              <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
-              <div class="form-actions discussion-contribution-actions">
-                <button type="button" :disabled="discussionContributionSaving || selectedDiscussionContribution.status === 'handled'" @click="updateDiscussionContributionStatus('handled')">{{ discussionContributionSaving ? '保存中…' : '标记已处理' }}</button>
-                <button type="button" class="quiet danger" :disabled="discussionContributionSaving || selectedDiscussionContribution.status === 'dismissed'" @click="updateDiscussionContributionStatus('dismissed')">标记不采纳</button>
-                <button type="button" class="quiet" :disabled="discussionContributionSaving || selectedDiscussionContribution.status === 'pending'" @click="updateDiscussionContributionStatus('pending')">重新打开</button>
-              </div>
-            </template>
+        <div class="discussion-management-toolbar">
+          <div class="discussion-management-tabs" role="tablist" aria-label="讨论管理视图">
+            <button type="button" role="tab" :aria-selected="discussionManagementView === 'content'" :class="{ active: discussionManagementView === 'content' }" @click="setDiscussionManagementView('content')">内容管理</button>
+            <button type="button" role="tab" :aria-selected="discussionManagementView === 'restrictions'" :class="{ active: discussionManagementView === 'restrictions' }" @click="setDiscussionManagementView('restrictions')">用户限制</button>
           </div>
-        </section>
+          <button type="button" class="quiet discussion-management-refresh" :disabled="discussionContributionLoading || discussionRestrictionLoading" @click="discussionManagementView === 'content' ? refreshDiscussionContributions() : refreshDiscussionRestrictions()">{{ (discussionManagementView === 'content' ? discussionContributionLoading : discussionRestrictionLoading) ? '刷新中…' : '刷新' }}</button>
         </div>
-</Teleport>
+
+        <template v-if="discussionManagementView === 'content'">
+          <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
+          <p v-if="discussionContributionError" class="error" role="alert">{{ discussionContributionError }}</p>
+          <div class="discussion-summary-tabs" aria-label="发布状态概览">
+            <button v-for="status in discussionPublicationStatuses" :key="status" type="button" :class="{ active: discussionContributionPublicationStatus === status }" @click="discussionContributionPublicationStatus = status; refreshDiscussionContributions()"><span>{{ discussionContributionPublicationLabel(status) }}</span><strong>{{ discussionContributionSummary[status] }}</strong></button>
+            <button type="button" :class="{ active: discussionContributionPublicationStatus === '' }" @click="discussionContributionPublicationStatus = ''; refreshDiscussionContributions()"><span>全部</span><strong>{{ discussionContributionGrandTotal }}</strong></button>
+          </div>
+          <div class="filters" aria-label="讨论内容筛选">
+            <label>发布状态<select v-model="discussionContributionPublicationStatus" @change="refreshDiscussionContributions"><option value="pending">待审核</option><option value="published">已公开</option><option value="hidden">已隐藏</option><option value="rejected">已拒绝</option><option value="">全部</option></select></label>
+            <label>类型<select v-model="discussionContributionKind" @change="refreshDiscussionContributions"><option value="">全部</option><option value="experience">主经历</option><option value="reply">回复留言</option></select></label>
+            <label>期刊<select v-model="discussionContributionIssueCode" @change="refreshDiscussionContributions"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label>
+          </div>
+          <div class="discussion-contribution-table" aria-live="polite">
+            <div class="discussion-contribution-head"><span>内容 / 作者</span><span>内容摘要</span><span>发布状态</span><span>更新时间</span><span>操作</span></div>
+            <div v-for="record in discussionContributions" :key="record.id" class="discussion-contribution-row">
+              <span><strong>{{ record.issueLabel || record.issueCode }}</strong><small>{{ record.threadId ? '回复留言' : '主经历' }} · {{ discussionContributionAuthor(record) }}</small></span>
+              <span class="discussion-contribution-preview">{{ record.bodyPreview || '正文需要打开后查看' }}</span>
+              <span class="discussion-publication-cell"><strong class="discussion-status-pill" :class="'is-' + record.publicationStatus">{{ discussionContributionPublicationLabel(record.publicationStatus) }}</strong><small v-if="record.featuredAt">精华 #{{ record.featuredOrder }}</small></span>
+              <span>{{ displayDate(record.updatedAt) }}</span>
+              <span class="discussion-contribution-row-actions">
+                <button type="button" class="quiet observation-view-button" @click="viewDiscussionContribution(record)">查看</button>
+                <template v-if="record.publicationStatus === 'pending'">
+                  <button type="button" class="quiet" :disabled="discussionContributionSaving" @click="updateDiscussionContributionPublication(record, 'published')">发布</button>
+                  <button type="button" class="quiet danger" :disabled="discussionContributionSaving" @click="updateDiscussionContributionPublication(record, 'rejected')">拒绝</button>
+                </template>
+                <button v-else-if="record.publicationStatus === 'published'" type="button" class="quiet" :disabled="discussionContributionSaving" @click="updateDiscussionContributionPublication(record, 'hidden')">隐藏</button>
+                <button v-else type="button" class="quiet" :disabled="discussionContributionSaving" @click="updateDiscussionContributionPublication(record, 'pending')">恢复待审核</button>
+              </span>
+            </div>
+            <p v-if="discussionContributionLoading && !discussionContributions.length" class="muted" role="status">正在读取讨论内容…</p>
+            <p v-else-if="!discussionContributionLoading && !discussionContributions.length" class="muted">当前筛选下没有讨论内容。</p>
+            <div v-if="discussionContributionHasMore || discussionContributionMoreError" class="table-actions"><button type="button" class="quiet" :disabled="discussionContributionLoadingMore" @click="discussionContributionMoreError ? refreshDiscussionContributions() : loadMoreDiscussionContributions()">{{ discussionContributionLoadingMore ? '加载中…' : discussionContributionMoreError || '加载更多内容' }}</button></div>
+          </div>
+          <Teleport to="body">
+            <div v-if="selectedDiscussionContributionLoading || selectedDiscussionContributionError || selectedDiscussionContribution" class="observation-modal-backdrop" @click.self="selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">
+              <section class="observation-detail-panel discussion-contribution-detail" role="dialog" aria-modal="true" aria-labelledby="discussion-contribution-title" aria-live="polite" tabindex="-1" @keydown.esc="selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">
+                <div class="section-heading"><div><p class="eyebrow">DISCUSSION / CONTENT</p><h3 id="discussion-contribution-title">讨论内容</h3></div><button type="button" class="quiet" aria-label="关闭讨论内容" @click="selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">关闭</button></div>
+                <div class="panel-body">
+                  <p v-if="selectedDiscussionContributionLoading" class="muted" role="status">正在读取讨论内容…</p>
+                  <p v-else-if="selectedDiscussionContributionError" class="error" role="alert">{{ selectedDiscussionContributionError }}</p>
+                  <template v-else-if="selectedDiscussionContribution">
+                    <p class="muted observation-detail-meta">{{ selectedDiscussionContribution.issueLabel }} · {{ selectedDiscussionContribution.threadId ? `回复留言 · ${selectedDiscussionContribution.threadAuthor || '原楼作者'}` : '主经历' }} · 作者 {{ discussionContributionAuthor(selectedDiscussionContribution) }} · {{ discussionContributionPublicationLabel(selectedDiscussionContribution.publicationStatus) }}<span v-if="selectedDiscussionContribution.featuredAt"> · 精华 #{{ selectedDiscussionContribution.featuredOrder }}</span></p>
+                    <article class="discussion-contribution-body">{{ selectedDiscussionContribution.body }}</article>
+                    <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
+                    <div class="discussion-moderation-block">
+                      <div><h4>发布状态</h4><p>公开后小程序读者可看到；隐藏、拒绝或恢复待审核都会自动取消精华。</p></div>
+                      <div class="form-actions discussion-contribution-actions">
+                        <button type="button" :disabled="discussionContributionSaving || selectedDiscussionContribution.publicationStatus === 'published'" @click="updateDiscussionContributionPublication(selectedDiscussionContribution, 'published')">{{ discussionContributionSaving ? '保存中…' : '发布' }}</button>
+                        <button type="button" class="quiet" :disabled="discussionContributionSaving || selectedDiscussionContribution.publicationStatus === 'hidden'" @click="updateDiscussionContributionPublication(selectedDiscussionContribution, 'hidden')">隐藏</button>
+                        <button type="button" class="quiet danger" :disabled="discussionContributionSaving || selectedDiscussionContribution.publicationStatus === 'rejected'" @click="updateDiscussionContributionPublication(selectedDiscussionContribution, 'rejected')">拒绝</button>
+                        <button type="button" class="quiet" :disabled="discussionContributionSaving || selectedDiscussionContribution.publicationStatus === 'pending'" @click="updateDiscussionContributionPublication(selectedDiscussionContribution, 'pending')">恢复待审核</button>
+                      </div>
+                    </div>
+                    <div v-if="!selectedDiscussionContribution.threadId" class="discussion-moderation-block">
+                      <div><h4>精华展示</h4><p>只有已公开的主经历可以设为精华；顺序数字越小越靠前。</p></div>
+                      <template v-if="selectedDiscussionContribution.publicationStatus === 'published'">
+                        <label class="discussion-featured-order">精华顺序<input v-model="discussionContributionFeaturedOrder" type="number" min="0" max="999" step="1" inputmode="numeric" /></label>
+                        <div class="form-actions discussion-contribution-actions">
+                          <button type="button" :disabled="discussionContributionSaving || Boolean(selectedDiscussionContribution.featuredAt)" @click="updateDiscussionContributionFeatured(selectedDiscussionContribution, true)">{{ selectedDiscussionContribution.featuredAt ? '已设为精华' : '设为精华' }}</button>
+                          <button type="button" class="quiet" :disabled="discussionContributionSaving || !selectedDiscussionContribution.featuredAt" @click="updateDiscussionContributionFeatured(selectedDiscussionContribution, true)">更新顺序</button>
+                          <button type="button" class="quiet" :disabled="discussionContributionSaving || !selectedDiscussionContribution.featuredAt" @click="updateDiscussionContributionFeatured(selectedDiscussionContribution, false)">取消精华</button>
+                        </div>
+                      </template>
+                      <p v-else class="muted">先将内容发布并公开，才能设置精华。</p>
+                    </div>
+                    <div class="discussion-moderation-block discussion-restriction-entry">
+                      <div><h4>限制该用户投稿</h4><p>只限制讨论投稿，不会封禁账号的其他功能。可设置到期时间或长期限制。</p></div>
+                      <button type="button" class="quiet" @click="prefillDiscussionRestriction(selectedDiscussionContribution); selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">限制该用户</button>
+                    </div>
+                  </template>
+                </div>
+              </section>
+            </div>
+          </Teleport>
+        </template>
+
+        <template v-else>
+          <div class="discussion-restriction-notice"><strong>仅限制讨论投稿</strong><span>不会封禁账号的其他功能。限制原因会进入后台审计记录，撤销后用户可继续投稿。</span></div>
+          <p v-if="discussionRestrictionActionMessage" class="status-message" role="status">{{ discussionRestrictionActionMessage }}</p>
+          <p v-if="discussionRestrictionError" class="error" role="alert">{{ discussionRestrictionError }}</p>
+          <div class="discussion-summary-tabs" aria-label="用户限制状态概览">
+            <button v-for="status in discussionRestrictionStatuses" :key="status" type="button" :class="{ active: discussionRestrictionStatus === status }" @click="discussionRestrictionStatus = status; refreshDiscussionRestrictions()"><span>{{ discussionRestrictionStatusLabel(status) }}</span><strong>{{ discussionRestrictionSummary[status] }}</strong></button>
+            <button type="button" :class="{ active: discussionRestrictionStatus === '' }" @click="discussionRestrictionStatus = ''; refreshDiscussionRestrictions()"><span>全部</span><strong>{{ discussionRestrictionGrandTotal }}</strong></button>
+          </div>
+          <article id="discussion-restriction-form" class="discussion-restriction-form-card">
+            <div class="discussion-restriction-form-heading"><div><p class="eyebrow">NEW RESTRICTION</p><h3>新增用户限制</h3></div><small>留空结束时间表示长期限制，可随时撤销。</small></div>
+            <p v-if="discussionRestrictionPrefillNickname" class="discussion-restriction-prefill">正在为「{{ discussionRestrictionPrefillNickname }}」创建讨论投稿限制。</p>
+            <form class="discussion-restriction-form" @submit.prevent="createDiscussionRestriction">
+              <label>用户 UUID<input id="discussion-restriction-user" v-model="discussionRestrictionForm.userId" type="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></label>
+              <label>限制原因<textarea v-model="discussionRestrictionForm.reason" rows="1" minlength="2" maxlength="200" placeholder="例如：多次发布广告或与主题无关的内容" required /></label>
+              <label>结束时间（可选）<input v-model="discussionRestrictionForm.endsAt" type="datetime-local" /></label>
+              <div class="form-actions"><button type="submit" :disabled="discussionRestrictionCreating">{{ discussionRestrictionCreating ? '创建中…' : '创建限制' }}</button></div>
+            </form>
+            <p v-if="discussionRestrictionCreateMessage" class="status-message" role="status">{{ discussionRestrictionCreateMessage }}</p>
+            <p v-if="discussionRestrictionCreateError" class="error" role="alert">{{ discussionRestrictionCreateError }}</p>
+          </article>
+          <div class="filters" aria-label="用户限制筛选"><label>限制状态<select v-model="discussionRestrictionStatus" @change="refreshDiscussionRestrictions"><option value="active">生效中</option><option value="scheduled">待生效</option><option value="expired">已到期</option><option value="revoked">已撤销</option><option value="">全部</option></select></label></div>
+          <div class="discussion-restriction-table" aria-live="polite">
+            <div class="discussion-restriction-head"><span>用户</span><span>原因</span><span>限制期限</span><span>状态</span><span>操作人</span><span>操作</span></div>
+            <div v-for="restriction in discussionRestrictions" :key="restriction.id" class="discussion-restriction-row">
+              <span><strong>{{ restriction.nickname || '未设置昵称' }}</strong><small class="mono">{{ restriction.userId }}</small></span>
+              <span>{{ restriction.reason }}</span>
+              <span>{{ discussionRestrictionPeriod(restriction) }}</span>
+              <span><strong class="discussion-status-pill" :class="'is-' + restriction.effectiveStatus">{{ discussionRestrictionStatusLabel(restriction.effectiveStatus) }}</strong></span>
+              <span>{{ restriction.createdBy }}<small>{{ displayDate(restriction.createdAt) }}</small></span>
+              <span><button v-if="restriction.effectiveStatus === 'active' || restriction.effectiveStatus === 'scheduled'" type="button" class="quiet danger" :disabled="discussionRestrictionSavingId === restriction.id" @click="revokeDiscussionRestriction(restriction)">{{ discussionRestrictionSavingId === restriction.id ? '撤销中…' : '撤销限制' }}</button><small v-else-if="restriction.revokedAt">撤销于 {{ displayDate(restriction.revokedAt) }}</small></span>
+            </div>
+            <p v-if="discussionRestrictionLoading && !discussionRestrictions.length" class="muted" role="status">正在读取用户限制…</p>
+            <p v-else-if="!discussionRestrictionLoading && !discussionRestrictions.length" class="muted">当前筛选下没有用户限制。</p>
+            <div v-if="discussionRestrictionHasMore || discussionRestrictionMoreError" class="table-actions"><button type="button" class="quiet" :disabled="discussionRestrictionLoadingMore" @click="discussionRestrictionMoreError ? refreshDiscussionRestrictions() : loadMoreDiscussionRestrictions()">{{ discussionRestrictionLoadingMore ? '加载中…' : discussionRestrictionMoreError || '加载更多限制' }}</button></div>
+          </div>
+        </template>
       </section>
       <section v-if="activeSection === 'discussion-reports'" id="discussion-reports" class="content-area">
         <div class="reports-toolbar"><small v-if="discussionReportSummary.pending" class="muted">待处理 {{ discussionReportSummary.pending }} 条</small><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button></div>
-        <p class="muted">这里只处理用户提交的举报；经历与回复留言的审核在「用户经历审核」页面单独处理。</p>
+        <p class="muted">这里只处理用户提交的举报；讨论内容的发布与用户限制在「讨论管理」页面处理。</p>
         <p v-if="discussionReportActionMessage" class="status-message" role="status">{{ discussionReportActionMessage }}</p>
         <p v-if="discussionReportError" class="error" role="alert">{{ discussionReportError }}</p>
         <div class="filters" aria-label="内容举报筛选"><label>处理状态<select v-model="discussionReportStatus" @change="refreshDiscussionReports()"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionReportIssueCode" @change="refreshDiscussionReports()"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
@@ -6389,15 +7830,48 @@ onBeforeUnmount(() => {
           <div v-if="privacyHasMore || privacyMoreError" class="table-actions"><button class="quiet" :disabled="privacyControlsBusy" @click="privacyMoreError ? refreshPrivacy() : loadMorePrivacy()">{{ privacyLoadingMore ? '加载中…' : privacyMoreError || '加载更多删除申请' }}</button></div>
         </div>
       </section>
-      <section v-if="activeSection === 'audit'" id="audit-logs" class="content-area">
-        <div class="section-heading"><div><p class="eyebrow">AUDIT</p><h2>操作审计</h2></div></div>
-        <div class="filters" aria-label="操作审计筛选"><label>执行者<select v-model="auditActorType" @change="refreshAudit"><option value="">全部</option><option value="user">用户</option><option value="admin">管理员</option><option value="system">系统</option></select></label><label class="audit-action-filter">操作名称<input v-model="auditAction" maxlength="120" placeholder="例如 observation.saved" @keyup.enter="refreshAudit" /></label><button class="quiet audit-filter-button" @click="refreshAudit">筛选</button></div>
-        <div class="observation-table">
-          <div class="observation-head audit-head"><span>时间</span><span>操作</span><span>资源</span><span>执行者</span></div>
-          <div v-for="entry in auditLogs" :key="entry.id" class="observation-row audit-head"><span>{{ entry.createdAt }}</span><span>{{ entry.action }}</span><span>{{ entry.resourceType }}</span><span>{{ entry.actorType }}</span></div>
-          <p v-if="!auditLogs.length" class="muted">暂无操作记录。</p>
-          <div v-if="auditHasMore || auditMoreError" class="table-actions"><button class="quiet" :disabled="auditLoadingMore" @click="loadMoreAudit">{{ auditLoadingMore ? '加载中…' : auditMoreError || '加载更多审计记录' }}</button></div>
+      <section v-if="activeSection === 'audit'" id="audit-logs" class="content-area audit-page">
+        <div class="section-heading audit-page-heading">
+          <div>
+            <p class="eyebrow">AUDIT LOG / 操作记录</p>
+            <h2>操作记录</h2>
+            <p class="audit-page-intro">这里记录谁在什么时候做了什么，方便回看重要操作。平时看中文摘要就够了，需要排查时再展开详情。</p>
+          </div>
         </div>
+        <div class="filters audit-filters" aria-label="操作记录筛选">
+          <label>谁操作的<select v-model="auditActorType"><option value="">全部人员</option><option value="admin">管理员</option><option value="user">用户</option><option value="system">系统</option></select></label>
+          <label class="audit-action-filter">做了什么<select v-model="auditAction"><option value="">全部操作</option><optgroup v-for="group in auditActionGroups" :key="group.category" :label="group.category"><option v-for="action in group.actions" :key="action.value" :value="action.value">{{ action.label }}</option></optgroup></select></label>
+          <div class="audit-filter-actions"><button type="button" :disabled="auditLoadingMore" @click="refreshAudit">筛选</button><button type="button" class="quiet" :disabled="auditLoadingMore" @click="resetAuditFilters">重置</button></div>
+        </div>
+        <div class="audit-result-summary" role="status"><strong>共 {{ auditTotal }} 条操作记录</strong><span>页面会按发生时间从新到旧排列。</span></div>
+        <div v-if="auditLogs.length" class="audit-log-list">
+          <article v-for="entry in auditLogs" :key="entry.id" class="audit-log-item">
+            <span class="audit-actor-mark" :class="`is-${entry.actorType}`" aria-hidden="true">{{ auditActorInitial(entry.actorType) }}</span>
+            <div class="audit-log-main">
+              <div class="audit-log-title-line">
+                <h3>{{ auditActorLabel(entry.actorType) }}{{ auditActionLabel(entry.action) }}</h3>
+                <span class="audit-category-label">{{ auditActionCategory(entry.action) }}</span>
+              </div>
+              <p class="audit-log-meta"><time :datetime="entry.createdAt" :title="displayDate(entry.createdAt)">{{ notificationTimeLabel(entry.createdAt) }}</time><span aria-hidden="true">·</span><span>涉及：{{ auditResourceLabel(entry.resourceType) }}</span></p>
+              <button type="button" class="audit-detail-toggle" :aria-expanded="auditExpandedId === entry.id" :aria-controls="`audit-detail-${entry.id}`" @click="toggleAuditDetail(entry.id)">{{ auditExpandedId === entry.id ? '收起技术详情' : '查看技术详情' }}</button>
+              <div v-if="auditExpandedId === entry.id" :id="`audit-detail-${entry.id}`" class="audit-log-details">
+                <dl class="audit-detail-grid">
+                  <dt>操作时间</dt><dd>{{ displayDate(entry.createdAt) }}</dd>
+                  <dt>原始操作代码</dt><dd class="mono">{{ entry.action }}</dd>
+                  <dt>资源类型</dt><dd class="mono">{{ entry.resourceType }}</dd>
+                  <dt>资源 ID</dt><dd class="mono">{{ entry.resourceId || '无' }}</dd>
+                  <dt>执行者 ID</dt><dd class="mono">{{ entry.actorId || '无' }}</dd>
+                  <dt>附加信息</dt><dd><pre>{{ auditMetadataText(entry.metadata) }}</pre></dd>
+                </dl>
+              </div>
+            </div>
+          </article>
+        </div>
+        <div v-else class="audit-empty-state">
+          <strong>当前筛选条件下没有操作记录</strong>
+          <span>可以换一个操作人员或操作类型再试。</span>
+        </div>
+        <div v-if="auditHasMore || auditMoreError" class="table-actions"><button class="quiet" :disabled="auditLoadingMore" @click="loadMoreAudit">{{ auditLoadingMore ? '加载中…' : auditMoreError || '加载更多操作记录' }}</button></div>
       </section>
       <section v-if="activeSection === 'members'" id="member-directory" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">MEMBER DIRECTORY</p><h2>会员列表</h2></div></div>
@@ -6484,8 +7958,19 @@ onBeforeUnmount(() => {
 <section v-if="activeSection === 'settings'" id="system-settings" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">BUSINESS SETTINGS</p><h2>系统设置</h2></div></div>
         <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p><p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>总开关：关闭时小程序不展示「日常之物」的商品与价格；开启后还需在「实践 → 日常之物 → 首页入口」启用「日常之物」入口才会展示。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
+        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>与「实践 → 日常之物」入口使用同一状态。在任一处开启或关闭后都会同步，并立即影响小程序展示。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
       </section>
+      <ModuleStateMachine
+        v-if="activeSection === 'status-machine'"
+        ref="moduleStateMachine"
+        :active="activeSection === 'status-machine'"
+        :api-base="apiBase"
+        :token="token"
+        :can-transition="isSuperAdmin"
+        :request="apiFetch"
+        :response-message="responseMessage"
+        @unauthorized="logout('后台登录已过期，请重新登录。')"
+      />
       <section v-if="activeSection === 'employees' && isSuperAdmin" id="employee-access" class="content-area employee-page">
         <div class="employee-hero">
           <div>

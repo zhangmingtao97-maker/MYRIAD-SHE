@@ -1,6 +1,6 @@
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { cacheSeasonPaused, readSeasonPaused, saveSeasonPaused } from '../../utils/season-preference';
 const STORAGE_KEY = 'myriad_she_season_birthday';
-const SEASON_PAUSED_KEY = 'myriad_she_season_paused';
 const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 function dayOptionsFor(month: number) {
@@ -18,7 +18,8 @@ Page({
     birthMonth: 0,
     birthDay: 0,
     remember: false,
-    guideOpen: false,
+    // 从观察入口进入时先完整展示方法说明，再允许选择生日继续。
+    guideOpen: true,
   },
   onLoad() {
     enableShareMenu();
@@ -87,23 +88,24 @@ Page({
       return;
     }
     this.persistBirthday();
+    if (readSeasonPaused()) {
+      cacheSeasonPaused(false);
+      void saveSeasonPaused(false).catch(() => {
+        cacheSeasonPaused(true);
+        wx.showToast({ title: '云端恢复失败，已保留暂停状态', icon: 'none' });
+      });
+    }
     wx.navigateTo({
       url: `/pages/observation/index?method=season&birthMonth=${this.data.birthMonth}&birthDay=${this.data.birthDay}`,
-      success: () => {
-        try {
-          wx.removeStorageSync(SEASON_PAUSED_KEY);
-        } catch {
-          // 本机存储不可用时忽略，不阻断进入观察。
-        }
-      },
     });
   },
   pauseSeason() {
-    try {
-      wx.setStorageSync(SEASON_PAUSED_KEY, true);
-    } catch {
-      // 本机存储不可用时仍然返回，不阻断退出。
-    }
+    const wasPaused = readSeasonPaused();
+    cacheSeasonPaused(true);
+    void saveSeasonPaused(true).catch(() => {
+      cacheSeasonPaused(wasPaused);
+      wx.showToast({ title: '云端同步失败，已恢复原状态', icon: 'none' });
+    });
     this.handleBack();
   },
   openReality() {

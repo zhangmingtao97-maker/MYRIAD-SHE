@@ -24,9 +24,9 @@
         <view wx:for="{{issues}}" wx:key="code" class="archive-issue {{item.interactive ? 'is-interactive' : 'is-current'}}" data-code="{{item.code}}" role="{{item.interactive ? 'button' : 'text'}}" aria-label="{{item.number}}，{{item.statusLabel}}，{{item.theme}}，{{item.subline}}" aria-disabled="{{!item.interactive}}" tabindex="{{item.interactive ? 0 : -1}}" bindtap="openIssue">
           <text class="archive-issue-number">{{item.number}}</text>
           <view class="archive-issue-main">
-            <text class="archive-issue-status">{{item.statusLabel}}</text>
-            <view class="archive-issue-title"><text>{{item.theme}}</text><text class="archive-issue-arrow" aria-hidden="true">{{item.interactive ? '↗' : '—'}}</text></view>
-            <text class="archive-issue-subline">{{item.subline}}</text>
+            <rich-text class="archive-issue-status" nodes="{{item.statusLabelHtml}}"></rich-text>
+            <view class="archive-issue-title"><rich-text nodes="{{item.themeHtml}}"></rich-text><text class="archive-issue-arrow" aria-hidden="true">{{item.interactive ? '↗' : '—'}}</text></view>
+            <rich-text class="archive-issue-subline" nodes="{{item.sublineHtml}}"></rich-text>
           </view>
         </view>
       </block>

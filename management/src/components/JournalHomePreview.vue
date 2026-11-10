@@ -1,16 +1,22 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue';
 import type { ManagedIssueModule } from '../api-shapes';
 import PhonePreview from './PhonePreview.vue';
+import RichTextView from './RichTextView.vue';
 
 const props = defineProps<{
   modules: ManagedIssueModule[];
   imageUrls: Record<string, string>;
+  backgroundImageUrl?: string;
   activeKey: string;
   issueNumber: string;
+  issueNumberRichText?: string;
   issueEdition: string;
+  issueEditionRichText?: string;
   questionFallback: string;
+  questionFallbackRichText?: string;
   themeFallback: string;
+  themeFallbackRichText?: string;
 }>();
 
 const emit = defineEmits<{ (event: 'pick', key: string): void }>();
@@ -23,10 +29,22 @@ const moduleLabels: Record<string, string> = {
 };
 
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
+const rich = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+const textOrFallback = (value: unknown, fallback = '') => {
+  const plain = text(value);
+  return plain.trim() ? plain : fallback;
+};
+const pairedRichText = (plainValue: unknown, richValue: unknown, fallbackRichText = '') => {
+  return text(plainValue).trim() ? rich(richValue) : rich(fallbackRichText);
+};
 const label = (module: ManagedIssueModule) => moduleLabels[module.type] || String(module.type);
 // 序号和右侧「栏目选择器」保持一致（隐藏的栏目也占号）。
 const orderNumber = (module: ManagedIssueModule) => String(props.modules.indexOf(module) + 1).padStart(2, '0');
 const tracksOf = (module: ManagedIssueModule) => module.tracks || [];
+const introduction = computed(() => {
+  const meta = props.modules.find((module) => module.type === 'issueMeta' && module.enabled);
+  return typeof meta?.introduction === 'string' ? meta.introduction.trim() : '记录女性的真实经历，也邀请你观察自己的生活';
+});
 
 const questionActions = computed(() => props.modules.filter(
   (module) => module.enabled && ['observationAction', 'sharedPracticeAction'].includes(module.type),
@@ -42,23 +60,59 @@ const rows = computed(() => props.modules.filter((module) => {
 }));
 
 function contentsOf(module: ManagedIssueModule) {
-  const value = (field: string, fallback: string) => {
-    const candidate = module[field];
-    return typeof candidate === 'string' && candidate.trim() ? candidate : fallback;
+  const pair = (field: string, fallback: string, fallbackRichText = '') => {
+    const candidate = text(module[field]);
+    return {
+      value: candidate.trim() ? candidate : fallback,
+      richText: candidate.trim() ? rich(module[`${field}RichText`]) : rich(fallbackRichText),
+    };
   };
   return [
-    { number: '01', label: value('entry1Label', '人物纪实'), summary: value('entry1Summary', props.themeFallback) },
-    { number: '02', label: value('entry2Label', '微声音'), summary: value('entry2Summary', '第一个普通早晨') },
-    { number: '03', label: value('entry3Label', '此刻观察'), summary: value('entry3Summary', '从本期问题继续') },
-    { number: '04', label: value('entry4Label', '本期讨论'), summary: value('entry4Summary', '一起听见不同的经历') },
-  ];
+    { number: '01', ...pair('entry1Label', '人物纪实'), summary: pair('entry1Summary', props.themeFallback, props.themeFallbackRichText) },
+    { number: '02', ...pair('entry2Label', '微声音'), summary: pair('entry2Summary', '第一个普通早晨') },
+    { number: '03', ...pair('entry3Label', '此刻观察'), summary: pair('entry3Summary', '从本期问题继续') },
+    { number: '04', ...pair('entry4Label', '本期讨论'), summary: pair('entry4Summary', '一起听见不同的经历') },
+  ].map((entry) => ({
+    number: entry.number,
+    label: entry.value,
+    labelRichText: entry.richText,
+    summary: entry.summary.value,
+    summaryRichText: entry.summary.richText,
+  }));
+}
+
+function moduleHeadingText(module: ManagedIssueModule) {
+  return textOrFallback(module.title, text(module.month));
+}
+
+function moduleHeadingRichText(module: ManagedIssueModule) {
+  return text(module.title).trim() ? rich(module.titleRichText) : rich(module.monthRichText);
+}
+
+function moduleBodyText(module: ManagedIssueModule) {
+  return text(module.body) || text(module.text) || text(module.caption);
+}
+
+function moduleBodyRichText(module: ManagedIssueModule) {
+  if (text(module.body).trim()) return rich(module.bodyRichText);
+  if (text(module.text).trim()) return rich(module.textRichText);
+  if (text(module.caption).trim()) return rich(module.captionRichText);
+  return '';
+}
+
+function storyActionOf(module: ManagedIssueModule) {
+  return props.modules.find(
+    (item) => item.type === 'storyAction' && (text(item.targetId) || 'story') === module.id,
+  );
 }
 
 function storyActionTitle(module: ManagedIssueModule) {
-  const action = props.modules.find(
-    (item) => item.type === 'storyAction' && (text(item.targetId) || 'story') === module.id,
-  );
-  return text(action?.title) || '进入本期人物';
+  return textOrFallback(storyActionOf(module)?.title, '进入本期人物');
+}
+
+function storyActionTitleRichText(module: ManagedIssueModule) {
+  const actionTitle = text(storyActionOf(module)?.title);
+  return actionTitle.trim() ? rich(storyActionOf(module)?.titleRichText) : '';
 }
 
 // 右侧栏目选择器选中的是「编辑项」，个别编辑项在首页并不单独成块：
@@ -80,7 +134,8 @@ const resolvedKey = computed(() => {
 </script>
 
 <template>
-  <PhonePreview title="期刊首页" caption="MYRIAD SHE" :active-key="resolvedKey">
+  <PhonePreview title="期刊首页" caption="MYRIAD SHE" :background-image-url="backgroundImageUrl" :active-key="resolvedKey">
+      <p v-if="introduction" class="preview-home-introduction">{{ introduction }}</p>
       <article
         v-for="module in rows"
         :key="module.id"
@@ -96,85 +151,85 @@ const resolvedKey = computed(() => {
         <span class="preview-block-tag">{{ orderNumber(module) }} · {{ label(module) }}<em v-if="!module.enabled">已隐藏</em></span>
         <template v-if="module.type === 'coverStory'">
           <img v-if="imageUrls[module.id]" class="preview-image" :src="imageUrls[module.id]" :alt="text(module.altText)" />
-          <div v-if="imageUrls[module.id]" class="preview-cover-caption"><span>{{ text(module.captionLeft) }}</span><span>{{ text(module.captionRight) }}</span></div>
+          <div v-if="imageUrls[module.id]" class="preview-cover-caption"><span><RichTextView :text="module.captionLeft" :rich-text="module.captionLeftRichText" :inline="true" /></span><span><RichTextView :text="module.captionRight" :rich-text="module.captionRightRichText" :inline="true" /></span></div>
           <div class="preview-cover-copy">
-            <small>{{ text(module.eyebrow) || '本期主题' }}</small>
-            <h3 :style="{ fontSize: `${Number(module.titleFontSize || 44)}px`, color: text(module.titleColor) || '#59483d', whiteSpace: 'pre-wrap' }">{{ text(module.title) }}</h3>
-            <p :style="{ fontSize: `${Number(module.bodyFontSize || 16)}px`, color: text(module.bodyColor) || '#40362f' }">{{ text(module.body) }}</p>
-            <footer>{{ text(module.byline) }}</footer>
+            <small><RichTextView :text="text(module.eyebrow) || '本期主题'" :rich-text="module.eyebrowRichText" :inline="true" /></small>
+            <h3 :style="{ fontSize: `${Number(module.titleFontSize || 44)}px`, color: text(module.titleColor) || '#59483d', whiteSpace: 'pre-wrap' }"><RichTextView :text="module.title" :rich-text="module.titleRichText" :inline="true" /></h3>
+            <p :style="{ fontSize: `${Number(module.bodyFontSize || 16)}px`, color: text(module.bodyColor) || '#40362f' }"><RichTextView :text="module.body" :rich-text="module.bodyRichText" :inline="true" /></p>
+            <footer><RichTextView :text="module.byline" :rich-text="module.bylineRichText" :inline="true" /></footer>
           </div>
         </template>
         <template v-else-if="module.type === 'story'">
-          <div class="preview-story-kicker"><span>01</span><span>{{ text(module.eyebrow) || '人物纪实' }}</span></div>
-          <blockquote>{{ text(module.title) }}</blockquote>
-          <p class="preview-story-copy">{{ text(module.body) }}</p>
-          <div class="preview-story-link">{{ storyActionTitle(module) }} <span>→</span></div>
+          <div class="preview-story-kicker"><span>01</span><span><RichTextView :text="text(module.eyebrow) || '人物纪实'" :rich-text="module.eyebrowRichText" :inline="true" /></span></div>
+          <blockquote><RichTextView :text="module.title" :rich-text="module.titleRichText" :inline="true" /></blockquote>
+          <p class="preview-story-copy"><RichTextView :text="module.body" :rich-text="module.bodyRichText" :inline="true" /></p>
+          <div class="preview-story-link"><RichTextView :text="storyActionTitle(module)" :rich-text="storyActionTitleRichText(module)" :inline="true" /> <span>→</span></div>
           <img v-if="imageUrls[module.id]" class="preview-image" :src="imageUrls[module.id]" :alt="text(module.altText)" />
           <div v-else-if="text(module.imageObjectKey)" class="preview-image-placeholder">{{ text(module.altText) || '人物图片预览' }}</div>
-          <footer>{{ text(module.captionLeft) }}<span>{{ text(module.captionRight) }}</span></footer>
+          <footer><RichTextView :text="module.captionLeft" :rich-text="module.captionLeftRichText" :inline="true" /><span><RichTextView :text="module.captionRight" :rich-text="module.captionRightRichText" :inline="true" /></span></footer>
         </template>
         <template v-else-if="module.type === 'audio'">
-          <div class="preview-audio-kicker"><span>02</span><span>{{ text(module.title).replace(/\s+0?\d+$/, '') || '微声音' }}</span><time>{{ text(module.duration) }}</time></div>
+          <div class="preview-audio-kicker"><span>02</span><span><RichTextView :text="text(module.title).replace(/\s+0?\d+$/, '') || '微声音'" :rich-text="module.titleRichText" :inline="true" /></span><time>{{ text(module.duration) }}</time></div>
           <div v-if="tracksOf(module)[0]" class="preview-audio-feature">
             <span class="preview-audio-play">▶</span>
             <div>
-              <h3 v-if="text(tracksOf(module)[0].quote)">{{ text(tracksOf(module)[0].quote) }}</h3>
-              <p v-if="text(tracksOf(module)[0].subtitle)" class="preview-audio-subtitle">{{ text(tracksOf(module)[0].subtitle) }}</p>
-              <p v-if="text(tracksOf(module)[0].transcript)" class="preview-audio-transcript">{{ text(tracksOf(module)[0].transcript) }}</p>
+              <h3 v-if="text(tracksOf(module)[0].quote) || rich(tracksOf(module)[0].quoteRichText)"><RichTextView :text="tracksOf(module)[0].quote" :rich-text="tracksOf(module)[0].quoteRichText" :inline="true" /></h3>
+              <p v-if="text(tracksOf(module)[0].subtitle) || rich(tracksOf(module)[0].subtitleRichText)" class="preview-audio-subtitle"><RichTextView :text="tracksOf(module)[0].subtitle" :rich-text="tracksOf(module)[0].subtitleRichText" :inline="true" /></p>
+              <p v-if="text(tracksOf(module)[0].transcript) || rich(tracksOf(module)[0].transcriptRichText)" class="preview-audio-transcript"><RichTextView :text="tracksOf(module)[0].transcript" :rich-text="tracksOf(module)[0].transcriptRichText" :inline="true" /></p>
             </div>
           </div>
           <div v-if="tracksOf(module).length > 1" class="preview-audio-more">
             <h4>更多声音</h4>
             <div v-for="track in tracksOf(module).slice(1)" :key="track.id" class="preview-audio-more-item">
-              <div class="preview-audio-more-title"><span>▶</span><strong>{{ track.title }}</strong><time>{{ track.duration }}</time></div>
-              <p v-if="track.subtitle">{{ track.subtitle }}</p>
-              <blockquote v-if="track.quote">{{ track.quote }}</blockquote>
-              <p v-if="track.transcript">{{ track.transcript }}</p>
+              <div class="preview-audio-more-title"><span>▶</span><strong><RichTextView :text="track.title" :rich-text="track.titleRichText" :inline="true" /></strong><time>{{ track.duration }}</time></div>
+              <p v-if="text(track.subtitle) || rich(track.subtitleRichText)"><RichTextView :text="track.subtitle" :rich-text="track.subtitleRichText" :inline="true" /></p>
+              <blockquote v-if="text(track.quote) || rich(track.quoteRichText)"><RichTextView :text="track.quote" :rich-text="track.quoteRichText" :inline="true" /></blockquote>
+              <p v-if="text(track.transcript) || rich(track.transcriptRichText)"><RichTextView :text="track.transcript" :rich-text="track.transcriptRichText" :inline="true" /></p>
             </div>
           </div>
         </template>
         <template v-else-if="module.type === 'question'">
           <div class="preview-question-kicker"><span>03</span><span>本期问题</span></div>
-          <p class="preview-question-intro">{{ text(module.eyebrow) || '从她的经验，回到你的此刻' }}</p>
-          <h3 class="preview-question-title">{{ text(module.title) || questionFallback }}</h3>
-          <p v-if="text(module.body)" class="preview-question-body">{{ text(module.body) }}</p>
+          <p v-if="text(module.eyebrow).trim() || rich(module.eyebrowRichText)" class="preview-question-intro"><RichTextView :text="module.eyebrow" :rich-text="module.eyebrowRichText" :inline="true" /></p>
+          <h3 class="preview-question-title"><RichTextView :text="textOrFallback(module.title, questionFallback)" :rich-text="pairedRichText(module.title, module.titleRichText, questionFallbackRichText)" :inline="true" /></h3>
+          <p v-if="text(module.body) || rich(module.bodyRichText)" class="preview-question-body"><RichTextView :text="module.body" :rich-text="module.bodyRichText" :inline="true" /></p>
           <div v-if="questionActions.length" class="preview-question-actions">
             <div v-for="action in questionActions" :key="action.id" class="preview-question-action">
-              <div><strong>{{ text(action.title) }}</strong><small>{{ text(action.body) }}</small></div>
+              <div><strong><RichTextView :text="action.title" :rich-text="action.titleRichText" :inline="true" /></strong><small><RichTextView :text="action.body" :rich-text="action.bodyRichText" :inline="true" /></small></div>
               <span>→</span>
             </div>
           </div>
         </template>
         <template v-else-if="module.type === 'contents'">
-          <div class="preview-contents-heading"><span>{{ text(module.title) || '本期目录' }}</span><small>CONTENTS</small></div>
+          <div class="preview-contents-heading"><span><RichTextView :text="text(module.title) || '本期目录'" :rich-text="module.titleRichText" :inline="true" /></span><small>CONTENTS</small></div>
           <div v-for="entry in contentsOf(module)" :key="entry.number" class="preview-contents-row">
-            <small>{{ entry.number }}</small><strong>{{ entry.label }}</strong><span>{{ entry.summary }}</span>
+            <small>{{ entry.number }}</small><strong><RichTextView :text="entry.label" :rich-text="entry.labelRichText" :inline="true" /></strong><span><RichTextView :text="entry.summary" :rich-text="entry.summaryRichText" :inline="true" /></span>
           </div>
         </template>
         <template v-else-if="module.type === 'archive'">
-          <div class="preview-archive-heading">{{ text(module.title) || '策展档案' }}</div>
+          <div class="preview-archive-heading"><RichTextView :text="text(module.title) || '策展档案'" :rich-text="module.titleRichText" :inline="true" /></div>
           <div class="preview-archive-entry">
-            <small>{{ text(module.entryLabel) || 'ISSUE 01 · 往期精彩示意' }}</small>
-            <strong>{{ text(module.entryTitle) || '留住没有答案的时刻' }}<span>→</span></strong>
+            <small><RichTextView :text="text(module.entryLabel) || 'ISSUE 01 · 往期精彩示意'" :rich-text="module.entryLabelRichText" :inline="true" /></small>
+            <strong><RichTextView :text="text(module.entryTitle) || '留住没有答案的时刻'" :rich-text="module.entryTitleRichText" :inline="true" /><span>→</span></strong>
           </div>
         </template>
         <template v-else-if="module.type === 'brandFooter'">
           <div class="preview-footer-brand">MYRIAD SHE</div>
-          <div class="preview-footer-title">{{ text(module.title) || '我有我的时节' }}</div>
-          <p class="preview-footer-copy">{{ text(module.body) || '记录真实的女性经验，也为看见之后的生活留下一条可行的路。' }}</p>
+          <div class="preview-footer-title"><RichTextView :text="text(module.title) || '我有我的时节'" :rich-text="module.titleRichText" :inline="true" /></div>
+          <p class="preview-footer-copy"><RichTextView :text="text(module.body) || '记录真实的女性经验，也为看见之后的生活留下一条可行的路。'" :rich-text="module.bodyRichText" :inline="true" /></p>
           <div class="preview-footer-flower" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         </template>
         <template v-else-if="module.type === 'issueMeta'">
           <div class="preview-issue-meta">
             <small>当期策展</small>
-            <strong v-if="issueNumber">{{ issueNumber }}</strong>
-            <span>{{ issueEdition }}</span>
+            <strong v-if="issueNumber || rich(issueNumberRichText)"><RichTextView :text="issueNumber" :rich-text="issueNumberRichText" :inline="true" /></strong>
+            <span><RichTextView :text="issueEdition" :rich-text="issueEditionRichText" :inline="true" /></span>
           </div>
         </template>
         <template v-else>
-          <small>{{ text(module.eyebrow) || module.type }}</small>
-          <h3>{{ text(module.title) || text(module.month) }}</h3>
-          <p>{{ text(module.body) || text(module.text) || text(module.caption) }}</p>
+          <small><RichTextView :text="textOrFallback(module.eyebrow, module.type)" :rich-text="pairedRichText(module.eyebrow, module.eyebrowRichText)" :inline="true" /></small>
+          <h3><RichTextView :text="moduleHeadingText(module)" :rich-text="moduleHeadingRichText(module)" :inline="true" /></h3>
+          <p><RichTextView :text="moduleBodyText(module)" :rich-text="moduleBodyRichText(module)" :inline="true" /></p>
           <img v-if="(module.type === 'cover' || module.type === 'image') && imageUrls[module.id]" class="preview-image" :src="imageUrls[module.id]" :alt="text(module.altText)" />
           <div v-else-if="module.type === 'cover' || module.type === 'image'" class="preview-image-placeholder">{{ text(module.altText) || '图片预览（上传或保存后载入）' }}</div>
         </template>

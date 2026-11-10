@@ -32,8 +32,8 @@
           <view class="voice-audio-main">
             <view class="voice-play" role="button" tabindex="0" aria-label="{{playing ? '暂停' : '播放'}}{{track.title}}" bindtap="toggleAudio">{{playing ? 'Ⅱ' : '▶'}}</view>
             <view class="voice-audio-copy">
-              <view class="voice-audio-title">{{track.title}}</view>
-              <view wx:if="{{track.subtitle}}" class="voice-audio-subtitle">{{track.subtitle}}</view>
+              <rich-text class="voice-audio-title" nodes="{{track.titleHtml}}"></rich-text>
+              <rich-text wx:if="{{track.subtitleHtml}}" class="voice-audio-subtitle" nodes="{{track.subtitleHtml}}"></rich-text>
             </view>
           </view>
           <view class="voice-progress">
@@ -44,12 +44,34 @@
       </block>
     </view>
 
+    <view wx:if="{{track.actions.length}}" class="voice-actions" aria-label="微声音操作">
+      <view class="voice-action-list">
+        <block wx:for="{{track.actions}}" wx:key="id">
+          <button
+            wx:if="{{item.kind === 'share'}}"
+            class="voice-action"
+            hover-class="voice-action--active"
+            open-type="share"
+            aria-label="{{item.label}}"
+          ><rich-text class="voice-action-label" nodes="{{item.labelHtml}}"></rich-text></button>
+          <button
+            wx:else
+            class="voice-action"
+            hover-class="voice-action--active"
+            data-index="{{index}}"
+            bindtap="handleVoiceAction"
+            aria-label="{{item.label}}"
+          ><rich-text class="voice-action-label" nodes="{{item.labelHtml}}"></rich-text></button>
+        </block>
+      </view>
+    </view>
+
     <view class="voice-article">
       <view class="voice-article-kicker">{{track.mediaType === 'video' ? 'WATCH / 本期影像' : 'LISTEN / 本期声音'}}</view>
-      <view class="voice-heading">{{heading}}</view>
-      <view wx:if="{{description}}" class="voice-description">{{description}}</view>
-      <view wx:if="{{track.quote}}" class="voice-quote">{{track.quote}}</view>
-      <view wx:if="{{track.transcript && track.transcript !== description}}" class="voice-transcript">{{track.transcript}}</view>
+      <rich-text class="voice-heading" nodes="{{headingHtml}}"></rich-text>
+      <rich-text wx:if="{{descriptionHtml}}" class="voice-description" nodes="{{descriptionHtml}}"></rich-text>
+      <rich-text wx:if="{{track.quoteHtml}}" class="voice-quote" nodes="{{track.quoteHtml}}"></rich-text>
+      <rich-text wx:if="{{track.transcriptHtml && track.transcriptHtml !== descriptionHtml}}" class="voice-transcript" nodes="{{track.transcriptHtml}}"></rich-text>
     </view>
 
     <view class="voice-return" role="button" aria-label="回到当期策展" tabindex="0" bindtap="handleBack"><text>回到当期策展</text><text>←</text></view>

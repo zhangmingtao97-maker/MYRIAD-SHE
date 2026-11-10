@@ -1,5 +1,25 @@
 export interface PublicHomeContent {
-  issue: { code: string; label: string; month: string; theme: string; question: string; microVoiceTitle: string | null; microVoiceDuration: string | null; homeMetaRichText: string; homeMetaFontSize: number; homeMetaColor: string; homeCoverCaptionLeft: string; homeCoverCaptionRight: string } | null;
+  issue: {
+    code: string;
+    label: string;
+    labelRichText: string;
+    month: string;
+    monthRichText: string;
+    theme: string;
+    themeRichText: string;
+    question: string;
+    questionRichText: string;
+    microVoiceTitle: string | null;
+    microVoiceDuration: string | null;
+    homeMetaRichText: string;
+    homeMetaFontSize: number;
+    homeMetaColor: string;
+    homeCoverCaptionLeft: string;
+    homeCoverCaptionLeftRichText: string;
+    homeCoverCaptionRight: string;
+    homeCoverCaptionRightRichText: string;
+    homeBackgroundUrl: string;
+  } | null;
   question: string;
   coverUrl: string;
   microVoice: { title: string; duration: string; url: string; enabled: boolean };
@@ -13,21 +33,38 @@ export interface PublicHomeModule {
   type: string;
   order: number;
   enabled: boolean;
+  introduction?: string;
   [key: string]: unknown;
 }
 
-interface PublicAudioTrack {
+export interface PublicAudioAction {
+  id: string;
+  label: string;
+  labelRichText?: string;
+  kind: 'page' | 'web' | 'share';
+  path?: string;
+  url?: string;
+}
+
+export interface PublicAudioTrack {
   id: string;
   title: string;
+  titleRichText?: string;
   duration: string;
   mediaType: 'audio' | 'video';
   audioUrl: string;
   videoUrl: string;
   detailTitle: string;
+  detailTitleRichText?: string;
   description: string;
+  descriptionRichText?: string;
   quote: string;
+  quoteRichText?: string;
   subtitle: string;
+  subtitleRichText?: string;
   transcript: string;
+  transcriptRichText?: string;
+  actions?: PublicAudioAction[];
 }
 
 export interface PracticeContent {
@@ -136,9 +173,13 @@ export interface PublishedIssue {
 export interface PublicArchiveIssue {
   code: string;
   label: string;
+  labelRichText: string;
   month: string;
+  monthRichText: string;
   theme: string;
+  themeRichText: string;
   question: string;
+  questionRichText: string;
   status: 'archived' | 'published';
   version: number;
   publishedAt: string;
@@ -150,6 +191,10 @@ export function isPublicArchive(value: unknown): value is { issues: PublicArchiv
     && isBoundedText(issue.code, 64, 2) && isBoundedText(issue.label, 80, 2)
     && isBoundedText(issue.month, 40, 2) && isBoundedText(issue.theme, 200, 2)
     && isBoundedText(issue.question, 500, 2)
+    && isBoundedText(issue.labelRichText, 24000)
+    && isBoundedText(issue.monthRichText, 24000)
+    && isBoundedText(issue.themeRichText, 24000)
+    && isBoundedText(issue.questionRichText, 24000)
     && (issue.status === 'archived' || issue.status === 'published')
     && Number.isSafeInteger(issue.version) && Number(issue.version) >= 1
     && isBoundedText(issue.publishedAt, 80, 1));
@@ -174,13 +219,20 @@ export function isPublicHomeContent(value: unknown): value is PublicHomeContent 
   const validIssue = issue === null || (isRecord(issue)
     && isBoundedText(issue.code, 64, 2) && isBoundedText(issue.label, 80, 2) && isBoundedText(issue.month, 40, 2)
     && isBoundedText(issue.theme, 200, 2) && isBoundedText(issue.question, 500, 2)
+    && isBoundedText(issue.labelRichText, 24000)
+    && isBoundedText(issue.monthRichText, 24000)
+    && isBoundedText(issue.themeRichText, 24000)
+    && isBoundedText(issue.questionRichText, 24000)
     && (issue.microVoiceTitle === null || isBoundedText(issue.microVoiceTitle, 120))
     && (issue.microVoiceDuration === null || isBoundedText(issue.microVoiceDuration, 20))
-    && isBoundedText(issue.homeMetaRichText, 2000)
+    && isBoundedText(issue.homeMetaRichText, 24000)
     && typeof issue.homeMetaFontSize === 'number' && Number.isSafeInteger(issue.homeMetaFontSize) && issue.homeMetaFontSize >= 12 && issue.homeMetaFontSize <= 48
     && typeof issue.homeMetaColor === 'string' && /^#[0-9a-f]{6}$/i.test(issue.homeMetaColor)
     && isBoundedText(issue.homeCoverCaptionLeft, 80) && !/[\r\n]/.test(issue.homeCoverCaptionLeft)
-    && isBoundedText(issue.homeCoverCaptionRight, 80) && !/[\r\n]/.test(issue.homeCoverCaptionRight));
+    && isBoundedText(issue.homeCoverCaptionLeftRichText, 24000)
+    && isBoundedText(issue.homeCoverCaptionRight, 80) && !/[\r\n]/.test(issue.homeCoverCaptionRight)
+    && isBoundedText(issue.homeCoverCaptionRightRichText, 24000)
+    && isPublicMediaUrl(issue.homeBackgroundUrl));
   return validIssue && isBoundedText(value.question, 500)
     && isPublicMediaUrl(value.coverUrl)
     && Array.isArray(value.sections) && value.sections.length <= 16 && value.sections.every((section) => isBoundedText(section, 80, 1))
@@ -195,6 +247,7 @@ function isPublicHomeModule(value: unknown): value is PublicHomeModule {
   return isRecord(value) && isBoundedText(value.id, 64, 2) && /^[a-z0-9][a-z0-9-]{1,63}$/.test(value.id)
     && isBoundedText(value.type, 48, 1) && Number.isSafeInteger(value.order) && Number(value.order) >= 0
     && typeof value.enabled === 'boolean'
+    && (value.introduction === undefined || (isBoundedText(value.introduction, 120) && !/[\r\n<>]/.test(value.introduction)))
     && Object.entries(value).every(([key, field]) => ['id', 'type', 'order', 'enabled'].includes(key)
       || (key === 'tracks' ? isPublicAudioTracks(field)
         : key === 'linkType' ? field === 'none' || field === 'page' || field === 'web'
@@ -204,11 +257,12 @@ function isPublicHomeModule(value: unknown): value is PublicHomeModule {
         : key.endsWith('Url') ? isPublicMediaUrl(field)
         : key.endsWith('FontSize') ? Number.isSafeInteger(field) && Number(field) >= 20 && Number(field) <= 120
           : key.endsWith('Color') ? typeof field === 'string' && /^#[0-9a-f]{6}$/i.test(field)
+            : key.endsWith('RichText') ? isBoundedText(field, 24000)
             : typeof field === 'string' && field.length <= 6000));
 }
 
 function isPublicAudioTracks(value: unknown): value is PublicAudioTrack[] {
-  if (!Array.isArray(value) || value.length > 3) return false;
+  if (!Array.isArray(value) || value.length > 20) return false;
   const ids = new Set<string>();
   return value.every((track) => {
     if (!isRecord(track)
@@ -218,7 +272,32 @@ function isPublicAudioTracks(value: unknown): value is PublicAudioTrack[] {
       || !isOptionalPublicMediaUrl(track.audioUrl) || !isOptionalPublicMediaUrl(track.videoUrl)
       || !isBoundedText(track.detailTitle, 120) || !isBoundedText(track.description, 6000)
       || !isBoundedText(track.quote, 500) || !isBoundedText(track.subtitle, 500) || !isBoundedText(track.transcript, 6000)) return false;
+    if (!['titleRichText', 'detailTitleRichText', 'descriptionRichText', 'quoteRichText', 'subtitleRichText', 'transcriptRichText']
+      .every((key) => track[key] === undefined || isBoundedText(track[key], 24000))) return false;
+    if (track.actions !== undefined && !isPublicAudioActions(track.actions)) return false;
     return track.mediaType === 'video' ? isPublicMediaUrl(track.videoUrl) : isPublicMediaUrl(track.audioUrl);
+  });
+}
+
+function isPublicAudioActions(value: unknown): value is PublicAudioAction[] {
+  if (!Array.isArray(value) || value.length > 8) return false;
+  const ids = new Set<string>();
+  return value.every((action) => {
+    if (!isRecord(action) || Object.keys(action).some((key) => !['id', 'label', 'labelRichText', 'kind', 'path', 'url'].includes(key))) return false;
+    if (!isBoundedText(action.id, 64, 2) || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(action.id) || ids.has(action.id)) return false;
+    ids.add(action.id);
+    if (!isBoundedText(action.label, 40, 1) || /[\r\n]/.test(action.label) || /<\/?[a-z][^>]*>/i.test(action.label)) return false;
+    if (action.labelRichText !== undefined && !isBoundedText(action.labelRichText, 24000)) return false;
+    if (action.kind === 'page') {
+      return action.url === undefined
+        && isBoundedText(action.path, 512, 1) && !action.path.includes('..')
+        && /^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(action.path);
+    }
+    if (action.kind === 'web') {
+      return action.path === undefined
+        && isBoundedText(action.url, 2048, 8) && /^https:\/\/[^\s<>]+$/i.test(action.url);
+    }
+    return action.kind === 'share' && action.path === undefined && action.url === undefined;
   });
 }
 

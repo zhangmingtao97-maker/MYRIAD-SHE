@@ -5,8 +5,8 @@
     "miniprogram": {
       "list": [
         {
-          "name": "pages/shared-practice/index",
-          "pathName": "pages/shared-practice/index",
+          "name": "pages/daily-objects/index",
+          "pathName": "pages/daily-objects/index",
           "query": "method=season&birthMonth=1&birthDay=1",
           "scene": null,
           "launchMode": "default"

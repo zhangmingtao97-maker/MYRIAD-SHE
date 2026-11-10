@@ -15,8 +15,8 @@
     <view class="audio-meta"><text>02 · 微声音</text><text>{{issueCode}}</text></view>
     <view class="audio-hero">
       <view class="audio-eyebrow">LISTEN / 本期微声音</view>
-      <view class="audio-title">{{audio.title}}</view>
-      <view wx:if="{{audio.subtitle}}" class="audio-subtitle">{{audio.subtitle}}</view>
+      <rich-text class="audio-title" nodes="{{audio.titleHtml}}"></rich-text>
+      <rich-text wx:if="{{audio.subtitleHtml}}" class="audio-subtitle" nodes="{{audio.subtitleHtml}}"></rich-text>
     </view>
 
     <view class="audio-tracks">
@@ -32,8 +32,8 @@
       >
         <view class="audio-track-index">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}}</view>
         <view class="audio-track-copy">
-          <view class="audio-track-title">{{item.title}}</view>
-          <view wx:if="{{item.subtitle}}" class="audio-track-subtitle">{{item.subtitle}}</view>
+          <rich-text class="audio-track-title" nodes="{{item.titleHtml}}"></rich-text>
+          <rich-text wx:if="{{item.subtitleHtml}}" class="audio-track-subtitle" nodes="{{item.subtitleHtml}}"></rich-text>
           <view class="audio-track-meta">
             <text class="audio-track-kind">{{item.mediaType === 'video' ? '视频' : '声音'}}</text>
             <text wx:if="{{item.duration}}" class="audio-track-duration">{{item.duration}}</text>

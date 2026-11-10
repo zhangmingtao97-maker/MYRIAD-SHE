@@ -1,4 +1,4 @@
-﻿import { createApp } from 'vue';
+import { createApp } from 'vue';
 import App from './App.vue';
 import garamondFont from '../../miniprogram/AppleGaramond.ttf?url';
 import sourceHanSerifFont from '../../miniprogram/SourceHanSerifCN-Regular.otf?url';
@@ -31,3 +31,4 @@ brandFonts.textContent = `
 document.head.append(brandFonts);
 
 createApp(App).mount('#app');
+import './admin-state-machine.css';

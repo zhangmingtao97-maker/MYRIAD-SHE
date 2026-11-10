@@ -17,13 +17,14 @@
       <view class="profile-hero">
         <view class="hero-eyebrow">ACCOUNT / 账户</view>
         <view class="hero-main">
-          <button class="profile-avatar-button" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" aria-label="选择或更换头像" disabled="{{saving}}">
+          <button class="profile-avatar-button" bindtap="openAvatarPicker" aria-label="更换头像" aria-expanded="{{avatarPickerVisible}}">
             <image wx:if="{{profile.avatarUrl}}" class="profile-avatar" src="{{profile.avatarUrl}}" mode="aspectFill"></image>
             <view wx:else class="profile-avatar-placeholder" aria-hidden="true">+</view>
           </button>
           <view class="hero-copy">
             <view class="hero-name">{{profile.nickname || '还没有昵称'}}</view>
             <view class="hero-meta">{{profile.phoneNumber || '未绑定手机号'}} · 云端账户</view>
+            <view class="hero-avatar-fallback" role="button" aria-role="button" bindtap="openAvatarPicker">更换头像</view>
           </view>
         </view>
       </view>
@@ -32,7 +33,10 @@
         <view class="group-title">账户</view>
         <view class="group-card">
           <view wx:if="{{editingNickname}}" class="profile-nickname-editor">
-            <input type="nickname" value="{{profile.nickname}}" maxlength="32" focus="{{editingNickname}}" placeholder="请输入昵称" placeholder-style="color: #a08c7b" bindinput="onNicknameInput" bindblur="saveNickname" disabled="{{saving}}" />
+            <form class="profile-nickname-form" bindsubmit="onNicknameSubmit">
+              <input id="profileNicknameInput" type="nickname" name="nickname" value="{{nicknameEditingValue}}" maxlength="32" focus="{{nicknameFocusRequested}}" placeholder="请输入昵称" placeholder-style="color: #a08c7b" disabled="{{saving}}" bindinput="onNicknameInput" bindchange="onNicknameChange" bindblur="onNicknameBlur" bindconfirm="onNicknameConfirm" bindnicknamereview="onNicknameReview" />
+              <button class="profile-nickname-save" form-type="submit" bindtap="onNicknameSaveTap" hover-class="profile-nickname-save-active" disabled="{{saving}}" aria-label="保存昵称">保存</button>
+            </form>
           </view>
           <view wx:else class="profile-row profile-action-row" bindtap="editNickname" role="button" tabindex="0">
             <text class="profile-row-label">用户名</text>
@@ -94,4 +98,5 @@
       <view class="profile-footer-links"><text bindtap="openPrivacyPolicy">个人信息收集清单</text><text bindtap="openPrivacyPolicy">第三方共享清单</text></view>
     </view>
   </block>
+  <avatar-picker visible="{{avatarPickerVisible}}" busy="{{saving}}" bindchooseavatar="onChooseAvatar" bindclose="closeAvatarPicker"></avatar-picker>
 </view>

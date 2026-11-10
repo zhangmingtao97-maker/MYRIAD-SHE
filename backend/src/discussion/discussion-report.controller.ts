@@ -6,6 +6,7 @@ import { accountDeletedException } from '../auth/auth-errors';
 import { UserAuthGuard } from '../auth/user-auth.guard';
 import { AuditService } from '../admin/audit.service';
 import { DatabaseService } from '../database/database.service';
+import { DataEncryptionService } from '../security/data-encryption.service';
 import { loadPublishedDiscussion } from './published-discussion';
 
 export const discussionReportReasons = ['inappropriate', 'spam', 'privacy', 'other'] as const;
@@ -43,6 +44,7 @@ export class DiscussionReportController {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly encryption: DataEncryptionService,
   ) {}
 
   private userId(request: Request & { user?: { sub: string } }) {
@@ -66,7 +68,7 @@ export class DiscussionReportController {
     if (!issueCode || issueCode.length > 64 || !threadId || threadId.length > 64) throw new BadRequestException('举报对象无效');
     return this.database.withTransaction(async (client) => {
       await this.lockUser(client, userId);
-      const issue = await loadPublishedDiscussion(client, issueCode, '只能举报已发布期刊中的内容');
+      const issue = await loadPublishedDiscussion(client, issueCode, { missingMessage: '只能举报已发布期刊中的内容', encryption: this.encryption });
       const thread = issue.discussion.threads.find((entry) => entry.id === threadId);
       if (!thread) throw new BadRequestException('这条内容已不在本期讨论中，请刷新后再试');
       const result = await client.query<DiscussionReportRow>(

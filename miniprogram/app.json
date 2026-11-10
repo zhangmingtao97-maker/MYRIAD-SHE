@@ -17,6 +17,7 @@
     "pages/discussion-thread/index",
     "pages/discussion-compose/index",
     "pages/mine/index",
+    "pages/my-contributions/index",
     "pages/profile/index",
     "pages/login/index",
     "pages/observation-list/index",

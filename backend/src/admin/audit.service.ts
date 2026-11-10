@@ -1,27 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { DatabaseService } from '../database/database.service';
 import { parseDatabaseCount } from '../pagination';
+import { AdminNotificationService, AuditNotificationInput } from './admin-notification.service';
 
 export type AuditActorType = 'user' | 'admin' | 'system';
 
 @Injectable()
 export class AuditService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    @Optional() private readonly notifications?: AdminNotificationService,
+  ) {}
 
-  async record(input: {
-    actorType: AuditActorType;
-    actorId?: string;
-    action: string;
-    resourceType: string;
-    resourceId?: string;
-    metadata?: Record<string, unknown>;
-  }, client?: PoolClient) {
+  async record(input: AuditNotificationInput, client?: PoolClient) {
     const values = [input.actorType, input.actorId ?? null, input.action, input.resourceType, input.resourceId ?? null, JSON.stringify(input.metadata ?? {})];
     const statement = `insert into audit_logs (actor_type, actor_id, action, resource_type, resource_id, metadata)
-       values ($1, $2, $3, $4, $5, $6::jsonb)`;
-    if (client) await client.query(statement, values);
-    else await this.database.query(statement, values);
+       values ($1, $2, $3, $4, $5, $6::jsonb)
+       returning id`;
+    const result = client
+      ? await client.query<{ id: string }>(statement, values)
+      : await this.database.query<{ id: string }>(statement, values);
+    const auditId = result.rows[0]?.id;
+    if (!auditId || !this.notifications) return;
+    try {
+      await this.notifications.createFromAuditId(auditId, input, client);
+    } catch {
+      // 通知是审计的附属能力，写入失败不能影响原业务和审计记录。
+    }
   }
 
   async list(limit = 100, offset = 0, actorType?: AuditActorType, action?: string) {

@@ -57,9 +57,9 @@ try {
   await manager.getByRole('button', { name: '发布到小程序' }).click();
   await manager.getByText('已发布第 2 版，小程序下次打开文档时会读取新版。', { exact: true }).waitFor();
   assert.equal(publications, 1);
-  await manager.getByText('查看发布历史与旧版正文', { exact: true }).click();
-  await manager.getByRole('button', { name: '查看正文', exact: true }).click();
-  await manager.getByRole('button', { name: '将此版本载入草稿' }).click();
+  await page.getByRole('button', { name: '历史版本', exact: true }).click();
+  await page.getByRole('button', { name: '查看旧版正文', exact: true }).click();
+  await page.getByRole('button', { name: '将此版本载入草稿' }).click();
   assert.equal(await manager.getByRole('textbox', { name: '完整正文', exact: true }).innerText(), '原有正文');
   staleNextSave = true;
   await manager.getByRole('button', { name: '保存草稿', exact: true }).click();

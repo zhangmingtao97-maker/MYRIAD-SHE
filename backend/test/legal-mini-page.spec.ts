@@ -36,6 +36,70 @@ function pageHarness(request: (path: string) => Promise<unknown>) {
   return { page, getTitle: () => title };
 }
 
+function loginHarness() {
+  let page: any;
+  const calls: string[] = [];
+  let savePhone = async () => undefined;
+  const app = { globalData: { accountDeleted: false }, ensureLogin: async () => { calls.push('login'); } };
+  runInNewContext(compile('pages/login/index.ts'), {
+    exports: {}, Page: (definition: any) => { page = definition; }, getApp: () => app,
+    wx: {
+      navigateBack: () => { calls.push('back'); },
+      switchTab: () => { calls.push('mine'); },
+    },
+    require: (path: string) => path.endsWith('/share') ? { enableShareMenu: () => undefined } : {
+      request: async (url: string) => { calls.push(url); await savePhone(); },
+      apiErrorMessage: (_error: unknown, fallback: string) => fallback,
+    },
+  });
+  page.setData = (value: object) => { Object.assign(page.data, value); };
+  return { page, calls, failPhone: () => { savePhone = async () => { throw new Error('offline'); }; } };
+}
+
+test('login waits for the native privacy agreement before requesting or saving personal information', async () => {
+  const { page, calls } = loginHarness();
+  assert.equal(page.data.consentAgreed, false);
+  await page.onLoginWithPhone({ detail: { code: 'phone-code' } });
+  assert.deepEqual(calls, []);
+  page.onAgreePrivacyAuthorization();
+  assert.equal(page.data.consentAgreed, true);
+  await page.onLoginWithPhone({ detail: { code: 'phone-code' } });
+  assert.deepEqual(calls, ['login', '/me/phone-number', 'back']);
+  assert.equal(page.data.loggingIn, false);
+});
+
+test('unchecking the agreement blocks login until the user explicitly agrees again', async () => {
+  const { page, calls } = loginHarness();
+  page.onAgreePrivacyAuthorization();
+  page.onWithdrawConsent();
+  assert.equal(page.data.consentAgreed, false);
+  await page.onLoginWithPhone({ detail: { code: 'phone-code' } });
+  assert.deepEqual(calls, []);
+  page.onAgreePrivacyAuthorization();
+  await page.onLoginWithPhone({ detail: { code: 'phone-code' } });
+  assert.deepEqual(calls, ['login', '/me/phone-number', 'back']);
+});
+
+test('declining phone authorization keeps the privacy agreement without starting login', async () => {
+  const { page, calls } = loginHarness();
+  page.onAgreePrivacyAuthorization();
+  await page.onLoginWithPhone({ detail: { errMsg: 'getPhoneNumber:fail user deny' } });
+  assert.deepEqual(calls, []);
+  assert.equal(page.data.consentAgreed, true);
+  assert.match(page.data.error, /手机号/);
+});
+
+test('a failed login keeps the privacy agreement for retry', async () => {
+  const { page, calls, failPhone } = loginHarness();
+  failPhone();
+  page.onAgreePrivacyAuthorization();
+  await page.onLoginWithPhone({ detail: { code: 'phone-code' } });
+  assert.deepEqual(calls, ['login', '/me/phone-number']);
+  assert.equal(page.data.consentAgreed, true);
+  assert.equal(page.data.loggingIn, false);
+  assert.match(page.data.error, /重试/);
+});
+
 test('mini-program validates long legal bodies and optional introductions', () => {
   assert.equal(validators.isPrivacyPolicyContent(content('<p>' + '条款'.repeat(20_000) + '</p>')), true);
   assert.equal(validators.isPrivacyPolicyContent(content('x'.repeat(200_001))), false);

@@ -1,0 +1,13 @@
+<view wx:if="{{visible}}" class="avatar-picker-overlay" catchtouchmove="preventTouchMove" role="dialog" aria-modal="true" aria-label="更换头像">
+  <view class="avatar-picker-mask" bindtap="close" aria-label="关闭头像选择"></view>
+  <view class="avatar-picker-panel" catchtap="preventTouchMove">
+    <button class="avatar-picker-action avatar-picker-wechat" open-type="chooseAvatar" bindchooseavatar="onWechatAvatar" binderror="onWechatError" disabled="{{busy || choosing || !supportsWechatAvatar}}" hover-class="avatar-picker-action-active">用微信头像</button>
+    <view wx:if="{{!supportsWechatAvatar}}" class="avatar-picker-message" role="status">当前微信版本暂不支持，请从相册选择或拍照</view>
+    <view wx:if="{{error}}" class="avatar-picker-message" role="alert">{{error}}</view>
+    <button class="avatar-picker-action" data-source="album" bindtap="chooseImage" disabled="{{busy || choosing}}" hover-class="avatar-picker-action-active">从相册选择</button>
+    <button class="avatar-picker-action" data-source="camera" bindtap="chooseImage" disabled="{{busy || choosing}}" hover-class="avatar-picker-action-active">拍照</button>
+    <view wx:if="{{choosing}}" class="avatar-picker-message" role="status" aria-live="polite">正在打开图片选择…</view>
+    <view class="avatar-picker-divider"></view>
+    <button class="avatar-picker-action avatar-picker-cancel" bindtap="close" hover-class="avatar-picker-action-active">取消</button>
+  </view>
+</view>

@@ -11,7 +11,7 @@
   <scroll-view wx:elif="{{accessAvailable}}" class="shop-scroll" scroll-y enable-flex>
     <view wx:if="{{!shopOpen}}" class="daily-landing">
       <view class="landing-brand">
-        <image class="landing-logo" src="/assets/shop/daily-objects-logo.png" mode="aspectFit" aria-label="Daily Objects 标志" />
+        <image class="landing-logo" src="/assets/shop/daily-objects-logo.svg" mode="aspectFit" aria-label="Daily Objects 标志" />
       </view>
       <view class="landing-meta">{{content.brandSubtitle}} · {{content.title}}</view>
       <view class="landing-title">物不是答案。<br />它只在日常里，<br />支持一个动作发生。</view>

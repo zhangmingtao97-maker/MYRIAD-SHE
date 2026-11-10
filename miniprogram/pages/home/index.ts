@@ -3,15 +3,38 @@ import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent, PublicHomeModule } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 import { buildMicroVoice } from '../../utils/micro-voice';
+import { richTextHtml, richTextWithSuffixHtml } from '../../utils/rich-text';
 
 type HomeIssue = NonNullable<PublicHomeContent['issue']>;
 type HomeContentsDestination = 'story' | 'audio' | 'observation' | 'discussion';
-interface HomeContentsEntry { id: HomeContentsDestination; number: string; label: string; summary: string; destination: HomeContentsDestination }
-const emptyIssue: HomeIssue = { code: '', label: '', month: '', theme: '', question: '', microVoiceTitle: null, microVoiceDuration: null, homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '', homeCoverCaptionRight: '' };
+interface HomeContentsEntry {
+  id: HomeContentsDestination;
+  number: string;
+  label: string;
+  labelHtml: string;
+  summary: string;
+  summaryHtml: string;
+  destination: HomeContentsDestination;
+}
+const emptyIssue: HomeIssue = {
+  code: '', label: '', labelRichText: '', month: '', monthRichText: '', theme: '', themeRichText: '',
+  question: '', questionRichText: '', microVoiceTitle: null, microVoiceDuration: null,
+  homeMetaRichText: '', homeMetaFontSize: 16, homeMetaColor: '#40362f',
+  homeCoverCaptionLeft: '', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '',
+  homeCoverCaptionRightRichText: '', homeBackgroundUrl: '',
+};
 // 首页第一栏固定排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · A CURATED EDITION」三行。
 const ISSUE_KICKER = '当期策展';
+const DEFAULT_HOME_INTRODUCTION = '记录女性的真实经历，也邀请你观察自己的生活';
 const EDITION_TAGLINE = 'A CURATED EDITION';
-const emptyIssueHeader = { kicker: ISSUE_KICKER, number: '', edition: '' };
+const emptyIssueHeader = {
+  kicker: ISSUE_KICKER,
+  kickerHtml: richTextHtml('', ISSUE_KICKER),
+  number: '',
+  numberHtml: '',
+  edition: '',
+  editionHtml: '',
+};
 const englishMonthNames: Record<string, string> = {
   JAN: 'JANUARY', FEB: 'FEBRUARY', MAR: 'MARCH', APR: 'APRIL', MAY: 'MAY', JUN: 'JUNE',
   JUL: 'JULY', AUG: 'AUGUST', SEP: 'SEPTEMBER', SEPT: 'SEPTEMBER', OCT: 'OCTOBER', NOV: 'NOVEMBER', DEC: 'DECEMBER',
@@ -24,6 +47,25 @@ function formatAudioTime(seconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
+function withModuleHtml(module: PublicHomeModule): PublicHomeModule {
+  return {
+    ...module,
+    titleHtml: richTextHtml(module.titleRichText, module.title, ''),
+    bodyHtml: richTextHtml(module.bodyRichText, module.body, ''),
+    eyebrowHtml: richTextHtml(module.eyebrowRichText, module.eyebrow, ''),
+    captionHtml: richTextHtml(module.captionRichText, module.caption, ''),
+    captionLeftHtml: richTextHtml(module.captionLeftRichText, module.captionLeft, ''),
+    captionRightHtml: richTextHtml(module.captionRightRichText, module.captionRight, ''),
+    textHtml: richTextHtml(module.textRichText, module.text, ''),
+    attributionHtml: richTextHtml(module.attributionRichText, module.attribution, ''),
+    entryLabelHtml: richTextHtml(module.entryLabelRichText, module.entryLabel, ''),
+    entryTitleHtml: richTextHtml(module.entryTitleRichText, module.entryTitle, ''),
+    linkLabelHtml: richTextHtml(module.linkLabelRichText, module.linkLabel, ''),
+    storyActionTitleHtml: richTextHtml(module.storyActionTitleRichText, module.storyActionTitle, ''),
+    bylineHtml: richTextHtml(module.bylineRichText, module.byline, ''),
+  };
+}
+
 function combineCoverAndOpener(modules: PublicHomeModule[]) {
   const result: PublicHomeModule[] = [];
   const coverIndex = modules.findIndex((module) => module.type === 'coverStory' || module.type === 'cover');
@@ -31,7 +73,33 @@ function combineCoverAndOpener(modules: PublicHomeModule[]) {
   if (coverIndex >= 0 && openerIndex >= 0) {
     const cover = modules[coverIndex];
     const opener = modules[openerIndex];
-    const combined: PublicHomeModule = { ...cover, ...opener, id: cover.id, type: 'coverStory', order: Math.min(cover.order, opener.order), enabled: cover.enabled || opener.enabled, imageUrl: cover.imageUrl || '', imageObjectKey: cover.imageObjectKey || '', altText: cover.altText || '', captionLeft: cover.captionLeft || '', captionRight: cover.captionRight || '', eyebrow: opener.eyebrow || '本期主题', title: opener.title || '', titleFontSize: opener.titleFontSize || 72, titleColor: opener.titleColor || '#59483d', body: opener.body || '', bodyFontSize: opener.bodyFontSize || 30, bodyColor: opener.bodyColor || '#40362f', byline: cover.byline || '策展与编辑 · MYRIAD SHE' };
+    const combined: PublicHomeModule = {
+      ...cover,
+      ...opener,
+      id: cover.id,
+      type: 'coverStory',
+      order: Math.min(cover.order, opener.order),
+      enabled: cover.enabled || opener.enabled,
+      imageUrl: cover.imageUrl || '',
+      imageObjectKey: cover.imageObjectKey || '',
+      altText: cover.altText || '',
+      captionLeft: cover.captionLeft || '',
+      captionLeftRichText: cover.captionLeftRichText || '',
+      captionRight: cover.captionRight || '',
+      captionRightRichText: cover.captionRightRichText || '',
+      eyebrow: opener.eyebrow || '本期主题',
+      eyebrowRichText: opener.eyebrowRichText || '',
+      title: opener.title || '',
+      titleRichText: opener.titleRichText || '',
+      titleFontSize: opener.titleFontSize || 72,
+      titleColor: opener.titleColor || '#59483d',
+      body: opener.body || '',
+      bodyRichText: opener.bodyRichText || '',
+      bodyFontSize: opener.bodyFontSize || 30,
+      bodyColor: opener.bodyColor || '#40362f',
+      byline: cover.byline || '策展与编辑 · MYRIAD SHE',
+      bylineRichText: cover.bylineRichText || '',
+    };
     modules.forEach((module, index) => {
       if (index === coverIndex) result.push(combined);
       else if (index !== openerIndex) result.push(module);
@@ -42,21 +110,25 @@ function combineCoverAndOpener(modules: PublicHomeModule[]) {
   return result.sort((left, right) => left.order - right.order);
 }
 
-function presentHomeModules(modules: PublicHomeModule[]) {
+function presentHomeModules(modules: PublicHomeModule[], issue: HomeIssue) {
   const prepared = modules.map((module) => {
-    if (module.type !== 'audio') return module;
+    if (module.type !== 'audio') return withModuleHtml(module);
     const voice = buildMicroVoice(module);
-    if (!voice) return module;
+    if (!voice) return withModuleHtml(module);
     const preparedTracks = voice.tracks.map((track) => ({
       ...track,
       playbackId: `${module.id}:${track.id}`,
+      videoId: `home-video-${module.id}-${track.id}`,
     }));
-    return {
+    const displayTitle = String(module.title || '微声音').replace(/\s+0?\d+$/, '');
+    return withModuleHtml({
       ...module,
       tracks: preparedTracks,
       primaryTrack: preparedTracks[0],
-      displayTitle: String(module.title || '微声音').replace(/\s+0?\d+$/, ''),
-    };
+      secondaryTracks: preparedTracks.slice(1),
+      displayTitle,
+      displayTitleHtml: richTextHtml(module.titleRichText, displayTitle || '微声音'),
+    });
   });
   const embeddedActions = new Set<string>();
   const withStoryActions = prepared.map((module) => {
@@ -64,13 +136,22 @@ function presentHomeModules(modules: PublicHomeModule[]) {
     const action = prepared.find((candidate) => candidate.type === 'storyAction' && (candidate.targetId || 'story') === module.id);
     if (!action) return module;
     embeddedActions.add(action.id);
-    return { ...module, storyActionTitle: action.title || '进入本期人物' };
+    const storyActionTitle = action.title || '进入本期人物';
+    return {
+      ...module,
+      storyActionTitle,
+      storyActionTitleHtml: richTextHtml(action.titleRichText, storyActionTitle),
+    };
   });
   const withQuestionActions = withStoryActions.map((module) => {
     if (module.type !== 'question') return module;
     const actions = withStoryActions.filter((candidate) => candidate.type === 'observationAction' || candidate.type === 'sharedPracticeAction');
     actions.forEach((action) => embeddedActions.add(action.id));
-    return { ...module, questionActions: actions, eyebrow: module.eyebrow || '从她的经验，回到你的此刻' };
+    return {
+      ...module,
+      questionActions: actions,
+      titleHtml: module.titleHtml || richTextHtml(issue.questionRichText, issue.question, ''),
+    };
   });
   return withQuestionActions
     .filter((module) => !embeddedActions.has(module.id))
@@ -85,11 +166,39 @@ function buildContentsEntries(modules: PublicHomeModule[], issue: HomeIssue): Ho
     const value = directory[field];
     return typeof value === 'string' && value.trim() ? value : fallback;
   };
+  const rich = (field: string, fallback = '') => {
+    const value = directory[field];
+    return typeof value === 'string' && value.trim() ? value : fallback;
+  };
+  const entry = (
+    id: HomeContentsDestination,
+    number: string,
+    labelField: string,
+    summaryField: string,
+    labelFallback: string,
+    summaryFallback: string,
+    labelRichFallback = '',
+    summaryRichFallback = '',
+  ): HomeContentsEntry => {
+    const label = text(labelField, labelFallback);
+    const summary = text(summaryField, summaryFallback);
+    const labelRichText = rich(`${labelField}RichText`, labelRichFallback);
+    const summaryRichText = rich(`${summaryField}RichText`, summaryRichFallback);
+    return {
+      id,
+      number,
+      label,
+      labelHtml: richTextHtml(labelRichText, label, label),
+      summary,
+      summaryHtml: richTextHtml(summaryRichText, summary, summary),
+      destination: id,
+    };
+  };
   return [
-    { id: 'story', number: '01', label: text('entry1Label', '人物纪实'), summary: text('entry1Summary', issue.theme), destination: 'story' },
-    { id: 'audio', number: '02', label: text('entry2Label', '微声音'), summary: text('entry2Summary', String(audio?.subtitle || '第一个普通早晨')), destination: 'audio' },
-    { id: 'observation', number: '03', label: text('entry3Label', '此刻观察'), summary: text('entry3Summary', '从本期问题继续'), destination: 'observation' },
-    { id: 'discussion', number: '04', label: text('entry4Label', '本期讨论'), summary: text('entry4Summary', '一起听见不同的经历'), destination: 'discussion' },
+    entry('story', '01', 'entry1Label', 'entry1Summary', '人物纪实', issue.theme, '', issue.themeRichText),
+    entry('audio', '02', 'entry2Label', 'entry2Summary', '微声音', String(audio?.subtitle || '第一个普通早晨'), '', String(audio?.subtitleRichText || '')),
+    entry('observation', '03', 'entry3Label', 'entry3Summary', '此刻观察', '从本期问题继续'),
+    entry('discussion', '04', 'entry4Label', 'entry4Summary', '本期讨论', '一起听见不同的经历'),
   ];
 }
 
@@ -108,21 +217,30 @@ function expandIssueMonth(value: string) {
 function buildIssueHeader(modules: PublicHomeModule[], issue: HomeIssue) {
   const meta = modules.find((module) => module.type === 'issueMeta');
   const label = textValue(meta?.eyebrow) || textValue(issue.label);
+  const labelRichText = textValue(meta?.eyebrowRichText) || textValue(issue.labelRichText);
   const codeDigits = textValue(issue.code).match(/(\d+)/);
-  const number = label || (codeDigits ? `ISSUE ${codeDigits[1].padStart(2, '0')}` : '');
+  const number = (label || (codeDigits ? `ISSUE ${codeDigits[1].padStart(2, '0')}` : '')).toUpperCase();
   const month = textValue(meta?.month) || textValue(issue.month);
+  const monthRichText = textValue(meta?.monthRichText) || textValue(issue.monthRichText);
+  const edition = month ? `${expandIssueMonth(month)} · ${EDITION_TAGLINE}` : EDITION_TAGLINE;
   return {
     kicker: ISSUE_KICKER,
-    number: number.toUpperCase(),
-    edition: month ? `${expandIssueMonth(month)} · ${EDITION_TAGLINE}` : EDITION_TAGLINE,
+    kickerHtml: richTextHtml('', ISSUE_KICKER),
+    number,
+    numberHtml: richTextHtml(labelRichText, number, number),
+    edition,
+    editionHtml: monthRichText
+      ? richTextWithSuffixHtml(monthRichText, edition, edition, ` · ${EDITION_TAGLINE}`)
+      : richTextHtml('', edition),
   };
 }
 
 Page({
-  data: { loading: true, statusBarHeight: 0, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
+  data: { loading: true, statusBarHeight: 0, homeIntroduction: DEFAULT_HOME_INTRODUCTION, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
   requestGeneration: 0,
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   audioContextModuleId: '',
+  activeVideoId: '',
   audioSeekRect: null as { left: number; width: number } | null,
   audioSeekTrackId: '',
   audioSeekPlaybackId: '',
@@ -142,13 +260,17 @@ Page({
     // an older response cannot repaint on return.
     this.requestGeneration += 1;
     if (this.data.loading) this.setData({ loading: false });
+    this.stopVideoPlayback();
     this.stopAudioPlayback();
   },
   onUnload() {
+    this.stopVideoPlayback();
     this.stopAudioPlayback(false);
   },
   async loadContent() {
     const generation = ++this.requestGeneration;
+    this.stopVideoPlayback();
+    this.stopAudioPlayback();
     this.setData({ loading: true, error: '', issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, audioSeeking: false });
     try {
       const data = await request<PublicHomeContent>('/content/home');
@@ -157,9 +279,11 @@ Page({
       const supported = new Set(['issueMeta', 'coverStory', 'cover', 'opener', 'story', 'storyAction', 'image', 'quote', 'audio', 'question', 'observationAction', 'sharedPracticeAction', 'contents', 'archive', 'brandFooter']);
       const orderedModules = (data.modules || []).filter((module) => module.enabled && supported.has(module.type)).sort((left, right) => left.order - right.order);
       const combinedModules = combineCoverAndOpener(orderedModules);
-      const modules = presentHomeModules(combinedModules);
       const issue = data.issue || emptyIssue;
-      this.setData({ ...data, issue, issueHeader: buildIssueHeader(modules, issue), modules, contentsEntries: buildContentsEntries(modules, issue), hasModules: modules.length > 0, loading: false });
+      const modules = presentHomeModules(combinedModules, issue);
+      const meta = orderedModules.find((module) => module.type === 'issueMeta');
+      const homeIntroduction = typeof meta?.introduction === 'string' ? meta.introduction.trim() : DEFAULT_HOME_INTRODUCTION;
+      this.setData({ ...data, issue, homeIntroduction, issueHeader: buildIssueHeader(modules, issue), modules, contentsEntries: buildContentsEntries(modules, issue), hasModules: modules.length > 0, loading: false });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
       this.setData({ loading: false, error: apiErrorMessage(caught, '暂时无法连接云端内容'), issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false });
@@ -299,8 +423,28 @@ Page({
   openAudioDetail(event: WechatMiniprogram.CustomEvent) {
     const trackId = String(event.currentTarget.dataset.trackId || '');
     if (!trackId) return;
+    this.stopVideoPlayback();
     this.stopAudioPlayback();
     wx.navigateTo({ url: `/pages/audio/detail?id=${encodeURIComponent(trackId)}` });
+  },
+  onHomeVideoPlay(event: WechatMiniprogram.CustomEvent) {
+    const videoId = String(event.currentTarget.id || '');
+    if (!videoId) return;
+    if (this.activeVideoId !== videoId) this.stopVideoPlayback();
+    this.stopAudioPlayback();
+    this.activeVideoId = videoId;
+  },
+  onHomeVideoPause(event: WechatMiniprogram.CustomEvent) {
+    if (this.activeVideoId === event.currentTarget.id) this.activeVideoId = '';
+  },
+  onHomeVideoError(event: WechatMiniprogram.CustomEvent) {
+    this.onHomeVideoPause(event);
+    wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' });
+  },
+  stopVideoPlayback() {
+    const videoId = this.activeVideoId;
+    this.activeVideoId = '';
+    if (videoId) wx.createVideoContext(videoId).pause();
   },
   toggleAudio(event: WechatMiniprogram.CustomEvent) {
     const moduleId = String(event.currentTarget.dataset.moduleId || '');
@@ -308,12 +452,17 @@ Page({
     const audio = this.data.modules.find((module) => module.id === moduleId && module.type === 'audio');
     const tracks = Array.isArray(audio?.tracks) ? audio.tracks as Array<Record<string, unknown>> : [];
     const track = tracks.find((item) => item.id === trackId);
+    if (track?.mediaType === 'video') {
+      this.openAudioDetail(event);
+      return;
+    }
     const source = String(track?.audioUrl || '');
     const playbackId = String(track?.playbackId || '');
     if (!moduleId || !trackId || !source || !playbackId) {
       wx.showToast({ title: '音频暂不可用', icon: 'none' });
       return;
     }
+    this.stopVideoPlayback();
     if (this.audioContext && this.audioContextModuleId === playbackId) {
       if (this.data.playingAudioId === playbackId) {
         this.audioContext.pause();
@@ -435,6 +584,9 @@ Page({
     const index = Number(event.currentTarget.dataset.index);
     if (!Number.isInteger(index) || index < 0) return;
     this.setData({ [`modules[${index}].imageUrl`]: '' });
+  },
+  onHomeBackgroundError() {
+    this.setData({ 'issue.homeBackgroundUrl': '' });
   },
   startObservation() {
     wx.navigateTo({ url: '/pages/observation/index' });

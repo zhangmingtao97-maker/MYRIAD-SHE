@@ -1,11 +1,23 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicDiscussion } from '../../utils/discussion-content';
-import type { DiscussionThread, PublicDiscussion } from '../../utils/discussion-content';
+import type { DiscussionCopy, DiscussionThread, PublicDiscussion } from '../../utils/discussion-content';
+import { richTextHtml } from '../../utils/rich-text';
 import { discussionStorageKey, readLocalDiscussion } from '../../utils/discussion-storage';
 import type { LocalContribution, LocalDiscussionDraft } from '../../utils/discussion-storage';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
-type DisplayThread = DiscussionThread & { reported: boolean };
+type DisplayThread = DiscussionThread & { reported: boolean; bodyHtml: string };
+type DisplayLocalContribution = LocalContribution & { bodyHtml: string };
+const discussionViewCopyKeys = [
+  'number', 'kicker', 'issueLine', 'title', 'intro', 'paragraph1', 'paragraph2', 'paragraph3',
+  'writeAction', 'voicesTitle', 'exampleBadge', 'exampleNotice', 'selfEyebrow', 'selfTitle', 'selfBody', 'selfAction',
+] as const;
+
+function discussionCopyHtml(copy: DiscussionCopy, richText?: Partial<Record<keyof DiscussionCopy, string>>) {
+  const result: Partial<Record<keyof DiscussionCopy, string>> = {};
+  for (const key of discussionViewCopyKeys) result[key] = richTextHtml(richText?.[key], copy[key]);
+  return result;
+}
 interface CloudReport { threadId: string; status: 'pending' | 'handled' | 'dismissed' }
 const reportReasons = [
   { code: 'inappropriate', label: '不适当内容' },
@@ -15,7 +27,7 @@ const reportReasons = [
 ];
 
 Page({
-  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, threads: [] as DisplayThread[], myPosts: [] as LocalContribution[], draft: null as LocalDiscussionDraft | null, loading: true, error: '', localPostCount: 0, reporting: false },
+  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, copyHtml: {} as Partial<Record<keyof DiscussionCopy, string>>, threads: [] as DisplayThread[], myPosts: [] as DisplayLocalContribution[], draft: null as LocalDiscussionDraft | null, loading: true, error: '', localPostCount: 0, reporting: false },
   requestGeneration: 0,
   reportedThreads: {} as Record<string, boolean>,
   onLoad(query: Record<string, string | undefined>) {
@@ -28,7 +40,9 @@ Page({
   syncLocalContent() {
     const stored = readLocalDiscussion();
     const issueCode = this.data.issueCode;
-    const mine = stored.contributions.filter((entry) => entry.issueCode === issueCode);
+    const mine = stored.contributions
+      .filter((entry) => entry.issueCode === issueCode)
+      .map((entry) => ({ ...entry, bodyHtml: richTextHtml('', entry.body) }));
     const draft = stored.drafts
       .filter((entry) => entry.issueCode === issueCode)
       .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] || null;
@@ -43,7 +57,19 @@ Page({
       const data = await request<PublicDiscussion>(path);
       if (generation !== this.requestGeneration) return;
       if (!isPublicDiscussion(data)) throw new Error('本期讨论内容格式无效');
-      this.setData({ issueCode: data.issueCode, issueLabel: data.issueLabel, content: data.content, threads: data.content.threads.map((thread) => ({ ...thread, reported: false })), loading: false, error: '' });
+      this.setData({
+        issueCode: data.issueCode,
+        issueLabel: data.issueLabel,
+        content: data.content,
+        copyHtml: discussionCopyHtml(data.content.copy, data.content.copyRichText),
+        threads: data.content.threads.map((thread) => ({
+          ...thread,
+          bodyHtml: richTextHtml(thread.source !== 'community' && !thread.contributionId ? thread.bodyRichText : '', thread.body),
+          reported: false,
+        })),
+        loading: false,
+        error: '',
+      });
       this.syncLocalContent();
       void this.loadReports();
     } catch (caught) {
@@ -68,8 +94,8 @@ Page({
   handleMore() {
     const itemList = this.data.localPostCount ? ['讨论说明', '清除本期本机发言'] : ['讨论说明'];
     wx.showActionSheet({ itemList, success: ({ tapIndex }) => {
-      if (tapIndex === 0) wx.showModal({ title: '讨论说明', content: '本页中的经历与追问是排版示例。保存的新经历会进入运营后台供编辑团队查看和处理，不会自动公开；举报会连同本期讨论一起提交到运营后台，由编辑团队核实处理。', showCancel: false });
-      if (tapIndex === 1) wx.showModal({ title: '清除本机发言', content: '仅删除本期在这台设备保存的经历与回复。已发布的示例内容不会改变，已提交的举报也不会被撤回。', confirmText: '清除', success: ({ confirm }) => {
+      if (tapIndex === 0) wx.showModal({ title: '讨论说明', content: '新经历会进入运营后台，审核通过后才会公开；举报会提交给编辑团队核实处理。', showCancel: false });
+      if (tapIndex === 1) wx.showModal({ title: '清除本机发言', content: '仅删除本期在这台设备保存的经历与回复。已公开发布的讨论内容不会改变，已提交的举报也不会被撤回。', confirmText: '清除', success: ({ confirm }) => {
         if (!confirm) return;
         const stored = readLocalDiscussion();
         wx.setStorageSync(discussionStorageKey, { contributions: stored.contributions.filter((entry) => entry.issueCode !== this.data.issueCode), drafts: stored.drafts.filter((entry) => entry.issueCode !== this.data.issueCode) });
@@ -81,10 +107,11 @@ Page({
     this.openComposer(String(event?.currentTarget.dataset.threadId || ''));
   },
   replyToThread(event: WechatMiniprogram.CustomEvent) { this.openComposer(String(event.currentTarget.dataset.threadId || '')); },
-  continueDraft() { if (this.data.draft) this.openComposer(this.data.draft.threadId, true); },
-  openComposer(threadId: string, resume = false) {
+  continueDraft() { if (this.data.draft) this.openComposer(this.data.draft.threadId, true, this.data.draft.parentContributionId); },
+  openComposer(threadId: string, resume = false, targetContributionId?: string) {
     const thread = this.data.threads.find((item) => item.id === threadId);
-    const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}&threadAuthor=${encodeURIComponent(thread?.author || '')}${resume ? '&resume=1' : ''}`;
+    const parentContributionId = targetContributionId ?? thread?.contributionId ?? '';
+    const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}&threadAuthor=${encodeURIComponent(thread?.author || '')}${parentContributionId ? `&parentContributionId=${encodeURIComponent(parentContributionId)}` : ''}${resume ? '&resume=1' : ''}`;
     wx.navigateTo({ url: `/pages/discussion-compose/index?${query}` });
   },
   reportThread(event: WechatMiniprogram.CustomEvent) {

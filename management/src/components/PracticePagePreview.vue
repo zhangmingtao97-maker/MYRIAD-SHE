@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import PhonePreview from './PhonePreview.vue';
+import RichTextView from './RichTextView.vue';
 
 interface PracticePreviewEntry {
   key: string;
@@ -40,40 +41,25 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (event: 'pick', key: string): void }>();
 
-// 富文本存的是 HTML，预览里只取文字，避免把编辑器标签带进手机画面。
-const plain = (html: unknown) => (typeof html === 'string'
-  ? html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(p|div|h[1-6]|li)>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim()
-  : '');
-
 const entries = computed(() => props.content.entries || []);
 
 const pick = (key: string) => emit('pick', key);
 </script>
 
 <template>
-  <PhonePreview title="实践页" caption="MYRIAD SHE" :active-key="activeKey">
+  <PhonePreview class="practice-phone-preview" title="实践页" caption="MYRIAD SHE" :active-key="activeKey">
     <div class="practice-preview-meta">
       <span
         data-preview-key="meta"
         :class="['preview-block', { 'is-preview-active': activeKey === 'meta' }]"
         :style="{ fontSize: `${content.metaLeftFontSize || 12}px`, color: content.metaLeftColor || '#8b6b58' }"
         @click="pick('meta')"
-      >{{ plain(content.metaLeftRichText) || '实践' }}</span>
+      ><RichTextView :text="content.metaLeftRichText" :rich-text="content.metaLeftRichText" fallback="实践" :inline="true" /></span>
       <span
         :class="['preview-block', { 'is-preview-active': activeKey === 'meta' }]"
         :style="{ fontSize: `${content.metaRightFontSize || 12}px`, color: content.metaRightColor || '#8b6b58' }"
         @click="pick('meta')"
-      >{{ plain(content.metaRightRichText) || '此刻归安' }}</span>
+      ><RichTextView :text="content.metaRightRichText" :rich-text="content.metaRightRichText" fallback="此刻归安" :inline="true" /></span>
     </div>
 
     <h3
@@ -81,14 +67,14 @@ const pick = (key: string) => emit('pick', key);
       :class="['preview-block', 'practice-preview-kicker', { 'is-preview-active': activeKey === 'title' }]"
       :style="{ fontSize: `${content.titleFontSize || 34}px`, color: content.titleColor || '#40362f' }"
       @click="pick('title')"
-    >{{ plain(content.titleRichText) || '实践' }}</h3>
+    ><RichTextView :text="content.titleRichText" :rich-text="content.titleRichText" fallback="实践" :inline="true" /></h3>
 
     <p
       data-preview-key="intro"
       :class="['preview-block', 'practice-preview-intro', { 'is-preview-active': activeKey === 'intro' }]"
-      :style="{ fontSize: `${content.introFontSize || 16}px`, color: content.introColor || '#40362f' }"
+      :style="{ fontSize: `${content.introFontSize || 32}px`, color: content.introColor || '#40362f' }"
       @click="pick('intro')"
-    >{{ plain(content.introRichText) || '写一句这个页面要做什么。' }}</p>
+    ><RichTextView :text="content.introRichText" :rich-text="content.introRichText" fallback="写一句这个页面要做什么。" :inline="true" /></p>
 
     <p class="practice-preview-fixed">不是要求自己平静，而是看清正在发生什么，然后再选择下一步。</p>
 
@@ -108,13 +94,13 @@ const pick = (key: string) => emit('pick', key);
         <div class="practice-preview-entry-copy">
           <small
             :style="{ fontSize: `${entry.contextFontSize || 12}px`, color: entry.contextColor || '#8b6b58' }"
-          >{{ plain(entry.contextRichText) }}</small>
+          ><RichTextView :text="entry.contextRichText" :rich-text="entry.contextRichText" :inline="true" /></small>
           <strong
             :style="{ fontSize: `${entry.titleFontSize || 16}px`, color: entry.titleColor || '#40362f' }"
-          >{{ plain(entry.titleRichText) || entry.title || '未命名目录' }}</strong>
+          ><RichTextView :text="entry.title" :rich-text="entry.titleRichText" fallback="未命名目录" :inline="true" /></strong>
           <span
             :style="{ fontSize: `${entry.descriptionFontSize || 13}px`, color: entry.descriptionColor || '#40362f' }"
-          >{{ plain(entry.descriptionRichText) }}</span>
+          ><RichTextView :text="entry.descriptionRichText" :rich-text="entry.descriptionRichText" :inline="true" /></span>
         </div>
         <span class="practice-preview-arrow">→</span>
         <span v-if="entry.enabled === false" class="practice-preview-off-tag">未开放</span>
@@ -122,9 +108,31 @@ const pick = (key: string) => emit('pick', key);
       <p v-if="!entries.length" class="practice-preview-empty">还没有实践目录。</p>
     </div>
 
-    <div class="practice-preview-signature">
-      <small>MYRIAD SHE</small>
-      <p>看见真实经验，此刻归安，让一件小事发生。</p>
+    <div class="practice-preview-signature" aria-label="MYRIAD SHE，看见真实经验，此刻归安，让一件小事发生。">
+      <div class="practice-preview-signature-grid">
+        <small>MYRIAD SHE</small>
+        <strong>看见真实经验</strong>
+        <small>此刻归安</small>
+        <strong>让一件小事发生</strong>
+      </div>
+      <img class="practice-preview-signature-flower" src="/practice-signature-flower.svg" alt="" aria-hidden="true" />
     </div>
+
+    <template #tabbar>
+      <nav class="practice-preview-tabbar" aria-label="主导航">
+        <span class="practice-preview-tab-item">
+          <span class="practice-preview-tab-icon practice-preview-tab-home" aria-hidden="true"><i /></span>
+          <span class="practice-preview-tab-label">首页</span>
+        </span>
+        <span class="practice-preview-tab-item is-selected" aria-current="page">
+          <span class="practice-preview-tab-icon practice-preview-tab-practice" aria-hidden="true"><i /><i /></span>
+          <span class="practice-preview-tab-label">实践</span>
+        </span>
+        <span class="practice-preview-tab-item">
+          <span class="practice-preview-tab-icon practice-preview-tab-mine" aria-hidden="true"><i class="practice-preview-tab-head" /><i class="practice-preview-tab-shoulders" /></span>
+          <span class="practice-preview-tab-label">我的</span>
+        </span>
+      </nav>
+    </template>
   </PhonePreview>
 </template>

@@ -35,8 +35,7 @@
       </view>
       <view class="method-action" role="button" aria-label="{{seasonPaused ? '四时气韵已暂停使用，点击重新开始' : '从四时气韵开始观察'}}" aria-disabled="{{issueLoading}}" tabindex="0" bindtap="beginMethod" data-method="season">
         <view wx:if="{{seasonPaused}}" class="season-action-paused">已暂停使用，重新开始</view>
-        <rich-text wx:else nodes="{{observationCopy.seasonAction.richText}}"></rich-text>
-        <text>→</text>
+        <rich-text wx:else nodes="{{observationCopy.seasonAction.richText}}"></rich-text><text>→</text>
       </view>
     </view>
 

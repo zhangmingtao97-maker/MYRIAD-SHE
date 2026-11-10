@@ -15,19 +15,19 @@
   <block wx:else>
     <view class="story-hero-meta"><text>01 · 人物纪实</text><text>{{issueCode}}</text></view>
     <view class="story-hero-copy">
-      <text class="story-title">{{title}}</text>
-      <text class="story-intro">{{intro}}</text>
+      <rich-text class="story-title" nodes="{{titleHtml}}"></rich-text>
+      <rich-text class="story-intro" nodes="{{introHtml}}"></rich-text>
     </view>
     <image wx:if="{{imageUrl}}" class="story-detail-image" src="{{imageUrl}}" mode="aspectFill" aria-label="{{altText}}" binderror="onImageError" />
     <view wx:else class="story-image-empty">人物图片暂不可用</view>
-    <view class="story-image-caption"><text>{{captionLeft}}</text><text>{{captionRight}}</text></view>
+    <view class="story-image-caption"><rich-text nodes="{{captionLeftHtml}}"></rich-text><rich-text nodes="{{captionRightHtml}}"></rich-text></view>
 
     <view class="story-article">
-      <text wx:if="{{source}}" class="story-source">{{source}}</text>
+      <rich-text wx:if="{{sourceHtml}}" class="story-source" nodes="{{sourceHtml}}"></rich-text>
       <view class="story-rule"></view>
-      <text wx:if="{{paragraph1}}" class="story-paragraph">{{paragraph1}}</text>
-      <text wx:if="{{paragraph2}}" class="story-paragraph second-paragraph">{{paragraph2}}</text>
-      <text wx:if="{{quote}}" class="story-quote">{{quote}}</text>
+      <rich-text wx:if="{{paragraph1Html}}" class="story-paragraph" nodes="{{paragraph1Html}}"></rich-text>
+      <rich-text wx:if="{{paragraph2Html}}" class="story-paragraph second-paragraph" nodes="{{paragraph2Html}}"></rich-text>
+      <rich-text wx:if="{{quoteHtml}}" class="story-quote" nodes="{{quoteHtml}}"></rich-text>
       <text class="story-closing">这篇故事的完整版仍由公众号正式发布与保存。小程序留下的，是与当期主题有关的阅读线索、声音与接下来的实践。</text>
       <view class="story-actions">
         <view class="article-action" role="button" aria-label="前往公众号阅读完整文章" tabindex="0" bindtap="openOfficialArticle"><text>前往公众号阅读完整文章</text><text class="external-arrow">↗</text></view>

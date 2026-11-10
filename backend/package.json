@@ -7,7 +7,7 @@
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "lint": "tsc --noEmit",
-    "test:unit": "tsc -p test/tsconfig.json && node --test .test-dist/test/observation.controller.spec.js .test-dist/test/discussion-contribution.spec.js .test-dist/test/content.controller.spec.js .test-dist/test/privacy.service.spec.js .test-dist/test/admin-filters.spec.js .test-dist/test/admin-auth.guard.spec.js .test-dist/test/health.controller.spec.js .test-dist/test/request-id.spec.js .test-dist/test/auth.service.spec.js .test-dist/test/auth.guard.spec.js .test-dist/test/database.service.spec.js .test-dist/test/environment.spec.js .test-dist/test/storage.service.spec.js .test-dist/test/legal-documents.spec.js .test-dist/test/legal-mini-page.spec.js"
+    "test:unit": "tsc -p test/tsconfig.json && node --test .test-dist/test/observation.controller.spec.js .test-dist/test/discussion-contribution.spec.js .test-dist/test/discussion-reply-notification.spec.js .test-dist/test/content.controller.spec.js .test-dist/test/micro-voice-mini-page.spec.js .test-dist/test/mine-profile-mini-page.spec.js .test-dist/test/privacy.service.spec.js .test-dist/test/admin-filters.spec.js .test-dist/test/admin-auth.guard.spec.js .test-dist/test/health.controller.spec.js .test-dist/test/request-id.spec.js .test-dist/test/auth.service.spec.js .test-dist/test/auth.guard.spec.js .test-dist/test/database.service.spec.js .test-dist/test/environment.spec.js .test-dist/test/storage.service.spec.js .test-dist/test/legal-documents.spec.js .test-dist/test/legal-mini-page.spec.js .test-dist/test/admin-notification.spec.js .test-dist/test/admin-module-state.spec.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",

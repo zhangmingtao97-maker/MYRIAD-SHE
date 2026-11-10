@@ -2,8 +2,17 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent } from '../../utils/content';
 import { buildMicroVoice, findMicroVoiceTrack } from '../../utils/micro-voice';
-import type { MicroVoiceTrack } from '../../utils/micro-voice';
+import type { MicroVoiceAction, MicroVoiceTrack } from '../../utils/micro-voice';
 import { enableShareMenu } from '../../utils/share';
+
+type OfficialArticleRuntime = typeof wx & {
+  openOfficialAccountArticle?: (options: { url: string; fail?: (error: unknown) => void }) => void;
+};
+
+function isOfficialAccountArticleUrl(value: string) {
+  return /^https:\/\/mp\.weixin\.qq\.com\/s(?:\/|$|\?)/i.test(value);
+}
+
 
 function formatTime(value: number) {
   const seconds = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
@@ -18,7 +27,9 @@ Page({
     issueCode: '',
     track: null as MicroVoiceTrack | null,
     heading: '',
+    headingHtml: '',
     description: '',
+    descriptionHtml: '',
     playing: false,
     progress: 0,
     currentLabel: '00:00',
@@ -58,7 +69,9 @@ Page({
         issueCode: data.issue?.code || '',
         track,
         heading: track.detailTitle || track.title,
+        headingHtml: track.detailTitleHtml || track.titleHtml,
         description: track.description || track.transcript,
+        descriptionHtml: track.descriptionHtml || track.transcriptHtml,
         durationLabel: track.duration || '00:00',
       });
     } catch (caught) {
@@ -122,6 +135,45 @@ Page({
   },
   handleBack() {
     wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/home/index' }) });
+  },
+  handleVoiceAction(event: WechatMiniprogram.TouchEvent) {
+    const index = Number(event.currentTarget.dataset.index);
+    const action = this.data.track?.actions[index] as MicroVoiceAction | undefined;
+    const fail = () => wx.showToast({ title: '暂时无法打开这个入口', icon: 'none' });
+    if (!action) {
+      fail();
+      return;
+    }
+    if (action.kind === 'page') {
+      const path = String(action.path || '').trim();
+      const route = path.split('?')[0];
+      if (!path.startsWith('/pages/') || path.includes('..') || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(path)) {
+        wx.showToast({ title: '页面路径无效', icon: 'none' });
+        return;
+      }
+      if (['/pages/home/index', '/pages/practice/index', '/pages/mine/index'].includes(route)) {
+        wx.switchTab({ url: route, fail });
+      } else {
+        wx.navigateTo({ url: path, fail });
+      }
+      return;
+    }
+    if (action.kind === 'web') {
+      const url = String(action.url || '').trim();
+      if (!/^https:\/\/[^\s<>]+$/i.test(url)) {
+        wx.showToast({ title: '网站链接无效', icon: 'none' });
+        return;
+      }
+      const openWebView = () => wx.navigateTo({ url: `/pages/webview/index?url=${encodeURIComponent(url)}`, fail });
+      if (isOfficialAccountArticleUrl(url)) {
+        const runtime = wx as OfficialArticleRuntime;
+        if (runtime.openOfficialAccountArticle) {
+          runtime.openOfficialAccountArticle({ url, fail: openWebView });
+          return;
+        }
+      }
+      openWebView();
+    }
   },
   onShareAppMessage() {
     const track = this.data.track;

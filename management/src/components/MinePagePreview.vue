@@ -52,7 +52,6 @@ const pick = (key: string) => emit('pick', key);
       <div class="mine-preview-avatar">M</div>
       <div>
         <strong>登录后显示昵称</strong>
-        <small>云端账户 · 个人观察仅自己可见</small>
       </div>
       <span class="mine-preview-enter">›</span>
     </div>

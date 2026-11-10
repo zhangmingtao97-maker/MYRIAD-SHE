@@ -1,20 +1,29 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import PhonePreview from './PhonePreview.vue';
+import RichTextView from './RichTextView.vue';
 
 const props = defineProps<{
   activeKey: string;
   issueCode?: string;
   title?: string;
+  titleRichText?: string;
   intro?: string;
+  introRichText?: string;
   imageUrl?: string;
   altText?: string;
   captionLeft?: string;
+  captionLeftRichText?: string;
   captionRight?: string;
+  captionRightRichText?: string;
   source?: string;
+  sourceRichText?: string;
   paragraph1?: string;
+  paragraph1RichText?: string;
   paragraph2?: string;
+  paragraph2RichText?: string;
   quote?: string;
+  quoteRichText?: string;
   officialArticleUrl?: string;
 }>();
 
@@ -46,8 +55,8 @@ const hasArticle = computed(() => Boolean(text(props.officialArticleUrl)));
       @click="emit('pick-from-home')"
     >
       <span class="preview-block-tag">来自首页策展</span>
-      <h3>{{ text(title) || '本期主题标题' }}</h3>
-      <p v-if="text(intro)">{{ intro }}</p>
+      <h3><RichTextView :text="text(title) || '本期主题标题'" :rich-text="titleRichText" :inline="true" /></h3>
+      <p v-if="text(intro) || text(introRichText)"><RichTextView :text="intro" :rich-text="introRichText" :inline="true" /></p>
     </div>
 
     <div v-if="imageUrl" class="story-preview-image"><img :src="imageUrl" :alt="altText || '本期人物纪实图片'" /></div>
@@ -58,12 +67,12 @@ const hasArticle = computed(() => Boolean(text(props.officialArticleUrl)));
         data-preview-key="caption-left"
         :class="['preview-block', { 'is-preview-active': activeKey === 'caption-left' }]"
         @click="emit('pick', 'caption-left')"
-      >{{ text(captionLeft) || '图片左侧说明' }}</span>
+      ><RichTextView :text="text(captionLeft) || '图片左侧说明'" :rich-text="captionLeftRichText" :inline="true" /></span>
       <span
         data-preview-key="caption-right"
         :class="['preview-block', { 'is-preview-active': activeKey === 'caption-right' }]"
         @click="emit('pick', 'caption-right')"
-      >{{ text(captionRight) || '人物纪实' }}</span>
+      ><RichTextView :text="text(captionRight) || '人物纪实'" :rich-text="captionRightRichText" :inline="true" /></span>
     </div>
 
     <div class="story-preview-article">
@@ -71,31 +80,30 @@ const hasArticle = computed(() => Boolean(text(props.officialArticleUrl)));
         data-preview-key="source"
         :class="['preview-block', 'story-preview-source', { 'is-preview-active': activeKey === 'source' }]"
         @click="emit('pick', 'source')"
-      >{{ text(source) || '原载于 MYRIAD SHE 公众号 · 小程序策展节选' }}</p>
+      ><RichTextView :text="text(source) || '原载于 MYRIAD SHE 公众号 · 小程序策展节选'" :rich-text="sourceRichText" :inline="true" /></p>
       <div class="story-preview-rule" />
       <p
         data-preview-key="paragraph1"
         :class="['preview-block', 'story-preview-paragraph', { 'is-preview-active': activeKey === 'paragraph1' }]"
         @click="emit('pick', 'paragraph1')"
-      >{{ text(paragraph1) || '第一段还没有填写。' }}</p>
+      ><RichTextView :text="text(paragraph1) || '第一段还没有填写。'" :rich-text="paragraph1RichText" :inline="true" /></p>
       <p
         data-preview-key="paragraph2"
         :class="['preview-block', 'story-preview-paragraph', { 'is-preview-active': activeKey === 'paragraph2' }]"
         @click="emit('pick', 'paragraph2')"
-      >{{ text(paragraph2) || '第二段还没有填写。' }}</p>
+      ><RichTextView :text="text(paragraph2) || '第二段还没有填写。'" :rich-text="paragraph2RichText" :inline="true" /></p>
       <p
         data-preview-key="quote"
         :class="['preview-block', 'story-preview-quote', { 'is-preview-active': activeKey === 'quote' }]"
         @click="emit('pick', 'quote')"
-      >{{ text(quote) || '结尾引言还没有填写。' }}</p>
+      ><RichTextView :text="text(quote) || '结尾引言还没有填写。'" :rich-text="quoteRichText" :inline="true" /></p>
       <p class="story-preview-closing">这篇故事的完整版仍由公众号正式发布与保存。小程序留下的，是与当期主题有关的阅读线索、声音与接下来的实践。</p>
       <div
         data-preview-key="article-url"
         :class="['preview-block', 'story-preview-action', { 'is-preview-active': activeKey === 'article-url' }]"
         @click="emit('pick', 'article-url')"
       >
-        <span>{{ hasArticle ? '前往公众号阅读完整文章' : '公众号文章链接未配置' }}</span>
-        <span class="story-preview-arrow">↗</span>
+        <span>{{ hasArticle ? '前往公众号阅读完整文章' : '公众号文章链接未配置' }}</span><span class="story-preview-arrow">↗</span>
       </div>
       <div class="story-preview-back-to-issue"><span>回到当期策展</span><span>←</span></div>
     </div>

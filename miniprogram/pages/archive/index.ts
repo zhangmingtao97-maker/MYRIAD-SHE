@@ -2,11 +2,15 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPublicArchive } from '../../utils/content';
 import type { PublicArchiveIssue } from '../../utils/content';
 import { enableShareMenu } from '../../utils/share';
+import { richTextHtml } from '../../utils/rich-text';
 
 interface ArchiveListItem extends PublicArchiveIssue {
   number: string;
   statusLabel: string;
+  statusLabelHtml: string;
   subline: string;
+  sublineHtml: string;
+  themeHtml: string;
   interactive: boolean;
   demo?: boolean;
 }
@@ -22,7 +26,10 @@ const demoIssue: ArchiveListItem = {
   publishedAt: '',
   number: '01',
   statusLabel: '结构示意 · 尚未发布',
+  statusLabelHtml: richTextHtml('', '结构示意 · 尚未发布'),
   subline: '一个人如何不再急着证明自己已经好了？',
+  sublineHtml: richTextHtml('', '一个人如何不再急着证明自己已经好了？'),
+  themeHtml: richTextHtml('', '留在没有答案的时刻'),
   interactive: true,
   demo: true,
 };
@@ -56,15 +63,25 @@ Page({
       const response = await request<{ issues: PublicArchiveIssue[] }>('/content/archive', { header: { 'Cache-Control': 'no-cache' } });
       if (generation !== this.requestGeneration) return;
       if (!isPublicArchive(response)) throw new Error('策展档案格式无效');
-      const published = response.issues.map((issue) => ({
-        ...issue,
-        theme: issue.theme.replace(/\s*\n\s*/g, ''),
-        number: '',
-        statusLabel: issue.status === 'published' ? '正在策展' : issue.month || issue.label,
-        subline: issue.status === 'published' ? '当前这一期' : issue.question,
-        interactive: issue.status === 'archived',
-        demo: false,
-      }));
+      const published = response.issues.map((issue) => {
+        const statusLabel = issue.status === 'published' ? '正在策展' : issue.month || issue.label;
+        const subline = issue.status === 'published' ? '当前这一期' : issue.question;
+        return {
+          ...issue,
+          number: '',
+          statusLabel,
+          statusLabelHtml: issue.status === 'published'
+            ? richTextHtml('', statusLabel)
+            : richTextHtml(issue.monthRichText || issue.labelRichText, statusLabel),
+          subline,
+          sublineHtml: issue.status === 'published'
+            ? richTextHtml('', subline)
+            : richTextHtml(issue.questionRichText, subline),
+          themeHtml: richTextHtml(issue.themeRichText, issue.theme),
+          interactive: issue.status === 'archived',
+          demo: false,
+        };
+      });
       const hasArchived = published.some((issue) => issue.status === 'archived');
       const issues = (hasArchived ? published : [demoIssue, ...published]).map((issue, index) => ({
         ...issue,

@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import { defaultDiscussionContent, DiscussionContent, validateDiscussionContent } from '../content/discussion-content';
+import { DataEncryptionService } from '../security/data-encryption.service';
+import { mergePublishedCommunityContent } from './published-community';
 
 export interface PublishedDiscussion {
   issueCode: string;
@@ -12,11 +14,17 @@ export interface PublishedDiscussion {
  * 读取已发布期刊的讨论内容（优先独立发布的讨论页，回退到期刊发布快照）。
  * 举报与用户经历都只接受已发布期刊中的内容，避免提交到不存在的期刊。
  */
+export interface LoadPublishedDiscussionOptions {
+  missingMessage?: string;
+  encryption?: DataEncryptionService;
+}
+
 export async function loadPublishedDiscussion(
   client: Pick<PoolClient, 'query'>,
   issueCode: string,
-  missingMessage = '只能保存已发布期刊中的经历',
+  options: LoadPublishedDiscussionOptions = {},
 ): Promise<PublishedDiscussion> {
+  const missingMessage = options.missingMessage ?? '只能保存已发布期刊中的经历';
   const result = await client.query<{ issueCode: string; issueLabel: string; discussion: unknown }>(
     `select coalesce(publication.snapshot->'issue'->>'code', issue.code) as "issueCode",
             coalesce(publication.snapshot->'issue'->>'label', issue.label) as "issueLabel",
@@ -33,5 +41,11 @@ export async function loadPublishedDiscussion(
   } catch {
     throw new BadRequestException('本期讨论内容暂时无法使用');
   }
-  return { ...result.rows[0], discussion };
+  const published = result.rows[0];
+  return {
+    ...published,
+    discussion: options.encryption
+      ? await mergePublishedCommunityContent(client, discussion, published.issueCode, options.encryption)
+      : discussion,
+  };
 }

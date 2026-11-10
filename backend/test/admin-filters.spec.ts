@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import type { PoolClient } from 'pg';
@@ -286,4 +286,83 @@ test('database pagination counts reject invalid or unsafe values', () => {
   assert.equal(parseDatabaseCount('9007199254740991'), Number.MAX_SAFE_INTEGER);
   assert.throws(() => parseDatabaseCount('not-a-count'));
   assert.throws(() => parseDatabaseCount('9007199254740992'));
+});
+
+test('store setting updates the practice entry and draft in one transaction', async () => {
+  const statements: Array<{ sql: string; values: unknown[] }> = [];
+  const draft = {
+    editVersion: 4,
+    title: '实践',
+    entries: [
+      { key: 'observation', enabled: true },
+      { key: 'daily-goods', enabled: false },
+    ],
+  };
+  const client = {
+    query: async (sql: string, values: unknown[] = []) => {
+      statements.push({ sql, values });
+      if (sql.includes('select key, value from system_settings')) {
+        return { rows: [{ key: 'store_enabled', value: false }] };
+      }
+      if (sql.includes('select content from admin_content_drafts')) {
+        return { rows: [{ content: draft }] };
+      }
+      return { rows: [] };
+    },
+  } as unknown as PoolClient;
+  const database = {
+    withTransaction: async (callback: (transactionClient: PoolClient) => Promise<unknown>) => callback(client),
+    query: async () => ({
+      rows: [
+        { key: 'store_enabled', value: true, updatedAt: '2026-11-06T00:00:00.000Z' },
+        { key: 'maintenance_notice', value: '', updatedAt: '2026-11-06T00:00:00.000Z' },
+        { key: 'support_contact', value: '', updatedAt: '2026-11-06T00:00:00.000Z' },
+      ],
+    }),
+  } as unknown as DatabaseService;
+  const auditActions: string[] = [];
+  const audit = {
+    record: async (entry: { action: string }) => { auditActions.push(entry.action); },
+  } as unknown as AuditService;
+  const controller = new AdminManagementController(database, audit, {} as JwtService, new ConfigService({}));
+
+  const result = await controller.saveSettings(
+    { store_enabled: true },
+    { user: { sub: 'admin:owner', role: 'super_admin' } } as never,
+  );
+
+  assert.equal(result.store_enabled.value, true);
+  const entryUpdate = statements.find(({ sql }) => sql.includes('update content_practice_entries'));
+  assert.deepEqual(entryUpdate?.values, [true]);
+  const draftUpdate = statements.find(({ sql }) => sql.includes('update admin_content_drafts'));
+  assert.ok(draftUpdate);
+  const synchronizedDraft = JSON.parse(String(draftUpdate.values[0])) as { editVersion: number; entries: Array<{ key: string; enabled: boolean }> };
+  assert.equal(synchronizedDraft.editVersion, 4);
+  assert.equal(synchronizedDraft.entries.find((entry) => entry.key === 'daily-goods')?.enabled, true);
+  assert.deepEqual(auditActions, ['system.settings.updated']);
+});
+
+test('only super admins can change the store master switch', async () => {
+  let transactionStarted = false;
+  const database = {
+    withTransaction: async () => {
+      transactionStarted = true;
+      return undefined;
+    },
+  } as unknown as DatabaseService;
+  const controller = new AdminManagementController(
+    database,
+    { record: async () => undefined } as unknown as AuditService,
+    {} as JwtService,
+    new ConfigService({}),
+  );
+
+  await assert.rejects(
+    controller.saveSettings(
+      { store_enabled: true },
+      { user: { sub: 'admin:editor', role: 'content_editor' } } as never,
+    ),
+    ForbiddenException,
+  );
+  assert.equal(transactionStarted, false);
 });

@@ -2,6 +2,7 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPracticeContent } from '../../utils/content';
 import type { PracticeContent } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { plainTextFromHtml } from '../../utils/rich-text';
 
 const bagCopy = {
   bagTopbarTitle: { richText: '购物袋', fontSize: 16, color: '#5c493c' },
@@ -14,10 +15,12 @@ const bagCopy = {
   bagPreviewNote: { richText: '商店样式预览 · 商品资料与金额均为示意', fontSize: 11, color: '#5c493c' },
 };
 
+const bagActionLabel = plainTextFromHtml(bagCopy.bagAction.richText);
+
 const tabs = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
 
 Page({
-  data: { statusBarHeight: 0, loading: true, error: '', accessAvailable: false, copy: bagCopy },
+  data: { statusBarHeight: 0, loading: true, error: '', accessAvailable: false, copy: bagCopy, bagActionLabel },
   requestGeneration: 0,
   onLoad() {
     enableShareMenu();

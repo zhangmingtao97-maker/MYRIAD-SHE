@@ -7,7 +7,7 @@ import { isDiscussionContent } from './discussion-content';
 import type { DiscussionContent } from './discussion-content';
 
 export interface PublicHome {
-  issue: { code: string; label: string; month: string; theme: string; question: string; microVoiceTitle: string | null; microVoiceDuration: string | null; homeMetaRichText: string; homeMetaFontSize: number; homeMetaColor: string; homeCoverCaptionLeft: string; homeCoverCaptionRight: string } | null;
+  issue: { code: string; label: string; labelRichText: string; month: string; monthRichText: string; theme: string; themeRichText: string; question: string; questionRichText: string; microVoiceTitle: string | null; microVoiceDuration: string | null; homeMetaRichText: string; homeMetaFontSize: number; homeMetaColor: string; homeCoverCaptionLeft: string; homeCoverCaptionLeftRichText: string; homeCoverCaptionRight: string; homeCoverCaptionRightRichText: string; homeBackgroundUrl: string } | null;
   question: string;
   coverUrl: string;
   microVoice: { title: string; duration: string; url: string; enabled: boolean };
@@ -21,22 +21,41 @@ export interface ManagedIssueModule {
   type: 'issueMeta' | 'coverStory' | 'cover' | 'opener' | 'story' | 'storyAction' | 'image' | 'quote' | 'audio' | 'question' | 'observationAction' | 'sharedPracticeAction' | 'contents' | 'archive' | 'brandFooter';
   order: number;
   enabled: boolean;
+  introduction?: string;
   tracks?: ManagedAudioTrack[];
-  [key: string]: string | number | boolean | null | undefined | ManagedAudioTrack[];
+  [key: string]: string | number | boolean | null | undefined | ManagedAudioTrack[] | ManagedAudioAction[];
+}
+
+export type ManagedAudioActionKind = 'page' | 'web' | 'share';
+
+export interface ManagedAudioAction {
+  id: string;
+  label: string;
+  labelRichText?: string;
+  kind: ManagedAudioActionKind;
+  path?: string;
+  url?: string;
 }
 
 export interface ManagedAudioTrack {
   id: string;
   title: string;
+  titleRichText?: string;
   duration: string;
   mediaType: 'audio' | 'video';
   audioObjectKey?: string;
   videoObjectKey?: string;
   detailTitle: string;
+  detailTitleRichText?: string;
   description: string;
+  descriptionRichText?: string;
   quote: string;
+  quoteRichText?: string;
   subtitle: string;
+  subtitleRichText?: string;
   transcript: string;
+  transcriptRichText?: string;
+  actions?: ManagedAudioAction[];
 }
 
 export interface MediaOrphan {
@@ -75,29 +94,65 @@ export interface AdminLoginResult {
   expiresIn: number;
 }
 
+export interface AdminNotification {
+  id: string;
+  eventType: string;
+  title: string;
+  content: string;
+  resourceType: string;
+  resourceId: string | null;
+  createdAt: string;
+  isRead: boolean;
+}
+
+export interface AdminNotificationPage {
+  items: AdminNotification[];
+  total: number;
+  unreadCount: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminNotificationReadResult {
+  read: true;
+  unreadCount: number;
+  updated?: number;
+}
+
 export interface ManagedIssue {
   id: string;
   code: string;
   label: string;
+  labelRichText: string;
   month: string;
+  monthRichText: string;
   theme: string;
+  themeRichText: string;
   question: string;
+  questionRichText: string;
   status: IssueStatus;
   editVersion: number;
   microVoiceTitle: string | null;
   microVoiceDuration: string | null;
   coverObjectKey: string | null;
   microVoiceObjectKey: string | null;
+  homeBackgroundObjectKey: string | null;
   homeMetaRichText: string;
   homeMetaFontSize: number;
   homeMetaColor: string;
   homeCoverCaptionLeft: string;
+  homeCoverCaptionLeftRichText: string;
   homeCoverCaptionRight: string;
+  homeCoverCaptionRightRichText: string;
   updatedAt: string;
   draftContent: { sections: ManagedIssueModule[]; discussion: DiscussionContent };
   publishedVersion: number;
   publishedTheme: string | null;
   publishedQuestion: string | null;
+  publishedLabelRichText: string | null;
+  publishedMonthRichText: string | null;
+  publishedThemeRichText: string | null;
+  publishedQuestionRichText: string | null;
   publishedLabel: string | null;
   publishedMonth: string | null;
   publishedCode: string | null;
@@ -107,7 +162,9 @@ export interface ManagedIssue {
   publishedHomeMetaFontSize: number | null;
   publishedHomeMetaColor: string | null;
   publishedHomeCoverCaptionLeft: string | null;
+  publishedHomeCoverCaptionLeftRichText: string | null;
   publishedHomeCoverCaptionRight: string | null;
+  publishedHomeCoverCaptionRightRichText: string | null;
 }
 
 export interface IssueLifecycle {
@@ -261,13 +318,18 @@ export function isPublicHome(value: unknown): value is PublicHome {
   const validIssue = issue === null || (isRecord(issue)
     && isBoundedText(issue.code, 64, 2) && isBoundedText(issue.label, 80, 2) && isBoundedText(issue.month, 40, 2)
     && isBoundedText(issue.theme, 200, 2) && isBoundedText(issue.question, 500, 2)
+    && isBoundedText(issue.labelRichText, 24000) && isBoundedText(issue.monthRichText, 24000)
+    && isBoundedText(issue.themeRichText, 24000) && isBoundedText(issue.questionRichText, 24000)
     && (issue.microVoiceTitle === null || isBoundedText(issue.microVoiceTitle, 120))
     && (issue.microVoiceDuration === null || isBoundedText(issue.microVoiceDuration, 20))
-    && isBoundedText(issue.homeMetaRichText, 2000)
+    && isBoundedText(issue.homeMetaRichText, 24000)
     && isPositiveInteger(issue.homeMetaFontSize) && issue.homeMetaFontSize >= 12 && issue.homeMetaFontSize <= 48
     && typeof issue.homeMetaColor === 'string' && /^#[0-9a-f]{6}$/i.test(issue.homeMetaColor)
     && isBoundedText(issue.homeCoverCaptionLeft, 80) && !/[\r\n]/.test(issue.homeCoverCaptionLeft)
-    && isBoundedText(issue.homeCoverCaptionRight, 80) && !/[\r\n]/.test(issue.homeCoverCaptionRight));
+    && isBoundedText(issue.homeCoverCaptionLeftRichText, 24000)
+    && isBoundedText(issue.homeCoverCaptionRight, 80) && !/[\r\n]/.test(issue.homeCoverCaptionRight)
+    && isBoundedText(issue.homeCoverCaptionRightRichText, 24000)
+    && isPublicMediaUrl(issue.homeBackgroundUrl));
   return validIssue && isBoundedText(value.question, 500) && isBoundedText(value.coverUrl, 2048)
     && Array.isArray(value.sections) && value.sections.length <= 16 && value.sections.every((section) => isBoundedText(section, 80, 1))
     && isRecord(voice) && isBoundedText(voice.title, 120) && isBoundedText(voice.duration, 20)
@@ -281,38 +343,50 @@ export function isManagedIssueModule(value: unknown): value is ManagedIssueModul
   const allowed = new Set(['issueMeta', 'coverStory', 'cover', 'opener', 'story', 'storyAction', 'image', 'quote', 'audio', 'question', 'observationAction', 'sharedPracticeAction', 'contents', 'archive', 'brandFooter']);
   return isRecord(value) && isBoundedText(value.id, 64, 2) && /^[a-z0-9][a-z0-9-]{1,63}$/.test(value.id)
     && typeof value.type === 'string' && allowed.has(value.type)
-    && isNonNegativeInteger(value.order) && typeof value.enabled === 'boolean';
+    && isNonNegativeInteger(value.order) && typeof value.enabled === 'boolean'
+    && (value.introduction === undefined || (isBoundedText(value.introduction, 120) && !/[\r\n<>]/.test(value.introduction)));
 }
 
 export function isManagedIssue(value: unknown): value is ManagedIssue {
   if (!isRecord(value)) return false;
   return isBoundedText(value.id, 64, 1) && isBoundedText(value.code, 64, 2) && isBoundedText(value.label, 80, 2) && isBoundedText(value.month, 40, 2)
     && isBoundedText(value.theme, 200, 2) && isBoundedText(value.question, 500, 2)
+    && isBoundedText(value.labelRichText, 24000) && isBoundedText(value.monthRichText, 24000)
+    && isBoundedText(value.themeRichText, 24000) && isBoundedText(value.questionRichText, 24000)
     && (value.status === 'draft' || value.status === 'published' || value.status === 'archived')
     && isPositiveInteger(value.editVersion)
     && (value.microVoiceTitle === null || isBoundedText(value.microVoiceTitle, 120))
     && (value.microVoiceDuration === null || isBoundedText(value.microVoiceDuration, 20))
-    && isBoundedText(value.homeMetaRichText, 2000)
+    && isBoundedText(value.homeMetaRichText, 24000)
     && isPositiveInteger(value.homeMetaFontSize) && value.homeMetaFontSize >= 12 && value.homeMetaFontSize <= 48
     && typeof value.homeMetaColor === 'string' && /^#[0-9a-f]{6}$/i.test(value.homeMetaColor)
     && isBoundedText(value.homeCoverCaptionLeft, 80) && !/[\r\n]/.test(value.homeCoverCaptionLeft)
+    && isBoundedText(value.homeCoverCaptionLeftRichText, 24000)
     && isBoundedText(value.homeCoverCaptionRight, 80) && !/[\r\n]/.test(value.homeCoverCaptionRight)
+    && isBoundedText(value.homeCoverCaptionRightRichText, 24000)
     && (value.coverObjectKey === null || isManagedMediaKey(value.coverObjectKey, 'content/image/'))
     && (value.microVoiceObjectKey === null || isManagedMediaKey(value.microVoiceObjectKey, 'content/audio/'))
+    && (value.homeBackgroundObjectKey === null || isManagedMediaKey(value.homeBackgroundObjectKey, 'content/image/'))
     && isBoundedText(value.updatedAt, 64, 1)
     && isNonNegativeInteger(value.publishedVersion)
     && (value.publishedTheme === null || isBoundedText(value.publishedTheme, 200, 2))
     && (value.publishedQuestion === null || isBoundedText(value.publishedQuestion, 500, 2))
+    && (value.publishedLabelRichText === null || isBoundedText(value.publishedLabelRichText, 24000))
+    && (value.publishedMonthRichText === null || isBoundedText(value.publishedMonthRichText, 24000))
+    && (value.publishedThemeRichText === null || isBoundedText(value.publishedThemeRichText, 24000))
+    && (value.publishedQuestionRichText === null || isBoundedText(value.publishedQuestionRichText, 24000))
     && (value.publishedLabel === null || isBoundedText(value.publishedLabel, 80, 2))
     && (value.publishedMonth === null || isBoundedText(value.publishedMonth, 40, 2))
     && (value.publishedCode === null || isBoundedText(value.publishedCode, 64, 2))
     && (value.publishedMicroVoiceTitle === null || isBoundedText(value.publishedMicroVoiceTitle, 120))
     && (value.publishedMicroVoiceDuration === null || isBoundedText(value.publishedMicroVoiceDuration, 20))
-    && (value.publishedHomeMetaRichText === null || isBoundedText(value.publishedHomeMetaRichText, 2000))
+    && (value.publishedHomeMetaRichText === null || isBoundedText(value.publishedHomeMetaRichText, 24000))
     && (value.publishedHomeMetaFontSize === null || (isPositiveInteger(value.publishedHomeMetaFontSize) && value.publishedHomeMetaFontSize >= 12 && value.publishedHomeMetaFontSize <= 48))
     && (value.publishedHomeMetaColor === null || (typeof value.publishedHomeMetaColor === 'string' && /^#[0-9a-f]{6}$/i.test(value.publishedHomeMetaColor)))
     && (value.publishedHomeCoverCaptionLeft === null || (isBoundedText(value.publishedHomeCoverCaptionLeft, 80) && !/[\r\n]/.test(value.publishedHomeCoverCaptionLeft)))
+    && (value.publishedHomeCoverCaptionLeftRichText === null || isBoundedText(value.publishedHomeCoverCaptionLeftRichText, 24000))
     && (value.publishedHomeCoverCaptionRight === null || (isBoundedText(value.publishedHomeCoverCaptionRight, 80) && !/[\r\n]/.test(value.publishedHomeCoverCaptionRight)))
+    && (value.publishedHomeCoverCaptionRightRichText === null || isBoundedText(value.publishedHomeCoverCaptionRightRichText, 24000))
     && isRecord(value.draftContent) && Array.isArray(value.draftContent.sections) && value.draftContent.sections.length <= 40
     && value.draftContent.sections.every(isManagedIssueModule) && isDiscussionContent(value.draftContent.discussion);
 }
@@ -366,6 +440,35 @@ export function isAdminLoginResult(value: unknown): value is AdminLoginResult {
   return isRecord(value) && isBoundedText(value.accessToken, 16_384, 1)
     && typeof value.expiresIn === 'number' && Number.isSafeInteger(value.expiresIn) && value.expiresIn > 0
     && value.expiresIn <= 30 * 24 * 60 * 60;
+}export function isAdminNotification(value: unknown): value is AdminNotification {
+  return isRecord(value)
+    && isBoundedText(value.id, 64, 1)
+    && isBoundedText(value.eventType, 120, 1)
+    && isBoundedText(value.title, 200, 1)
+    && isBoundedText(value.content, 1000, 1)
+    && isBoundedText(value.resourceType, 120, 1)
+    && (value.resourceId === null || isBoundedText(value.resourceId, 512))
+    && isBoundedText(value.createdAt, 64, 1)
+    && typeof value.isRead === 'boolean';
+}
+
+export function isAdminNotificationPage(value: unknown): value is AdminNotificationPage {
+  return isPage(value)
+    && Array.isArray(value.items)
+    && value.items.every(isAdminNotification)
+    && isNonNegativeInteger(value.unreadCount)
+    && value.unreadCount <= value.total;
+}
+
+export function isAdminUnreadCount(value: unknown): value is { unreadCount: number } {
+  return isRecord(value) && isNonNegativeInteger(value.unreadCount);
+}
+
+export function isAdminNotificationReadResult(value: unknown): value is AdminNotificationReadResult {
+  return isRecord(value)
+    && value.read === true
+    && isNonNegativeInteger(value.unreadCount)
+    && (value.updated === undefined || isNonNegativeInteger(value.updated));
 }
 
 export function isManagedIssueList(value: unknown): value is ManagedIssue[] {
@@ -417,14 +520,20 @@ export function isIssueDashboardConsistent(summary: unknown, issuesValue: unknow
     && (publicIssue?.label ?? null) === (publishedIssue?.publishedLabel ?? null)
     && (publicIssue?.month ?? null) === (publishedIssue?.publishedMonth ?? null)
     && (publicIssue?.theme ?? null) === (publishedIssue?.publishedTheme ?? null)
-    && (publicIssue?.question ?? null) === (publishedIssue?.question ?? null)
+    && (publicIssue?.question ?? null) === (publishedIssue?.publishedQuestion ?? null)
+    && (publicIssue?.labelRichText ?? '') === (publishedIssue?.publishedLabelRichText ?? '')
+    && (publicIssue?.monthRichText ?? '') === (publishedIssue?.publishedMonthRichText ?? '')
+    && (publicIssue?.themeRichText ?? '') === (publishedIssue?.publishedThemeRichText ?? '')
+    && (publicIssue?.questionRichText ?? '') === (publishedIssue?.publishedQuestionRichText ?? '')
     && (publicIssue?.microVoiceTitle ?? null) === (publishedIssue?.publishedMicroVoiceTitle ?? null)
     && (publicIssue?.microVoiceDuration ?? null) === (publishedIssue?.publishedMicroVoiceDuration ?? null)
     && (publicIssue?.homeMetaRichText ?? '') === (publishedIssue?.publishedHomeMetaRichText ?? '')
     && (publicIssue?.homeMetaFontSize ?? 16) === (publishedIssue?.publishedHomeMetaFontSize ?? 16)
     && (publicIssue?.homeMetaColor ?? '') === (publishedIssue?.publishedHomeMetaColor ?? '')
     && (publicIssue?.homeCoverCaptionLeft ?? '') === (publishedIssue?.publishedHomeCoverCaptionLeft ?? '')
+    && (publicIssue?.homeCoverCaptionLeftRichText ?? '') === (publishedIssue?.publishedHomeCoverCaptionLeftRichText ?? '')
     && (publicIssue?.homeCoverCaptionRight ?? '') === (publishedIssue?.publishedHomeCoverCaptionRight ?? '')
+    && (publicIssue?.homeCoverCaptionRightRichText ?? '') === (publishedIssue?.publishedHomeCoverCaptionRightRichText ?? '')
     && homeValue.microVoice.title === (publishedIssue?.publishedMicroVoiceTitle ?? '')
     && homeValue.microVoice.duration === (publishedIssue?.publishedMicroVoiceDuration ?? '')
     // Media URLs are signed independently and may be temporarily unavailable
@@ -532,4 +641,93 @@ export function isPrivacyProcessResult(value: unknown): value is PrivacyProcessR
 
 export function isRetryResult(value: unknown): value is { queued: boolean } {
   return isRecord(value) && typeof value.queued === 'boolean';
+}
+
+export type ModuleRuntimeState = 'online' | 'maintenance' | 'degraded' | 'disabled';
+
+export interface ModuleRuntimeItem {
+  moduleId: string;
+  label: string;
+  category: string;
+  state: ModuleRuntimeState;
+  previousState: ModuleRuntimeState | null;
+  reason: string | null;
+  updatedBy: string | null;
+  updatedAt: string;
+  lastActivityAt: string | null;
+  events24h: number;
+  legalNextStates: ModuleRuntimeState[];
+}
+
+export interface ModuleStateEvent {
+  id: string;
+  moduleId: string;
+  previousState: ModuleRuntimeState | null;
+  nextState: ModuleRuntimeState;
+  reason: string;
+  actorId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface ModuleStatePage {
+  modules: ModuleRuntimeItem[];
+  events: ModuleStateEvent[];
+  summary: Record<ModuleRuntimeState, number>;
+  generatedAt: string;
+}
+
+export interface ModuleStateTransitionResult {
+  module: ModuleRuntimeItem;
+  event: ModuleStateEvent;
+}
+
+const moduleRuntimeStateValues = new Set<ModuleRuntimeState>(['online', 'maintenance', 'degraded', 'disabled']);
+
+function isModuleRuntimeStateValue(value: unknown): value is ModuleRuntimeState {
+  return typeof value === 'string' && moduleRuntimeStateValues.has(value as ModuleRuntimeState);
+}
+
+function isModuleStateList(value: unknown): value is ModuleRuntimeState[] {
+  return Array.isArray(value) && value.every(isModuleRuntimeStateValue);
+}
+
+export function isModuleRuntimeItem(value: unknown): value is ModuleRuntimeItem {
+  if (!isRecord(value)) return false;
+  return isBoundedText(value.moduleId, 64, 1) && isBoundedText(value.label, 120, 1)
+    && isBoundedText(value.category, 80, 1) && isModuleRuntimeStateValue(value.state)
+    && (value.previousState === null || isModuleRuntimeStateValue(value.previousState))
+    && (value.reason === null || isBoundedText(value.reason, 500))
+    && (value.updatedBy === null || isBoundedText(value.updatedBy, 128))
+    && isBoundedText(value.updatedAt, 64, 1)
+    && (value.lastActivityAt === null || isBoundedText(value.lastActivityAt, 64, 1))
+    && isNonNegativeInteger(value.events24h)
+    && isModuleStateList(value.legalNextStates)
+    && value.legalNextStates.includes(value.state) === false;
+}
+
+export function isModuleStateEvent(value: unknown): value is ModuleStateEvent {
+  if (!isRecord(value)) return false;
+  return isBoundedText(value.id, 64, 1) && isBoundedText(value.moduleId, 64, 1)
+    && (value.previousState === null || isModuleRuntimeStateValue(value.previousState))
+    && isModuleRuntimeStateValue(value.nextState)
+    && isBoundedText(value.reason, 500, 1)
+    && (value.actorId === null || isBoundedText(value.actorId, 128))
+    && isRecord(value.metadata) && isBoundedText(value.createdAt, 64, 1);
+}
+
+export function isModuleStatePage(value: unknown): value is ModuleStatePage {
+  if (!isRecord(value) || !Array.isArray(value.modules) || !Array.isArray(value.events) || !isRecord(value.summary)) return false;
+  const modules: unknown[] = value.modules;
+  const events: unknown[] = value.events;
+  const summary = value.summary;
+  if (!modules.every(isModuleRuntimeItem) || !events.every(isModuleStateEvent)) return false;
+  const counts = ['online', 'maintenance', 'degraded', 'disabled'].every((state) => isNonNegativeInteger(summary[state]));
+  if (!counts || !isBoundedText(value.generatedAt, 64, 1)) return false;
+  return (['online', 'maintenance', 'degraded', 'disabled'] as const).every((state) => summary[state] === modules.filter((item) => item.state === state).length);
+}
+
+export function isModuleStateTransitionResult(value: unknown): value is ModuleStateTransitionResult {
+  return isRecord(value) && isModuleRuntimeItem(value.module) && isModuleStateEvent(value.event)
+    && value.module.moduleId === value.event.moduleId;
 }
