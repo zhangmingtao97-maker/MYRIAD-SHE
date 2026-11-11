@@ -176,6 +176,15 @@ class UpdateIssueDto {
   @IsOptional() @IsObject() draftContent?: IssueDraftContent;
 }
 
+class IssueLifecycleDto {
+  @IsInt() @Min(1) editVersion!: number;
+  @IsIn(['archived', 'draft']) status!: 'archived' | 'draft';
+}
+
+class DeleteIssueDto {
+  @IsInt() @Min(1) editVersion!: number;
+}
+
 class MediaUploadDto {
   @IsString() @MinLength(1) @MaxLength(200) fileName!: string;
   @IsString() @MinLength(1) @MaxLength(100) contentType!: string;
@@ -2035,6 +2044,71 @@ export class ContentController {
     } catch (error) {
       throw this.contentConflict(error);
     }
+  }
+
+  @Patch('issues/:id/lifecycle')
+  @UseGuards(AdminAuthGuard)
+  @Header('Cache-Control', 'no-store')
+  async updateIssueLifecycle(@Req() request: Request & { user?: { sub: string } }, @Param('id', ParseUUIDPipe) id: string, @Body() body: IssueLifecycleDto) {
+    return this.database.withTransaction(async (client) => {
+      const current = await client.query<{ id: string; code: string; status: 'draft' | 'published' | 'archived'; editVersion: number }>(
+        `select id, code, status, edit_version as "editVersion" from content_issues where id = $1 for update`, [id],
+      );
+      const issue = current.rows[0];
+      if (!issue) throw new NotFoundException('期刊不存在');
+      if (issue.editVersion !== body.editVersion) {
+        throw new ConflictException({ code: 'content_issue_changed', message: '期刊版本已变化，请刷新列表后重试' });
+      }
+      const allowed = (issue.status === 'published' && body.status === 'archived')
+        || (issue.status === 'archived' && body.status === 'draft');
+      if (!allowed) {
+        throw new ConflictException({ code: 'content_issue_transition_invalid', message: '当前期刊状态不支持该操作，请刷新列表后重试' });
+      }
+      const updated = await client.query<{ id: string; code: string; status: 'archived' | 'draft'; editVersion: number }>(
+        `update content_issues set status = $1, edit_version = edit_version + 1, updated_at = now()
+         where id = $2
+         returning id, code, status, edit_version as "editVersion"`, [body.status, id],
+      );
+      await this.audit.record({
+        actorType: 'admin',
+        actorId: request.user?.sub,
+        action: body.status === 'archived' ? 'content.issue.archived' : 'content.issue.restored',
+        resourceType: 'content_issue',
+        resourceId: id,
+        metadata: { code: issue.code, from: issue.status, to: body.status },
+      }, client);
+      if (!(await this.invalidateHomeCache())) throw this.homeCacheUnavailable();
+      return updated.rows[0];
+    });
+  }
+
+  @Delete('issues/:id')
+  @UseGuards(AdminAuthGuard)
+  @Header('Cache-Control', 'no-store')
+  async deleteIssue(@Req() request: Request & { user?: { sub: string } }, @Param('id', ParseUUIDPipe) id: string, @Body() body: DeleteIssueDto) {
+    return this.database.withTransaction(async (client) => {
+      const current = await client.query<{ id: string; code: string; status: 'draft' | 'published' | 'archived'; editVersion: number; publishedVersion: number }>(
+        `select id, code, status, edit_version as "editVersion", published_version as "publishedVersion"
+         from content_issues where id = $1 for update`, [id],
+      );
+      const issue = current.rows[0];
+      if (!issue) throw new NotFoundException('期刊不存在');
+      if (issue.editVersion !== body.editVersion) {
+        throw new ConflictException({ code: 'content_issue_changed', message: '期刊版本已变化，请刷新列表后重试' });
+      }
+      await client.query('delete from content_issue_publications where issue_id = $1', [id]);
+      await client.query('delete from content_issues where id = $1', [id]);
+      await this.audit.record({
+        actorType: 'admin',
+        actorId: request.user?.sub,
+        action: 'content.issue.deleted',
+        resourceType: 'content_issue',
+        resourceId: id,
+        metadata: { code: issue.code, status: issue.status, publishedVersion: issue.publishedVersion },
+      }, client);
+      if (!(await this.invalidateHomeCache())) throw this.homeCacheUnavailable();
+      return { deleted: true, id, code: issue.code };
+    });
   }
 
   /**

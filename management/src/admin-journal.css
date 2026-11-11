@@ -121,6 +121,27 @@
   color: var(--muted);
   font-size: 11px;
 }
+.issue-list-row {
+  display: grid;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: border-color var(--t), background-color var(--t);
+}
+.issue-list-row.active { border-color: var(--accent-line); }
+.issue-list-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 4px 3px;
+}
+.issue-list-actions button {
+  min-height: 28px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+}
 
 .issue-list-panel .issue-live-home {
   margin-top: 6px;
@@ -677,7 +698,7 @@
   border-color: var(--line-strong);
   background: var(--surface);
 }
-.journal-past-list article > div {
+.journal-past-copy {
   display: grid;
   gap: 3px;
   min-width: 0;
@@ -700,6 +721,63 @@
   padding: 6px 10px;
   font-size: 12px;
 }
+.journal-past-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* ---------- 期刊归档 / 删除确认 ---------- */
+.issue-lifecycle-backdrop { background: rgba(23, 24, 26, .5); }
+.issue-lifecycle-dialog {
+  width: min(100%, 500px);
+  border-top: 3px solid var(--accent);
+}
+.issue-lifecycle-dialog h3 { margin-bottom: 8px; }
+.issue-lifecycle-dialog .admin-error-copy { margin-bottom: 12px; font-weight: 500; }
+.issue-lifecycle-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.issue-lifecycle-summary span {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+}
+.issue-lifecycle-note,
+.issue-lifecycle-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+.issue-lifecycle-note.is-danger,
+.issue-lifecycle-warning {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--line));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.issue-lifecycle-error {
+  margin: 0 0 14px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--line));
+  border-radius: 8px;
+  background: var(--danger-soft);
+  font-size: 12.5px;
+}
+.issue-lifecycle-dialog .admin-error-actions { gap: 8px; }
 
 /* ---------- 整期保存条 ---------- */
 .journal-savebar {
@@ -802,6 +880,7 @@
     align-items: flex-start;
     flex-direction: column;
   }
+  .journal-past-actions { width: 100%; justify-content: flex-start; }
 }
 
 /* =========================================================================

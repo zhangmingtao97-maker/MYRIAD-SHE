@@ -49,6 +49,94 @@ try {
       { id: 'question', type: 'question', order: 5, enabled: true, eyebrow: '', eyebrowRichText: '', title: '最近，你在哪个瞬间感到松弛？', body: '从一件日常的小事说起。' },
     ] },
   };
+  Object.assign(issue, {
+    status: 'published',
+    publishedVersion: 2,
+    publishedCode: 'issue-03',
+    publishedLabel: '第三期',
+    publishedMonth: '2026 年 11 月',
+    publishedTheme: issue.theme,
+    publishedQuestion: issue.question,
+    publishedLabelRichText: '',
+    publishedMonthRichText: '',
+    publishedThemeRichText: '',
+    publishedQuestionRichText: '',
+    publishedMicroVoiceTitle: null,
+    publishedMicroVoiceDuration: null,
+    publishedHomeMetaRichText: issue.homeMetaRichText,
+    publishedHomeMetaFontSize: issue.homeMetaFontSize,
+    publishedHomeMetaColor: issue.homeMetaColor,
+    publishedHomeCoverCaptionLeft: issue.homeCoverCaptionLeft,
+    publishedHomeCoverCaptionLeftRichText: '',
+    publishedHomeCoverCaptionRight: issue.homeCoverCaptionRight,
+    publishedHomeCoverCaptionRightRichText: '',
+  });
+  const archivedIssue = {
+    ...issue,
+    id: 'issue-2',
+    code: 'issue-02',
+    label: '第二期',
+    month: '2026 年 10 月',
+    theme: '在熟悉的地方重新出发',
+    question: '最近，你在哪里找回了熟悉的自己？',
+    status: 'archived',
+    editVersion: 2,
+    publishedVersion: 1,
+    updatedAt: '2026-10-01T04:30:00Z',
+    publishedCode: 'issue-02',
+    publishedLabel: '第二期',
+    publishedMonth: '2026 年 10 月',
+    publishedTheme: '在熟悉的地方重新出发',
+    publishedQuestion: '最近，你在哪里找回了熟悉的自己？',
+  };
+  const issueFixtures = [issue, archivedIssue];
+  const issueSummaryFixture = () => {
+    const publishedIssue = issueFixtures.find((item) => item.status === 'published');
+    return {
+      draftCount: issueFixtures.filter((item) => item.status === 'draft').length,
+      publishedCount: publishedIssue ? 1 : 0,
+      archivedCount: issueFixtures.filter((item) => item.status === 'archived').length,
+      publishedCode: publishedIssue?.publishedCode ?? null,
+      publishedUpdatedAt: publishedIssue?.updatedAt ?? null,
+    };
+  };
+  const homeFixture = () => {
+    const publishedIssue = issueFixtures.find((item) => item.status === 'published');
+    return {
+      issue: publishedIssue ? {
+        code: publishedIssue.publishedCode,
+        label: publishedIssue.publishedLabel,
+        month: publishedIssue.publishedMonth,
+        theme: publishedIssue.publishedTheme,
+        question: publishedIssue.publishedQuestion,
+        labelRichText: publishedIssue.publishedLabelRichText,
+        monthRichText: publishedIssue.publishedMonthRichText,
+        themeRichText: publishedIssue.publishedThemeRichText,
+        questionRichText: publishedIssue.publishedQuestionRichText,
+        microVoiceTitle: publishedIssue.publishedMicroVoiceTitle,
+        microVoiceDuration: publishedIssue.publishedMicroVoiceDuration,
+        homeMetaRichText: publishedIssue.publishedHomeMetaRichText,
+        homeMetaFontSize: publishedIssue.publishedHomeMetaFontSize,
+        homeMetaColor: publishedIssue.publishedHomeMetaColor,
+        homeCoverCaptionLeft: publishedIssue.publishedHomeCoverCaptionLeft,
+        homeCoverCaptionLeftRichText: publishedIssue.publishedHomeCoverCaptionLeftRichText,
+        homeCoverCaptionRight: publishedIssue.publishedHomeCoverCaptionRight,
+        homeCoverCaptionRightRichText: publishedIssue.publishedHomeCoverCaptionRightRichText,
+        homeBackgroundUrl: '',
+      } : null,
+      question: publishedIssue?.publishedQuestion ?? '',
+      coverUrl: '',
+      sections: [],
+      microVoice: {
+        title: publishedIssue?.publishedMicroVoiceTitle ?? '',
+        duration: publishedIssue?.publishedMicroVoiceDuration ?? '',
+        url: '',
+        enabled: false,
+      },
+      publishedVersion: publishedIssue?.publishedVersion ?? 0,
+      modules: [],
+    };
+  };
   const member = { id: 'member-1', nickname: '林间来信', createdAt: timestamp, status: 'active', birthMonth: 5, birthDay: 18, observationCount: 12, phoneMasked: '138****1234', address: { provinceName: '上海市', cityName: '上海市', countyName: '徐汇区', detailInfo: '测试地址' } };
   const cards = Array.from({ length: 8 }, (_, i) => ({ month: 1, day: i + 1, suit: 'heart', rank: String(i + 2), title: ['温柔的力量', '倾听自己的节奏', '从日常开始'][i % 3], summary: '在熟悉的生活里，找到属于自己的力量。', prompt: '今天，有什么事情值得你慢下来？', theme: '自我观察', note: '保持开放，接纳不同的可能。', sourceNote: '用于日常自我观察的提示。' }));
   const employees = [{ id: 'employee-1', username: 'editor', displayName: '内容编辑', role: 'content_editor', status: 'active', wecomUserId: 'editor-test', modulePermissions: null, createdAt: timestamp, lastLoginAt: timestamp }, { id: 'employee-2', username: 'support', displayName: '会员支持', role: 'support_readonly', status: 'disabled', modulePermissions: null, createdAt: timestamp, lastLoginAt: null }];
@@ -146,13 +234,29 @@ try {
         fixtureFirstRead = true;
         return send({ read: true, unreadCount: fixtureUnreadCount });
       }
-      if (path === '/content/home') return send({ issue: null, question: '', coverUrl: '', sections: [], microVoice: { title: '', duration: '', url: '', enabled: false } });
+      if (path === '/content/home') return send(homeFixture());
+      const issueLifecycleMatch = path.match(/^\/content\/issues\/([^/]+)\/lifecycle$/);
+      if (issueLifecycleMatch && route.request().method() === 'PATCH') {
+        const target = issueFixtures.find((item) => item.id === issueLifecycleMatch[1]);
+        if (!target) return route.fulfill({ status: 404, json: { message: '期刊不存在' } });
+        target.status = body.status === 'archived' ? 'archived' : 'draft';
+        target.editVersion += 1;
+        target.updatedAt = new Date().toISOString();
+        return send(target);
+      }
+      const issueDeleteMatch = path.match(/^\/content\/issues\/([^/]+)$/);
+      if (issueDeleteMatch && route.request().method() === 'DELETE') {
+        const index = issueFixtures.findIndex((item) => item.id === issueDeleteMatch[1]);
+        if (index < 0) return route.fulfill({ status: 404, json: { message: '期刊不存在' } });
+        const [deleted] = issueFixtures.splice(index, 1);
+        return send({ deleted: true, id: deleted.id, code: deleted.code });
+      }
       if (path === '/content/issues/issue-1' && route.request().method() === 'PATCH') {
         Object.assign(issue, { draftContent: route.request().postDataJSON().draftContent, editVersion: issue.editVersion + 1 });
         return send(issue);
       }
-      if (path === '/content/issues') return send([issue]);
-      if (path === '/content/issues/summary') return send({ draftCount: 1, publishedCount: 0, archivedCount: 0, publishedCode: null, publishedUpdatedAt: null });
+      if (path === '/content/issues') return send(issueFixtures);
+      if (path === '/content/issues/summary') return send(issueSummaryFixture());
       if (path === '/content/practice/manage') return send(practice);
       if (path === '/content/daily-objects/manage') return failDaily ? route.fulfill({ status: 500, json: { message: '测试：读取失败' } }) : send(daily);
       if (path === '/content/mine/manage') return send(mine);
@@ -591,6 +695,56 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('.journal-savebar button')].some((button) => button.textContent.includes('保存整份草稿') && !button.disabled));
   await settle();
 
+  await navigate('期刊列表');
+  const journalList = page.locator('#journal-list');
+  assert.equal(await journalList.locator('.issue-list-row').count(), 2, 'published and archived issues should both be listed');
+  const publishedRow = journalList.locator('.issue-list-row').filter({ hasText: '第三期' });
+  const archivedRow = journalList.locator('.issue-list-row').filter({ hasText: '第二期' });
+  assert.equal(await publishedRow.getByRole('button', { name: '归档期刊 issue-03', exact: true }).count(), 1, 'published issues should expose archive');
+  assert.equal(await publishedRow.getByRole('button', { name: '删除期刊 issue-03', exact: true }).count(), 1, 'published issues should expose delete');
+  assert.equal(await archivedRow.getByRole('button', { name: '恢复期刊 issue-02 为草稿', exact: true }).count(), 1, 'archived issues should expose restore');
+  assert.equal(await archivedRow.getByRole('button', { name: '删除期刊 issue-02', exact: true }).count(), 1, 'archived issues should expose delete');
+  await archivedRow.locator('.issue-list-item').click();
+  await page.waitForFunction(() => [...document.querySelectorAll('.journal-status-pill')].some((pill) => pill.textContent?.trim() === '已归档'));
+  assert.equal(await archivedRow.locator('.issue-list-item').evaluate((button) => button.classList.contains('active')), true, 'archived issues should remain editable');
+
+  await archivedRow.getByRole('button', { name: '恢复期刊 issue-02 为草稿', exact: true }).click();
+  const issueActionDialog = page.getByRole('alertdialog');
+  await issueActionDialog.waitFor();
+  assert.equal((await issueActionDialog.getByRole('heading').innerText()).trim(), '恢复为草稿？');
+  assert.match(await issueActionDialog.locator('#issue-lifecycle-copy').innerText(), /issue-02.*第二期.*已归档/);
+  await issueActionDialog.getByRole('button', { name: '取消', exact: true }).click();
+  await issueActionDialog.waitFor({ state: 'detached' });
+
+  await archivedRow.getByRole('button', { name: '恢复期刊 issue-02 为草稿', exact: true }).click();
+  const restoreRequest = page.waitForRequest((request) => request.method() === 'PATCH' && new URL(request.url()).pathname.endsWith('/content/issues/issue-2/lifecycle'));
+  await issueActionDialog.getByRole('button', { name: '恢复为草稿', exact: true }).click();
+  assert.deepEqual((await restoreRequest).postDataJSON(), { editVersion: 2, status: 'draft' });
+  await issueActionDialog.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => ![...document.querySelectorAll('.issue-list-row')].some((row) => row.textContent?.includes('第二期') && row.textContent.includes('已归档')));
+  assert.equal(await page.locator('.journal-status-pill.is-draft').count() > 0, true, 'restored issue should stay selected as a draft');
+
+  await publishedRow.getByRole('button', { name: '归档期刊 issue-03', exact: true }).click();
+  await issueActionDialog.waitFor();
+  assert.equal((await issueActionDialog.getByRole('heading').innerText()).trim(), '归档这一期？');
+  assert.match(await issueActionDialog.locator('#issue-lifecycle-copy').innerText(), /issue-03.*第三期.*线上发布/);
+  const archiveRequest = page.waitForRequest((request) => request.method() === 'PATCH' && new URL(request.url()).pathname.endsWith('/content/issues/issue-1/lifecycle'));
+  await issueActionDialog.getByRole('button', { name: '归档', exact: true }).click();
+  assert.deepEqual((await archiveRequest).postDataJSON(), { editVersion: 2, status: 'archived' });
+  await issueActionDialog.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => [...document.querySelectorAll('.issue-list-row')].filter((row) => row.textContent?.includes('第三期')).some((row) => row.textContent.includes('已归档')));
+
+  const archivedPublishedRow = journalList.locator('.issue-list-row').filter({ hasText: '第三期' });
+  await archivedPublishedRow.getByRole('button', { name: '删除期刊 issue-03', exact: true }).click();
+  await issueActionDialog.waitFor();
+  assert.equal((await issueActionDialog.getByRole('heading').innerText()).trim(), '永久删除这一期？');
+  const deleteRequest = page.waitForRequest((request) => request.method() === 'DELETE' && new URL(request.url()).pathname.endsWith('/content/issues/issue-1'));
+  await issueActionDialog.getByRole('button', { name: '删除', exact: true }).click();
+  assert.equal((await deleteRequest).postDataJSON().editVersion, 3);
+  await issueActionDialog.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => document.querySelectorAll('#journal-list .issue-list-row').length === 1);
+  assert.equal(await journalList.getByText('第三期', { exact: false }).count(), 0, 'deleted issue should disappear from the list');
+
   await navigate('员工与权限');
   // Existing dialogs keep keyboard focus inside and restore the opening control.
   const create = page.getByRole('button', { name: '创建员工账号', exact: true });
@@ -743,7 +897,9 @@ try {
     requests.every((request) => request.method === 'GET'
       || (request.method === 'POST' && /^\/admin\/notifications\/(read-all|[0-9a-f-]{36}\/read)$/.test(request.path))
       || (request.method === 'POST' && request.path === '/admin/discussion-restrictions')
-      || (request.method === 'PATCH' && request.path === '/content/issues/issue-1')),
+      || (request.method === 'PATCH' && request.path === '/content/issues/issue-1')
+      || (request.method === 'PATCH' && /^\/content\/issues\/(issue-1|issue-2)\/lifecycle$/.test(request.path))
+      || (request.method === 'DELETE' && request.path === '/content/issues/issue-1')),
     true,
     'navigation and draft tests must not persist unrelated data',
   );

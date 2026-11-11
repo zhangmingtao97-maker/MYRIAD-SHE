@@ -536,6 +536,73 @@ function issueEditHarness(editVersion: number, cacheInvalidation = true) {
   return { controller, events, issue };
 }
 
+type IssueLifecycleHarnessOptions = {
+  status?: 'draft' | 'published' | 'archived';
+  editVersion?: number;
+  cacheInvalidation?: boolean;
+  missing?: boolean;
+};
+
+function issueLifecycleHarness(options: IssueLifecycleHarnessOptions = {}) {
+  const events: string[] = [];
+  const auditEntries: Array<Record<string, unknown>> = [];
+  const issue = {
+    id: '00000000-0000-4000-8000-000000000001',
+    code: 'issue-03',
+    status: options.status ?? 'published',
+    editVersion: options.editVersion ?? 3,
+    publishedVersion: 2,
+  };
+  const client = {
+    query: async (sql: string, values: unknown[] = []) => {
+      if (sql.includes('from content_issues where id = $1 for update')) {
+        events.push('issue:locked');
+        return { rows: options.missing ? [] : [{ ...issue }] };
+      }
+      if (sql.startsWith('update content_issues set status = $1')) {
+        events.push('issue:updated');
+        return { rows: [{ ...issue, status: values[0], editVersion: issue.editVersion + 1 }] };
+      }
+      if (sql.startsWith('delete from content_issue_publications')) {
+        events.push('publications:deleted');
+        return { rows: [] };
+      }
+      if (sql.startsWith('delete from content_issues')) {
+        events.push('issue:deleted');
+        return { rows: [] };
+      }
+      throw new Error(`Unexpected test query: ${sql}`);
+    },
+  } as unknown as PoolClient;
+  const database = {
+    withTransaction: async (callback: (transactionClient: PoolClient) => Promise<unknown>) => {
+      events.push('transaction:begin');
+      try {
+        const result = await callback(client);
+        events.push('transaction:commit');
+        return result;
+      } catch (error) {
+        events.push('transaction:rollback');
+        throw error;
+      }
+    },
+  } as unknown as DatabaseService;
+  const audit = {
+    record: async (entry: Record<string, unknown>) => {
+      auditEntries.push(entry);
+      events.push(`audit:${String(entry.action)}`);
+    },
+  } as unknown as AuditService;
+  const redis = {
+    delete: async () => {
+      events.push('cache:deleted');
+      return options.cacheInvalidation ?? true;
+    },
+  } as unknown as RedisService;
+  const controller = new ContentController(database, {} as StorageService, audit, new ConfigService({}), redis, {} as JwtService);
+  return { controller, events, auditEntries };
+}
+
 test('public practice content is read from the cloud database', async () => {
   const { controller, events } = practiceHarness();
   const result = await controller.practice();
@@ -1219,6 +1286,93 @@ test('issue writes roll back when public cache invalidation cannot be confirmed'
   assert.ok(events.includes('cache:deleted'));
   assert.ok(events.includes('transaction:rollback'));
   assert.equal(events.includes('transaction:commit'), false);
+});
+
+test('published issues can be archived and archived issues can be restored to draft', async () => {
+  const archived = issueLifecycleHarness({ status: 'published', editVersion: 3 });
+  const archivedResult = await archived.controller.updateIssueLifecycle(request, '00000000-0000-4000-8000-000000000001', {
+    editVersion: 3,
+    status: 'archived',
+  });
+  assert.equal(archivedResult.status, 'archived');
+  assert.equal(archivedResult.editVersion, 4);
+  assert.ok(archived.events.includes('audit:content.issue.archived'));
+  assert.ok(archived.events.indexOf('cache:deleted') < archived.events.indexOf('transaction:commit'));
+
+  const restored = issueLifecycleHarness({ status: 'archived', editVersion: 4 });
+  const restoredResult = await restored.controller.updateIssueLifecycle(request, '00000000-0000-4000-8000-000000000001', {
+    editVersion: 4,
+    status: 'draft',
+  });
+  assert.equal(restoredResult.status, 'draft');
+  assert.equal(restoredResult.editVersion, 5);
+  assert.ok(restored.events.includes('audit:content.issue.restored'));
+});
+
+test('issue lifecycle rejects invalid state transitions with a stable error code', async () => {
+  const { controller } = issueLifecycleHarness({ status: 'draft', editVersion: 2 });
+  let caught: unknown;
+  try {
+    await controller.updateIssueLifecycle(request, '00000000-0000-4000-8000-000000000001', {
+      editVersion: 2,
+      status: 'archived',
+    });
+  } catch (error) {
+    caught = error;
+  }
+  assert.ok(caught instanceof ConflictException);
+  assert.deepEqual((caught as ConflictException).getResponse(), {
+    code: 'content_issue_transition_invalid',
+    message: '当前期刊状态不支持该操作，请刷新列表后重试',
+  });
+});
+
+test('issue lifecycle and deletion reject stale edit versions', async () => {
+  const { controller } = issueLifecycleHarness({ status: 'archived', editVersion: 4 });
+  await assert.rejects(
+    controller.updateIssueLifecycle(request, '00000000-0000-4000-8000-000000000001', { editVersion: 3, status: 'draft' }),
+    (error: unknown) => error instanceof ConflictException
+      && (error.getResponse() as { code?: string }).code === 'content_issue_changed',
+  );
+  await assert.rejects(
+    controller.deleteIssue(request, '00000000-0000-4000-8000-000000000001', { editVersion: 3 }),
+    (error: unknown) => error instanceof ConflictException
+      && (error.getResponse() as { code?: string }).code === 'content_issue_changed',
+  );
+});
+
+test('published issue deletion removes publication snapshots before the issue and records an audit entry', async () => {
+  const { controller, events, auditEntries } = issueLifecycleHarness({ status: 'published', editVersion: 3 });
+  const result = await controller.deleteIssue(request, '00000000-0000-4000-8000-000000000001', { editVersion: 3 });
+
+  assert.deepEqual(result, { deleted: true, id: '00000000-0000-4000-8000-000000000001', code: 'issue-03' });
+  assert.ok(events.indexOf('publications:deleted') < events.indexOf('issue:deleted'));
+  assert.ok(events.indexOf('issue:deleted') < events.indexOf('audit:content.issue.deleted'));
+  assert.ok(events.indexOf('cache:deleted') < events.indexOf('transaction:commit'));
+  assert.equal(auditEntries[0].resourceId, '00000000-0000-4000-8000-000000000001');
+  assert.deepEqual(auditEntries[0].metadata, { code: 'issue-03', status: 'published', publishedVersion: 2 });
+});
+
+test('issue deletion rolls back when public cache invalidation cannot be confirmed', async () => {
+  const { controller, events } = issueLifecycleHarness({ status: 'published', cacheInvalidation: false });
+  await assert.rejects(
+    controller.deleteIssue(request, '00000000-0000-4000-8000-000000000001', { editVersion: 3 }),
+    ServiceUnavailableException,
+  );
+  assert.ok(events.includes('transaction:rollback'));
+  assert.equal(events.includes('transaction:commit'), false);
+});
+
+test('issue lifecycle and deletion return 404 when the issue does not exist', async () => {
+  const { controller } = issueLifecycleHarness({ missing: true });
+  await assert.rejects(
+    controller.updateIssueLifecycle(request, '00000000-0000-4000-8000-000000000001', { editVersion: 3, status: 'archived' }),
+    NotFoundException,
+  );
+  await assert.rejects(
+    controller.deleteIssue(request, '00000000-0000-4000-8000-000000000001', { editVersion: 3 }),
+    NotFoundException,
+  );
 });
 
 test('issue unique conflicts return stable operation-specific error codes', async () => {

@@ -420,6 +420,10 @@ const issueValidationDialogOpen = ref(false);
 type IssueFieldKey = 'code' | 'label' | 'month' | 'edition' | 'theme' | 'question';
 const issueFieldErrors = ref<Partial<Record<IssueFieldKey, string>>>({});
 const issueHistory = ref<Array<{ version: number; publishedAt: string; publishedBy: string | null; snapshot: unknown }>>([]);
+type IssueLifecycleAction = 'archive' | 'restore' | 'delete';
+const pendingIssueAction = ref<{ issue: ManagedIssue; action: IssueLifecycleAction } | null>(null);
+const issueActionBusy = ref(false);
+const issueActionError = ref('');
 const issueModulePreviewUrls = ref<Record<string, string>>({});
 const selectedIssueModuleId = ref('cover-story');
 const discussionPageEditVersion = ref(0);
@@ -1470,8 +1474,11 @@ const auditActionDefinitions: Record<string, AuditActionDefinition> = {
   'content.issue_practice_copy.copied': { label: '复制了期刊实践文案', category: '内容发布' },
   'content.issue_practice_copy.saved': { label: '保存了期刊实践文案', category: '内容发布' },
   'content.issue.auto_archived': { label: '自动归档了期刊', category: '内容发布' },
+  'content.issue.archived': { label: '归档了期刊', category: '内容发布' },
   'content.issue.created': { label: '创建了期刊', category: '内容发布' },
+  'content.issue.deleted': { label: '删除期刊', category: '内容发布' },
   'content.issue.published': { label: '发布了期刊', category: '内容发布' },
+  'content.issue.restored': { label: '恢复期刊为草稿', category: '内容发布' },
   'content.issue.updated': { label: '更新了期刊', category: '内容发布' },
   'content.legal_document.draft_saved': { label: '保存了协议草稿', category: '内容发布' },
   'content.legal_document.published': { label: '发布了协议页面', category: '内容发布' },
@@ -6187,6 +6194,82 @@ async function resetIssue() {
   }
 }
 
+function issueLifecycleActionLabel(action: IssueLifecycleAction) {
+  if (action === 'archive') return '归档';
+  if (action === 'restore') return '恢复为草稿';
+  return '删除';
+}
+
+function openIssueLifecycleAction(issue: ManagedIssue, action: IssueLifecycleAction) {
+  if (issueActionBusy.value) return;
+  issueActionError.value = '';
+  pendingIssueAction.value = { issue, action };
+}
+
+function closeIssueLifecycleAction() {
+  if (issueActionBusy.value) return;
+  pendingIssueAction.value = null;
+  issueActionError.value = '';
+}
+
+async function confirmIssueLifecycleAction() {
+  const pending = pendingIssueAction.value;
+  if (!pending || issueActionBusy.value) return;
+  issueActionBusy.value = true;
+  issueActionError.value = '';
+  const session = sessionGeneration;
+  try {
+    const endpoint = `${apiBase}/content/issues/${pending.issue.id}`;
+    const response = pending.action === 'delete'
+      ? await apiFetch(endpoint, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
+        body: JSON.stringify({ editVersion: pending.issue.editVersion }),
+      })
+      : await apiFetch(`${endpoint}/lifecycle`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
+        body: JSON.stringify({
+          editVersion: pending.issue.editVersion,
+          status: pending.action === 'archive' ? 'archived' : 'draft',
+        }),
+      });
+    if (handleAdminUnauthorized(response, session)) return;
+    assertSession(session);
+    if (!response.ok) throw new Error(await responseMessage(response, `${issueLifecycleActionLabel(pending.action)}期刊失败`));
+    await loadDashboard();
+    assertSession(session);
+
+    if (pending.action === 'delete' && editingIssueId.value === pending.issue.id) {
+      clearIssueForm();
+      await cleanupCandidates().catch(() => undefined);
+      const nextIssue = issues.value.find((item) => item.status === 'published') || issues.value[0];
+      if (nextIssue) await editIssue(nextIssue);
+    } else if (editingIssueId.value === pending.issue.id) {
+      const refreshed = issues.value.find((item) => item.id === pending.issue.id);
+      if (refreshed) {
+        issueForm.value.status = refreshed.status;
+        editingIssueEditVersion.value = refreshed.editVersion;
+        originalIssueStatus.value = refreshed.status;
+      }
+    }
+
+    const message = pending.action === 'archive'
+      ? `期刊 ${pending.issue.code} 已归档，线上首页会同步切换。`
+      : pending.action === 'restore'
+        ? `期刊 ${pending.issue.code} 已恢复为草稿，可继续编辑或重新发布。`
+        : `期刊 ${pending.issue.code} 已永久删除。`;
+    pendingIssueAction.value = null;
+    issueSaveMessage.value = message;
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) {
+      issueActionError.value = caught instanceof Error ? caught.message : `${issueLifecycleActionLabel(pending.action)}期刊失败，请稍后重试。`;
+    }
+  } finally {
+    if (session === sessionGeneration) issueActionBusy.value = false;
+  }
+}
+
 async function uploadMedia(file: File, kind: 'image' | 'audio' | 'video', expectedSession = sessionGeneration) {
   const urlResponse = await apiFetch(`${apiBase}/content/media/upload-url`, {
     method: 'POST',
@@ -7185,7 +7268,14 @@ onBeforeUnmount(() => {
         <div class="journal-list-layout">
           <aside class="panel issue-list-panel">
             <div class="section-heading"><h3>全部期次</h3><div class="issue-list-heading-actions"><small>{{ issues.length }} 期</small><button type="button" class="quiet" @click="startNewIssue">＋ 新建期刊</button></div></div>
-            <button v-for="item in issues" :key="item.id" type="button" class="issue-list-item" :class="{ active: editingIssueId === item.id }" @click="editIssue(item)"><strong><RichTextView inline :text="item.label" :rich-text="item.labelRichText" /> · <RichTextView inline :text="item.theme" :rich-text="item.themeRichText" /></strong><small><RichTextView inline :text="item.month" :rich-text="item.monthRichText" /> · {{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</small></button>
+            <div v-for="item in issues" :key="item.id" class="issue-list-row" :class="{ active: editingIssueId === item.id }">
+              <button type="button" class="issue-list-item" :class="{ active: editingIssueId === item.id }" @click="editIssue(item)"><strong><RichTextView inline :text="item.label" :rich-text="item.labelRichText" /> · <RichTextView inline :text="item.theme" :rich-text="item.themeRichText" /></strong><small><RichTextView inline :text="item.month" :rich-text="item.monthRichText" /> · {{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</small></button>
+              <div class="issue-list-actions" aria-label="期刊操作">
+                <button v-if="item.status === 'published'" type="button" class="quiet" :disabled="issueActionBusy" :aria-label="`归档期刊 ${item.code}`" @click="openIssueLifecycleAction(item, 'archive')">归档</button>
+                <button v-if="item.status === 'archived'" type="button" class="quiet" :disabled="issueActionBusy" :aria-label="`恢复期刊 ${item.code} 为草稿`" @click="openIssueLifecycleAction(item, 'restore')">恢复草稿</button>
+                <button type="button" class="quiet danger" :disabled="issueActionBusy" :aria-label="`删除期刊 ${item.code}`" @click="openIssueLifecycleAction(item, 'delete')">删除</button>
+              </div>
+            </div>
             <p v-if="!issues.length" class="muted">还没有期刊。先新建一份草稿。</p>
             <details class="issue-live-home"><summary>当前线上首页 <span>v{{ home?.publishedVersion || 0 }}</span></summary>
               <div v-if="home?.issue" class="issue-live-home-body"><strong><RichTextView inline :text="home.issue.label" :rich-text="home.issue.labelRichText" /> · <RichTextView inline :text="home.issue.theme" :rich-text="home.issue.themeRichText" /></strong><small><RichTextView inline :text="home.issue.month" :rich-text="home.issue.monthRichText" /> · {{ home.issue.code }}</small>
@@ -7559,8 +7649,13 @@ onBeforeUnmount(() => {
               <p class="field-help">这里只读展示当前期之外的线上与归档期次；「策展档案」栏目的入口文案在上方编辑。旧期正文仍按各自发布版本保留。</p>
               <div class="journal-past-list">
                 <article v-for="item in journalPastIssues" :key="item.id">
-                  <div><small><RichTextView inline :text="item.publishedMonth || item.month" :rich-text="item.publishedMonthRichText || item.monthRichText" /> · {{ item.code }}</small><strong><RichTextView inline :text="item.publishedTheme || item.theme" :rich-text="item.publishedThemeRichText || item.themeRichText" /></strong><span>{{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</span></div>
-                  <button type="button" class="quiet" @click="editIssue(item)">载入此期</button>
+                  <div class="journal-past-copy"><small><RichTextView inline :text="item.publishedMonth || item.month" :rich-text="item.publishedMonthRichText || item.monthRichText" /> · {{ item.code }}</small><strong><RichTextView inline :text="item.publishedTheme || item.theme" :rich-text="item.publishedThemeRichText || item.themeRichText" /></strong><span>{{ journalIssueStatusLabel(item.status) }} · v{{ item.publishedVersion }}</span></div>
+                  <div class="journal-past-actions">
+                    <button type="button" class="quiet" @click="editIssue(item)">载入此期</button>
+                    <button v-if="item.status === 'published'" type="button" class="quiet" :disabled="issueActionBusy" :aria-label="`归档期刊 ${item.code}`" @click="openIssueLifecycleAction(item, 'archive')">归档</button>
+                    <button v-if="item.status === 'archived'" type="button" class="quiet" :disabled="issueActionBusy" :aria-label="`恢复期刊 ${item.code} 为草稿`" @click="openIssueLifecycleAction(item, 'restore')">恢复草稿</button>
+                    <button type="button" class="quiet danger" :disabled="issueActionBusy" :aria-label="`删除期刊 ${item.code}`" @click="openIssueLifecycleAction(item, 'delete')">删除</button>
+                  </div>
                 </article>
                 <p v-if="!journalPastIssues.length" class="muted">还没有其他往期或归档期次。</p>
               </div>
@@ -8624,6 +8719,25 @@ onBeforeUnmount(() => {
           <p id="issue-validation-copy" class="admin-error-copy">{{ issueValidationMessage }}</p>
           <div class="admin-error-actions">
             <button type="button" @click="closeIssueValidationDialog">知道了</button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
+    <Teleport to="body">
+      <div v-if="pendingIssueAction" class="admin-error-backdrop issue-lifecycle-backdrop" @click.self="closeIssueLifecycleAction">
+        <section class="admin-error-dialog issue-lifecycle-dialog" role="alertdialog" aria-modal="true" aria-labelledby="issue-lifecycle-title" aria-describedby="issue-lifecycle-copy" @keydown.esc.stop.prevent="closeIssueLifecycleAction">
+          <p class="eyebrow">JOURNAL LIFECYCLE</p>
+          <h3 id="issue-lifecycle-title">{{ pendingIssueAction.action === 'archive' ? '归档这一期？' : pendingIssueAction.action === 'restore' ? '恢复为草稿？' : '永久删除这一期？' }}</h3>
+          <p id="issue-lifecycle-copy" class="admin-error-copy">{{ pendingIssueAction.issue.code }} · {{ pendingIssueAction.issue.label }} · {{ journalIssueStatusLabel(pendingIssueAction.issue.status) }}</p>
+          <div class="issue-lifecycle-summary"><span>线下草稿 v{{ pendingIssueAction.issue.editVersion }}</span><span>已发布 v{{ pendingIssueAction.issue.publishedVersion }}</span></div>
+          <p v-if="pendingIssueAction.action === 'archive'" class="issue-lifecycle-note">归档后，这一期会从当前线上期刊中下线；首页、档案入口及相关公开内容会同步刷新。</p>
+          <p v-else-if="pendingIssueAction.action === 'restore'" class="issue-lifecycle-note">恢复后，这一期会回到草稿列表，便于继续编辑；不会自动重新上线，需要再次确认发布。</p>
+          <p v-else class="issue-lifecycle-note is-danger">删除会同时移除这一期的发布快照，无法恢复。线上首页及往期档案会立即同步。</p>
+          <p v-if="editingIssueId === pendingIssueAction.issue.id && issueDraftDirty" class="issue-lifecycle-warning">当前有未保存修改。{{ pendingIssueAction.action === 'delete' ? '删除后这些内容会一并丢弃。' : '状态变更后会保留当前编辑内容，仍需单独保存草稿。' }}</p>
+          <p v-if="issueActionError" class="error issue-lifecycle-error" role="alert">{{ issueActionError }}</p>
+          <div class="admin-error-actions">
+            <button type="button" class="quiet" :disabled="issueActionBusy" @click="closeIssueLifecycleAction">取消</button>
+            <button type="button" :class="{ danger: pendingIssueAction.action === 'delete' }" :disabled="issueActionBusy" @click="confirmIssueLifecycleAction">{{ issueActionBusy ? '处理中…' : issueLifecycleActionLabel(pendingIssueAction.action) }}</button>
           </div>
         </section>
       </div>
