@@ -54,23 +54,31 @@ page { height: 100vh; overflow: hidden; background: #e7dfd1; color: #5c493c; fon
 .landing-title { margin-top: 68rpx; color: #5c493c; font-size: 58rpx; font-weight: 600; line-height: 1.45; }
 .landing-intro { margin-top: 38rpx; color: #5c493c; font-size: 28rpx; font-weight: 600; line-height: 1.8; }
 .landing-status { margin-top: 42rpx; color: #8b6b58; font-size: 22rpx; line-height: 1.6; }
-.landing-principles { margin: 68rpx -62rpx 0; border-top: 1rpx solid rgba(92, 73, 60, .28); }
-.principles-heading { display: flex; align-items: center; justify-content: space-between; padding: 44rpx 62rpx 26rpx; color: #663124; font-size: 24rpx; font-weight: 600; line-height: 1.4; }
-.principles-heading text:last-child { font-family: Georgia, "Times New Roman", serif; letter-spacing: .12em; }
-.principle-row { display: grid; grid-template-columns: 74rpx minmax(0, 1fr); gap: 0; min-height: 128rpx; margin: 0 62rpx; padding: 20rpx 0 24rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .28); box-sizing: border-box; }
-.principle-number { color: #663124; font-family: Georgia, "Times New Roman", serif; font-size: 22rpx; line-height: 1.5; }
-.principle-title, .principle-copy { display: block; color: #5c493c; }
-.principle-title { font-size: 29rpx; font-weight: 600; line-height: 1.5; }
-.principle-copy { margin-top: 5rpx; font-size: 25rpx; line-height: 1.7; }
-.landing-note { margin: 50rpx 62rpx 0; padding: 24rpx 0 10rpx; color: #5c493c; font-size: 25rpx; line-height: 1.85; }
+.landing-daily { margin: 68rpx -62rpx 0; border-top: 1rpx solid rgba(92, 73, 60, .28); }
+.daily-section { padding: 42rpx 62rpx 58rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .28); box-sizing: border-box; }
+.daily-section:last-child { border-bottom: 0; }
+.daily-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 24rpx; color: #663124; line-height: 1.4; }
+.daily-section-heading text:first-child { font-size: 42rpx; font-weight: 600; }
+.daily-section-heading text:last-child { flex: 0 0 auto; font-family: Georgia, "Times New Roman", serif; font-size: 18rpx; letter-spacing: .12em; }
+.daily-article-label { display: flex; align-items: center; gap: 20rpx; margin-top: 38rpx; color: #8b6b58; font-size: 20rpx; line-height: 1.5; letter-spacing: .08em; white-space: nowrap; }
+.daily-article-label text { flex: 0 0 auto; }
+.daily-article-label::after { flex: 1; height: 1rpx; background: rgba(92, 73, 60, .23); content: ""; }
+.daily-article-title { margin-top: 28rpx; color: #5c493c; font-size: 34rpx; font-weight: 600; line-height: 1.65; white-space: pre-line; }
+.daily-article-excerpt { margin-top: 22rpx; color: #5c493c; font-size: 26rpx; line-height: 1.9; }
+.daily-article-image-frame { position: relative; width: 100%; height: 730rpx; margin-top: 36rpx; overflow: hidden; background: #d7d3ce; }
+.daily-article-image { display: block; width: 100%; height: 100%; }
+.daily-article-caption { margin-top: 16rpx; color: #8b6b58; font-size: 20rpx; line-height: 1.6; letter-spacing: .04em; }
+.daily-article-action { display: flex; min-height: 96rpx; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 36rpx; padding: 0 28rpx; background: #663124; box-sizing: border-box; color: #f2ece3; font-size: 25rpx; line-height: 1.5; }
+.daily-article-action text:last-child { flex: 0 0 auto; font-family: Georgia, serif; font-size: 30rpx; }
+.daily-exploration-copy { max-width: 580rpx; margin-top: 30rpx; color: #5c493c; font-size: 27rpx; line-height: 1.9; }
 @media (max-width: 360px) {
   .shop-content { padding-right: 44rpx; padding-left: 44rpx; }
   .shop-catalog { margin-right: -44rpx; margin-left: -44rpx; }
   .shop-object-image text { left: 44rpx; }
   .shop-object-caption { padding-right: 44rpx; padding-left: 44rpx; }
   .daily-landing { padding-right: 52rpx; padding-left: 52rpx; }
-  .landing-principles { margin-right: -52rpx; margin-left: -52rpx; }
-  .principles-heading { padding-right: 52rpx; padding-left: 52rpx; }
-  .principle-row, .landing-note { margin-right: 52rpx; margin-left: 52rpx; }
+  .landing-daily { margin-right: -52rpx; margin-left: -52rpx; }
+  .daily-section { padding-right: 52rpx; padding-left: 52rpx; }
+  .daily-article-image-frame { height: 752rpx; }
 }
 @media (prefers-reduced-motion: reduce) { .shop-tab { transition: none; } }
