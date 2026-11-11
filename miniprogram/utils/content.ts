@@ -33,6 +33,7 @@ export interface PublicHomeModule {
   type: string;
   order: number;
   enabled: boolean;
+  edition?: string;
   introduction?: string;
   [key: string]: unknown;
 }
@@ -264,6 +265,7 @@ function isPublicHomeModule(value: unknown): value is PublicHomeModule {
   return isRecord(value) && isBoundedText(value.id, 64, 2) && /^[a-z0-9][a-z0-9-]{1,63}$/.test(value.id)
     && isBoundedText(value.type, 48, 1) && Number.isSafeInteger(value.order) && Number(value.order) >= 0
     && typeof value.enabled === 'boolean'
+    && (value.edition === undefined || (isBoundedText(value.edition, 40) && !/[\r\n<>]/.test(value.edition)))
     && (value.introduction === undefined || (isBoundedText(value.introduction, 120) && !/[\r\n<>]/.test(value.introduction)))
     && Object.entries(value).every(([key, field]) => ['id', 'type', 'order', 'enabled'].includes(key)
       || (key === 'tracks' ? isPublicAudioTracks(field)

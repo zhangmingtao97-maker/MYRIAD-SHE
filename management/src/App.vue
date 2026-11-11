@@ -174,7 +174,7 @@ const minePageEditorTab = ref<MinePageEditorTab>('intro');
 const defaultHomeIntroduction = '记录女性的真实经历，也邀请你观察自己的生活';
 function createDefaultIssueModules(): ManagedIssueModule[] {
   return [
-    { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '本期策展', month: '', introduction: defaultHomeIntroduction },
+    { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '本期策展', month: '', edition: 'A CURATED EDITION', introduction: defaultHomeIntroduction },
     { id: 'cover-story', type: 'coverStory', order: 1, enabled: true, imageObjectKey: '', altText: '', captionLeft: '人物纪实·时雨', captionRight: '本期封面', eyebrow: '本期主题', title: '', titleFontSize: 72, titleColor: '#59483d', body: '', bodyFontSize: 30, bodyColor: '#40362f', byline: '策展与编辑 · MYRIAD SHE' },
     { id: 'quote', type: 'quote', order: 2, enabled: true, text: '我后来才知道，放下不等于认输。', attribution: '' },
     { id: 'story', type: 'story', order: 3, enabled: true, eyebrow: '人物纪实·时雨', title: '', body: '', imageObjectKey: '', altText: '', captionLeft: '纪实剪辑·时雨', captionRight: '恢复并不是回到从前，而是慢慢学会全新的方式生活。' },
@@ -369,7 +369,7 @@ function issuePreviewContents(module: ManagedIssueModule) {
     { number: '04', label: value('entry4Label', '本期讨论'), summary: value('entry4Summary', '一起听见不同的经历') },
   ];
 }
-// 与小程序首页保持一致：第一栏排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · A CURATED EDITION」。
+// 与小程序首页保持一致：第一栏排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · 英文刊期标识」。
 const issuePreviewKicker = '当期策展';
 const issuePreviewTagline = 'A CURATED EDITION';
 const issuePreviewMonthNames: Record<string, string> = {
@@ -394,7 +394,12 @@ function issuePreviewIssueNumber(module: ManagedIssueModule) {
 }
 function issuePreviewIssueEdition(module: ManagedIssueModule) {
   const month = previewIssueText(module.month) || previewIssueText(issueForm.value.month);
-  return month ? `${expandPreviewIssueMonth(month)} · ${issuePreviewTagline}` : issuePreviewTagline;
+  return month ? expandPreviewIssueMonth(month) : '';
+}
+function issuePreviewIssueEditionSuffix(module: ManagedIssueModule) {
+  const edition = module.edition === undefined ? issuePreviewTagline : previewIssueText(module.edition);
+  const month = issuePreviewIssueEdition(module);
+  return edition ? `${month ? ' · ' : ''}${edition}` : '';
 }
 function issuePreviewRichText(module: ManagedIssueModule, field: string) {
   return previewIssueText(module[field]);
@@ -412,7 +417,7 @@ const issueConflictResolved = ref('');
 const issueSaveMessage = ref('');
 const issueValidationMessage = ref('');
 const issueValidationDialogOpen = ref(false);
-type IssueFieldKey = 'code' | 'label' | 'month' | 'theme' | 'question';
+type IssueFieldKey = 'code' | 'label' | 'month' | 'edition' | 'theme' | 'question';
 const issueFieldErrors = ref<Partial<Record<IssueFieldKey, string>>>({});
 const issueHistory = ref<Array<{ version: number; publishedAt: string; publishedBy: string | null; snapshot: unknown }>>([]);
 const issueModulePreviewUrls = ref<Record<string, string>>({});
@@ -2267,6 +2272,31 @@ const journalHomeIntroduction = computed({
     meta.introduction = value;
   },
 });
+const journalIssueEdition = computed<string>({
+  get: () => {
+    const edition = journalIssueMetaModule.value?.edition;
+    return edition === undefined ? issuePreviewTagline : previewIssueText(edition);
+  },
+  set: (value: string) => {
+    let meta = journalIssueMetaModule.value;
+    if (!meta) {
+      const sections = issueForm.value.draftContent.sections;
+      const ids = new Set(sections.map((module) => module.id));
+      let id = 'issue-meta';
+      for (let suffix = 2; ids.has(id); suffix += 1) id = `issue-meta-${suffix}`;
+      meta = {
+        id, type: 'issueMeta', order: 0, enabled: true,
+        eyebrow: issueForm.value.label,
+        month: issueForm.value.month,
+        edition: value,
+      };
+      sections.unshift(meta);
+      sections.forEach((module, order) => { module.order = order; });
+    }
+    meta.edition = value;
+    clearIssueFieldError('edition');
+  },
+});
 const journalPreviewIssueNumber = computed(
   () => (journalIssueMetaModule.value ? issuePreviewIssueNumber(journalIssueMetaModule.value) : ''),
 );
@@ -2278,6 +2308,9 @@ const journalPreviewIssueNumberRichText = computed(
 );
 const journalPreviewIssueEditionRichText = computed(
   () => (journalIssueMetaModule.value ? issuePreviewRichText(journalIssueMetaModule.value, 'monthRichText') : ''),
+);
+const journalPreviewIssueEditionSuffix = computed(
+  () => (journalIssueMetaModule.value ? issuePreviewIssueEditionSuffix(journalIssueMetaModule.value) : ''),
 );
 // 点预览里的区块：切到对应栏目，并把右侧那张卡片滚进视野、闪一下。
 function focusIssueModule(key: string) {
@@ -6262,11 +6295,13 @@ type IssueRequiredField = {
   label: string;
   module: '刊期信息' | '封面与主题' | '本期问题';
   maxLength: number;
+  required?: boolean;
 };
 const issueRequiredFields: IssueRequiredField[] = [
   { key: 'code', label: '期刊编号', module: '刊期信息', maxLength: 64 },
   { key: 'label', label: '期刊标签', module: '刊期信息', maxLength: 80 },
   { key: 'month', label: '刊期月份', module: '刊期信息', maxLength: 40 },
+  { key: 'edition', label: '英文刊期标识', module: '刊期信息', maxLength: 40, required: false },
   { key: 'theme', label: '本期主题', module: '封面与主题', maxLength: 200 },
   { key: 'question', label: '本期问题', module: '本期问题', maxLength: 500 },
 ];
@@ -6327,9 +6362,20 @@ async function focusIssueField(key: IssueFieldKey) {
 async function validateIssueRequiredFields() {
   const errors: Partial<Record<IssueFieldKey, string>> = {};
   for (const field of issueRequiredFields) {
-    const value = String(issueForm.value[field.key] ?? '').trim();
-    if (!value) errors[field.key] = `请填写${field.label}`;
-    else if (value.length < 2) errors[field.key] = `${field.label}至少需要 2 个字符`;
+    const value = field.key === 'edition'
+      ? journalIssueEdition.value.trim()
+      : String(issueForm.value[field.key] ?? '').trim();
+    if (!value) {
+      if (field.required !== false) errors[field.key] = `请填写${field.label}`;
+      continue;
+    }
+    if (field.key === 'edition') {
+      if (value.length > field.maxLength || /[\r\n<>]/.test(value)) {
+        errors[field.key] = `${field.label}需为 40 字以内的单行纯文本`;
+      }
+      continue;
+    }
+    if (value.length < 2) errors[field.key] = `${field.label}至少需要 2 个字符`;
     else if (value.length > field.maxLength) errors[field.key] = `${field.label}不能超过 ${field.maxLength} 个字符`;
   }
   issueFieldErrors.value = errors;
@@ -6341,6 +6387,7 @@ async function validateIssueRequiredFields() {
 
 function issueFieldKeyFromApiMessage(message: string): IssueFieldKey | null {
   if (/期刊编号|issueCode/i.test(message)) return 'code';
+  if (/英文刊期标识|issueMeta[^\n]*edition|字段 edition|edition/i.test(message)) return 'edition';
   if (/期刊标签|label/i.test(message)) return 'label';
   if (/期刊月份|刊期月份|month/i.test(message)) return 'month';
   if (/期刊主题|本期主题|theme/i.test(message)) return 'theme';
@@ -6351,6 +6398,7 @@ function issueFieldKeyFromApiMessage(message: string): IssueFieldKey | null {
 function friendlyIssueApiError(key: IssueFieldKey, message: string) {
   const field = issueFieldDefinition(key);
   if (!field) return message;
+  if (key === 'edition') return '英文刊期标识需为 40 字以内的单行纯文本';
   if (/不能为空|required/i.test(message)) return `请填写${field.label}`;
   if (/长度|invalid|无效/i.test(message)) return `${field.label}的内容或长度不符合要求`;
   return `请检查${field.label}`;
@@ -7152,6 +7200,7 @@ onBeforeUnmount(() => {
                 <div class="journal-meta-column">
                   <label class="journal-issue-field" data-issue-field="code" :class="{ 'is-invalid': issueFieldErrors.code }">期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" placeholder="例如：issue-03" :aria-invalid="Boolean(issueFieldErrors.code)" @input="clearIssueFieldError('code')" /><small v-if="issueFieldErrors.code" class="field-inline-error" role="alert">{{ issueFieldErrors.code }}</small></label>
                   <div class="journal-issue-field" data-issue-field="month" :class="{ 'is-invalid': issueFieldErrors.month }"><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" :invalid="Boolean(issueFieldErrors.month)" :error="issueFieldErrors.month || ''" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
+                  <label class="journal-issue-field" data-issue-field="edition" :class="{ 'is-invalid': issueFieldErrors.edition }">英文刊期标识<input v-model="journalIssueEdition" maxlength="40" placeholder="A CURATED EDITION" :aria-invalid="Boolean(issueFieldErrors.edition)" aria-describedby="issue-edition-help-create" @input="clearIssueFieldError('edition')" /><small v-if="issueFieldErrors.edition" class="field-inline-error" role="alert">{{ issueFieldErrors.edition }}</small><small id="issue-edition-help-create" class="field-help">显示在刊期月份右侧；留空后隐藏；保存草稿并确认发布后生效。</small></label>
                 </div>
                 <div class="journal-meta-column">
                   <div class="journal-issue-field" data-issue-field="label" :class="{ 'is-invalid': issueFieldErrors.label }"><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" :invalid="Boolean(issueFieldErrors.label)" :error="issueFieldErrors.label || ''" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>
@@ -7250,6 +7299,7 @@ onBeforeUnmount(() => {
                 :issue-number-rich-text="journalPreviewIssueNumberRichText"
                 :issue-edition="journalPreviewIssueEdition"
                 :issue-edition-rich-text="journalPreviewIssueEditionRichText"
+                :issue-edition-suffix="journalPreviewIssueEditionSuffix"
                 :question-fallback="issueForm.question"
                 :question-fallback-rich-text="issueForm.questionRichText"
                 :theme-fallback="issueForm.theme"
@@ -7283,6 +7333,7 @@ onBeforeUnmount(() => {
                 <div class="journal-meta-column">
                   <label class="journal-issue-field" data-issue-field="code" :class="{ 'is-invalid': issueFieldErrors.code }">期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" :aria-invalid="Boolean(issueFieldErrors.code)" @input="clearIssueFieldError('code')" /><small v-if="issueFieldErrors.code" class="field-inline-error" role="alert">{{ issueFieldErrors.code }}</small></label>
                   <div class="journal-issue-field" data-issue-field="month" :class="{ 'is-invalid': issueFieldErrors.month }"><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" :invalid="Boolean(issueFieldErrors.month)" :error="issueFieldErrors.month || ''" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
+                  <label class="journal-issue-field" data-issue-field="edition" :class="{ 'is-invalid': issueFieldErrors.edition }">英文刊期标识<input v-model="journalIssueEdition" maxlength="40" placeholder="A CURATED EDITION" :aria-invalid="Boolean(issueFieldErrors.edition)" aria-describedby="issue-edition-help-edit" @input="clearIssueFieldError('edition')" /><small v-if="issueFieldErrors.edition" class="field-inline-error" role="alert">{{ issueFieldErrors.edition }}</small><small id="issue-edition-help-edit" class="field-help">显示在刊期月份右侧；留空后隐藏；保存草稿并确认发布后生效。</small></label>
                 </div>
                 <div class="journal-meta-column">
                   <div class="journal-issue-field" data-issue-field="label" :class="{ 'is-invalid': issueFieldErrors.label }"><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" :invalid="Boolean(issueFieldErrors.label)" :error="issueFieldErrors.label || ''" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>

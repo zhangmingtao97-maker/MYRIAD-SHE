@@ -52,7 +52,7 @@ export function richTextHtml(richText?: unknown, plainText?: unknown, fallback =
   return escapeHtml(source).replace(/\r?\n/g, '<br/>');
 }
 
-/** 给富文本追加不可编辑的排版后缀，例如刊期固定英文标识。 */
+/** 给富文本追加不可编辑的排版后缀，例如后台配置的英文刊期标识。 */
 export function richTextWithSuffixHtml(richText: unknown, plainText: unknown, fallback: string, suffix: string) {
   const rich = typeof richText === 'string' ? richText.trim() : '';
   if (!rich) return richTextHtml('', `${typeof plainText === 'string' ? plainText : fallback}${suffix}`);

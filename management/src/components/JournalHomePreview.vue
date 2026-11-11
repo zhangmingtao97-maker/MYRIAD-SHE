@@ -13,6 +13,7 @@ const props = defineProps<{
   issueNumberRichText?: string;
   issueEdition: string;
   issueEditionRichText?: string;
+  issueEditionSuffix?: string;
   questionFallback: string;
   questionFallbackRichText?: string;
   themeFallback: string;
@@ -223,7 +224,7 @@ const resolvedKey = computed(() => {
           <div class="preview-issue-meta">
             <small>当期策展</small>
             <strong v-if="issueNumber || rich(issueNumberRichText)"><RichTextView :text="issueNumber" :rich-text="issueNumberRichText" :inline="true" /></strong>
-            <span><RichTextView :text="issueEdition" :rich-text="issueEditionRichText" :inline="true" /></span>
+            <span v-if="issueEdition || rich(issueEditionRichText) || issueEditionSuffix"><RichTextView :text="issueEdition" :rich-text="issueEditionRichText" :suffix="issueEditionSuffix" :inline="true" /></span>
           </div>
         </template>
         <template v-else>

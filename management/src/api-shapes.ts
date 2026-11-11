@@ -21,6 +21,7 @@ export interface ManagedIssueModule {
   type: 'issueMeta' | 'coverStory' | 'cover' | 'opener' | 'story' | 'storyAction' | 'image' | 'quote' | 'audio' | 'question' | 'observationAction' | 'sharedPracticeAction' | 'contents' | 'archive' | 'brandFooter';
   order: number;
   enabled: boolean;
+  edition?: string;
   introduction?: string;
   tracks?: ManagedAudioTrack[];
   [key: string]: string | number | boolean | null | undefined | ManagedAudioTrack[] | ManagedAudioAction[];
@@ -344,6 +345,7 @@ export function isManagedIssueModule(value: unknown): value is ManagedIssueModul
   return isRecord(value) && isBoundedText(value.id, 64, 2) && /^[a-z0-9][a-z0-9-]{1,63}$/.test(value.id)
     && typeof value.type === 'string' && allowed.has(value.type)
     && isNonNegativeInteger(value.order) && typeof value.enabled === 'boolean'
+    && (value.edition === undefined || (isBoundedText(value.edition, 40) && !/[\r\n<>]/.test(value.edition)))
     && (value.introduction === undefined || (isBoundedText(value.introduction, 120) && !/[\r\n<>]/.test(value.introduction)));
 }
 

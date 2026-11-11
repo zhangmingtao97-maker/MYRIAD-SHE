@@ -1099,7 +1099,7 @@ test('publishing preserves the homepage background, introduction, and empty ques
     homeCoverCaptionRight: '本期封面',
     draftContent: {
       sections: [
-        { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '本期策展', month: 'Nov 2026', introduction: '每一种生活，都值得被认真看见' },
+        { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '本期策展', month: 'Nov 2026', edition: 'A CURATED EDITION', introduction: '每一种生活，都值得被认真看见' },
         { id: 'cover', type: 'cover', order: 1, enabled: true, imageObjectKey: 'content/image/cover.webp', altText: '封面人物', captionLeft: '纪实', captionRight: '本期封面' },
         { id: 'opener', type: 'opener', order: 2, enabled: true, eyebrow: '本期主题', title: '松开以后', body: '' },
         { id: 'question', type: 'question', order: 3, enabled: true, eyebrow: '', eyebrowRichText: '', title: '最近有什么不想再握紧的？', body: '' },
@@ -1145,13 +1145,16 @@ test('publishing preserves the homepage background, introduction, and empty ques
   assert.equal(publishedQuestion.eyebrowRichText, '');
   assert.equal(publishedSnapshots[0].issue.homeBackgroundObjectKey, 'content/image/background.webp');
   issue.draftContent.sections[0].introduction = '这句还没有发布';
+  issue.draftContent.sections[0].edition = ' THIS UNSAVED EDITION ';
   const publishedMeta = publishedSnapshots[0].sections.find((module: Record<string, unknown>) => module.type === 'issueMeta');
   assert.equal(publishedMeta.introduction, '每一种生活，都值得被认真看见');
+  assert.equal(publishedMeta.edition, 'A CURATED EDITION');
   const publicController = new ContentController(database, storage, new AuditService(database), new ConfigService({}), {
     getJson: async () => ({ issue: null, question: '', sections: [], publishedVersion: 1, modules: [publishedMeta, publishedQuestion] }),
   } as unknown as RedisService, {} as JwtService);
   const home = await publicController.home();
   assert.equal(home.modules[0].introduction, '每一种生活，都值得被认真看见');
+  assert.equal(home.modules[0].edition, 'A CURATED EDITION');
   assert.equal(home.modules[1].eyebrow, '');
   assert.equal(home.modules[1].eyebrowRichText, '');
 });
@@ -1164,6 +1167,21 @@ test('homepage introduction accepts a short sentence or an explicit empty value 
   assert.equal(validate('  看见生活里的每一种可能  ').sections[0].introduction, '看见生活里的每一种可能');
   assert.equal(validate('').sections[0].introduction, '');
   for (const value of ['字'.repeat(121), '第一行\n第二行', '<strong>介绍</strong>', null, 123]) {
+    assert.throws(() => validate(value), BadRequestException);
+  }
+});
+
+test('homepage edition supports legacy data, trimming, and an explicit empty value while rejecting unsafe copy', () => {
+  const { controller } = issueEditHarness(1);
+  const validate = (edition: unknown) => (controller as unknown as {
+    validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> };
+  }).validateIssueDraft({ sections: [{ id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, edition }] });
+  assert.equal(validate(undefined).sections[0].edition, undefined);
+  assert.equal(validate('  A CURATED EDITION  ').sections[0].edition, 'A CURATED EDITION');
+  assert.equal(validate('').sections[0].edition, '');
+  const maximum = '字'.repeat(40);
+  assert.equal(validate(maximum).sections[0].edition, maximum);
+  for (const value of ['字'.repeat(41), '第一行\n第二行', '<strong>刊期标识</strong>', null, 123]) {
     assert.throws(() => validate(value), BadRequestException);
   }
 });

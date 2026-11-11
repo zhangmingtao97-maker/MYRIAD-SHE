@@ -778,7 +778,7 @@ export class ContentController {
     if (!Array.isArray(sections) || sections.length < 1 || sections.length > 40) throw new BadRequestException('字段 sections 须包含 1–40 个栏目');
     const ids = new Set<string>();
     const baseAllowedFields: Record<IssueModuleType, string[]> = {
-      issueMeta: ['eyebrow', 'month', 'introduction'], coverStory: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'eyebrow', 'title', 'titleFontSize', 'titleColor', 'body', 'bodyFontSize', 'bodyColor', 'byline'], cover: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight'],
+      issueMeta: ['eyebrow', 'month', 'edition', 'introduction'], coverStory: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'eyebrow', 'title', 'titleFontSize', 'titleColor', 'body', 'bodyFontSize', 'bodyColor', 'byline'], cover: ['imageObjectKey', 'altText', 'captionLeft', 'captionRight'],
       opener: ['eyebrow', 'title', 'body'], story: ['eyebrow', 'title', 'body', 'imageObjectKey', 'altText', 'captionLeft', 'captionRight', 'detailCaptionLeft', 'detailCaptionRight', 'detailSource', 'detailParagraph1', 'detailParagraph2', 'detailQuote', 'officialArticleUrl'], storyAction: ['title', 'body', 'targetId'], image: ['imageObjectKey', 'altText', 'caption'],
       quote: ['text', 'attribution'], audio: ['title', 'duration', 'mediaType', 'audioObjectKey', 'videoObjectKey', 'detailTitle', 'description', 'transcript', 'quote', 'subtitle', 'tracks'], question: ['eyebrow', 'title', 'body'],
       observationAction: ['title', 'body'], sharedPracticeAction: ['title', 'body'],
@@ -906,6 +906,10 @@ export class ContentController {
           if (field !== undefined && (typeof field !== 'string' || field.length > 120 || /[\r\n<>]/.test(field))) {
             throw new BadRequestException(`${moduleLabel}字段 introduction 须为不超过 120 字的单行纯文本`);
           }
+        } else if (key === 'edition') {
+          if (field !== undefined && (typeof field !== 'string' || field.length > 40 || /[\r\n<>]/.test(field))) {
+            throw new BadRequestException(`${moduleLabel}字段 edition 须为不超过 40 字的单行纯文本`);
+          }
         } else if (key.endsWith('ObjectKey')) {
           if (field !== undefined && field !== null && field !== '' && (typeof field !== 'string' || !this.isManagedMediaObjectKey(field)
             || (key === 'imageObjectKey' && !field.startsWith('content/image/'))
@@ -919,6 +923,7 @@ export class ContentController {
       ids.add(id);
       const normalizedItem = { ...item, ...normalizedRichText, ...normalizedRichPlainText, id, type: moduleType, order: Number(order), enabled: item.enabled } as IssueModule;
       if (typeof normalizedItem.introduction === 'string') normalizedItem.introduction = normalizedItem.introduction.trim();
+      if (typeof normalizedItem.edition === 'string') normalizedItem.edition = normalizedItem.edition.trim();
       delete normalizedItem.actions;
       delete normalizedItem.linkType;
       delete normalizedItem.linkPath;
@@ -1020,6 +1025,7 @@ export class ContentController {
       const record = module as Record<string, unknown>;
       if (typeof record.id !== 'string' || typeof record.type !== 'string' || !Number.isSafeInteger(record.order) || typeof record.enabled !== 'boolean') return false;
       if (record.introduction !== undefined && (!this.boundedText(record.introduction, 120) || /[\r\n<>]/.test(String(record.introduction)))) return false;
+      if (record.edition !== undefined && (!this.boundedText(record.edition, 40) || /[\r\n<>]/.test(String(record.edition)))) return false;
       if (record.linkType !== undefined) {
         if (record.linkType === 'page') {
           if (!this.boundedText(record.linkPath, 512, 1) || String(record.linkPath).includes('..')

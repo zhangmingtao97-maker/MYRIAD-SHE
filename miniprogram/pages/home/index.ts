@@ -23,7 +23,7 @@ const emptyIssue: HomeIssue = {
   homeCoverCaptionLeft: '', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '',
   homeCoverCaptionRightRichText: '', homeBackgroundUrl: '',
 };
-// 首页第一栏固定排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · A CURATED EDITION」三行。
+// 首页第一栏排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · 英文刊期标识」三行。
 const ISSUE_KICKER = '当期策展';
 const DEFAULT_HOME_INTRODUCTION = '记录女性的真实经历，也邀请你观察自己的生活';
 const EDITION_TAGLINE = 'A CURATED EDITION';
@@ -222,16 +222,21 @@ function buildIssueHeader(modules: PublicHomeModule[], issue: HomeIssue) {
   const number = (label || (codeDigits ? `ISSUE ${codeDigits[1].padStart(2, '0')}` : '')).toUpperCase();
   const month = textValue(meta?.month) || textValue(issue.month);
   const monthRichText = textValue(meta?.monthRichText) || textValue(issue.monthRichText);
-  const edition = month ? `${expandIssueMonth(month)} · ${EDITION_TAGLINE}` : EDITION_TAGLINE;
+  const monthText = month ? expandIssueMonth(month) : '';
+  const editionText = meta?.edition === undefined ? EDITION_TAGLINE : textValue(meta.edition).trim();
+  const edition = [monthText, editionText].filter(Boolean).join(' · ');
+  const editionSuffix = editionText ? `${monthText ? ' · ' : ''}${editionText}` : '';
   return {
     kicker: ISSUE_KICKER,
     kickerHtml: richTextHtml('', ISSUE_KICKER),
     number,
     numberHtml: richTextHtml(labelRichText, number, number),
     edition,
-    editionHtml: monthRichText
-      ? richTextWithSuffixHtml(monthRichText, edition, edition, ` · ${EDITION_TAGLINE}`)
-      : richTextHtml('', edition),
+    editionHtml: edition
+      ? (monthRichText
+        ? richTextWithSuffixHtml(monthRichText, monthText || editionText, edition, editionSuffix)
+        : richTextHtml('', edition))
+      : '',
   };
 }
 

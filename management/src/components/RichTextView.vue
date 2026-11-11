@@ -5,9 +5,12 @@ import DOMPurify from 'dompurify';
 const props = defineProps<{
   text?: unknown;
   richText?: unknown;
+  suffix?: unknown;
   inline?: boolean;
   fallback?: string;
 }>();
+
+const suffixText = computed(() => (typeof props.suffix === 'string' ? props.suffix : ''));
 
 function escapeHtml(value: string) {
   return value
@@ -36,12 +39,13 @@ const safeHtml = computed(() => {
 </script>
 
 <template>
-  <span v-if="inline" class="rich-text-view is-inline" v-html="safeHtml" />
-  <div v-else class="rich-text-view" v-html="safeHtml" />
+  <span v-if="inline" class="rich-text-view is-inline"><span v-html="safeHtml" /><span v-if="suffixText" class="rich-text-suffix">{{ suffixText }}</span></span>
+  <div v-else class="rich-text-view"><span v-html="safeHtml" /><span v-if="suffixText" class="rich-text-suffix">{{ suffixText }}</span></div>
 </template>
 
 <style scoped>
 .rich-text-view.is-inline { display: inline; }
+.rich-text-suffix { white-space: pre; }
 .rich-text-view.is-inline :deep(p),
 .rich-text-view.is-inline :deep(div) { display: inline; margin: 0; }
 </style>

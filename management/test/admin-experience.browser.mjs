@@ -41,7 +41,7 @@ try {
     microVoiceTitle: null, microVoiceDuration: null, coverObjectKey: null, microVoiceObjectKey: null, homeBackgroundObjectKey: null, homeMetaRichText: '把目光放回日常', homeMetaFontSize: 16, homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '本期封面', homeCoverCaptionRightRichText: '', updatedAt: timestamp, publishedVersion: 0,
     ...Object.fromEntries('Theme Question Label Month Code LabelRichText MonthRichText ThemeRichText QuestionRichText MicroVoiceTitle MicroVoiceDuration HomeMetaRichText HomeMetaFontSize HomeMetaColor HomeCoverCaptionLeft HomeCoverCaptionLeftRichText HomeCoverCaptionRight HomeCoverCaptionRightRichText'.split(' ').map((key) => [`published${key}`, null])),
     draftContent: { discussion, sections: [
-      { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '第三期', month: '2026 年 11 月' },
+      { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: '第三期', month: '2026 年 11 月', edition: 'A CURATED EDITION' },
       { id: 'cover-story', type: 'coverStory', order: 1, enabled: true, title: '和自己的节奏相遇', titleFontSize: 60, titleColor: '#59483d', body: '把目光放回日常', bodyFontSize: 24, bodyColor: '#40362f', imageObjectKey: '', altText: '', captionLeft: '人物纪实', captionRight: '本期封面', eyebrow: '本期主题', byline: 'MYRIAD SHE' },
       { id: 'story', type: 'story', order: 2, enabled: true, title: '给生活留一段空白', body: '她开始在清晨散步，也学会慢慢听见自己的声音。', author: 'MYRIAD SHE', imageObjectKey: '' },
       { id: 'audio', type: 'audio', order: 3, enabled: true, title: '第一个普通早晨', tracks: [{ id: 'voice-01', title: '第一个普通早晨', duration: '02:12', mediaType: 'audio', audioObjectKey: '', videoObjectKey: '', detailTitle: '第一个普通早晨', description: '', quote: '', subtitle: '', transcript: '', actions: [{ id: 'action-share', label: '分享给朋友 ↗', kind: 'share' }] }], audioObjectKey: '', videoObjectKey: '', actions: [{ id: 'action-share', label: '分享给朋友 ↗', kind: 'share' }], linkType: 'web', linkLabel: '公众号 →', linkUrl: 'https://mp.weixin.qq.com/s/example' },
@@ -504,6 +504,23 @@ try {
   assert.equal(await homeIntroductionPreview.count(), 0, 'an explicitly empty introduction should hide the preview');
   await homeIntroduction.fill('每一种生活，都值得被认真看见');
   assert.equal(await homeIntroductionPreview.innerText(), '每一种生活，都值得被认真看见');
+  const editionField = journalEditor.locator('[data-issue-field="edition"]');
+  const editionInput = editionField.locator('input');
+  const issueMetaPreview = page.locator('.preview-issue-meta');
+  assert.equal(await editionInput.inputValue(), 'A CURATED EDITION');
+  assert.equal(await editionInput.getAttribute('maxlength'), '40');
+  await editionInput.fill('A NEW CURATED EDITION');
+  assert.equal((await issueMetaPreview.locator(':scope > span').innerText()).trim(), '2026 年 11 月 · A NEW CURATED EDITION');
+  await editionInput.fill('<strong>unsafe copy</strong>');
+  await journalEditor.getByRole('button', { name: '保存整份草稿', exact: true }).click();
+  const editionValidationDialog = page.getByRole('alertdialog', { name: '请完善必填信息' });
+  await editionValidationDialog.waitFor();
+  assert.equal((await editionValidationDialog.locator('#issue-validation-copy').innerText()).trim(), '请完善「刊期信息」：英文刊期标识需为 40 字以内的单行纯文本。');
+  assert.equal(await editionField.evaluate((field) => field.classList.contains('is-invalid')), true);
+  await editionValidationDialog.getByRole('button', { name: '知道了', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-issue-field="edition"] input'));
+  await editionInput.fill('');
+  assert.equal(await issueMetaPreview.locator('.rich-text-suffix').count(), 0, 'an explicitly empty edition should be hidden from preview');
   await page.screenshot({ path: resolve(output, 'admin-home-introduction.png'), fullPage: true });
   await page.locator('.issue-module-picker button').filter({ hasText: '本期问题' }).click();
   const questionEyebrow = journalEditor.locator('[data-issue-module="question"]').getByRole('textbox', { name: '栏目眉题', exact: true });
@@ -558,10 +575,13 @@ try {
   const issueSaveRequest = page.waitForRequest((request) => request.method() === 'PATCH' && new URL(request.url()).pathname.endsWith('/content/issues/issue-1'));
   await journalEditor.getByRole('button', { name: '保存整份草稿', exact: true }).click();
   const issuePayload = (await issueSaveRequest).postDataJSON();
-  assert.equal(issuePayload.draftContent.sections.find((module) => module.type === 'issueMeta').introduction, '每一种生活，都值得被认真看见');
+  const sentIssueMeta = issuePayload.draftContent.sections.find((module) => module.type === 'issueMeta');
+  assert.equal(sentIssueMeta.introduction, '每一种生活，都值得被认真看见');
+  assert.equal(sentIssueMeta.edition, '', 'an explicitly empty edition must be saved instead of falling back to default copy');
   assert.equal(issuePayload.draftContent.sections.find((module) => module.type === 'question').eyebrow, '');
   assert.equal(issuePayload.draftContent.sections.find((module) => module.type === 'question').eyebrowRichText, '');
   await page.waitForFunction(() => document.querySelector('.journal-savebar')?.textContent?.includes('已与云端同步'));
+  assert.equal(await issueMetaPreview.locator('.rich-text-suffix').count(), 0, 'the saved draft must keep the edition hidden');
   assert.equal((await questionEyebrow.innerText()).trim(), '', 'saved draft reload must keep the eyebrow empty');
   assert.equal(await questionIntroPreview.count(), 0, 'saved draft preview must keep the eyebrow hidden');
   const sentAudioModule = issuePayload.draftContent.sections.find((module) => module.type === 'audio');
@@ -727,7 +747,7 @@ try {
     true,
     'navigation and draft tests must not persist unrelated data',
   );
-  console.log('PASS: 31 authorized destinations, issue required-field validation, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
+  console.log('PASS: 31 authorized destinations, issue required-field validation and editable edition copy, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
 } finally {
   await browser?.close();
   await server.close();
