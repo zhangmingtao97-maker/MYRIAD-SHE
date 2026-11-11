@@ -20,7 +20,8 @@ test('discussion defaults reproduce the editorial example and reject unsafe or d
   const defaults = defaultDiscussionContent();
   assert.equal(defaults.copy.title, '事情过去以后，\n我们还在握紧什么？');
   assert.equal(defaults.copy.composeHeading, '从一件具体的事，\n开始说起。');
-  assert.equal(defaults.copy.composeSaveAction, '保存到后台并返回');
+  assert.equal(defaults.copy.composePreviewAction, '预览并提交审核');
+  assert.equal(defaults.copy.composeSaveAction, '确认提交审核');
   assert.equal(defaults.threads.length, 3);
   assert.equal(validateDiscussionContent(defaults).threads[0].replies.length, 2);
   const previousCopy = Object.fromEntries(Object.entries(defaults.copy).filter(([key]) => !key.startsWith('compose')));
@@ -35,6 +36,13 @@ test('discussion defaults reproduce the editorial example and reject unsafe or d
   assert.equal(Object.prototype.hasOwnProperty.call(legacy.copy, 'prototypeNote'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(legacy.copy, 'composePrivacyNote'), false);
   assert.equal(legacy.copy.composeSaveAction, defaults.copy.composeSaveAction);
+  const legacyActions = validateDiscussionContent({ ...defaults, copy: {
+    ...defaults.copy,
+    composePreviewAction: '预览这段内容',
+    composeSaveAction: '保存到后台并返回',
+  } });
+  assert.equal(legacyActions.copy.composePreviewAction, defaults.copy.composePreviewAction);
+  assert.equal(legacyActions.copy.composeSaveAction, defaults.copy.composeSaveAction);
   assert.throws(() => validateDiscussionContent({ ...defaults, threads: [defaults.threads[0], { ...defaults.threads[1], id: defaults.threads[0].id }] }), BadRequestException);
   assert.throws(() => validateDiscussionContent({ ...defaults, copy: { ...defaults.copy, intro: '<script>alert(1)</script>' } }), BadRequestException);
 });

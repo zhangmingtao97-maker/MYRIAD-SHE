@@ -31,7 +31,7 @@ export function createDefaultDiscussionContent(): DiscussionContent {
       selfBody: '带着这件具体的事，继续一次私密观察。无需先接受某一种解释。', selfAction: '留给自己观察',
       composeTitle: '写下你的经历', composeHeading: '从一件具体的事，\n开始说起。', composeFieldLabel: '你的经历',
       composePlaceholder: '最近发生了什么？你当时做了什么，又有什么感受？也可以写下与本期人物完全不同的经验。',
-      composePreviewAction: '预览这段内容', composeSaveAction: '保存到后台并返回', composeDiscardAction: '放弃草稿',
+      composePreviewAction: '预览并提交审核', composeSaveAction: '确认提交审核', composeDiscardAction: '放弃草稿',
     },
     threads: [
       { id: 'lan', author: '岚', body: '赶了很久的项目终于交付了。这周下班，我还是把工作群点开了很多次。昨晚坐在餐桌旁，饭已经凉了，才发现没有人在等我回复。我知道今晚可以休息，却好像还在等下一个临时任务。', replies: [

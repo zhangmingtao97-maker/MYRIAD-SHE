@@ -7073,8 +7073,8 @@ onBeforeUnmount(() => {
                 <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeHeading" :rich-text="discussionCopyRichText('composeHeading')" label="写作页主标题" @update:rich-text="setDiscussionCopyRichText('composeHeading', $event)" /></div>
                 <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeFieldLabel" :rich-text="discussionCopyRichText('composeFieldLabel')" label="写作字段名称" @update:rich-text="setDiscussionCopyRichText('composeFieldLabel', $event)" /></div>
                 <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composePlaceholder" :rich-text="discussionCopyRichText('composePlaceholder')" label="输入提示" @update:rich-text="setDiscussionCopyRichText('composePlaceholder', $event)" /></div>
-                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composePreviewAction" :rich-text="discussionCopyRichText('composePreviewAction')" label="预览操作文字" @update:rich-text="setDiscussionCopyRichText('composePreviewAction', $event)" /></div>
-                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeSaveAction" :rich-text="discussionCopyRichText('composeSaveAction')" label="保存操作文字" @update:rich-text="setDiscussionCopyRichText('composeSaveAction', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composePreviewAction" :rich-text="discussionCopyRichText('composePreviewAction')" label="写作页主按钮文字" @update:rich-text="setDiscussionCopyRichText('composePreviewAction', $event)" /></div>
+                <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeSaveAction" :rich-text="discussionCopyRichText('composeSaveAction')" label="预览页确认提交按钮文字" @update:rich-text="setDiscussionCopyRichText('composeSaveAction', $event)" /></div>
                 <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeDiscardAction" :rich-text="discussionCopyRichText('composeDiscardAction')" label="放弃操作文字" @update:rich-text="setDiscussionCopyRichText('composeDiscardAction', $event)" /></div>
               </div>
               <div class="discussion-thread-toolbar"><h4>读者经历与回应</h4><button type="button" class="quiet" :disabled="issueForm.draftContent.discussion.threads.length >= 20" @click="addDiscussionThread">＋ 添加示例经历</button></div>
@@ -7114,8 +7114,14 @@ onBeforeUnmount(() => {
                     <div class="discussion-compose-preview-label"><RichTextView inline :text="discussionCopyText('composeFieldLabel')" :rich-text="discussionCopyRichText('composeFieldLabel')" /></div>
                     <div class="discussion-compose-preview-input"><RichTextView inline :text="discussionCopyText('composePlaceholder')" :rich-text="discussionCopyRichText('composePlaceholder')" /></div>
                     <div class="discussion-compose-preview-count">0 / 2000</div>
-                    <div class="discussion-phone-link"><RichTextView inline :text="discussionCopyText('composePreviewAction')" :rich-text="discussionCopyRichText('composePreviewAction')" /> <span>→</span></div>
-                    <div class="discussion-compose-preview-actions"><span><RichTextView inline :text="discussionCopyText('composeSaveAction')" :rich-text="discussionCopyRichText('composeSaveAction')" /></span><span><RichTextView inline :text="discussionCopyText('composeDiscardAction')" :rich-text="discussionCopyRichText('composeDiscardAction')" /></span></div>
+                    <div class="discussion-phone-primary">
+                      <div class="discussion-phone-primary-copy">
+                        <RichTextView inline :text="discussionCopyText('composePreviewAction')" :rich-text="discussionCopyRichText('composePreviewAction')" />
+                        <small>下一步：预览确认后，提交审核</small>
+                      </div>
+                      <span>→</span>
+                    </div>
+                    <div class="discussion-compose-preview-actions"><span>保存草稿并退出</span><span><RichTextView inline :text="discussionCopyText('composeDiscardAction')" :rich-text="discussionCopyRichText('composeDiscardAction')" /></span></div>
                   </div>
                 </div>
               </details>

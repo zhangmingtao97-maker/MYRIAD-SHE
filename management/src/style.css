@@ -439,6 +439,10 @@ button { border-radius: 14px; }
 .discussion-phone-body > h3, .discussion-phone-body section h3 { margin: 20px 0 14px; color: #49392f; font-family: Georgia, "Songti SC", serif; font-size: 23px; line-height: 1.5; white-space: pre-wrap; }
 .discussion-phone-issue { margin-top: 26px; color: #8b6b58 !important; }
 .discussion-phone-link { display: flex; justify-content: space-between; margin: 22px 0 10px; padding: 12px 0; border-block: 1px solid #8b6b58; color: #663124; }
+.discussion-phone-primary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 10px; padding: 14px 15px; border: 1px solid #663124; background: #663124; color: #f5f0e8; }
+.discussion-phone-primary-copy { display: grid; gap: 3px; }
+.discussion-phone-primary-copy small { color: rgba(245, 240, 232, .78); font-size: 9px; line-height: 1.5; }
+.discussion-phone-primary > span { font-family: Georgia, serif; font-size: 20px; line-height: 1; }
 .discussion-phone-body > section { padding: 22px 0; border-bottom: 1px solid #cdbbae; }
 .discussion-phone-body section article { margin: 12px 0 0 12px; padding-left: 12px; border-left: 1px solid #cdbbae; }
 .discussion-phone-body section article small { color: #8b6b58; font-size: 10px; }

@@ -30,7 +30,7 @@ export function defaultDiscussionContent(): DiscussionContent {
       selfBody: '带着这件具体的事，继续一次私密观察。无需先接受某一种解释。', selfAction: '留给自己观察',
       composeTitle: '写下你的经历', composeHeading: '从一件具体的事，\n开始说起。', composeFieldLabel: '你的经历',
       composePlaceholder: '最近发生了什么？你当时做了什么，又有什么感受？也可以写下与本期人物完全不同的经验。',
-      composePreviewAction: '预览这段内容', composeSaveAction: '保存到后台并返回', composeDiscardAction: '放弃草稿',
+      composePreviewAction: '预览并提交审核', composeSaveAction: '确认提交审核', composeDiscardAction: '放弃草稿',
     },
     threads: [
       { id: 'lan', author: '岚', body: '赶了很久的项目终于交付了。这周下班，我还是把工作群点开了很多次。昨晚坐在餐桌旁，饭已经凉了，才发现没有人在等我回复。我知道今晚可以休息，却好像还在等下一个临时任务。', replies: [
@@ -51,6 +51,8 @@ export function validateDiscussionContent(value: unknown): DiscussionContent {
   if (!record(value) || Object.keys(value).some((key) => !['copy', 'copyRichText', 'threads'].includes(key)) || !record(value.copy)) throw new BadRequestException('讨论内容格式无效');
   const defaults = defaultDiscussionContent();
   const sourceCopy = { ...value.copy };
+  if (sourceCopy.composePreviewAction === '预览这段内容') sourceCopy.composePreviewAction = defaults.copy.composePreviewAction;
+  if (sourceCopy.composeSaveAction === '保存到后台并返回' || sourceCopy.composeSaveAction === '保存草稿并返回') sourceCopy.composeSaveAction = defaults.copy.composeSaveAction;
   const legacyLocalOnlyCopy = typeof sourceCopy.prototypeNote === 'string' && sourceCopy.prototypeNote.includes('仅保存在本机');
   delete sourceCopy.prototypeNote;
   delete sourceCopy.composePrivacyNote;
@@ -82,7 +84,15 @@ export function validateDiscussionContent(value: unknown): DiscussionContent {
         maxHtmlCharacters: 24000,
       });
       normalized.copyRichText![key] = sanitized;
-      normalized.copy[key] = plainTextFromRichText(sanitized);
+      const plainText = plainTextFromRichText(sanitized);
+      const legacyAction = (key === 'composePreviewAction' && plainText === '预览这段内容')
+        || (key === 'composeSaveAction' && (plainText === '保存到后台并返回' || plainText === '保存草稿并返回'));
+      if (legacyAction) {
+        delete normalized.copyRichText![key];
+        normalized.copy[key] = defaults.copy[key];
+      } else {
+        normalized.copy[key] = plainText;
+      }
     }
   }
   if (!keys.every((key) => text((normalized.copy as unknown as Record<string, unknown>)[key], 2000))) throw new BadRequestException('讨论文案须完整且为不超过 2000 字的纯文本');

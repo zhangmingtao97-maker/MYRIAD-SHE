@@ -29,11 +29,17 @@
         </view>
         <view class="compose-notify-toggle {{notifyOnReply ? 'is-on' : ''}}" aria-hidden="true"><view></view></view>
       </view>
-      <view class="compose-preview" role="button" aria-expanded="{{previewOpen}}" aria-label="{{copy.composePreviewAction}}" tabindex="0" bindtap="togglePreview"><rich-text class="compose-action-copy" nodes="{{copyHtml.composePreviewAction}}"></rich-text><text class="compose-arrow">{{previewOpen ? '↓' : '→'}}</text></view>
+      <view class="compose-preview" role="button" aria-expanded="{{previewOpen}}" aria-label="{{copy.composePreviewAction}}，下一步预览确认后提交审核" tabindex="0" bindtap="togglePreview">
+        <view class="compose-preview-copy">
+          <rich-text class="compose-action-copy compose-preview-label" nodes="{{copyHtml.composePreviewAction}}"></rich-text>
+          <text class="compose-preview-hint">下一步：预览确认后，提交审核</text>
+        </view>
+        <text class="compose-arrow" aria-hidden="true">{{previewOpen ? '↓' : '→'}}</text>
+      </view>
       <view class="compose-share-note">请只分享你愿意表达的内容，隐去他人的姓名、联系方式等信息。这里不会带入你的生日或私密观察记录。</view>
       <view wx:if="{{error}}" class="compose-error" role="alert">{{error}}</view>
       <view class="compose-preview-draft-row compose-editor-draft-row">
-        <view class="compose-preview-draft-action" role="button" aria-label="保留草稿并返回" tabindex="0" bindtap="handleBack">保留草稿并返回</view>
+        <view class="compose-preview-draft-action" role="button" aria-label="保存草稿并退出" tabindex="0" bindtap="handleBack">保存草稿并退出</view>
         <view class="compose-preview-draft-action" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft"><rich-text class="compose-action-copy" nodes="{{copyHtml.composeDiscardAction}}"></rich-text></view>
       </view>
     </block>
@@ -55,7 +61,7 @@
       <view class="compose-preview-primary {{previewConfirmed ? '' : 'is-disabled'}}" role="button" aria-label="{{copy.composeSaveAction}}" aria-disabled="{{saving || !previewConfirmed}}" tabindex="0" bindtap="saveDraft"><text wx:if="{{saving}}">提交中…</text><rich-text wx:else class="compose-action-copy" nodes="{{copyHtml.composeSaveAction}}"></rich-text><text class="compose-preview-primary-arrow" aria-hidden="true">→</text></view>
       <view class="compose-preview-back" role="button" aria-label="返回修改" tabindex="0" bindtap="closePreview">返回修改</view>
       <view class="compose-preview-draft-row">
-        <view class="compose-preview-draft-action" role="button" aria-label="保留草稿并返回" tabindex="0" bindtap="handleBack">保留草稿并返回</view>
+        <view class="compose-preview-draft-action" role="button" aria-label="保存草稿并退出" tabindex="0" bindtap="handleBack">保存草稿并退出</view>
         <view class="compose-preview-draft-action" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft"><rich-text class="compose-action-copy" nodes="{{copyHtml.composeDiscardAction}}"></rich-text></view>
       </view>
     </view>
