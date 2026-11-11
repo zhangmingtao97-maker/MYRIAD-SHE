@@ -91,8 +91,8 @@ export const adminModules: AdminModuleDefinition[] = [
   },
   {
     id: 'contributions',
-    label: '讨论管理',
-    description: '读者分享的发布、精华与用户参与限制管理',
+    label: '一起谈谈',
+    description: '一起谈谈内容的发布、精华与权限管理',
     rules: [
       { method: 'GET', pattern: /^\/admin\/discussion-contributions$/ },
       { method: 'GET', pattern: new RegExp(`^/admin/discussion-contributions/${uuid}$`) },

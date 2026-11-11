@@ -179,6 +179,9 @@ function practiceHarness() {
         events.push('draft:deleted');
         return { rows: [] };
       }
+      if (sql.includes('select edit_version as "editVersion" from admin_content_drafts where content_key = \'practice\' for update')) {
+        return { rows: [] };
+      }
       if (sql.includes('select edit_version as "editVersion" from content_practice_page where id = 1 for update')) {
         return { rows: [{ editVersion: page.editVersion }] };
       }
@@ -862,6 +865,17 @@ test('practice content allows every directory switch', async () => {
   const savedGoods = await controller.updatePracticeContent(request, enabledGoods);
   assert.equal(savedGoods.entries.find((entry) => entry.key === 'daily-goods')?.enabled, true);
   assert.equal(events.filter((event) => event === 'audit:content.practice.updated').length, 3);
+});
+
+test('publishing a practice draft preserves the independently saved daily-goods switch', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  update.entries[2].enabled = true;
+  const adminRequest = { user: { sub: 'admin:test', role: 'super_admin' } } as Request & { user: { sub: string; role: string } };
+
+  const result = await controller.updatePracticeContent(adminRequest, update, true);
+
+  assert.equal(result.entries.find((entry) => entry.key === 'daily-goods')?.enabled, true);
 });
 
 test('practice copy updates save atomically with metadata audit while entries stay gated', async () => {
@@ -1701,28 +1715,48 @@ test('a connection with an unconfirmed advisory lock is discarded', async () => 
   assert.deepEqual(events, ['select pg_advisory_lock(hashtext($1))', 'release:error']);
 });
 
-function storeGateHarness(options: { store: boolean; entry: boolean; products?: unknown[] }) {
+function storeGateHarness(options: { store: boolean; entry: boolean; products?: unknown[]; content?: Record<string, unknown>; storage?: StorageService }) {
   const queried: string[] = [];
   const products = options.products ?? [
     { id: '01', name: '日常之物 01', english: 'daily-01', image: '/assets/shop/shop-item-01.svg', price: '¥100.00', priceLabel: '含税', description: '说明', optionDetails: '', dailyUseDetails: '', deliveryDetails: '', enabled: true },
     { id: '02', name: '日常之物 02', english: 'daily-02', image: '/assets/shop/shop-item-02.svg', price: '¥80.00', priceLabel: '含税', description: '说明', optionDetails: '', dailyUseDetails: '', deliveryDetails: '', enabled: true },
   ];
+  const content = {
+    brandName: 'Hitherbreath', brandSubtitle: '此刻归安', title: '日常之物', intro: '日常之物说明', previewNote: '', supportLabel: '联系支持',
+    products,
+    ...options.content,
+  };
   const database = {
     query: async (sql: string) => {
       queried.push(sql);
       if (sql.includes('store_enabled')) return { rows: [{ store: options.store, entryEnabled: options.entry }], rowCount: 1 };
       if (sql.includes('from content_daily_objects')) {
-        return { rows: [{ editVersion: 3, content: { brandName: 'Hitherbreath', brandSubtitle: '此刻归安', title: '日常之物', products } }], rowCount: 1 };
+        return { rows: [{ editVersion: 3, content }], rowCount: 1 };
       }
       return { rows: [], rowCount: 0 };
     },
   } as unknown as DatabaseService;
-  const storage = {
+  const storage = options.storage ?? ({
     objectMetadata: async () => { throw new Error('storage must not be used for local assets'); },
     createDownloadUrl: async () => { throw new Error('storage must not be used for local assets'); },
-  } as unknown as StorageService;
+  } as unknown as StorageService);
   const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
   return { controller, queried };
+}
+
+function dailyObjectsDto(overrides: Record<string, unknown> = {}) {
+  return {
+    editVersion: 3,
+    brandName: 'Hitherbreath', brandSubtitle: '此刻归安', bagLabel: '购物袋', bagCount: '00',
+    eyebrow: 'PRACTICE / DAILY OBJECTS', title: '日常之物', intro: '日常之物说明', previewNote: '仅供预览', supportLabel: '联系支持',
+    landingTitle: '物不是答案。\n它只在日常里，\n支持一个动作发生。', landingIntro: '从具体的使用场景出发。', landingStatus: '正在研究 · 尚未开放',
+    herDaysTitle: '她的日常', herDaysEnglish: 'HER DAYS', articleLabel: '日常文章节选',
+    articleTitle: '在窗边坐一会儿', articleExcerpt: '今天把杯子放回桌面，也把自己放回当下。', articleImage: '', articleImageAlt: '窗边的人物日常',
+    articleCaption: '一个普通的下午', officialArticleUrl: 'https://mp.weixin.qq.com/s/example', officialArticleButton: '前往公众号阅读完整文章',
+    everydayObjectsTitle: '日常好物探索', everydayObjectsEnglish: 'EVERYDAY OBJECTS', everydayObjectsIntro: '基于观察到的人物日常，对日常好物的思考及探索。',
+    products: [{ id: '01', name: '日常之物 01', english: 'daily-01', image: '/assets/shop/shop-item-01.svg', price: '¥100.00', priceLabel: '含税', description: '说明', optionDetails: '', dailyUseDetails: '', deliveryDetails: '', enabled: true }],
+    ...overrides,
+  };
 }
 
 test('store status reports closed when the system flag is off even if the practice entry is open', async () => {
@@ -1745,6 +1779,129 @@ test('daily objects withholds every product while the store is closed', async ()
   const result = await controller.dailyObjects();
   assert.equal(result.products.length, 0);
   assert.equal((result as unknown as { title?: string }).title, '日常之物');
+});
+
+test('daily objects legacy content receives the configurable landing-page defaults', async () => {
+  const { controller } = storeGateHarness({ store: false, entry: true });
+  const result = await controller.dailyObjects();
+  assert.equal(result.landingTitle, '物不是答案。\n它只在日常里，\n支持一个动作发生。');
+  assert.equal(result.landingIntro, '这些物从具体的使用场景出发，帮助一个动作变得更容易，而不是替生活提供答案。');
+  assert.equal(result.landingStatus, '正在研究 · 尚未开放');
+  assert.equal(result.herDaysTitle, '她的日常');
+  assert.equal(result.herDaysEnglish, 'HER DAYS');
+  assert.equal(result.articleLabel, '日常文章节选');
+  assert.equal(result.everydayObjectsTitle, '日常好物探索');
+  assert.equal(result.everydayObjectsEnglish, 'EVERYDAY OBJECTS');
+  assert.equal(result.everydayObjectsIntro, '基于观察到的人物日常，对日常好物的思考及探索。');
+  assert.equal(result.articleImageUrl, '');
+});
+
+test('daily objects legacy drafts replace blank required copy while preserving optional article blanks', async () => {
+  const published = dailyObjectsDto();
+  const draft = {
+    ...dailyObjectsDto(),
+    landingTitle: '',
+    landingIntro: '',
+    landingStatus: '',
+    herDaysTitle: '',
+    herDaysEnglish: '',
+    articleLabel: '',
+    articleTitle: '',
+    articleExcerpt: '',
+    articleImage: '',
+    articleImageAlt: '',
+    articleCaption: '',
+    officialArticleUrl: '',
+    officialArticleButton: '',
+    everydayObjectsTitle: '',
+    everydayObjectsEnglish: '',
+    everydayObjectsIntro: '',
+  };
+  const database = {
+    query: async (sql: string) => {
+      if (sql.includes('from content_daily_objects')) return { rows: [{ editVersion: 3, content: published }], rowCount: 1 };
+      if (sql.includes('from admin_content_drafts')) return { rows: [{ editVersion: 6, content: draft }], rowCount: 1 };
+      throw new Error(`Unexpected daily objects query: ${sql}`);
+    },
+  } as unknown as DatabaseService;
+  const controller = new ContentController(database, {} as StorageService, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  const managed = await controller.manageDailyObjects();
+  assert.equal(managed.draft, true);
+  assert.equal(managed.landingTitle, '物不是答案。\n它只在日常里，\n支持一个动作发生。');
+  assert.equal(managed.landingIntro, '这些物从具体的使用场景出发，帮助一个动作变得更容易，而不是替生活提供答案。');
+  assert.equal(managed.landingStatus, '正在研究 · 尚未开放');
+  assert.equal(managed.herDaysTitle, '她的日常');
+  assert.equal(managed.herDaysEnglish, 'HER DAYS');
+  assert.equal(managed.articleLabel, '日常文章节选');
+  assert.equal(managed.officialArticleButton, '前往公众号阅读完整文章');
+  assert.equal(managed.everydayObjectsTitle, '日常好物探索');
+  assert.equal(managed.everydayObjectsEnglish, 'EVERYDAY OBJECTS');
+  assert.equal(managed.everydayObjectsIntro, '基于观察到的人物日常，对日常好物的思考及探索。');
+  assert.equal(managed.articleTitle, '');
+  assert.equal(managed.articleExcerpt, '');
+  assert.equal(managed.articleCaption, '');
+  assert.equal(managed.officialArticleUrl, '');
+});
+
+test('daily objects signs the article image even while products are withheld', async () => {
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 1, lastModified: new Date() }),
+    createDownloadUrl: async () => ({ url: 'https://storage.invalid/article.webp', expiresIn: 3600 }),
+  } as unknown as StorageService;
+  const { controller } = storeGateHarness({ store: false, entry: true, content: { articleImage: 'content/image/article.webp' }, storage });
+  const result = await controller.dailyObjects();
+  assert.equal(result.articleImageUrl, 'https://storage.invalid/article.webp');
+  assert.equal(result.products.length, 0);
+});
+
+test('daily objects rejects unsafe article images and non-WeChat official article links', async () => {
+  const { controller } = storeGateHarness({ store: true, entry: true });
+  const update = (body: Record<string, unknown>) => controller.updateDailyObjects(request, body as never);
+  await assert.rejects(update(dailyObjectsDto({ articleImage: 'ftp://example.com/article.webp' })), /日常文章配图/);
+  await assert.rejects(update(dailyObjectsDto({ articleImage: '', officialArticleUrl: 'https://example.com/s/article' })), /mp.weixin.qq.com/);
+});
+
+test('daily objects draft save and manage read preserve the landing-page configuration', async () => {
+  const published = dailyObjectsDto();
+  let draft: Record<string, unknown> | null = null;
+  let draftVersion = 3;
+  const client = {
+    query: async (sql: string, values: unknown[] = []) => {
+      if (sql.includes('from content_daily_objects where id = 1 for update')) {
+        return { rows: [{ editVersion: 3, content: published }], rowCount: 1 };
+      }
+      if (sql.includes('from admin_content_drafts where content_key = \'daily-objects\' for update')) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (sql.includes('insert into admin_content_drafts')) {
+        draft = JSON.parse(String(values[0])) as Record<string, unknown>;
+        draftVersion = Number(values[1]);
+        return { rows: [], rowCount: 1 };
+      }
+      throw new Error(`Unexpected daily objects query: ${sql}`);
+    },
+  } as unknown as PoolClient;
+  const database = {
+    query: async (sql: string) => {
+      if (sql.includes('from content_daily_objects')) return { rows: [{ editVersion: 3, content: published }], rowCount: 1 };
+      if (sql.includes('from admin_content_drafts')) return { rows: draft ? [{ editVersion: draftVersion, content: draft }] : [], rowCount: draft ? 1 : 0 };
+      return { rows: [], rowCount: 0 };
+    },
+    withTransaction: async (callback: (transactionClient: PoolClient) => Promise<unknown>) => callback(client),
+  } as unknown as DatabaseService;
+  const audit = { record: async () => undefined } as unknown as AuditService;
+  const controller = new ContentController(database, {} as StorageService, audit, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  const saved = await controller.updateDailyObjects(request, dailyObjectsDto() as never);
+  assert.equal(saved.articleTitle, '在窗边坐一会儿');
+  assert.equal(saved.everydayObjectsIntro, '基于观察到的人物日常，对日常好物的思考及探索。');
+  const managed = await controller.manageDailyObjects();
+  assert.equal(managed.draft, true);
+  assert.equal(managed.landingTitle, '物不是答案。\n它只在日常里，\n支持一个动作发生。');
+  assert.equal(managed.officialArticleUrl, 'https://mp.weixin.qq.com/s/example');
+  assert.equal(managed.officialArticleButton, '前往公众号阅读完整文章');
 });
 
 test('daily objects returns products once the store is open', async () => {

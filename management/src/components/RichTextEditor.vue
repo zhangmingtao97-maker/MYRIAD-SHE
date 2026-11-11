@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, useId, watch } from 'vue';
 
 const props = withDefaults(defineProps<{
   modelValue: string;
   label: string;
   disabled?: boolean;
+  invalid?: boolean;
+  error?: string;
   fontSize?: number;
   color?: string;
   basic?: boolean;
@@ -12,6 +14,8 @@ const props = withDefaults(defineProps<{
   maxFontSize?: number;
   fontSizeOptions?: number[];
 }>(), {
+  invalid: false,
+  error: '',
   minFontSize: 10,
   maxFontSize: 72,
 });
@@ -19,6 +23,8 @@ const emit = defineEmits<{ 'update:modelValue': [value: string]; 'update:fontSiz
 const editor = ref<HTMLDivElement | null>(null);
 const selectedColor = ref(props.color || '#5c493c');
 const selectedFontSize = ref(props.fontSize ? String(props.fontSize) : '');
+const errorDescriptionId = `${useId()}-error`;
+const errorDescription = computed(() => props.invalid && props.error ? errorDescriptionId : undefined);
 let savedRange: Range | null = null;
 
 const sizeRange = computed(() => {
@@ -203,7 +209,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="rich-text-field">
+  <div class="rich-text-field" :class="{ 'is-invalid': invalid }">
     <div class="rich-text-label">{{ label }}</div>
     <div class="rich-text-toolbar" role="toolbar" :aria-label="`${label}格式工具`">
       <button type="button" class="rich-text-tool" aria-label="粗体" title="粗体" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyFormat('bold')"><strong>B</strong></button>
@@ -221,6 +227,8 @@ onMounted(() => {
       aria-multiline="true"
       :aria-label="label"
       :aria-disabled="Boolean(disabled)"
+      :aria-invalid="Boolean(invalid)"
+      :aria-describedby="errorDescription"
       :contenteditable="!disabled"
       @input="syncValue"
       @paste="pastePlainText"
@@ -228,5 +236,6 @@ onMounted(() => {
       @mouseup="rememberSelection"
       @blur="rememberSelection"
     />
+    <p v-if="invalid && error" :id="errorDescriptionId" class="rich-text-error" role="alert">{{ error }}</p>
   </div>
 </template>

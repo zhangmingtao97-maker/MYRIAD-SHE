@@ -14,27 +14,27 @@
         <image class="landing-logo" src="/assets/shop/daily-objects-logo.svg" mode="aspectFit" aria-label="Daily Objects 标志" />
       </view>
       <view class="landing-meta">{{content.brandSubtitle}} · {{content.title}}</view>
-      <view class="landing-title">物不是答案。<br />它只在日常里，<br />支持一个动作发生。</view>
-      <view class="landing-intro">这些物从具体的使用场景出发，帮助一个动作变得更容易，而不是替生活提供答案。</view>
-      <view class="landing-status">正在研究 · 尚未开放</view>
+      <view class="landing-title">{{content.landingTitle}}</view>
+      <view class="landing-intro">{{content.landingIntro}}</view>
+      <view class="landing-status">{{content.landingStatus}}</view>
       <view class="landing-daily">
         <view class="daily-section daily-article">
-          <view class="daily-section-heading"><text>她的日常</text><text>HER DAYS</text></view>
-          <view class="daily-article-label"><text>日常文章节选</text></view>
+          <view class="daily-section-heading"><text>{{content.herDaysTitle}}</text><text>{{content.herDaysEnglish}}</text></view>
+          <view class="daily-article-label"><text>{{content.articleLabel}}</text></view>
           <view class="daily-article-title">{{articleTitle}}</view>
           <view class="daily-article-excerpt">{{articleExcerpt}}</view>
           <view wx:if="{{articleImageUrl}}" class="daily-article-image-frame">
             <image class="daily-article-image" src="{{articleImageUrl}}" mode="aspectFill" aria-label="{{articleImageAlt}}" binderror="onArticleImageError" />
           </view>
           <view wx:if="{{articleCaption}}" class="daily-article-caption">{{articleCaption}}</view>
-          <view class="daily-article-action" role="button" aria-label="前往公众号阅读完整文章" tabindex="0" bindtap="openOfficialArticle">
-            <text>前往公众号阅读完整文章</text>
+          <view class="daily-article-action" role="button" aria-label="{{articleButtonLabel}}" tabindex="0" bindtap="openOfficialArticle">
+            <text>{{articleButtonLabel}}</text>
             <text aria-hidden="true">↗</text>
           </view>
         </view>
         <view class="daily-section daily-exploration">
-          <view class="daily-section-heading"><text>日常好物探索</text><text>EVERYDAY OBJECTS</text></view>
-          <view class="daily-exploration-copy">基于观察到的人物日常，对日常好物的思考及探索。</view>
+          <view class="daily-section-heading"><text>{{content.everydayObjectsTitle}}</text><text>{{content.everydayObjectsEnglish}}</text></view>
+          <view class="daily-exploration-copy">{{content.everydayObjectsIntro}}</view>
         </view>
       </view>
     </view>

@@ -24,7 +24,7 @@ function onInput(slot: 'context' | 'title' | 'description', event: Event) {
       <span class="practice-entry-index">{{ String(index).padStart(2, '0') }}</span>
       <span class="practice-entry-summary">
         <strong>{{ practiceEntryText(entry.titleRichText) || '未命名目录' }}</strong>
-        <small>{{ entry.enabled ? '首页可见' : '首页暂不显示' }}</small>
+        <small>{{ entry.enabled ? '目录已开启' : '目录已关闭' }}</small>
       </span>
       <span class="practice-entry-actions">
         <button type="button" class="practice-entry-delete" :disabled="disabled" :aria-label="`删除目录 ${practiceEntryText(entry.titleRichText)}`" @click="emit('delete')">删除</button>
@@ -34,7 +34,7 @@ function onInput(slot: 'context' | 'title' | 'description', event: Event) {
           :class="{ enabled: entry.enabled }"
           :disabled="disabled"
           :aria-pressed="entry.enabled"
-          :aria-label="`${practiceEntryText(entry.titleRichText)}${entry.enabled ? '已开启' : '已关闭'}，点击切换入口状态`"
+          :aria-label="`${practiceEntryText(entry.titleRichText)}${entry.enabled ? '已开启' : '已关闭'}，点击切换目录状态`"
           @click="emit('toggleEnabled')"
         >
           <span class="practice-entry-status-dot" aria-hidden="true"></span>

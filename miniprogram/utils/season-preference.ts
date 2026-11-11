@@ -2,6 +2,31 @@ import { createCloudPreference } from './cloud-preference';
 import type { UserSettings } from './privacy';
 
 const SEASON_PAUSED_KEY = 'myriad_she_season_paused';
+const SEASON_GUIDE_READ_KEY = 'myriad_she_season_guide_read_v1';
+
+export function hasReadSeasonGuide() {
+  try {
+    return wx.getStorageSync(SEASON_GUIDE_READ_KEY) === true;
+  } catch {
+    return false;
+  }
+}
+
+export function markSeasonGuideRead() {
+  try {
+    wx.setStorageSync(SEASON_GUIDE_READ_KEY, true);
+  } catch {
+    // 本机存储不可用时仍允许当前页面继续，但不假设下次仍已阅读。
+  }
+}
+
+export function clearSeasonGuideRead() {
+  try {
+    wx.removeStorageSync(SEASON_GUIDE_READ_KEY);
+  } catch {
+    // 清理本地状态失败时不阻断其他数据清理。
+  }
+}
 
 export function seasonPreferencesPaused(preferences: Record<string, unknown>) {
   return preferences.seasonEnabled === false;

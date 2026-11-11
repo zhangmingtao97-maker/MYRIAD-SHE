@@ -32,7 +32,7 @@ try {
     sharedPracticeCopy: copies('topbarTitle metaLeft metaRight heroTitle heroIntro onlineNumber onlineContext onlineIssueLabel onlineIssueTheme onlineQuestion onlineCopy onlineAction offlineNumber offlineContext offlineTitle offlineCopy noticeLabel noticeCode rule1Number rule1Title rule1Copy rule2Number rule2Title rule2Copy rule3Number rule3Title rule3Copy rule4Number rule4Title rule4Copy nextAction'),
     entries: ['observation', 'shared-practice', 'daily-goods'].map((key, index) => ({ key, target: key, title: ['此刻观察', '共同实践', '日常之物'][index], description: '从生活的小事开始，寻找自己的节奏。', contextRichText: '一份日常练习', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: ['此刻观察', '共同实践', '日常之物'][index], titleFontSize: 22, titleColor: '#40362f', descriptionRichText: '从生活的小事开始，寻找自己的节奏。', descriptionFontSize: 14, descriptionColor: '#5c493c', enabled: true })),
   };
-  const daily = { editVersion: 1, brandName: 'MYRIAD SHE', brandSubtitle: '让日常发生', bagLabel: '购物袋', bagCount: '0', eyebrow: 'DAILY OBJECTS', title: '日常之物', intro: '留在身边的简单物件', previewNote: '预览草稿', supportLabel: '联系支持', products: [{ id: 'notebook', name: '随身记录本', english: 'EVERYDAY NOTES', image: '', price: '68', priceLabel: 'CNY', description: '把今天值得记下的小事留在纸上。', optionDetails: '米白 / A5', dailyUseDetails: '适合日常书写', deliveryDetails: '三个工作日内发出', enabled: true }] };
+  const daily = { editVersion: 1, brandName: 'MYRIAD SHE', brandSubtitle: '让日常发生', bagLabel: '购物袋', bagCount: '0', eyebrow: 'DAILY OBJECTS', title: '日常之物', intro: '留在身边的简单物件', previewNote: '预览草稿', supportLabel: '联系支持', landingTitle: '物不是答案。\n它只在日常里，\n支持一个动作发生。', landingIntro: '从具体的使用场景出发。', landingStatus: '正在研究 · 尚未开放', herDaysTitle: '她的日常', herDaysEnglish: 'HER DAYS', articleLabel: '日常节选', articleTitle: '在窗边坐一会儿', articleExcerpt: '今天把杯子放回桌面，也把自己放回当下。', articleImage: '', articleImageAlt: '窗边的人物日常', articleCaption: '日常里的一个安静片刻', officialArticleUrl: 'https://mp.weixin.qq.com/s/example', officialArticleButton: '阅读完整文章', everydayObjectsTitle: '日常好物探索', everydayObjectsEnglish: 'EVERYDAY OBJECTS', everydayObjectsIntro: '基于观察到的人物日常，对日常好物的思考及探索。', products: [{ id: 'notebook', name: '随身记录本', english: 'EVERYDAY NOTES', image: '', price: '68', priceLabel: 'CNY', description: '把今天值得记下的小事留在纸上。', optionDetails: '米白 / A5', dailyUseDetails: '适合日常书写', deliveryDetails: '三个工作日内发出', enabled: true }] };
   const mine = { editVersion: 1, ...Object.fromEntries('title intro observationHeading emptyTitle emptyIntro startButton discussionHeading discussionCount discussionEmptyAction discussionIntro practiceHeading practiceCount practiceEmptyTitle practiceIntro privacyHeading privacyAction'.split(' ').map((key) => [key, '我的日常与观察'])) };
   const about = { editVersion: 1, publishedVersion: 1, publishedAt: timestamp, brandIntro: 'MYRIAD SHE 记录真实的女性经验。', contentSources: '来自日常生活的记录与观察。', contactInfo: '欢迎通过小程序联系我们。' };
   const legal = { editVersion: 1, title: copy('用户协议'), intro: copy('请阅读并了解我们如何提供服务。'), body: copy('<h2>一、服务说明</h2><p>感谢你使用 MYRIAD SHE。我们尊重每一位用户的表达与隐私。</p>'), version: '1.0', effectiveDate: '2026-11-01', updatedDate: '', updateNotes: '', publishedVersion: 1, publishedAt: timestamp, draft: false };
@@ -177,6 +177,25 @@ try {
         const items = discussionContributionItems.filter((item) => !publicationStatus || item.publicationStatus === publicationStatus);
         return send({ items: items.slice(offset, offset + limit), total: items.length, limit, offset, summary: discussionContributionSummary });
       }
+      if (path === '/admin/discussion-restrictions' && route.request().method() === 'POST') {
+        const now = new Date().toISOString();
+        const restriction = {
+          id: '00000000-0000-4000-8000-000000000999',
+          userId: body.userId,
+          nickname: '新受限读者',
+          reason: body.reason,
+          startsAt: now,
+          endsAt: body.endsAt || null,
+          createdBy: 'test-admin',
+          createdAt: now,
+          revokedAt: null,
+          revokedBy: null,
+          effectiveStatus: 'active',
+        };
+        discussionRestrictionItems.unshift(restriction);
+        discussionRestrictionSummary.active += 1;
+        return send(restriction);
+      }
       if (path === '/admin/discussion-restrictions') {
         const status = url.searchParams.get('status') || '';
         const limit = Number(url.searchParams.get('limit')) || 50;
@@ -263,7 +282,7 @@ try {
   const trigger = page.getByRole('button', { name: /快捷导航/ });
   await trigger.click();
   const menu = page.getByRole('dialog', { name: '快速前往' });
-  assert.equal(await menu.getByRole('option').count(), 30);
+  assert.equal(await menu.getByRole('option').count(), 31);
   assert.equal(await menu.getByRole('combobox').evaluate((el) => el === document.activeElement), true);
   await menu.getByRole('combobox').fill('no-such-page');
   await menu.getByText('没有找到相关页面').waitFor();
@@ -276,7 +295,7 @@ try {
   assert.equal(await trigger.evaluate((el) => el === document.activeElement), true);
   assert.equal(await page.evaluate(() => document.body.style.overflow), '');
 
-  const destinations = ['实践页面', '实践目录', '此刻观察', '共同实践', '日常之物', '期刊列表', '首页策展', '人物故事', '微声音', '本期讨论', '往期策展', '媒体库', '我的页面设置', '关于 MYRIAD SHE', '关于发布历史', '隐私政策', '用户协议', '历史版本', '会员列表', '讨论管理', '用户举报', '观察记录管理', '隐私申请', '操作记录', '系统设置', '模块状态机', '生命牌文案', '生命牌查看', '员工与权限'];
+  const destinations = ['实践页面', '实践目录', '此刻观察', '共同实践', '日常之物', '期刊列表', '首页策展', '人物故事', '微声音', '本期讨论', '往期策展', '媒体库', '我的页面设置', '关于 MYRIAD SHE', '关于发布历史', '隐私政策', '用户协议', '历史版本', '会员列表', '一起谈谈内容', '一起谈谈权限', '用户举报', '观察记录管理', '隐私申请', '操作记录', '系统设置', '模块状态机', '生命牌文案', '生命牌查看', '员工与权限'];
   for (const label of destinations) {
     await navigate(label);
     await noOverflow(`desktop ${label}`);
@@ -313,7 +332,7 @@ try {
   const auditSummaryText = await auditItems.allInnerTexts();
   assert.match(auditSummaryText.join('\n'), /管理员成功登录后台/);
   assert.match(auditSummaryText.join('\n'), /用户保存了观察记录/);
-  assert.match(auditSummaryText.join('\n'), /管理员新增了用户投稿限制/);
+  assert.match(auditSummaryText.join('\n'), /管理员停用了会员的一起谈谈权限/);
   assert.match(auditSummaryText.join('\n'), /用户申请了删除账号/);
   assert.ok(auditSummaryText.every((text) => !/admin\.auth|observation\.saved|discussion_restriction\.created|privacy\.deletion\.requested/.test(text)), 'technical action codes must stay hidden by default');
   assert.equal(await auditPage.locator('.audit-detail-grid').count(), 0, 'technical details should stay collapsed by default');
@@ -353,21 +372,16 @@ try {
   await noOverflow('1440px audit records');
   await page.screenshot({ path: resolve(output, 'admin-audit-records-desktop.png'), fullPage: true });
 
-  await navigate('讨论管理');
+  await navigate('一起谈谈内容');
   const discussionSection = page.locator('#discussion-contributions');
-  const contentTab = discussionSection.getByRole('tab', { name: '内容管理', exact: true });
-  const restrictionsTab = discussionSection.getByRole('tab', { name: '用户限制', exact: true });
-  const discussionToolbar = discussionSection.locator('.discussion-management-toolbar');
-  const toolbarTabsBox = await discussionToolbar.locator('.discussion-management-tabs').boundingBox();
-  const toolbarRefreshBox = await discussionToolbar.getByRole('button', { name: '刷新', exact: true }).boundingBox();
-  assert.ok(toolbarTabsBox && toolbarRefreshBox, 'discussion toolbar controls should be visible');
-  assert.ok(toolbarRefreshBox.x >= toolbarTabsBox.x + toolbarTabsBox.width, 'discussion refresh should sit to the right of the tabs');
-  assert.ok(Math.abs((toolbarTabsBox.y + toolbarTabsBox.height / 2) - (toolbarRefreshBox.y + toolbarRefreshBox.height / 2)) <= 2, 'discussion refresh should be vertically aligned with the tabs');
-  assert.equal(await contentTab.getAttribute('aria-selected'), 'true', 'discussion management should open on content moderation');
+  assert.equal(await discussionSection.locator('h2').filter({ hasText: '一起谈谈内容' }).count(), 1, 'content page should have its own heading');
+  assert.equal(await discussionSection.getByRole('tab').count(), 0, 'content page should not embed restriction-management tabs');
   let latestContentRequest = [...requests].reverse().find((request) => request.path === '/admin/discussion-contributions');
   assert.ok(latestContentRequest?.query.includes('publicationStatus=pending'), 'content moderation should default to the pending queue');
   const contentSummary = discussionSection.locator('[aria-label="发布状态概览"]');
   await contentSummary.getByRole('button', { name: /^全部 7$/ }).waitFor();
+  assert.equal(await discussionSection.locator('.discussion-page-actions button').count(), 1, 'content page should expose its own refresh action');
+  assert.equal(await discussionSection.locator('.discussion-page-actions button').isVisible(), true, 'content refresh action should be visible');
   assert.match((await contentSummary.getByRole('button', { name: /^全部/ }).innerText()).replace(/\s+/g, ' '), /^全部 7$/, 'content total should sum every publication status');
   assert.equal(await discussionSection.locator('.discussion-contribution-row').count(), 2, 'pending queue should show pending fixtures only');
   assert.equal(await discussionSection.locator('.discussion-contribution-row-actions button svg').count(), 0, 'discussion action buttons should not use decorative arrows');
@@ -383,20 +397,65 @@ try {
   assert.equal(latestContentRequest?.query.includes('publicationStatus='), false, 'viewing all discussion content should clear the publication filter');
   await noOverflow('1440px discussion content');
 
-  await restrictionsTab.click();
-  await discussionSection.locator('#discussion-restriction-form').waitFor();
-  const restrictionReasonBox = await discussionSection.locator('#discussion-restriction-form textarea').boundingBox();
-  assert.ok(restrictionReasonBox && restrictionReasonBox.height <= 56, 'restriction reason should use a compact single-line height by default');
+  await navigate('一起谈谈权限');
+  const restrictionSection = page.locator('#discussion-restrictions');
+  assert.equal(await restrictionSection.locator('h2').filter({ hasText: '一起谈谈权限' }).count(), 1, 'restriction page should have its own heading');
+  assert.equal(await restrictionSection.locator('#discussion-restriction-form').count(), 0, 'restriction form must not occupy the page body');
   const restrictionRequest = [...requests].reverse().find((request) => request.path === '/admin/discussion-restrictions');
   assert.ok(restrictionRequest?.query.includes('status=active'), 'restriction view should default to active restrictions');
-  const restrictionSummary = discussionSection.locator('[aria-label="用户限制状态概览"]');
+  const restrictionSummary = restrictionSection.locator('[aria-label="一起谈谈权限状态概览"]');
   await restrictionSummary.getByRole('button', { name: /^全部 4$/ }).waitFor();
   assert.match((await restrictionSummary.getByRole('button', { name: /^全部/ }).innerText()).replace(/\s+/g, ' '), /^全部 4$/, 'restriction total should sum every restriction status');
-  assert.equal(await discussionSection.locator('.discussion-restriction-row').count(), 1, 'active restrictions should be shown by default');
-  assert.equal(await discussionSection.locator('.discussion-restriction-row button svg').count(), 0, 'restriction actions should not use decorative arrows');
+  assert.equal(await restrictionSection.locator('.discussion-restriction-row').count(), 1, 'active restrictions should be shown by default');
+  assert.equal(await restrictionSection.locator('.discussion-restriction-row button svg').count(), 0, 'restriction actions should not use decorative arrows');
+  await restrictionSection.getByRole('button', { name: '停用权限', exact: true }).click();
+  const restrictionDialog = page.getByRole('dialog', { name: '停用一起谈谈权限', exact: true });
+  await restrictionDialog.waitFor();
+  assert.equal(await restrictionDialog.locator('#discussion-restriction-user').evaluate((el) => el === document.activeElement), true, 'opening the restriction dialog should focus the user field');
+  const restrictionReasonBox = await restrictionDialog.locator('#discussion-restriction-reason').boundingBox();
+  assert.ok(restrictionReasonBox && restrictionReasonBox.height >= 90, 'restriction reason should fit several lines inside the dialog');
+  const restrictionEndsAt = restrictionDialog.getByLabel('临时停用结束时间', { exact: true });
+  const defaultEndsAt = await restrictionEndsAt.inputValue();
+  assert.match(defaultEndsAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'temporary restrictions should default to a complete local date and time');
+  const defaultEndsIn = await restrictionEndsAt.evaluate((el) => new Date(el.value).getTime() - Date.now());
+  assert.ok(defaultEndsIn > 23 * 60 * 60 * 1000 && defaultEndsIn < 25 * 60 * 60 * 1000, 'temporary restrictions should default to roughly 24 hours from now');
+  await restrictionDialog.locator('#discussion-restriction-user').fill('8a1cf954-aaa2-4495-86be-f4ce6699ca4a');
+  await restrictionDialog.locator('#discussion-restriction-reason').fill('test01');
+  const pastEndsAt = await page.evaluate(() => {
+    const date = new Date(Date.now() - 60 * 1000);
+    const pad = (value) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  });
+  await restrictionEndsAt.fill(pastEndsAt);
+  const postsBeforeInvalidSubmit = requests.filter((request) => request.method === 'POST' && request.path === '/admin/discussion-restrictions').length;
+  const restrictionSubmit = restrictionDialog.getByRole('button', { name: '确认停用', exact: true });
+  await restrictionSubmit.click();
+  const restrictionValidationAlert = restrictionDialog.getByRole('alert');
+  await restrictionValidationAlert.waitFor();
+  assert.match(await restrictionValidationAlert.innerText(), /结束时间必须晚于当前时间/, 'an expired temporary restriction should show a visible validation error');
+  assert.equal(requests.filter((request) => request.method === 'POST' && request.path === '/admin/discussion-restrictions').length, postsBeforeInvalidSubmit, 'invalid temporary restrictions must not be submitted');
+  const validEndsAt = await page.evaluate(() => {
+    const date = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const pad = (value) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  });
+  await restrictionEndsAt.fill(validEndsAt);
+  const expectedEndsAt = await restrictionEndsAt.evaluate((el) => new Date(el.value).toISOString());
+  await restrictionDialog.getByRole('button', { name: '确认停用', exact: true }).click();
+  await restrictionDialog.waitFor({ state: 'detached' });
+  const restrictionCreateRequest = [...requests].reverse().find((request) => request.method === 'POST' && request.path === '/admin/discussion-restrictions');
+  assert.ok(restrictionCreateRequest, 'a valid restriction should submit a POST request');
+  assert.deepEqual(restrictionCreateRequest.body, {
+    userId: '8a1cf954-aaa2-4495-86be-f4ce6699ca4a',
+    reason: 'test01',
+    endsAt: expectedEndsAt,
+  });
+  assert.match(await restrictionSection.locator('.status-message').innerText(), /已临时停用.*新受限读者.*一起谈谈权限/, 'creating a restriction should show a success message');
+  await page.waitForFunction(() => document.querySelectorAll('#discussion-restrictions .discussion-restriction-row').length === 2);
   await restrictionSummary.getByRole('button', { name: /^全部/ }).click();
-  await page.waitForFunction(() => document.querySelectorAll('#discussion-contributions .discussion-restriction-row').length === 4);
+  await page.waitForFunction(() => document.querySelectorAll('#discussion-restrictions .discussion-restriction-row').length === 5);
   await noOverflow('1440px discussion restrictions');
+  await page.screenshot({ path: resolve(output, 'admin-discussion-restrictions-desktop.png'), fullPage: true });
 
   await navigate('微声音');
   await page.locator('.issue-module-picker button').filter({ hasText: '微声音' }).click();
@@ -456,24 +515,46 @@ try {
   await questionEyebrow.fill('');
   assert.equal(await questionIntroPreview.count(), 0, 'clearing an eyebrow must immediately hide it');
   await page.screenshot({ path: resolve(output, 'admin-question-empty-eyebrow.png'), fullPage: true });
-  await journalEditor.getByLabel('期刊编号').fill('');
-  await journalEditor.getByLabel('期刊标签', { exact: true }).fill('   ');
-  await journalEditor.getByLabel('刊期月份', { exact: true }).fill('');
+  const codeField = journalEditor.locator('[data-issue-field="code"]');
+  const labelField = journalEditor.locator('[data-issue-field="label"]');
+  const monthField = journalEditor.locator('[data-issue-field="month"]');
+  const codeInput = codeField.locator('input');
+  const labelInput = labelField.locator('[contenteditable="true"]');
+  const monthInput = monthField.locator('[contenteditable="true"]');
+  await codeInput.fill('');
+  await labelInput.fill('   ');
+  await monthInput.fill('');
   const requestsBeforeValidation = requests.length;
   await journalEditor.getByRole('button', { name: '保存整份草稿', exact: true }).click();
-  const validationAlert = journalEditor.getByRole('alert').filter({ hasText: '请补充以下必要信息' });
-  await validationAlert.waitFor();
-  const validationText = await validationAlert.innerText();
-  for (const field of ['期刊编号', '期刊标签', '刊期月份']) assert.match(validationText, new RegExp(field));
+  const validationDialog = page.getByRole('alertdialog', { name: '请完善必填信息' });
+  await validationDialog.waitFor();
+  assert.equal((await validationDialog.locator('#issue-validation-copy').innerText()).trim(), '请完善「刊期信息」：请填写期刊编号。');
+  assert.equal(await page.locator('.issue-validation-message').count(), 0, 'validation summary must not remain inline below the form');
+  assert.equal(await codeField.evaluate((field) => field.classList.contains('is-invalid')), true);
+  assert.equal(await labelField.evaluate((field) => field.classList.contains('is-invalid')), true);
+  assert.equal(await monthField.evaluate((field) => field.classList.contains('is-invalid')), true);
+  assert.equal(await codeInput.getAttribute('aria-invalid'), 'true');
+  assert.equal(await labelInput.getAttribute('aria-invalid'), 'true');
+  assert.equal(await monthInput.getAttribute('aria-invalid'), 'true');
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === '知道了');
+  await validationDialog.getByRole('button', { name: '知道了', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-issue-field="code"] input'));
   assert.equal(
     requests.slice(requestsBeforeValidation).some((request) => request.method === 'PATCH' && request.path === '/content/issues/issue-1'),
     false,
     'invalid issue metadata must not be sent to the API',
   );
 
-  await journalEditor.getByLabel('期刊编号').fill('issue-03');
-  await journalEditor.getByLabel('期刊标签', { exact: true }).fill('第三期');
-  await journalEditor.getByLabel('刊期月份', { exact: true }).fill('2026 年 11 月');
+  await codeInput.fill('issue-03');
+  assert.equal(await codeField.evaluate((field) => field.classList.contains('is-invalid')), false);
+  await journalEditor.getByRole('button', { name: '保存整份草稿', exact: true }).click();
+  await validationDialog.waitFor();
+  assert.equal((await validationDialog.locator('#issue-validation-copy').innerText()).trim(), '请完善「刊期信息」：请填写期刊标签。');
+  assert.equal(await labelField.evaluate((field) => field.classList.contains('is-invalid')), true);
+  await validationDialog.getByRole('button', { name: '知道了', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-issue-field="label"] [contenteditable="true"]'));
+  await labelInput.fill('第三期');
+  await monthInput.fill('2026 年 11 月');
   const issueSaveRequest = page.waitForRequest((request) => request.method() === 'PATCH' && new URL(request.url()).pathname.endsWith('/content/issues/issue-1'));
   await journalEditor.getByRole('button', { name: '保存整份草稿', exact: true }).click();
   const issuePayload = (await issueSaveRequest).postDataJSON();
@@ -583,14 +664,21 @@ try {
       await navigate(label);
       await noOverflow(`${width}px ${label}`);
       if (label === '实践页面') assert.equal(await page.locator('#practice-content .practice-savebar').evaluate((el) => getComputedStyle(el).position), 'static', 'stacked editor save bar must not cover fields');
-      if (label === '讨论管理') {
+      if (label === '一起谈谈内容') {
         const responsiveDiscussion = page.locator('#discussion-contributions');
-        await responsiveDiscussion.getByRole('tab', { name: '内容管理', exact: true }).click();
         await responsiveDiscussion.locator('.discussion-contribution-row').first().waitFor();
         await noOverflow(`${width}px discussion content`);
-        await responsiveDiscussion.getByRole('tab', { name: '用户限制', exact: true }).click();
-        await responsiveDiscussion.locator('#discussion-restriction-form').waitFor();
+      }
+      if (label === '一起谈谈权限') {
+        const responsiveRestrictions = page.locator('#discussion-restrictions');
+        await responsiveRestrictions.locator('.discussion-restriction-row').first().waitFor();
         await noOverflow(`${width}px discussion restrictions`);
+        await responsiveRestrictions.getByRole('button', { name: '停用权限', exact: true }).click();
+        const responsiveRestrictionDialog = page.getByRole('dialog', { name: '停用一起谈谈权限', exact: true });
+        await responsiveRestrictionDialog.waitFor();
+        await noOverflow(`${width}px discussion restriction dialog`);
+        await responsiveRestrictionDialog.getByRole('button', { name: '取消', exact: true }).click();
+        await responsiveRestrictionDialog.waitFor({ state: 'detached' });
       }
       if (width === 375 && ['会员列表', '实践页面', '操作记录', '模块状态机', '员工与权限', '关于 MYRIAD SHE', '生命牌文案'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 会员列表: 'members', 实践页面: 'practice', 操作记录: 'audit', 模块状态机: 'module-states', 员工与权限: 'employees', '关于 MYRIAD SHE': 'about', 生命牌文案: 'life-cards' })[label]}-mobile.png`), fullPage: true });
     }
@@ -634,11 +722,12 @@ try {
   assert.equal(
     requests.every((request) => request.method === 'GET'
       || (request.method === 'POST' && /^\/admin\/notifications\/(read-all|[0-9a-f-]{36}\/read)$/.test(request.path))
+      || (request.method === 'POST' && request.path === '/admin/discussion-restrictions')
       || (request.method === 'PATCH' && request.path === '/content/issues/issue-1')),
     true,
     'navigation and draft tests must not persist unrelated data',
   );
-  console.log('PASS: 30 authorized destinations, issue required-field validation, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
+  console.log('PASS: 31 authorized destinations, issue required-field validation, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
 } finally {
   await browser?.close();
   await server.close();

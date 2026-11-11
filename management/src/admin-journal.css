@@ -368,6 +368,37 @@
 }
 .journal-meta-column > label { display: grid; gap: 6px; min-width: 0; }
 
+/* ---------- 必填字段错误 ---------- */
+.journal-issue-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.journal-issue-field.is-invalid input,
+.journal-issue-field.is-invalid .rich-text-canvas,
+.rich-text-field.is-invalid .rich-text-canvas {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.journal-issue-field.is-invalid input:focus,
+.journal-issue-field.is-invalid input:focus-visible,
+.journal-issue-field.is-invalid .rich-text-canvas:focus-visible,
+.rich-text-field.is-invalid .rich-text-canvas:focus-visible {
+  border-color: var(--danger);
+  outline: 2px solid var(--danger);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent);
+}
+.field-inline-error,
+.rich-text-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 @media (max-width: 1240px) {
   .journal-meta-grid { grid-template-columns: minmax(0, 1fr); }
 }

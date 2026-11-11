@@ -356,7 +356,66 @@ class DailyObjectsContentDto {
   @IsString() @MinLength(1) @MaxLength(500) intro!: string;
   @IsString() @MaxLength(300) previewNote!: string;
   @IsString() @MaxLength(120) supportLabel!: string;
+  @IsString() @MaxLength(500) landingTitle!: string;
+  @IsString() @MaxLength(500) landingIntro!: string;
+  @IsString() @MaxLength(120) landingStatus!: string;
+  @IsString() @MaxLength(80) herDaysTitle!: string;
+  @IsString() @MaxLength(80) herDaysEnglish!: string;
+  @IsString() @MaxLength(80) articleLabel!: string;
+  @IsString() @MaxLength(200) articleTitle!: string;
+  @IsString() @MaxLength(1000) articleExcerpt!: string;
+  @IsString() @MaxLength(2048) articleImage!: string;
+  @IsString() @MaxLength(120) articleImageAlt!: string;
+  @IsString() @MaxLength(300) articleCaption!: string;
+  @IsString() @MaxLength(2048) officialArticleUrl!: string;
+  @IsString() @MaxLength(120) officialArticleButton!: string;
+  @IsString() @MaxLength(80) everydayObjectsTitle!: string;
+  @IsString() @MaxLength(80) everydayObjectsEnglish!: string;
+  @IsString() @MaxLength(500) everydayObjectsIntro!: string;
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => DailyObjectProductDto) products!: DailyObjectProductDto[];
+}
+
+const dailyObjectsCopyDefaults = {
+  landingTitle: '物不是答案。\n它只在日常里，\n支持一个动作发生。',
+  landingIntro: '这些物从具体的使用场景出发，帮助一个动作变得更容易，而不是替生活提供答案。',
+  landingStatus: '正在研究 · 尚未开放',
+  herDaysTitle: '她的日常',
+  herDaysEnglish: 'HER DAYS',
+  articleLabel: '日常文章节选',
+  articleTitle: '',
+  articleExcerpt: '',
+  articleImage: '',
+  articleImageAlt: '人物日常图片',
+  articleCaption: '',
+  officialArticleUrl: '',
+  officialArticleButton: '前往公众号阅读完整文章',
+  everydayObjectsTitle: '日常好物探索',
+  everydayObjectsEnglish: 'EVERYDAY OBJECTS',
+  everydayObjectsIntro: '基于观察到的人物日常，对日常好物的思考及探索。',
+} as const;
+
+const intentionallyBlankDailyObjectsCopyKeys = new Set<keyof typeof dailyObjectsCopyDefaults>([
+  'articleTitle',
+  'articleExcerpt',
+  'articleImage',
+  'articleCaption',
+  'officialArticleUrl',
+]);
+
+function normalizeDailyObjectsContent(raw: unknown, editVersion: number) {
+  const content = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+  const products: Array<Record<string, unknown>> = Array.isArray(content.products) ? content.products.filter((item) => item && typeof item === 'object' && !Array.isArray(item)).map((item) => ({
+    ...(item as Record<string, unknown>),
+    optionDetails: typeof (item as Record<string, unknown>).optionDetails === 'string' ? (item as Record<string, unknown>).optionDetails : '',
+    dailyUseDetails: typeof (item as Record<string, unknown>).dailyUseDetails === 'string' ? (item as Record<string, unknown>).dailyUseDetails : '',
+    deliveryDetails: typeof (item as Record<string, unknown>).deliveryDetails === 'string' ? (item as Record<string, unknown>).deliveryDetails : '',
+  })) : [];
+  const copy = Object.fromEntries(Object.entries(dailyObjectsCopyDefaults).map(([key, fallback]) => {
+    const value = typeof content[key] === 'string' ? (content[key] as string).trim() : '';
+    const preserveBlank = intentionallyBlankDailyObjectsCopyKeys.has(key as keyof typeof dailyObjectsCopyDefaults);
+    return [key, value || (preserveBlank ? '' : fallback)];
+  })) as Record<keyof typeof dailyObjectsCopyDefaults, string>;
+  return { ...content, ...copy, editVersion, products };
 }
 
 class MinePageContentDto {
@@ -1329,7 +1388,12 @@ export class ContentController {
            ) or exists (
              select 1 from content_daily_objects daily,
                jsonb_array_elements(coalesce(daily.content->'products', '[]'::jsonb)) product
-             where product->>'image' = $1
+             where daily.content->>'articleImage' = $1 or product->>'image' = $1
+           ) or exists (
+             select 1 from admin_content_drafts draft,
+               jsonb_array_elements(coalesce(draft.content->'products', '[]'::jsonb)) product
+             where draft.content_key = 'daily-objects'
+               and (draft.content->>'articleImage' = $1 or product->>'image' = $1)
            ) as referenced`, [body.objectKey],
         );
         if (references.rows[0]?.referenced) {
@@ -1417,7 +1481,12 @@ export class ContentController {
          ) or exists (
            select 1 from content_daily_objects daily,
              jsonb_array_elements(coalesce(daily.content->'products', '[]'::jsonb)) product
-           where product->>'image' = listed.object_key
+           where daily.content->>'articleImage' = listed.object_key or product->>'image' = listed.object_key
+         ) or exists (
+           select 1 from admin_content_drafts draft,
+             jsonb_array_elements(coalesce(draft.content->'products', '[]'::jsonb)) product
+           where draft.content_key = 'daily-objects'
+             and (draft.content->>'articleImage' = listed.object_key or product->>'image' = listed.object_key)
          )`, [keys],
       )
       : { rows: [] as Array<{ objectKey: string }> };
@@ -1581,6 +1650,9 @@ export class ContentController {
        select 1 from content_daily_objects daily,
          jsonb_array_elements(coalesce(daily.content->'products', '[]'::jsonb)) product
        where product->>'image' = $1 and product->>'enabled' = 'true'
+       union all
+       select 1 from content_daily_objects daily
+       where daily.content->>'articleImage' = $1
        limit 1`, [normalizedObjectKey],
     );
     if (!result.rows[0]) throw new NotFoundException('媒体不存在或尚未发布');
@@ -2040,32 +2112,36 @@ export class ContentController {
       `select content, edit_version as "editVersion" from content_daily_objects where id = 1`,
     );
     if (!result.rows[0]) throw new NotFoundException('日常之物页面尚未初始化');
-    const content = result.rows[0].content && typeof result.rows[0].content === 'object' && !Array.isArray(result.rows[0].content)
-      ? result.rows[0].content as Record<string, unknown> : {};
-    const products: Array<Record<string, unknown>> = Array.isArray(content.products) ? content.products.filter((item) => item && typeof item === 'object' && !Array.isArray(item)).map((item) => ({
-      ...(item as Record<string, unknown>),
-      optionDetails: typeof (item as Record<string, unknown>).optionDetails === 'string' ? (item as Record<string, unknown>).optionDetails : '',
-      dailyUseDetails: typeof (item as Record<string, unknown>).dailyUseDetails === 'string' ? (item as Record<string, unknown>).dailyUseDetails : '',
-      deliveryDetails: typeof (item as Record<string, unknown>).deliveryDetails === 'string' ? (item as Record<string, unknown>).deliveryDetails : '',
-    })) : [];
-    return { ...content, editVersion: result.rows[0].editVersion, products };
+    return normalizeDailyObjectsContent(result.rows[0].content, result.rows[0].editVersion);
+  }
+
+  private async resolveDailyObjectImageUrl(image: string) {
+    if (image.startsWith('content/image/')) {
+      try {
+        const metadata = await this.storage.objectMetadata(image);
+        if (!this.isAllowedMediaObject(image, metadata)) return '';
+        return (await this.storage.createDownloadUrl(image)).url;
+      } catch {
+        return '';
+      }
+    }
+    return image.startsWith('/assets/') || /^https:\/\/[^\s]+$/i.test(image) ? image : '';
   }
 
   @Get('daily-objects')
   @Header('Cache-Control', 'no-store')
   async dailyObjects() {
     const content = await this.readDailyObjectsContent();
+    const articleImageUrl = await this.resolveDailyObjectImageUrl(content.articleImage);
+    const publicContent = { ...content, articleImageUrl };
     // 未开放时不下发商品（含价格与图片签名），只保留页面文案供落地页使用。
-    if (!(await this.isStoreOpen())) return { ...content, products: [] };
+    if (!(await this.isStoreOpen())) return { ...publicContent, products: [] };
     const products = await Promise.all(content.products.map(async (product) => {
       const image = typeof product.image === 'string' ? product.image : '';
       if (!product.enabled || !image.startsWith('content/image/')) return product;
-      const metadata = await this.storage.objectMetadata(image);
-      if (!this.isAllowedMediaObject(image, metadata)) return { ...product, image: '' };
-      const target = await this.storage.createDownloadUrl(image);
-      return { ...product, image: target.url };
+      return { ...product, image: await this.resolveDailyObjectImageUrl(image) };
     }));
-    return { ...content, products };
+    return { ...publicContent, products };
   }
 
   @Get('life-card')
@@ -2299,7 +2375,7 @@ export class ContentController {
   async manageDailyObjects() {
     const published = await this.readDailyObjectsContent();
     const draft = await this.database.query<{ content: Record<string, unknown>; editVersion: number }>(`select content, edit_version as "editVersion" from admin_content_drafts where content_key = 'daily-objects'`);
-    return draft.rows[0] ? { ...draft.rows[0].content, editVersion: draft.rows[0].editVersion, draft: true } : { ...published, draft: false };
+    return draft.rows[0] ? { ...normalizeDailyObjectsContent(draft.rows[0].content, draft.rows[0].editVersion), draft: true } : { ...published, draft: false };
   }
 
   @Patch('daily-objects/manage')
@@ -2313,11 +2389,45 @@ export class ContentController {
       const normalized = { ...product, id: product.id.trim(), name: product.name.trim(), english: product.english.trim(), image: product.image.trim(), price: product.price.trim(), priceLabel: product.priceLabel.trim(), description: product.description.trim(), optionDetails: product.optionDetails.trim(), dailyUseDetails: product.dailyUseDetails.trim(), deliveryDetails: product.deliveryDetails.trim() };
       if (!normalized.name || !normalized.english || !normalized.image || !normalized.description) throw new BadRequestException('商品名称、英文标识、图片路径和详情说明不能为空');
       if (normalized.image.startsWith('content/image/')) {
-        if (!this.isManagedMediaObjectKey(normalized.image) || !this.isAllowedMediaObject(normalized.image, await this.storage.objectMetadata(normalized.image))) throw new BadRequestException('商品图片对象不存在或格式无效');
+        let valid = false;
+        try {
+          valid = this.isManagedMediaObjectKey(normalized.image) && this.isAllowedMediaObject(normalized.image, await this.storage.objectMetadata(normalized.image));
+        } catch {}
+        if (!valid) throw new BadRequestException('商品图片对象不存在或格式无效');
       } else if (!normalized.image.startsWith('/assets/shop/') && !/^https:\/\/[^\s]+$/i.test(normalized.image)) throw new BadRequestException('商品图片请上传图片或使用商店素材路径 / HTTPS 地址');
       return normalized;
     }));
-    const content = { brandName: body.brandName.trim(), brandSubtitle: body.brandSubtitle.trim(), bagLabel: body.bagLabel.trim(), bagCount: body.bagCount.trim(), eyebrow: body.eyebrow.trim(), title: body.title.trim(), intro: body.intro.trim(), previewNote: body.previewNote.trim(), supportLabel: body.supportLabel.trim(), products };
+    const articleImage = body.articleImage.trim();
+    if (articleImage.startsWith('content/image/')) {
+      let valid = false;
+      try {
+        valid = this.isManagedMediaObjectKey(articleImage) && this.isAllowedMediaObject(articleImage, await this.storage.objectMetadata(articleImage));
+      } catch {}
+      if (!valid) throw new BadRequestException('日常文章配图对象不存在或格式无效');
+    } else if (articleImage !== '' && !articleImage.startsWith('/assets/') && !/^https:\/\/[^\s]+$/i.test(articleImage)) {
+      throw new BadRequestException('日常文章配图请上传图片或使用 /assets/ 素材路径 / HTTPS 地址');
+    }
+    const officialArticleUrl = body.officialArticleUrl.trim();
+    if (officialArticleUrl !== '') {
+      let valid = false;
+      if (!/[\s<>]/.test(officialArticleUrl)) {
+        try {
+          const articleUrl = new URL(officialArticleUrl);
+          valid = articleUrl.protocol === 'https:' && articleUrl.hostname === 'mp.weixin.qq.com' && /^\/s(?:\/|$)/i.test(articleUrl.pathname);
+        } catch {}
+      }
+      if (!valid) throw new BadRequestException('公众号文章链接须为 mp.weixin.qq.com 的 HTTPS 文章链接');
+    }
+    const content = {
+      brandName: body.brandName.trim(), brandSubtitle: body.brandSubtitle.trim(), bagLabel: body.bagLabel.trim(), bagCount: body.bagCount.trim(),
+      eyebrow: body.eyebrow.trim(), title: body.title.trim(), intro: body.intro.trim(), previewNote: body.previewNote.trim(), supportLabel: body.supportLabel.trim(),
+      landingTitle: body.landingTitle.trim(), landingIntro: body.landingIntro.trim(), landingStatus: body.landingStatus.trim(),
+      herDaysTitle: body.herDaysTitle.trim(), herDaysEnglish: body.herDaysEnglish.trim(), articleLabel: body.articleLabel.trim(),
+      articleTitle: body.articleTitle.trim(), articleExcerpt: body.articleExcerpt.trim(), articleImage, articleImageAlt: body.articleImageAlt.trim(),
+      articleCaption: body.articleCaption.trim(), officialArticleUrl, officialArticleButton: body.officialArticleButton.trim(),
+      everydayObjectsTitle: body.everydayObjectsTitle.trim(), everydayObjectsEnglish: body.everydayObjectsEnglish.trim(), everydayObjectsIntro: body.everydayObjectsIntro.trim(),
+      products,
+    };
     return this.database.withTransaction(async (client) => {
       const current = await client.query<{ editVersion: number; content: { products?: Array<{ id?: string }> } }>(`select edit_version as "editVersion", content from content_daily_objects where id = 1 for update`);
       if (!current.rows[0]) throw new NotFoundException('日常之物页面尚未初始化');
@@ -2350,7 +2460,7 @@ export class ContentController {
       const saved = await client.query(`update content_daily_objects set content = $1::jsonb, edit_version = edit_version + 1, updated_at = now() where id = 1 returning edit_version as "editVersion"`, [JSON.stringify(draft.rows[0].content)]);
       await client.query(`delete from admin_content_drafts where content_key = 'daily-objects'`);
       await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'content.daily_objects.published', resourceType: 'daily_objects_content', resourceId: 'daily-objects', metadata: { sourceDraftVersion: draft.rows[0].editVersion } }, client);
-      return { ...draft.rows[0].content, editVersion: saved.rows[0]?.editVersion, draft: false };
+      return { ...normalizeDailyObjectsContent(draft.rows[0].content, saved.rows[0]?.editVersion ?? draft.rows[0].editVersion + 1), draft: false };
     });
   }
 
@@ -2532,20 +2642,7 @@ export class ContentController {
       if (currentVersion !== body.editVersion) {
         throw new ConflictException({ code: 'practice_content_changed', message: '实践页面内容已被其他管理员更新，请重新载入后再保存。' });
       }
-      let entries = normalizedEntries;
-      if (publishDraft) {
-        // 系统设置里的 store_enabled 是商城总状态。发布实践目录时以它为准，
-        // 防止旧草稿中的 daily-goods.enabled 把已经同步好的开关再次改回。
-        const store = await client.query<{ enabled: boolean }>(
-          `select value = 'true'::jsonb as enabled from system_settings where key = 'store_enabled'`,
-        );
-        const storeEnabled = store.rows[0]?.enabled === true;
-        entries = normalizedEntries.map((entry) => (
-          entry.target === 'daily-goods' || entry.key === 'daily-goods'
-            ? { ...entry, enabled: storeEnabled }
-            : entry
-        ));
-      }
+      const entries = normalizedEntries;
       // 目录允许新增 / 删除：这里不再拦截缺失的 key，下面按前端数组重写整张表。
       if (!publishDraft && request.user?.role) {
         const nextVersion = currentVersion + 1;

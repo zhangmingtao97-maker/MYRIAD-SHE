@@ -34,6 +34,7 @@ import { AdminModuleStateController } from './admin/admin-module-state.controlle
 import { AdminModuleStateService } from './admin/admin-module-state.service';
 import { DiscussionReplyNotificationService } from './discussion/discussion-reply-notification.service';
 import { DiscussionSubscriptionController } from './discussion/discussion-subscription.controller';
+import { DiscussionAccessController } from './discussion/discussion-access.controller';
 
 @Module({
   imports: [
@@ -43,7 +44,7 @@ import { DiscussionSubscriptionController } from './discussion/discussion-subscr
       useFactory: (config: ConfigService) => ({ secret: config.get('JWT_ACCESS_SECRET') }),
     }),
   ],
-  controllers: [HealthController, AuthController, ContentController, DiscussionPageController, LegalDocumentsController, ObservationController, DiscussionContributionController, DiscussionReportController, DiscussionSubscriptionController, UserController, AdminObservationController, AdminDiscussionContributionController, AdminDiscussionReportController, AdminDiscussionRestrictionController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController, AdminNotificationController, AdminModuleStateController],
+  controllers: [HealthController, AuthController, ContentController, DiscussionPageController, LegalDocumentsController, ObservationController, DiscussionContributionController, DiscussionReportController, DiscussionSubscriptionController, DiscussionAccessController, UserController, AdminObservationController, AdminDiscussionContributionController, AdminDiscussionReportController, AdminDiscussionRestrictionController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController, AdminNotificationController, AdminModuleStateController],
   providers: [DatabaseService, AuthService, AdminAuthGuard, UserAuthGuard, StorageService, RedisService, AuditService, PrivacyService, DataEncryptionService, AdminNotificationService, DiscussionReplyNotificationService, AdminModuleStateService],
 })
 export class AppModule {}

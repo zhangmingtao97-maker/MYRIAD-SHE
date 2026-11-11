@@ -18,7 +18,7 @@ Page({
     void this.loadPreviewAccess();
   },
   onShow() {
-    if (!this.data.accessAvailable && !this.data.loading) void this.loadPreviewAccess();
+    if (!this.data.loading) void this.loadPreviewAccess();
   },
   onHide() {
     this.requestGeneration += 1;
@@ -35,7 +35,7 @@ Page({
       if (generation !== this.requestGeneration) return;
       if (!isPracticeContent(data)) throw new Error('实践内容格式无效');
       if (!isStoreStatus(status)) throw new Error('商城状态格式无效');
-      const entryEnabled = data.entries.some((entry) => entry.key === 'daily-goods' && entry.enabled);
+      const entryEnabled = data.entries.some((entry) => String(entry.target || entry.key) === 'daily-goods' && entry.enabled);
       if (status.open !== true || !entryEnabled) throw new Error('日常之物尚未开放');
       const shop = await request<DailyObjectsContent>('/content/daily-objects');
       if (generation !== this.requestGeneration) return;

@@ -103,6 +103,23 @@ export interface DailyObjectsContent {
   intro: string;
   previewNote: string;
   supportLabel: string;
+  landingTitle: string;
+  landingIntro: string;
+  landingStatus: string;
+  herDaysTitle: string;
+  herDaysEnglish: string;
+  articleLabel: string;
+  articleTitle: string;
+  articleExcerpt: string;
+  articleImage: string;
+  articleImageUrl?: string;
+  articleImageAlt: string;
+  articleCaption: string;
+  officialArticleUrl: string;
+  officialArticleButton: string;
+  everydayObjectsTitle: string;
+  everydayObjectsEnglish: string;
+  everydayObjectsIntro: string;
   products: Array<{ id: string; name: string; english: string; image: string; price: string; priceLabel: string; description: string; optionDetails: string; dailyUseDetails: string; deliveryDetails: string; enabled: boolean }>;
 }
 
@@ -344,7 +361,21 @@ export function isPracticeContent(value: unknown): value is PracticeContent {
 
 export function isDailyObjectsContent(value: unknown): value is DailyObjectsContent {
   if (!isRecord(value) || !Number.isSafeInteger(value.editVersion) || Number(value.editVersion) < 1
-    || !['brandName', 'brandSubtitle', 'bagLabel', 'bagCount', 'eyebrow', 'title', 'intro', 'previewNote', 'supportLabel'].every((key) => isBoundedText(value[key], 2048))
+    || !isBoundedText(value.brandName, 80, 1) || !isBoundedText(value.brandSubtitle, 80)
+    || !isBoundedText(value.bagLabel, 120) || !isBoundedText(value.bagCount, 40)
+    || !isBoundedText(value.eyebrow, 80) || !isBoundedText(value.title, 120, 1)
+    || !isBoundedText(value.intro, 500, 1) || !isBoundedText(value.previewNote, 300)
+    || !isBoundedText(value.supportLabel, 120)
+    || !isBoundedText(value.landingTitle, 500) || !isBoundedText(value.landingIntro, 500)
+    || !isBoundedText(value.landingStatus, 120) || !isBoundedText(value.herDaysTitle, 80)
+    || !isBoundedText(value.herDaysEnglish, 80) || !isBoundedText(value.articleLabel, 80)
+    || !isBoundedText(value.articleTitle, 200) || !isBoundedText(value.articleExcerpt, 1000)
+    || !isBoundedText(value.articleImage, 2048) || !isBoundedText(value.articleImageAlt, 120)
+    || !isBoundedText(value.articleCaption, 300) || !isBoundedText(value.officialArticleUrl, 2048)
+    || !isBoundedText(value.officialArticleButton, 120)
+    || !isBoundedText(value.everydayObjectsTitle, 80) || !isBoundedText(value.everydayObjectsEnglish, 80)
+    || !isBoundedText(value.everydayObjectsIntro, 500)
+    || (value.articleImageUrl !== undefined && !isBoundedText(value.articleImageUrl, 2048))
     || !Array.isArray(value.products) || value.products.length > 50) return false;
   const ids = new Set<string>();
   return value.products.every((item) => isRecord(item)

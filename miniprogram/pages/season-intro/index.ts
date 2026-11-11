@@ -1,5 +1,5 @@
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
-import { cacheSeasonPaused, readSeasonPaused, saveSeasonPaused } from '../../utils/season-preference';
+import { cacheSeasonPaused, hasReadSeasonGuide, markSeasonGuideRead, readSeasonPaused, saveSeasonPaused } from '../../utils/season-preference';
 const STORAGE_KEY = 'myriad_she_season_birthday';
 const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
@@ -20,10 +20,12 @@ Page({
     remember: false,
     // 从观察入口进入时先完整展示方法说明，再允许选择生日继续。
     guideOpen: true,
+    guideRead: false,
   },
   onLoad() {
     enableShareMenu();
-    this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
+    const guideRead = hasReadSeasonGuide();
+    this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, guideRead, guideOpen: !guideRead });
     try {
       const saved = wx.getStorageSync(STORAGE_KEY);
       if (saved && typeof saved === 'object') {
@@ -45,6 +47,7 @@ Page({
     }
   },
   onMonthChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
+    if (!this.data.guideRead) return;
     const index = Number(event.detail.value);
     const month = index + 1;
     const days = dayOptionsFor(month);
@@ -58,6 +61,7 @@ Page({
     });
   },
   onDayChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
+    if (!this.data.guideRead) return;
     const index = Number(event.detail.value);
     this.setData({ dayIndex: index, birthDay: index + 1 });
   },
@@ -65,7 +69,17 @@ Page({
     this.setData({ remember: !this.data.remember });
   },
   toggleGuide() {
+    if (!this.data.guideRead) {
+      this.setData({ guideOpen: true });
+      wx.showToast({ title: '请先阅读并确认了解', icon: 'none' });
+      return;
+    }
     this.setData({ guideOpen: !this.data.guideOpen });
+  },
+  acknowledgeGuide() {
+    markSeasonGuideRead();
+    this.setData({ guideRead: true, guideOpen: false });
+    wx.showToast({ title: '已了解，可以开始选择生日', icon: 'none' });
   },
   persistBirthday() {
     try {
@@ -79,6 +93,11 @@ Page({
     }
   },
   openLifeCard() {
+    if (!this.data.guideRead) {
+      this.setData({ guideOpen: true });
+      wx.showToast({ title: '请先阅读并确认了解', icon: 'none' });
+      return;
+    }
     if (!this.data.birthMonth) {
       wx.showToast({ title: '请选择月份', icon: 'none' });
       return;

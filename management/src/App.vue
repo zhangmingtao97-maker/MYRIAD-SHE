@@ -13,6 +13,7 @@ import RichTextView from './components/RichTextView.vue';
 import JournalHomePreview from './components/JournalHomePreview.vue';
 import PracticePagePreview from './components/PracticePagePreview.vue';
 import DailyObjectsPreview from './components/DailyObjectsPreview.vue';
+import ImageCropDialog from './components/ImageCropDialog.vue';
 import AboutPagePreview from './components/AboutPagePreview.vue';
 import MinePagePreview from './components/MinePagePreview.vue';
 import CopyPagePreview from './components/CopyPagePreview.vue';
@@ -109,7 +110,13 @@ const privacyPageConflict = ref(false);
 const privacyPageMessage = ref('');
 const privacyPageError = ref('');
 type DailyObjectsProduct = { id: string; name: string; english: string; image: string; price: string; priceLabel: string; description: string; optionDetails: string; dailyUseDetails: string; deliveryDetails: string; enabled: boolean };
-type DailyObjectsContent = { editVersion: number; draft?: boolean; brandName: string; brandSubtitle: string; bagLabel: string; bagCount: string; eyebrow: string; title: string; intro: string; previewNote: string; supportLabel: string; products: DailyObjectsProduct[] };
+type DailyObjectsContent = {
+  editVersion: number; draft?: boolean; brandName: string; brandSubtitle: string; bagLabel: string; bagCount: string; eyebrow: string; title: string; intro: string; previewNote: string; supportLabel: string;
+  landingTitle: string; landingIntro: string; landingStatus: string;
+  herDaysTitle: string; herDaysEnglish: string; articleLabel: string; articleTitle: string; articleExcerpt: string; articleImage: string; articleImageAlt: string; articleCaption: string; officialArticleUrl: string; officialArticleButton: string;
+  everydayObjectsTitle: string; everydayObjectsEnglish: string; everydayObjectsIntro: string;
+  products: DailyObjectsProduct[];
+};
 const dailyObjectsContent = ref<DailyObjectsContent | null>(null);
 const dailyObjectsDirty = ref(false);
 const dailyObjectsSaving = ref(false);
@@ -118,6 +125,8 @@ const dailyObjectsMessage = ref('');
 const dailyObjectsError = ref('');
 const dailyObjectUploadingId = ref('');
 const dailyObjectPreviewUrls = ref<Record<string, string>>({});
+const dailyObjectArticlePreviewUrl = ref('');
+const dailyObjectsPreviewMode = ref<'landing' | 'shop'>('landing');
 const observationCopyGroups: Array<{ title: string; fields: Array<{ key: ObservationCopyKey; label: string }> }> = [
   { title: '页眉与主说明', fields: [{ key: 'metaLeft', label: '左侧页眉' }, { key: 'metaRight', label: '右侧英文标识' }, { key: 'introTitle', label: '主标题' }, { key: 'introDescription', label: '主说明' }] },
   { title: '现实处境路径', fields: [{ key: 'realityContext', label: '序号旁提示' }, { key: 'realityTitle', label: '路径标题' }, { key: 'realityDescription', label: '路径说明' }, { key: 'realityAction', label: '操作按钮文字' }] },
@@ -135,7 +144,6 @@ const practiceContentSaving = ref(false);
 const practiceContentConflict = ref(false);
 const practiceContentMessage = ref('');
 const practiceContentError = ref('');
-const storeToggleSaving = ref(false);
 type MinePageContent = {
   editVersion: number;
   title: string;
@@ -403,6 +411,9 @@ const issueConflict = ref(false);
 const issueConflictResolved = ref('');
 const issueSaveMessage = ref('');
 const issueValidationMessage = ref('');
+const issueValidationDialogOpen = ref(false);
+type IssueFieldKey = 'code' | 'label' | 'month' | 'theme' | 'question';
+const issueFieldErrors = ref<Partial<Record<IssueFieldKey, string>>>({});
 const issueHistory = ref<Array<{ version: number; publishedAt: string; publishedBy: string | null; snapshot: unknown }>>([]);
 const issueModulePreviewUrls = ref<Record<string, string>>({});
 const selectedIssueModuleId = ref('cover-story');
@@ -593,7 +604,7 @@ const observationLoadingMore = ref(false);
 const observationMoreError = ref('');
 const observationPageSize = 50;
 type DiscussionPublicationStatus = 'pending' | 'published' | 'hidden' | 'rejected';
-type DiscussionManagementView = 'content' | 'restrictions';
+type DiscussionRestrictionMode = 'temporary' | 'permanent';
 type ManagedDiscussionContribution = {
   id: string;
   revision: number;
@@ -626,7 +637,6 @@ type ManagedDiscussionRestriction = {
   revokedBy: string | null;
   effectiveStatus: DiscussionRestrictionStatus;
 };
-const discussionManagementView = ref<DiscussionManagementView>('content');
 const discussionContributions = ref<ManagedDiscussionContribution[]>([]);
 const discussionContributionPublicationStatus = ref<DiscussionPublicationStatus | ''>('pending');
 const discussionContributionKind = ref<'' | 'experience' | 'reply'>('');
@@ -663,6 +673,9 @@ const discussionRestrictionCreating = ref(false);
 const discussionRestrictionCreateMessage = ref('');
 const discussionRestrictionCreateError = ref('');
 const discussionRestrictionPrefillNickname = ref('');
+const discussionRestrictionDialogOpen = ref(false);
+const discussionRestrictionEarliestEndsAt = ref('');
+const discussionRestrictionMode = ref<DiscussionRestrictionMode>('temporary');
 const discussionRestrictionForm = ref({ userId: '', reason: '', endsAt: '' });
 const discussionRestrictionPageSize = 50;
 let discussionRestrictionGeneration = 0;
@@ -890,7 +903,7 @@ const adminModules = [
   { id: 'practice', label: '实践页面与目录', description: '实践文案、目录设置、共同实践与日常之物' },
   { id: 'pages', label: '页面与协议', description: '隐私政策、用户协议、关于 MYRIAD SHE 与发布历史' },
   { id: 'media', label: '媒体库', description: '上传图片与音频、查询孤儿媒体与预览地址' },
-  { id: 'contributions', label: '讨论管理', description: '讨论内容发布、精华设置与用户投稿限制' },
+  { id: 'contributions', label: '一起谈谈', description: '互动内容审核、精华设置与一起谈谈权限管理' },
   { id: 'discussion-reports', label: '用户举报', description: '用户举报的讨论内容、原因与处理状态' },
   { id: 'observations', label: '观察记录管理', description: '私密观察记录列表、生命周期统计与详情' },
   { id: 'privacy', label: '隐私申请', description: '账户删除申请的处理与重试' },
@@ -960,7 +973,7 @@ const employeeStatusFilter = ref<'all' | 'active' | 'disabled'>('all');
 const employeeRoleFilter = ref<'all' | Employee['role']>('all');
 const employeeRoleGuides = [
   { role: 'super_admin' as const, label: '超级管理员', scope: '全部权限', detail: '系统设置、员工与权限、会员敏感操作、内容发布与审计。' },
-  { role: 'content_editor' as const, label: '内容编辑', scope: '内容与审核', detail: '期刊、实践页面、日常之物、关于页面和讨论管理。' },
+  { role: 'content_editor' as const, label: '内容编辑', scope: '内容与审核', detail: '期刊、实践页面、日常之物、关于页面和一起谈谈。' },
   { role: 'support_readonly' as const, label: '客服只读', scope: '只读查询', detail: '仅可查看会员目录和业务设置，不能修改内容或员工权限。' },
 ];
 const employeeStats = computed(() => {
@@ -1432,8 +1445,8 @@ const auditActionDefinitions: Record<string, AuditActionDefinition> = {
   'discussion_contribution.featured.updated': { label: '调整了精华内容', category: '讨论管理' },
   'discussion_report.created': { label: '提交了用户举报', category: '讨论管理' },
   'discussion_report.status.updated': { label: '处理了用户举报', category: '讨论管理' },
-  'discussion_restriction.created': { label: '新增了用户投稿限制', category: '讨论管理' },
-  'discussion_restriction.revoked': { label: '撤销了用户投稿限制', category: '讨论管理' },
+  'discussion_restriction.created': { label: '停用了会员的一起谈谈权限', category: '讨论管理' },
+  'discussion_restriction.revoked': { label: '恢复了会员的一起谈谈权限', category: '讨论管理' },
   'privacy.requests.listed': { label: '查看了删除申请', category: '隐私与安全' },
   'privacy.deletion.requested': { label: '申请了删除账号', category: '隐私与安全' },
   'privacy.deletion.cancelled': { label: '取消了删除账号', category: '隐私与安全' },
@@ -1490,7 +1503,7 @@ const auditResourceLabels: Record<string, string> = {
   discussion_contribution: '讨论内容',
   discussion_contributions: '讨论内容',
   discussion_report: '用户举报',
-  discussion_user_restriction: '用户投稿限制',
+  discussion_user_restriction: '一起谈谈权限',
   legal_document: '协议页面',
   mine_page_content: '我的页面',
   observation: '观察记录',
@@ -1532,17 +1545,17 @@ const dashboardLoading = ref(false);
 const overviewUpdatedAt = ref('');
 const overviewSyncError = ref('');
 const currentPageRefreshing = ref(false);
-type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'status-machine' | 'employees' | 'life-cards' | 'life-card-views';
+type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-restrictions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'status-machine' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
 type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'legal-history' | 'privacy-page' | 'about-history';
 type PracticeSection = 'practice' | 'practice-directory' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
-const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'status-machine', 'employees', 'life-cards', 'life-card-views']);
+const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-restrictions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'status-machine', 'employees', 'life-cards', 'life-card-views']);
 const contentSectionKeys = new Set<ContentSection>(['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'legal-history', 'privacy-page', 'about-history'];
 const practiceSections: PracticeSection[] = ['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects'];
-const operationsSections = ['contributions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
+const operationsSections = ['contributions', 'discussion-restrictions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
 const systemSections = ['settings', 'status-machine', 'employees'] as const;
 const lifeCardSections = ['life-cards', 'life-card-views'] as const;
 type OperationsSection = typeof operationsSections[number];
@@ -1550,6 +1563,7 @@ type SystemSection = typeof systemSections[number];
 type LifeCardSection = typeof lifeCardSections[number];
 const operationsSectionModules: Record<OperationsSection, AdminModuleId> = {
   contributions: 'contributions',
+  'discussion-restrictions': 'contributions',
   'discussion-reports': 'discussion-reports',
   observations: 'observations',
   privacy: 'privacy',
@@ -1862,6 +1876,8 @@ watch(activeSection, (section) => {
   if (isSystemSection(section)) systemNavigationExpanded.value = true;
   if (isLifeCardSection(section)) lifeCardNavigationExpanded.value = true;
   if (section === 'contributions' && loggedIn.value) void refreshDiscussionContributions();
+  if (section === 'discussion-restrictions' && loggedIn.value) void refreshDiscussionRestrictions();
+  if (section !== 'discussion-restrictions') discussionRestrictionDialogOpen.value = false;
   if (section === 'discussion-reports' && loggedIn.value) void refreshDiscussionReports();
 });
 const currentView = computed(() => {
@@ -1901,7 +1917,8 @@ const currentView = computed(() => {
   const views: Record<Exclude<DashboardSection, 'content' | 'practice'>, { eyebrow: string; title: string }> = {
     overview: { eyebrow: 'WORKSPACE / OVERVIEW', title: '工作台' },
     observations: { eyebrow: 'OBSERVATIONS / MANAGEMENT', title: '观察记录管理' },
-    contributions: { eyebrow: 'DISCUSSION / MODERATION', title: '讨论管理' },
+    contributions: { eyebrow: 'TOGETHER / CONTENT', title: '一起谈谈内容' },
+    'discussion-restrictions': { eyebrow: 'TOGETHER / ACCESS', title: '一起谈谈权限' },
     'discussion-reports': { eyebrow: 'DISCUSSION / REPORTS', title: '用户举报' },
     privacy: { eyebrow: 'PRIVACY / REQUESTS', title: '隐私申请' },
     audit: { eyebrow: 'AUDIT LOG / 操作记录', title: '操作记录' },
@@ -1952,8 +1969,9 @@ const adminDestinations: AdminDestination[] = [
     ['legal-history', '历史版本', '查询政策与协议的历史发布版本。'],
   ] as const).map(([id, label, description]) => ({ id, label, description, group: '页面与协议', keywords: 'pages legal privacy agreement', section: 'content' as const, contentSection: id, module: 'pages' as const, superOnly: id === 'mine' })),
   { id: 'members', label: '会员列表', group: '会员', description: '按昵称与注册时间查找会员，查看账号详情。', keywords: 'users members', section: 'members', module: 'members' },
+  { id: 'contributions', label: '一起谈谈内容', group: '运营管理', description: '审核互动内容、设置精华与公开状态。', keywords: 'together discussion content moderation', section: 'contributions', module: 'contributions' },
+  { id: 'discussion-restrictions', label: '一起谈谈权限', group: '运营管理', description: '停用或恢复会员在一起谈谈中的发布与回复权限。', keywords: 'together discussion access restriction', section: 'discussion-restrictions', module: 'contributions' },
   ...([
-    ['contributions', '讨论管理', '审核讨论内容、设置精华并管理用户投稿限制。'],
     ['discussion-reports', '用户举报', '核对举报原因与讨论内容，跟进处理状态。'],
     ['observations', '观察记录管理', '筛选观察记录，查看记录状态与生命周期。'],
     ['privacy', '隐私申请', '跟进账户删除申请与处理进度。'],
@@ -2021,6 +2039,33 @@ const homeBackgroundPreviewUrl = ref('');
 const homeBackgroundPreviewLoading = ref(false);
 const homeBackgroundError = ref('');
 let homeBackgroundPreviewGeneration = 0;
+type PendingImageCrop = {
+  id: number;
+  file: File;
+  title: string;
+  apply: (file: File) => void | Promise<void>;
+};
+let pendingImageCropId = 0;
+const pendingImageCrop = ref<PendingImageCrop | null>(null);
+
+function requestImageCrop(file: File, title: string, apply: PendingImageCrop['apply']) {
+  pendingImageCrop.value = {
+    id: ++pendingImageCropId,
+    file,
+    title,
+    apply,
+  };
+}
+
+function cancelImageCrop() {
+  pendingImageCrop.value = null;
+}
+
+function confirmImageCrop(file: File) {
+  const pending = pendingImageCrop.value;
+  pendingImageCrop.value = null;
+  if (pending) void pending.apply(file);
+}
 const orphanMedia = ref<MediaOrphan[]>([]);
 const orphanMediaToken = ref('');
 const orphanMediaHasMore = ref(false);
@@ -2051,7 +2096,7 @@ const adminErrorSources = [
   error, privacyPageError, dailyObjectsError, practiceContentError, minePageContentError,
   practiceCopyError, selectedObservationError, observationMoreError, discussionContributionMoreError,
   discussionContributionError, selectedDiscussionContributionError, discussionRestrictionMoreError,
-  discussionRestrictionError, discussionRestrictionCreateError, privacyMoreError, privacyActionError,
+  discussionRestrictionError, privacyMoreError, privacyActionError,
   auditMoreError, memberError, lifeCardsError, lifeCardViewsError, settingsError, employeeError,
   passwordRotationError, passwordError, mediaPreviewError, orphanMediaError, audioLibraryError,
 ];
@@ -2124,18 +2169,12 @@ const journalQuestionTitleRichText = computed(() => {
     : String(issueForm.value.questionRichText || '').trim();
 });
 watch(
-  () => [
-    issueForm.value.code,
-    issueForm.value.label,
-    issueForm.value.month,
-    issueForm.value.theme,
-    issueForm.value.question,
-    journalCoverTitle.value,
-    journalCoverTitleRichText.value,
-    journalQuestionTitle.value,
-    journalQuestionTitleRichText.value,
-  ],
-  () => { issueValidationMessage.value = ''; },
+  () => [issueForm.value.code, issueForm.value.label, issueForm.value.month, issueForm.value.theme, issueForm.value.question] as const,
+  (values, previous = values) => {
+    (['code', 'label', 'month', 'theme', 'question'] as const).forEach((key, index) => {
+      if (values[index] !== previous[index]) clearIssueFieldError(key);
+    });
+  },
   { flush: 'sync' },
 );
 const journalPastIssues = computed(() => [...issues.value]
@@ -2341,20 +2380,25 @@ function displayFileSize(value?: number) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function withRequestId(message: string, response: Response) {
-  const requestId = response.headers.get('x-request-id')?.trim();
-  return requestId ? `${message}（请求编号：${requestId}）` : message;
+function conciseResponseMessage(message: string) {
+  return message
+    .replace(/[（(]\s*(?:请求编号|request\s*id)\s*[:：]\s*[^）)]+\s*[）)]/gi, '')
+    .replace(/\s*(?:请求编号|request\s*id)\s*[:：]\s*[0-9a-z-]+\s*/gi, '')
+    .trim();
 }
 
 async function responseMessage(response: Response, fallback: string) {
   try {
     const body = await response.json() as { message?: string | string[] };
-    if (Array.isArray(body.message)) return withRequestId(body.message.join('；'), response);
-    if (typeof body.message === 'string' && body.message) return withRequestId(body.message, response);
+    const raw = Array.isArray(body.message) ? body.message.join('；') : body.message;
+    if (typeof raw === 'string' && raw) {
+      const concise = conciseResponseMessage(raw);
+      if (concise) return concise;
+    }
   } catch {
     // Keep the caller's stable fallback when the response is not JSON.
   }
-  return withRequestId(fallback, response);
+  return conciseResponseMessage(fallback);
 }
 
 async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = apiRequestTimeoutMs) {
@@ -2623,8 +2667,14 @@ function focusPracticeField(event: FocusEvent) {
   if (key && key !== activePracticeKey.value) activePracticeKey.value = key;
 }
 
-// 日常之物预览的当前高亮项：brand / header / note / product:<id>。
+// 日常之物预览的当前高亮项：未开放页字段，或商品页 brand / header / note / product:<id>。
 const activeDailyKey = ref('');
+
+const dailyLandingPreviewKeys = new Set(['landing', 'her-days', 'article-title', 'article-image', 'article-action', 'everyday-explore']);
+
+function dailyPreviewModeForKey(key: string): 'landing' | 'shop' {
+  return dailyLandingPreviewKeys.has(key) ? 'landing' : 'shop';
+}
 
 function dailyFieldTarget(key: string) {
   const holder = document.querySelector<HTMLElement>('[data-daily-field="' + key + '"]');
@@ -2634,6 +2684,7 @@ function dailyFieldTarget(key: string) {
 
 function pickDailyKey(key: string) {
   activeDailyKey.value = key;
+  dailyObjectsPreviewMode.value = dailyPreviewModeForKey(key);
   nextTick(() => {
     const target = dailyFieldTarget(key);
     if (!target) return;
@@ -2647,7 +2698,10 @@ function pickDailyKey(key: string) {
 function focusDailyField(event: FocusEvent) {
   const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-daily-field]');
   const key = holder?.dataset.dailyField;
-  if (key && key !== activeDailyKey.value) activeDailyKey.value = key;
+  if (key && key !== activeDailyKey.value) {
+    activeDailyKey.value = key;
+    dailyObjectsPreviewMode.value = dailyPreviewModeForKey(key);
+  }
 }
 
 // 关于页预览：三段正文与左侧输入框互相对应。
@@ -2884,53 +2938,14 @@ function isDailyGoodsPracticeEntry(entry: PracticeEntry) {
   return (entry.target || entry.key) === 'daily-goods';
 }
 
-function syncStoreEnabledState(enabled: boolean) {
-  for (const entry of practiceContent.value?.entries ?? []) {
-    if (isDailyGoodsPracticeEntry(entry)) entry.enabled = enabled;
-  }
-  systemSettings.value = { ...systemSettings.value, store_enabled: enabled };
-  systemSettingsOriginal.value = { ...systemSettingsOriginal.value, store_enabled: enabled };
-}
-
-async function togglePracticeEntryEnabled(entry: PracticeEntry | null) {
-  if (!entry || !practiceContent.value || practiceContentSaving.value || practiceContentConflict.value || storeToggleSaving.value) return;
-  if (!isDailyGoodsPracticeEntry(entry)) {
-    entry.enabled = !entry.enabled;
-    markPracticeContentDirty();
+function togglePracticeEntryEnabled(entry: PracticeEntry | null) {
+  if (!entry || !practiceContent.value || practiceContentSaving.value || practiceContentConflict.value) return;
+  if (isDailyGoodsPracticeEntry(entry) && !isSuperAdmin.value) {
+    practiceContentError.value = '仅超级管理员可以修改日常之物入口。';
     return;
   }
-  if (!isSuperAdmin.value) {
-    practiceContentError.value = '仅超级管理员可以修改商城开放状态。';
-    return;
-  }
-
-  const enabled = !entry.enabled;
-  const session = sessionGeneration;
-  storeToggleSaving.value = true;
-  practiceContentError.value = '';
-  practiceContentMessage.value = '';
-  try {
-    const response = await apiFetch(`${apiBase}/admin/system-settings`, {
-      method: 'PATCH',
-      headers: adminHeaders(true),
-      body: JSON.stringify({ store_enabled: enabled }),
-    });
-    if (handleAdminUnauthorized(response, session)) return;
-    assertSession(session);
-    if (!response.ok) throw new Error(await responseMessage(response, '商城开放状态更新失败'));
-    const saved = await response.json();
-    if (typeof saved.store_enabled?.value !== 'boolean') throw new Error('服务器未返回商城开放状态');
-    syncStoreEnabledState(saved.store_enabled.value);
-    practiceContentMessage.value = saved.store_enabled.value
-      ? '商城已开启，系统设置已同步。'
-      : '商城已关闭，系统设置已同步。';
-  } catch (caught) {
-    if (session === sessionGeneration && loggedIn.value) {
-      practiceContentError.value = caught instanceof Error ? caught.message : '商城开放状态更新失败';
-    }
-  } finally {
-    storeToggleSaving.value = false;
-  }
+  entry.enabled = !entry.enabled;
+  markPracticeContentDirty();
 }
 
 function isMinePageContent(raw: unknown): raw is MinePageContent {
@@ -3098,10 +3113,24 @@ async function loadObservationLifecycle(generation = observationRequestGeneratio
 
 function selectFile(event: Event, kind: 'cover' | 'voice') {
   if (uploading.value) return;
-  const file = (event.target as HTMLInputElement).files?.[0] || null;
-  if (kind === 'cover') coverFile.value = file;
-  else voiceFile.value = file;
-  mediaPreviewUrls.value = { ...mediaPreviewUrls.value, [kind]: '' };
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0] || null;
+  input.value = '';
+  if (!file) return;
+  if (kind === 'cover') {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      mediaPreviewError.value = '封面仅支持 JPG、PNG 或 WebP。';
+      return;
+    }
+    requestImageCrop(file, '编辑期刊封面', (croppedFile) => {
+      coverFile.value = croppedFile;
+      mediaPreviewUrls.value = { ...mediaPreviewUrls.value, cover: '' };
+    });
+  }
+  else {
+    voiceFile.value = file;
+    mediaPreviewUrls.value = { ...mediaPreviewUrls.value, voice: '' };
+  }
   mediaPreviewError.value = '';
 }
 
@@ -3169,9 +3198,11 @@ async function toggleMemberStatus(member: Member) {
   memberError.value = '';
   try {
     const status = member.status === 'active' ? 'suspended' : 'active';
-    const reason = window.prompt(`请填写${status === 'suspended' ? '停用' : '恢复'}会员的原因（必填，最多 500 字）`);
+    const actionLabel = status === 'suspended' ? '停用账号' : '恢复账号';
+    const reason = window.prompt(`请填写${actionLabel}的原因（必填，最多 500 字）`);
     if (reason === null) return;
     if (!reason.trim()) { memberError.value = '操作原因不能为空。'; return; }
+    if (status === 'suspended' && !window.confirm(`停用账号会立即阻止该会员登录和使用全部功能。\n\n如果只限制一起谈谈的发布和回复，请使用「一起谈谈权限」。确认停用账号？`)) return;
     const response = await apiFetch(`${apiBase}/admin/users/${encodeURIComponent(member.id)}/status`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify({ status, reason: reason.trim() }) });
     if (!response.ok) throw new Error(await responseMessage(response, '会员状态更新失败'));
     await refreshMembers();
@@ -3206,9 +3237,9 @@ async function saveSystemSettings() {
     if (!response.ok) throw new Error(await responseMessage(response, '系统设置保存失败'));
     const saved = await response.json();
     if (typeof saved.store_enabled?.value !== 'boolean') throw new Error('服务器未返回商城开放状态');
-    syncStoreEnabledState(saved.store_enabled.value);
+    systemSettings.value = { ...systemSettings.value, store_enabled: saved.store_enabled.value };
     systemSettingsOriginal.value = { ...systemSettings.value };
-    settingsMessage.value = '设置已保存，日常之物入口已同步。';
+    settingsMessage.value = '系统设置已保存。商城开放状态已更新；日常之物目录入口状态请在「实践目录」中单独设置。';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '系统设置保存失败'; }
   finally { settingsSaving.value = false; }
 }
@@ -3515,7 +3546,7 @@ async function login() {
     if (!response.ok) throw new Error(await responseMessage(response, '登录失败，请检查管理后台账号配置'));
     const result = await response.json().catch(() => null);
     if (!isAdminLoginResult(result)) {
-      throw new Error(withRequestId('管理后台登录服务返回无效数据', response));
+      throw new Error('管理后台登录服务返回无效数据');
     }
     password.value = '';
     await applyAdminLogin(result);
@@ -3624,7 +3655,7 @@ async function completeWecomLogin(code: string, state: string) {
     if (!response.ok) throw new Error(await responseMessage(response, '企业微信扫码登录失败，请重新扫码。'));
     const result = await response.json().catch(() => null);
     if (!isAdminLoginResult(result)) {
-      throw new Error(withRequestId('企业微信登录服务返回无效数据', response));
+      throw new Error('企业微信登录服务返回无效数据');
     }
     await applyAdminLogin(result);
   } catch (caught) {
@@ -3870,8 +3901,9 @@ async function refreshCurrentPage() {
     } else if (location.section === 'employees') {
       await loadEmployees();
     } else if (location.section === 'contributions') {
-      if (discussionManagementView.value === 'restrictions') await refreshDiscussionRestrictions();
-      else await refreshDiscussionContributions();
+      await refreshDiscussionContributions();
+    } else if (location.section === 'discussion-restrictions') {
+      await refreshDiscussionRestrictions();
     } else if (location.section === 'discussion-reports') {
       await refreshDiscussionReports();
     } else if (location.section === 'life-cards') {
@@ -4095,13 +4127,36 @@ async function loadPrivacyRevisions(key: 'about-page') {
 function isDailyObjectsContent(value: unknown): value is DailyObjectsContent {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const content = value as Record<string, unknown>;
+  const copyKeys = [
+    'brandName', 'brandSubtitle', 'bagLabel', 'bagCount', 'eyebrow', 'title', 'intro', 'previewNote', 'supportLabel',
+    'landingTitle', 'landingIntro', 'landingStatus', 'herDaysTitle', 'herDaysEnglish', 'articleLabel', 'articleTitle', 'articleExcerpt',
+    'articleImage', 'articleImageAlt', 'articleCaption', 'officialArticleUrl', 'officialArticleButton',
+    'everydayObjectsTitle', 'everydayObjectsEnglish', 'everydayObjectsIntro',
+  ];
   return Number.isSafeInteger(content.editVersion) && Number(content.editVersion) > 0
-    && ['brandName', 'brandSubtitle', 'bagLabel', 'bagCount', 'eyebrow', 'title', 'intro', 'previewNote', 'supportLabel'].every((key) => typeof content[key] === 'string')
-    && Array.isArray(content.products) && content.products.length > 0 && content.products.every((item) => {
+    && copyKeys.every((key) => typeof content[key] === 'string')
+    && Array.isArray(content.products) && content.products.length > 0 && content.products.length <= 50 && content.products.every((item) => {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
       const product = item as Record<string, unknown>;
-      return ['id', 'name', 'english', 'image', 'price', 'priceLabel', 'description', 'optionDetails', 'dailyUseDetails', 'deliveryDetails'].every((key) => typeof product[key] === 'string') && typeof product.enabled === 'boolean';
+      return ['id', 'name', 'english', 'image', 'price', 'priceLabel', 'description', 'optionDetails', 'dailyUseDetails', 'deliveryDetails'].every((key) => typeof product[key] === 'string')
+        && typeof product.id === 'string' && /^[a-z0-9][a-z0-9-]{1,31}$/.test(product.id)
+        && typeof product.enabled === 'boolean';
     });
+}
+
+function isDailyObjectsImageReference(value: string) {
+  return value === '' || value.startsWith('content/image/') || value.startsWith('/assets/') || /^https:\/\/[^\s]+$/i.test(value);
+}
+
+function isWeixinArticleUrl(value: string) {
+  if (value === '') return true;
+  if (/[\s<>]/.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === 'mp.weixin.qq.com' && /^\/s(?:\/|$)/i.test(url.pathname);
+  } catch {
+    return false;
+  }
 }
 
 function openDailyObjectsEditor() {
@@ -4126,22 +4181,16 @@ async function loadDailyObjectsContent(discardLocal: boolean | Event = false) {
     if (!response.ok) throw new Error(await responseMessage(response, '无法读取日常之物设置'));
     const content = await response.json();
     if (!isDailyObjectsContent(content)) throw new Error('日常之物配置格式无效');
-    const previewEntries = await Promise.all(content.products.map(async (product) => {
-      if (!product.image.startsWith('content/image/')) return [product.id, product.image] as const;
-      try {
-        const params = new URLSearchParams({ objectKey: product.image });
-        const previewResponse = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
-        if (handleAdminUnauthorized(previewResponse, session)) return [product.id, ''] as const;
-        if (!previewResponse.ok) return [product.id, ''] as const;
-        const target = await previewResponse.json();
-        return [product.id, isMediaViewTarget(target) ? target.url : ''] as const;
-      } catch { return [product.id, ''] as const; }
-    }));
+    const [articlePreviewUrl, previewEntries] = await Promise.all([
+      dailyObjectMediaPreviewUrl(content.articleImage, session),
+      Promise.all(content.products.map(async (product) => [product.id, await dailyObjectMediaPreviewUrl(product.image, session)] as const)),
+    ]);
     if (session !== sessionGeneration) return;
     if (session === sessionGeneration && (!dailyObjectsDirty.value || discardLocal === true)) {
       dailyObjectsContent.value = content;
       dailyObjectsDirty.value = false;
       dailyObjectPreviewUrls.value = Object.fromEntries(previewEntries);
+      dailyObjectArticlePreviewUrl.value = articlePreviewUrl;
       dailyObjectsConflict.value = false;
     }
   } catch (caught) {
@@ -4149,16 +4198,45 @@ async function loadDailyObjectsContent(discardLocal: boolean | Event = false) {
   }
 }
 
-async function uploadDailyObjectImage(event: Event, productId: string) {
+async function dailyObjectMediaPreviewUrl(image: string, session: number) {
+  if (!image.startsWith('content/image/')) return image;
+  try {
+    const params = new URLSearchParams({ objectKey: image });
+    const previewResponse = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
+    if (handleAdminUnauthorized(previewResponse, session)) return '';
+    if (!previewResponse.ok) return '';
+    const target = await previewResponse.json();
+    return isMediaViewTarget(target) ? target.url : '';
+  } catch {
+    return '';
+  }
+}
+
+function uploadDailyObjectImage(event: Event, targetId: string) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   input.value = '';
   if (!file || !dailyObjectsContent.value || dailyObjectUploadingId.value) return;
-  const product = dailyObjectsContent.value.products.find((item) => item.id === productId);
-  if (!product) return;
-  if (!file.type.startsWith('image/')) { dailyObjectsError.value = '请选择图片文件。'; return; }
+  const content = dailyObjectsContent.value;
+  const isArticleImage = targetId === 'article-image';
+  const product = isArticleImage ? null : content.products.find((item) => item.id === targetId);
+  if (!isArticleImage && !product) return;
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    dailyObjectsError.value = '图片仅支持 JPG、PNG 或 WebP。';
+    return;
+  }
+  dailyObjectsError.value = '';
+  requestImageCrop(file, isArticleImage ? '编辑日常文章配图' : '编辑日常商品图片', (croppedFile) => uploadDailyObjectImageFile(croppedFile, targetId));
+}
+
+async function uploadDailyObjectImageFile(file: File, targetId: string) {
+  if (!dailyObjectsContent.value || dailyObjectUploadingId.value) return;
+  const content = dailyObjectsContent.value;
+  const isArticleImage = targetId === 'article-image';
+  const product = isArticleImage ? null : content.products.find((item) => item.id === targetId);
+  if (!isArticleImage && !product) return;
   const session = sessionGeneration;
-  dailyObjectUploadingId.value = productId;
+  dailyObjectUploadingId.value = targetId;
   dailyObjectsError.value = '';
   try {
     const response = await apiFetch(`${apiBase}/content/media/upload-url`, {
@@ -4167,12 +4245,12 @@ async function uploadDailyObjectImage(event: Event, productId: string) {
     });
     if (handleAdminUnauthorized(response, session)) throw new Error('后台登录已过期，请重新登录。');
     assertSession(session);
-    if (!response.ok) throw new Error(await responseMessage(response, '无法创建商品图片上传地址'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法创建图片上传地址'));
     const target = await response.json();
     if (!isMediaUploadTarget(target)) throw new Error('服务器未返回有效的图片上传地址');
     const uploadResponse = await apiFetch(target.uploadUrl, { method: 'PUT', headers: { 'content-type': file.type }, body: file }, mediaUploadTimeoutMs);
     assertSession(session);
-    if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, '商品图片上传失败'));
+    if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, '图片上传失败'));
     const params = new URLSearchParams({ objectKey: target.objectKey });
     const previewResponse = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(previewResponse, session)) throw new Error('后台登录已过期，请重新登录。');
@@ -4180,12 +4258,17 @@ async function uploadDailyObjectImage(event: Event, productId: string) {
     if (!previewResponse.ok) throw new Error(await responseMessage(previewResponse, '图片已上传，但无法生成预览'));
     const preview = await previewResponse.json();
     if (!isMediaViewTarget(preview)) throw new Error('服务器未返回有效的图片预览地址');
-    product.image = target.objectKey;
-    dailyObjectPreviewUrls.value = { ...dailyObjectPreviewUrls.value, [productId]: preview.url };
+    if (isArticleImage) {
+      content.articleImage = target.objectKey;
+      dailyObjectArticlePreviewUrl.value = preview.url;
+    } else if (product) {
+      product.image = target.objectKey;
+      dailyObjectPreviewUrls.value = { ...dailyObjectPreviewUrls.value, [product.id]: preview.url };
+    }
     markDailyObjectsDirty();
-    dailyObjectsMessage.value = '图片已上传，保存日常之物后生效。';
+    dailyObjectsMessage.value = `${isArticleImage ? '日常文章配图' : '商品图片'}已上传，保存日常之物后生效。`;
   } catch (caught) {
-    if (session === sessionGeneration && loggedIn.value) dailyObjectsError.value = caught instanceof Error ? caught.message : '商品图片上传失败。';
+    if (session === sessionGeneration && loggedIn.value) dailyObjectsError.value = caught instanceof Error ? caught.message : '图片上传失败。';
   } finally {
     if (session === sessionGeneration) dailyObjectUploadingId.value = '';
   }
@@ -4218,6 +4301,22 @@ function dailyObjectsPayload(content: DailyObjectsContent) {
     intro: content.intro,
     previewNote: content.previewNote,
     supportLabel: content.supportLabel,
+    landingTitle: content.landingTitle,
+    landingIntro: content.landingIntro,
+    landingStatus: content.landingStatus,
+    herDaysTitle: content.herDaysTitle,
+    herDaysEnglish: content.herDaysEnglish,
+    articleLabel: content.articleLabel,
+    articleTitle: content.articleTitle,
+    articleExcerpt: content.articleExcerpt,
+    articleImage: content.articleImage,
+    articleImageAlt: content.articleImageAlt,
+    articleCaption: content.articleCaption,
+    officialArticleUrl: content.officialArticleUrl,
+    officialArticleButton: content.officialArticleButton,
+    everydayObjectsTitle: content.everydayObjectsTitle,
+    everydayObjectsEnglish: content.everydayObjectsEnglish,
+    everydayObjectsIntro: content.everydayObjectsIntro,
     products: content.products.map((product) => ({
       id: product.id,
       name: product.name,
@@ -4237,6 +4336,14 @@ function dailyObjectsPayload(content: DailyObjectsContent) {
 async function saveDailyObjectsContent() {
   const content = dailyObjectsContent.value;
   if (!content || dailyObjectsSaving.value || dailyObjectsConflict.value) return;
+  if (!isDailyObjectsImageReference(content.articleImage.trim())) {
+    dailyObjectsError.value = '日常文章配图请上传图片，或填写 /assets/ 素材路径 / HTTPS 地址。';
+    return;
+  }
+  if (!isWeixinArticleUrl(content.officialArticleUrl.trim())) {
+    dailyObjectsError.value = '公众号文章链接须为 mp.weixin.qq.com 的 HTTPS 文章链接。';
+    return;
+  }
   dailyObjectsSaving.value = true;
   dailyObjectsError.value = '';
   dailyObjectsMessage.value = '';
@@ -4454,11 +4561,11 @@ function discussionContributionAuthor(record: Pick<ManagedDiscussionContribution
 }
 
 function discussionRestrictionStatusLabel(status: DiscussionRestrictionStatus) {
-  return ({ active: '生效中', scheduled: '待生效', expired: '已到期', revoked: '已撤销' })[status];
+  return ({ active: '停用中', scheduled: '待停用', expired: '已到期', revoked: '已恢复' })[status];
 }
 
 function discussionRestrictionPeriod(record: Pick<ManagedDiscussionRestriction, 'startsAt' | 'endsAt'>) {
-  return record.endsAt ? `${displayDate(record.startsAt)} 至 ${displayDate(record.endsAt)}` : `${displayDate(record.startsAt)} 起，长期`;
+  return record.endsAt ? `${displayDate(record.startsAt)} 至 ${displayDate(record.endsAt)}` : `${displayDate(record.startsAt)} 起，永久停用`;
 }
 
 function isManagedDiscussionContribution(value: unknown): value is ManagedDiscussionContribution {
@@ -4693,9 +4800,9 @@ async function refreshDiscussionRestrictions() {
   try {
     const response = await apiFetch(`${apiBase}/admin/discussion-restrictions?${discussionRestrictionQuery(0)}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法读取用户限制'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法读取一起谈谈权限记录'));
     const result = await response.json();
-    if (!isDiscussionRestrictionPage(result)) throw new Error('用户限制列表格式无效');
+    if (!isDiscussionRestrictionPage(result)) throw new Error('一起谈谈权限记录格式无效');
     if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
     discussionRestrictions.value = result.items;
     discussionRestrictionTotal.value = result.total;
@@ -4704,7 +4811,7 @@ async function refreshDiscussionRestrictions() {
     discussionRestrictionSummary.value = result.summary;
   } catch (caught) {
     if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
-    discussionRestrictionError.value = caught instanceof Error ? caught.message : '无法读取用户限制';
+    discussionRestrictionError.value = caught instanceof Error ? caught.message : '无法读取一起谈谈权限记录';
   } finally {
     if (generation === discussionRestrictionGeneration && session === sessionGeneration) discussionRestrictionLoading.value = false;
   }
@@ -4719,9 +4826,9 @@ async function loadMoreDiscussionRestrictions() {
   try {
     const response = await apiFetch(`${apiBase}/admin/discussion-restrictions?${discussionRestrictionQuery(discussionRestrictionOffset.value)}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法加载更多用户限制'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法加载更多一起谈谈权限记录'));
     const result = await response.json();
-    if (!isDiscussionRestrictionPage(result)) throw new Error('用户限制列表格式无效');
+    if (!isDiscussionRestrictionPage(result)) throw new Error('一起谈谈权限记录格式无效');
     if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
     discussionRestrictions.value = [...discussionRestrictions.value, ...result.items];
     discussionRestrictionTotal.value = result.total;
@@ -4730,30 +4837,78 @@ async function loadMoreDiscussionRestrictions() {
     discussionRestrictionSummary.value = result.summary;
   } catch (caught) {
     if (generation !== discussionRestrictionGeneration || session !== sessionGeneration || !loggedIn.value) return;
-    discussionRestrictionMoreError.value = caught instanceof Error ? caught.message : '无法加载更多用户限制';
+    discussionRestrictionMoreError.value = caught instanceof Error ? caught.message : '无法加载更多一起谈谈权限记录';
   } finally {
     if (generation === discussionRestrictionGeneration && session === sessionGeneration) discussionRestrictionLoadingMore.value = false;
   }
 }
 
-async function setDiscussionManagementView(view: DiscussionManagementView) {
-  discussionManagementView.value = view;
-  if (view === 'content') await refreshDiscussionContributions();
-  else await refreshDiscussionRestrictions();
+function discussionRestrictionLocalDateTime(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function discussionRestrictionDefaultEndsAt() {
+  return discussionRestrictionLocalDateTime(new Date(Date.now() + 24 * 60 * 60 * 1000));
+}
+
+function showDiscussionRestrictionValidationError(message: string, targetId?: string) {
+  discussionRestrictionCreateError.value = message;
+  void nextTick(() => {
+    document.querySelector<HTMLElement>('.discussion-restriction-dialog-error')?.scrollIntoView({ block: 'nearest' });
+    if (targetId) document.getElementById(targetId)?.focus({ preventScroll: true });
+  });
+}
+
+function openDiscussionRestrictionDialog() {
+  discussionRestrictionEarliestEndsAt.value = discussionRestrictionLocalDateTime(new Date(Date.now() + 2 * 60 * 1000));
+  if (discussionRestrictionMode.value === 'temporary') discussionRestrictionForm.value.endsAt = discussionRestrictionDefaultEndsAt();
+  discussionRestrictionDialogOpen.value = true;
+  void nextTick(() => {
+    const targetId = discussionRestrictionForm.value.userId
+      ? 'discussion-restriction-reason'
+      : 'discussion-restriction-user';
+    document.getElementById(targetId)?.focus({ preventScroll: true });
+  });
+}
+
+function openNewDiscussionRestrictionDialog() {
+  discussionRestrictionForm.value = { userId: '', reason: '', endsAt: '' };
+  discussionRestrictionMode.value = 'temporary';
+  discussionRestrictionPrefillNickname.value = '';
+  discussionRestrictionCreateMessage.value = '';
+  discussionRestrictionCreateError.value = '';
+  openDiscussionRestrictionDialog();
+}
+
+function closeDiscussionRestrictionDialog() {
+  if (discussionRestrictionCreating.value) return;
+  discussionRestrictionDialogOpen.value = false;
+  discussionRestrictionCreateError.value = '';
+}
+
+function prefillDiscussionRestrictionForUser(userId: string, nickname: string) {
+  const alreadyOnRestrictions = activeSection.value === 'discussion-restrictions';
+  discussionRestrictionForm.value = { userId, reason: '', endsAt: '' };
+  discussionRestrictionMode.value = 'temporary';
+  discussionRestrictionPrefillNickname.value = nickname;
+  discussionRestrictionCreateMessage.value = '';
+  discussionRestrictionCreateError.value = '';
+  openOperationsSubsection('discussion-restrictions');
+  if (alreadyOnRestrictions) void refreshDiscussionRestrictions();
+  void nextTick(openDiscussionRestrictionDialog);
 }
 
 function prefillDiscussionRestriction(record: ManagedDiscussionContribution) {
-  discussionRestrictionForm.value = { userId: record.userId, reason: '', endsAt: '' };
-  discussionRestrictionPrefillNickname.value = discussionContributionAuthor(record);
-  discussionRestrictionCreateMessage.value = '';
-  discussionRestrictionCreateError.value = '';
-  discussionManagementView.value = 'restrictions';
-  void refreshDiscussionRestrictions().then(() => {
-    void nextTick(() => {
-      document.getElementById('discussion-restriction-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      document.getElementById('discussion-restriction-user')?.focus({ preventScroll: true });
-    });
-  });
+  prefillDiscussionRestrictionForUser(record.userId, discussionContributionAuthor(record));
+}
+
+function openMemberDiscussionRestriction(member: Member) {
+  memberDetail.value = null;
+  prefillDiscussionRestrictionForUser(
+    member.id,
+    member.nickname?.trim() || `${member.id.slice(0, 8)}…`,
+  );
 }
 
 async function createDiscussionRestriction() {
@@ -4761,18 +4916,22 @@ async function createDiscussionRestriction() {
   const userId = discussionRestrictionForm.value.userId.trim();
   const reason = discussionRestrictionForm.value.reason.trim();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
-    discussionRestrictionCreateError.value = '请输入有效的用户 UUID。';
+    showDiscussionRestrictionValidationError('请输入有效的用户 UUID。', 'discussion-restriction-user');
     return;
   }
   if (reason.length < 2 || reason.length > 200) {
-    discussionRestrictionCreateError.value = '限制原因需为 2–200 个字。';
+    showDiscussionRestrictionValidationError('停用原因需为 2–200 个字。', 'discussion-restriction-reason');
     return;
   }
   let endsAt: string | undefined;
-  if (discussionRestrictionForm.value.endsAt) {
+  if (discussionRestrictionMode.value === 'temporary') {
+    if (!discussionRestrictionForm.value.endsAt) {
+      showDiscussionRestrictionValidationError('请选择临时停用的结束时间。', 'discussion-restriction-ends-at');
+      return;
+    }
     const parsed = new Date(discussionRestrictionForm.value.endsAt);
     if (!Number.isFinite(parsed.getTime()) || parsed.getTime() <= Date.now()) {
-      discussionRestrictionCreateError.value = '结束时间必须晚于当前时间。';
+      showDiscussionRestrictionValidationError('临时停用的结束时间必须晚于当前时间。', 'discussion-restriction-ends-at');
       return;
     }
     endsAt = parsed.toISOString();
@@ -4788,17 +4947,19 @@ async function createDiscussionRestriction() {
       body: JSON.stringify({ userId, reason, ...(endsAt ? { endsAt } : {}) }),
     });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法创建用户限制'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法停用一起谈谈权限'));
     const result = await response.json();
-    if (!isManagedDiscussionRestriction(result)) throw new Error('用户限制创建结果格式无效');
+    if (!isManagedDiscussionRestriction(result)) throw new Error('一起谈谈权限停用结果格式无效');
     if (session !== sessionGeneration || !loggedIn.value) return;
     discussionRestrictionForm.value = { userId: '', reason: '', endsAt: '' };
+    discussionRestrictionMode.value = 'temporary';
     discussionRestrictionPrefillNickname.value = '';
-    discussionRestrictionCreateMessage.value = `已限制 ${result.nickname || result.userId.slice(0, 8)} 的讨论投稿。`;
+    discussionRestrictionCreateMessage.value = `已${result.endsAt ? '临时' : '永久'}停用 ${result.nickname || result.userId.slice(0, 8)} 的一起谈谈权限。`;
+    discussionRestrictionDialogOpen.value = false;
     await refreshDiscussionRestrictions();
   } catch (caught) {
     if (session !== sessionGeneration || !loggedIn.value) return;
-    discussionRestrictionCreateError.value = caught instanceof Error ? caught.message : '无法创建用户限制';
+    showDiscussionRestrictionValidationError(caught instanceof Error ? caught.message : '无法停用一起谈谈权限');
   } finally {
     if (session === sessionGeneration) discussionRestrictionCreating.value = false;
   }
@@ -4816,15 +4977,15 @@ async function revokeDiscussionRestriction(record: ManagedDiscussionRestriction)
       headers: { Authorization: `Bearer ${token.value}` },
     });
     if (handleAdminUnauthorized(response, session)) return;
-    if (!response.ok) throw new Error(await responseMessage(response, '无法撤销用户限制'));
+    if (!response.ok) throw new Error(await responseMessage(response, '无法恢复一起谈谈权限'));
     const result = await response.json();
-    if (!isManagedDiscussionRestriction(result) || result.effectiveStatus !== 'revoked') throw new Error('用户限制撤销结果格式无效');
+    if (!isManagedDiscussionRestriction(result) || result.effectiveStatus !== 'revoked') throw new Error('一起谈谈权限恢复结果格式无效');
     if (session !== sessionGeneration || !loggedIn.value) return;
-    discussionRestrictionActionMessage.value = `已撤销 ${result.nickname || result.userId.slice(0, 8)} 的讨论投稿限制。`;
+    discussionRestrictionActionMessage.value = `已恢复 ${result.nickname || result.userId.slice(0, 8)} 的一起谈谈权限。`;
     await refreshDiscussionRestrictions();
   } catch (caught) {
     if (session !== sessionGeneration || !loggedIn.value) return;
-    discussionRestrictionError.value = caught instanceof Error ? caught.message : '无法撤销用户限制';
+    discussionRestrictionError.value = caught instanceof Error ? caught.message : '无法恢复一起谈谈权限';
   } finally {
     if (session === sessionGeneration) discussionRestrictionSavingId.value = '';
   }
@@ -5094,6 +5255,8 @@ function clearIssueForm() {
   issueConflictResolved.value = '';
   issueSaveMessage.value = '';
   issueValidationMessage.value = '';
+  issueValidationDialogOpen.value = false;
+  issueFieldErrors.value = {};
   issueHistory.value = [];
   originalMediaKeys.value = { cover: '', background: '', voice: [] };
   coverFile.value = null;
@@ -5243,12 +5406,14 @@ function setIssueBaseField(field: IssueBaseField, value: string) {
   issueForm.value[field] = value;
   const module = issueBaseModuleTarget(field);
   if (module) module[issueBaseModuleField(field)] = value;
+  clearIssueFieldError(field);
 }
 
 function setIssueBaseRichText(field: IssueBaseField, value: string) {
   issueForm.value[issueBaseRichField(field)] = value;
   const module = issueBaseModuleTarget(field);
   if (module) module[`${issueBaseModuleField(field)}RichText`] = value;
+  clearIssueFieldError(field);
 }
 
 function setIssueModuleString(module: ManagedIssueModule, field: string, value: string) {
@@ -5567,6 +5732,13 @@ function addIssueModule(type: ManagedIssueModule['type']) {
 
 async function publishIssue() {
   if (!editingIssueId.value || uploading.value || issueConflict.value) return;
+  error.value = '';
+  issueSaveMessage.value = '';
+  issueValidationMessage.value = '';
+  issueValidationDialogOpen.value = false;
+  seedIssueModulesFromForm();
+  syncIssueFieldsToModules();
+  if (!(await validateIssueRequiredFields())) return;
   if (!window.confirm('确认发布当前草稿？发布后会立即替换小程序首页期刊。')) return;
   uploading.value = true;
   const session = sessionGeneration;
@@ -5580,13 +5752,19 @@ async function publishIssue() {
     const result = await response.json();
     issueSaveMessage.value = `已发布第 ${result.version} 个版本；本期所有模块已同时上线。`;
     issueConflict.value = false;
+    issueFieldErrors.value = {};
+    issueValidationMessage.value = '';
+    issueValidationDialogOpen.value = false;
     issueForm.value.status = 'published';
     originalIssueStatus.value = 'published';
     editingIssueEditVersion.value += 1;
     originalIssueForm.value = cloneIssueForm(issueForm.value);
     await loadDashboard();
   } catch (caught) {
-    if (session === sessionGeneration && loggedIn.value) error.value = caught instanceof Error ? caught.message : '发布期刊失败';
+    if (session === sessionGeneration && loggedIn.value) {
+      const message = caught instanceof Error ? caught.message : '发布期刊失败';
+      if (!applyIssueApiFieldError(message)) error.value = message;
+    }
   } finally { if (session === sessionGeneration) uploading.value = false; }
 }
 
@@ -5698,6 +5876,11 @@ async function selectHomeBackgroundFile(event: Event) {
     homeBackgroundError.value = '首页底图仅支持 JPG、PNG 或 WebP。';
     return;
   }
+  homeBackgroundError.value = '';
+  requestImageCrop(file, '编辑首页底图', (croppedFile) => uploadHomeBackgroundFile(croppedFile));
+}
+
+async function uploadHomeBackgroundFile(file: File) {
   const session = sessionGeneration;
   uploading.value = true;
   homeBackgroundError.value = '';
@@ -5740,7 +5923,7 @@ async function deleteUnusedMedia(objectKey: string, purpose: 'orphan' | 'tempora
     const conflict = await response.clone().json().catch(() => null);
     if (conflict?.code === 'media_protected') return 'protected';
     if (conflict?.code === 'media_referenced') return 'referenced';
-    throw new Error(withRequestId(typeof conflict?.message === 'string' ? conflict.message : '媒体回收状态冲突，请重新扫描核实', response));
+    throw new Error(conciseResponseMessage(typeof conflict?.message === 'string' ? conflict.message : '媒体回收状态冲突，请重新扫描核实'));
   }
   if (response.status === 403) {
     const failure = await response.clone().json().catch(() => null);
@@ -5941,6 +6124,8 @@ async function editIssue(issue: ManagedIssue) {
   issueConflictResolved.value = '';
   issueSaveMessage.value = '';
   issueValidationMessage.value = '';
+  issueValidationDialogOpen.value = false;
+  issueFieldErrors.value = {};
   originalMediaKeys.value = {
     cover: issue.coverObjectKey || '',
     background: issue.homeBackgroundObjectKey || '',
@@ -5991,12 +6176,25 @@ async function uploadMedia(file: File, kind: 'image' | 'audio' | 'video', expect
   return target.objectKey as string;
 }
 
-async function selectIssueModuleFile(module: ManagedIssueModule, event: Event) {
+function selectIssueModuleFile(module: ManagedIssueModule, event: Event) {
   const input = event.target;
   if (!(input instanceof HTMLInputElement)) return;
   const file = input.files?.[0];
   input.value = '';
   if (!file) return;
+  if (module.type === 'audio') {
+    void uploadIssueModuleMedia(module, file);
+    return;
+  }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    error.value = '栏目图片仅支持 JPG、PNG 或 WebP。';
+    return;
+  }
+  error.value = '';
+  requestImageCrop(file, `编辑${issueModuleLabel(module)}图片`, (croppedFile) => uploadIssueModuleMedia(module, croppedFile));
+}
+
+async function uploadIssueModuleMedia(module: ManagedIssueModule, file: File) {
   const session = sessionGeneration;
   uploading.value = true;
   try {
@@ -6059,27 +6257,112 @@ async function selectIssueAudioTrackFile(module: ManagedIssueModule, track: Mana
   }
 }
 
-const issueRequiredFields: Array<{ key: 'code' | 'label' | 'month' | 'theme' | 'question'; label: string; maxLength: number }> = [
-  { key: 'code', label: '期刊编号', maxLength: 64 },
-  { key: 'label', label: '期刊标签', maxLength: 80 },
-  { key: 'month', label: '刊期月份', maxLength: 40 },
-  { key: 'theme', label: '本期主题', maxLength: 200 },
-  { key: 'question', label: '本期问题', maxLength: 500 },
+type IssueRequiredField = {
+  key: IssueFieldKey;
+  label: string;
+  module: '刊期信息' | '封面与主题' | '本期问题';
+  maxLength: number;
+};
+const issueRequiredFields: IssueRequiredField[] = [
+  { key: 'code', label: '期刊编号', module: '刊期信息', maxLength: 64 },
+  { key: 'label', label: '期刊标签', module: '刊期信息', maxLength: 80 },
+  { key: 'month', label: '刊期月份', module: '刊期信息', maxLength: 40 },
+  { key: 'theme', label: '本期主题', module: '封面与主题', maxLength: 200 },
+  { key: 'question', label: '本期问题', module: '本期问题', maxLength: 500 },
 ];
-function validateIssueRequiredFields() {
-  const missing: string[] = [];
-  const invalid: string[] = [];
+
+function issueFieldDefinition(key: IssueFieldKey) {
+  return issueRequiredFields.find((field) => field.key === key) || null;
+}
+
+function firstIssueFieldError() {
+  return issueRequiredFields.find((field) => issueFieldErrors.value[field.key]) || null;
+}
+
+function updateIssueValidationSummary() {
+  const field = firstIssueFieldError();
+  issueValidationMessage.value = field ? `请完善「${field.module}」：${issueFieldErrors.value[field.key]}。` : '';
+}
+
+async function closeIssueValidationDialog() {
+  issueValidationDialogOpen.value = false;
+  const key = firstIssueFieldError()?.key;
+  if (!key) return;
+  await nextTick();
+  requestAnimationFrame(() => void focusIssueField(key));
+}
+
+function clearIssueFieldError(key: IssueFieldKey) {
+  if (!issueFieldErrors.value[key]) return;
+  const next = { ...issueFieldErrors.value };
+  delete next[key];
+  issueFieldErrors.value = next;
+  updateIssueValidationSummary();
+}
+
+function setIssueFieldError(key: IssueFieldKey, message: string) {
+  issueFieldErrors.value = { ...issueFieldErrors.value, [key]: message };
+  updateIssueValidationSummary();
+}
+
+async function focusIssueField(key: IssueFieldKey) {
+  if (editingIssueId.value && activeContentSection.value !== 'journal-home') {
+    await openJournalSubsection('journal-home');
+  }
+  if (editingIssueId.value && (key === 'theme' || key === 'question')) {
+    const module = issueBaseModuleTarget(key);
+    if (module) selectedIssueModuleId.value = module.id;
+  }
+  await nextTick();
+  const field = document.querySelector<HTMLElement>(`[data-issue-field="${key}"]`);
+  if (!field) return;
+  field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const focusTarget = field.matches('input, textarea, select, [contenteditable="true"]')
+    ? field
+    : field.querySelector<HTMLElement>('.rich-text-canvas[contenteditable="true"]') ||
+      field.querySelector<HTMLElement>('input, textarea, select, [contenteditable="true"]');
+  focusTarget?.focus({ preventScroll: true });
+}
+
+async function validateIssueRequiredFields() {
+  const errors: Partial<Record<IssueFieldKey, string>> = {};
   for (const field of issueRequiredFields) {
     const value = String(issueForm.value[field.key] ?? '').trim();
-    if (!value) missing.push(field.label);
-    else if (value.length < 2) invalid.push(`${field.label}（至少 2 个字符）`);
-    else if (value.length > field.maxLength) invalid.push(`${field.label}（最多 ${field.maxLength} 个字符）`);
+    if (!value) errors[field.key] = `请填写${field.label}`;
+    else if (value.length < 2) errors[field.key] = `${field.label}至少需要 2 个字符`;
+    else if (value.length > field.maxLength) errors[field.key] = `${field.label}不能超过 ${field.maxLength} 个字符`;
   }
-  const messages: string[] = [];
-  if (missing.length) messages.push(`请补充以下必要信息：${missing.join('、')}`);
-  if (invalid.length) messages.push(`请检查字段长度：${invalid.join('；')}`);
-  issueValidationMessage.value = messages.length ? `${messages.join('。')}。` : '';
-  return messages.length === 0;
+  issueFieldErrors.value = errors;
+  updateIssueValidationSummary();
+  const first = firstIssueFieldError();
+  issueValidationDialogOpen.value = Boolean(first);
+  return !first;
+}
+
+function issueFieldKeyFromApiMessage(message: string): IssueFieldKey | null {
+  if (/期刊编号|issueCode/i.test(message)) return 'code';
+  if (/期刊标签|label/i.test(message)) return 'label';
+  if (/期刊月份|刊期月份|month/i.test(message)) return 'month';
+  if (/期刊主题|本期主题|theme/i.test(message)) return 'theme';
+  if (/本期问题|question/i.test(message)) return 'question';
+  return null;
+}
+
+function friendlyIssueApiError(key: IssueFieldKey, message: string) {
+  const field = issueFieldDefinition(key);
+  if (!field) return message;
+  if (/不能为空|required/i.test(message)) return `请填写${field.label}`;
+  if (/长度|invalid|无效/i.test(message)) return `${field.label}的内容或长度不符合要求`;
+  return `请检查${field.label}`;
+}
+
+function applyIssueApiFieldError(message: string) {
+  const key = issueFieldKeyFromApiMessage(message);
+  if (!key) return false;
+  const friendly = friendlyIssueApiError(key, message);
+  setIssueFieldError(key, friendly);
+  void focusIssueField(key);
+  return true;
 }
 
 async function saveIssue() {
@@ -6087,9 +6370,10 @@ async function saveIssue() {
   error.value = '';
   issueConflictResolved.value = '';
   issueValidationMessage.value = '';
+  issueValidationDialogOpen.value = false;
   seedIssueModulesFromForm();
   syncIssueFieldsToModules();
-  if (!validateIssueRequiredFields()) return;
+  if (!(await validateIssueRequiredFields())) return;
   uploading.value = true;
   const session = sessionGeneration;
   let saved = false;
@@ -6155,6 +6439,8 @@ async function saveIssue() {
     issueConflict.value = false;
     issueConflictResolved.value = '';
     issueValidationMessage.value = '';
+    issueValidationDialogOpen.value = false;
+    issueFieldErrors.value = {};
     issueSaveMessage.value = '草稿已保存。期号、首页、人物、声音与往期入口共用这份草稿；本期讨论也可在讨论页单独保存/发布，整期发布时仍会一并写入期刊快照。';
     const cleanup = await cleanupMedia(candidates, session);
     assertSession(session);
@@ -6175,7 +6461,10 @@ async function saveIssue() {
   } catch (caught) {
     if (session === sessionGeneration && loggedIn.value) {
       if (saved) issueSaveMessage.value = '期刊已保存，但临时媒体文件清理失败。重新开始编辑时可以重试。';
-      else issueValidationMessage.value = caught instanceof Error ? caught.message : '保存期刊失败';
+      else {
+        const message = caught instanceof Error ? caught.message : '保存期刊失败';
+        if (!applyIssueApiFieldError(message)) presentAdminError(message);
+      }
     }
   } finally {
     if (session === sessionGeneration) uploading.value = false;
@@ -6318,7 +6607,6 @@ function logout(message = '') {
   selectedDiscussionContributionError.value = '';
   discussionContributionError.value = '';
   discussionContributionActionMessage.value = '';
-  discussionManagementView.value = 'content';
   discussionRestrictions.value = [];
   discussionRestrictionSummary.value = { active: 0, scheduled: 0, expired: 0, revoked: 0 };
   discussionRestrictionTotal.value = 0;
@@ -6334,6 +6622,8 @@ function logout(message = '') {
   discussionRestrictionCreateMessage.value = '';
   discussionRestrictionCreateError.value = '';
   discussionRestrictionPrefillNickname.value = '';
+  discussionRestrictionDialogOpen.value = false;
+  discussionRestrictionMode.value = 'temporary';
   discussionRestrictionForm.value = { userId: '', reason: '', endsAt: '' };
   privacyRequests.value = [];
   privacyLifecycle.value = null;
@@ -6567,7 +6857,8 @@ onBeforeUnmount(() => {
               <div v-if="canAccessModule('contributions') || canAccessModule('discussion-reports') || canAccessModule('observations') || canAccessModule('privacy') || canAccessModule('audit')" class="dashboard-nav-group operations-nav-group" :class="{ expanded: isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed }">
                 <button type="button" class="dashboard-tab" :class="{ active: isOperationsSection(activeSection) }" :aria-label="sidebarCollapsed ? '运营管理' : undefined" :title="sidebarCollapsed ? '运营管理' : undefined" :aria-expanded="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" aria-controls="operations-navigation" @click.stop="openOperationsNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM8 7.5V5h8v2.5M8 12h8M8 16h5" /></svg><span>运营管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isOperationsSection(activeSection) && operationsNavigationExpanded && !sidebarCollapsed" id="operations-navigation" class="dashboard-subnav" aria-label="运营管理子菜单">
-                  <button v-if="canAccessModule('contributions')" class="dashboard-subtab" :class="{ active: activeSection === 'contributions' }" :aria-current="activeSection === 'contributions' ? 'page' : undefined" @click="openOperationsSubsection('contributions')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>讨论管理</span></button>
+                  <button v-if="canAccessModule('contributions')" class="dashboard-subtab" :class="{ active: activeSection === 'contributions' }" :aria-current="activeSection === 'contributions' ? 'page' : undefined" @click="openOperationsSubsection('contributions')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3v-15Z"/><path d="M8 9h8m-8 4h6" /></svg><span>一起谈谈内容</span></button>
+                  <button v-if="canAccessModule('contributions')" class="dashboard-subtab" :class="{ active: activeSection === 'discussion-restrictions' }" :aria-current="activeSection === 'discussion-restrictions' ? 'page' : undefined" @click="openOperationsSubsection('discussion-restrictions')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6z"/><path d="M12 8.2v4.3"/><circle cx="12" cy="15.5" r=".8"/></svg><span>一起谈谈权限</span></button>
                   <button v-if="canAccessModule('discussion-reports')" class="dashboard-subtab" :class="{ active: activeSection === 'discussion-reports' }" :aria-current="activeSection === 'discussion-reports' ? 'page' : undefined" @click="openOperationsSubsection('discussion-reports')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 20 6v6c0 4.3-3.2 7.2-8 8.2-4.8-1-8-3.9-8-8.2V6z"/><path d="M12 8v4.6"/><circle cx="12" cy="15.6" r=".7"/></svg><span>用户举报</span></button>
                   <button v-if="canAccessModule('observations')" class="dashboard-subtab" :class="{ active: activeSection === 'observations' }" :aria-current="activeSection === 'observations' ? 'page' : undefined" @click="openOperationsSubsection('observations')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7v5l3.2 2" /></svg><span>观察记录管理</span></button>
                   <button v-if="canAccessModule('privacy')" class="dashboard-subtab" :class="{ active: activeSection === 'privacy' }" :aria-current="activeSection === 'privacy' ? 'page' : undefined" @click="openOperationsSubsection('privacy')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-2.9 7.5-7 9-4.1-1.5-7-4.6-7-9V6zM9.2 11.8l1.9 1.9 3.9-4" /></svg><span>隐私申请</span></button>
@@ -6859,16 +7150,15 @@ onBeforeUnmount(() => {
               <div class="section-heading"><div><p class="eyebrow">NEW ISSUE</p><h3>新建期刊草稿</h3></div><small>只在后台保存，不会立即上线</small></div>
               <div class="journal-meta-grid">
                 <div class="journal-meta-column">
-                  <label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" placeholder="例如：issue-03" /></label>
-                  <div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
+                  <label class="journal-issue-field" data-issue-field="code" :class="{ 'is-invalid': issueFieldErrors.code }">期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" placeholder="例如：issue-03" :aria-invalid="Boolean(issueFieldErrors.code)" @input="clearIssueFieldError('code')" /><small v-if="issueFieldErrors.code" class="field-inline-error" role="alert">{{ issueFieldErrors.code }}</small></label>
+                  <div class="journal-issue-field" data-issue-field="month" :class="{ 'is-invalid': issueFieldErrors.month }"><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" :invalid="Boolean(issueFieldErrors.month)" :error="issueFieldErrors.month || ''" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
                 </div>
                 <div class="journal-meta-column">
-                  <div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>
+                  <div class="journal-issue-field" data-issue-field="label" :class="{ 'is-invalid': issueFieldErrors.label }"><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" :invalid="Boolean(issueFieldErrors.label)" :error="issueFieldErrors.label || ''" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>
                 </div>
               </div>
-              <div class="form-grid issue-create-basics"><div><JournalRichTextField :model-value="issueForm.theme" :rich-text="issueForm.themeRichText" label="本期主题" @update:model-value="setIssueBaseField('theme', $event)" @update:rich-text="setIssueBaseRichText('theme', $event)" /></div><div><JournalRichTextField :model-value="issueForm.question" :rich-text="issueForm.questionRichText" label="本期问题" @update:model-value="setIssueBaseField('question', $event)" @update:rich-text="setIssueBaseRichText('question', $event)" /></div></div>
+              <div class="form-grid issue-create-basics"><div class="journal-issue-field" data-issue-field="theme" :class="{ 'is-invalid': issueFieldErrors.theme }"><JournalRichTextField :model-value="issueForm.theme" :rich-text="issueForm.themeRichText" label="本期主题" :invalid="Boolean(issueFieldErrors.theme)" :error="issueFieldErrors.theme || ''" @update:model-value="setIssueBaseField('theme', $event)" @update:rich-text="setIssueBaseRichText('theme', $event)" /></div><div class="journal-issue-field" data-issue-field="question" :class="{ 'is-invalid': issueFieldErrors.question }"><JournalRichTextField :model-value="issueForm.question" :rich-text="issueForm.questionRichText" label="本期问题" :invalid="Boolean(issueFieldErrors.question)" :error="issueFieldErrors.question || ''" @update:model-value="setIssueBaseField('question', $event)" @update:rich-text="setIssueBaseRichText('question', $event)" /></div></div>
               <p class="field-help">创建后进入「首页策展」继续补充封面、人物、声音与讨论。这里填写的主题与问题会成为封面标题和「本期问题」栏目的初始值；这些模块共用同一份草稿。</p>
-              <p v-if="issueValidationMessage" class="error issue-validation-message" role="alert">{{ issueValidationMessage }}</p>
               <div class="form-actions"><button type="submit" :disabled="uploading">{{ uploading ? '创建中…' : '创建草稿并继续' }}</button><button type="button" class="quiet" @click="startNewIssue">清空</button></div>
             </form>
             <template v-else>
@@ -6897,7 +7187,6 @@ onBeforeUnmount(() => {
                 </div>
               </section>
               <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p>
-              <p v-if="issueValidationMessage" class="error issue-validation-message" role="alert">{{ issueValidationMessage }}</p>
               <p v-if="issueConflict" class="error" role="alert">{{ issueConflictResolved || '云端草稿已变化，请先载入最新版本核对后再保存。' }} <button type="button" class="quiet" :disabled="uploading" @click="rebaseIssueEdits">载入最新版本</button></p>
               <ol v-if="issueHistory.length" class="issue-history"><li v-for="item in issueHistory" :key="item.version"><details><summary>v{{ item.version }} · {{ displayDate(item.publishedAt) }} · {{ item.publishedBy || '系统' }}</summary><pre>{{ JSON.stringify(item.snapshot, null, 2) }}</pre></details></li></ol>
             </template>
@@ -6992,11 +7281,11 @@ onBeforeUnmount(() => {
               <p id="home-introduction-help" class="field-help">显示在首页品牌栏下方，最多 120 字。留空则隐藏；保存整份草稿并确认发布后生效。</p>
               <div class="journal-meta-grid">
                 <div class="journal-meta-column">
-                  <label>期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" /></label>
-                  <div><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
+                  <label class="journal-issue-field" data-issue-field="code" :class="{ 'is-invalid': issueFieldErrors.code }">期刊编号<input v-model="issueForm.code" required minlength="2" maxlength="64" :aria-invalid="Boolean(issueFieldErrors.code)" @input="clearIssueFieldError('code')" /><small v-if="issueFieldErrors.code" class="field-inline-error" role="alert">{{ issueFieldErrors.code }}</small></label>
+                  <div class="journal-issue-field" data-issue-field="month" :class="{ 'is-invalid': issueFieldErrors.month }"><JournalRichTextField :model-value="issueForm.month" :rich-text="issueForm.monthRichText" label="刊期月份" :invalid="Boolean(issueFieldErrors.month)" :error="issueFieldErrors.month || ''" @update:model-value="setIssueBaseField('month', $event)" @update:rich-text="setIssueBaseRichText('month', $event)" /></div>
                 </div>
                 <div class="journal-meta-column">
-                  <div><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>
+                  <div class="journal-issue-field" data-issue-field="label" :class="{ 'is-invalid': issueFieldErrors.label }"><JournalRichTextField :model-value="issueForm.label" :rich-text="issueForm.labelRichText" label="期刊标签" :invalid="Boolean(issueFieldErrors.label)" :error="issueFieldErrors.label || ''" @update:model-value="setIssueBaseField('label', $event)" @update:rich-text="setIssueBaseRichText('label', $event)" /></div>
                 </div>
               </div>
               <div class="journal-derived-grid">
@@ -7040,7 +7329,7 @@ onBeforeUnmount(() => {
               <div class="discussion-save-bar">
                 <div>
                   <strong>独立保存与发布</strong>
-                  <p class="field-help">这里只更新本期讨论页，不需要重发整期期刊。发布后小程序会读取新版讨论内容；读者分享的发布、精华与用户限制仍在「讨论管理」中处理。</p>
+                  <p class="field-help">这里只更新本期讨论页，不需要重发整期期刊。发布后小程序会读取新版讨论内容；读者分享的发布与精华在「一起谈谈内容」中处理，会员发布权限在「一起谈谈权限」中单独管理。</p>
                   <p v-if="discussionPageLoading" class="muted" role="status">正在读取本期讨论的独立草稿…</p>
                   <p v-else-if="discussionPagePublishedVersion" class="field-help">线上：第 {{ discussionPagePublishedVersion }} 版<span v-if="discussionPagePublishedAt"> · {{ displayDate(discussionPagePublishedAt) }}</span></p>
                   <p v-else class="field-help">线上尚未单独发布；小程序当前仍显示整期发布时的讨论内容。</p>
@@ -7145,10 +7434,10 @@ onBeforeUnmount(() => {
 <div v-if="activeContentSection !== 'journal-discussion' && (activeContentSection !== 'journal-story' || storyEditorTab === 'home')" class="issue-module-list"><article v-for="(module, index) in issueForm.draftContent.sections" v-show="selectedIssueModuleId === module.id && isIssueModuleVisibleInJournalSection(module)" :key="module.id" :data-issue-module="module.id" class="issue-module-card">
               <header><span>{{ String(index + 1).padStart(2, '0') }} · {{ issueModuleLabel(module) }}</span><label class="issue-module-toggle"><input v-model="module.enabled" type="checkbox" />启用</label><button type="button" class="quiet" :disabled="index === 0" aria-label="上移栏目" @click="moveIssueModule(index, -1)">↑</button><button type="button" class="quiet" :disabled="index === issueForm.draftContent.sections.length - 1" aria-label="下移栏目" @click="moveIssueModule(index, 1)">↓</button><button v-if="!['issueMeta','coverStory','cover','opener','question','observationAction','sharedPracticeAction'].includes(module.type)" type="button" class="quiet danger" aria-label="删除栏目" @click="removeIssueModule(index)">删除</button></header>
               <div v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'" class="form-grid"><label v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story' || module.type === 'image'">上传 / 替换图片<input type="file" accept="image/jpeg,image/png,image/webp" @change="selectIssueModuleFile(module, $event)" /></label><label>图片对象路径<input :value="String(module.imageObjectKey || '')" placeholder="content/image/..." @input="setIssueModuleText(module, 'imageObjectKey', $event)" /></label><label>图片替代文本<input :value="String(module.altText || '')" @input="setIssueModuleText(module, 'altText', $event)" /></label></div>
-              <div v-if="module.type === 'coverStory' || module.type === 'story'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="标题 / 人物引言" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
+              <div v-if="module.type === 'coverStory' || module.type === 'cover' || module.type === 'story'" class="journal-issue-field" :data-issue-field="module.type === 'coverStory' || module.type === 'cover' ? 'theme' : undefined" :class="{ 'is-invalid': (module.type === 'coverStory' || module.type === 'cover') && issueFieldErrors.theme }"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" :label="module.type === 'story' ? '标题 / 人物引言' : '本期主题'" :invalid="module.type === 'coverStory' || module.type === 'cover' ? Boolean(issueFieldErrors.theme) : false" :error="module.type === 'coverStory' || module.type === 'cover' ? issueFieldErrors.theme || '' : ''" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
               <div v-else-if="module.type === 'contents'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="目录标题" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
               <div v-else-if="module.type === 'archive'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="档案区标题" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
-              <div v-else-if="module.type !== 'issueMeta' && module.type !== 'audio'"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" label="标题 / 引言" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
+              <div v-else-if="module.type !== 'issueMeta' && module.type !== 'audio'" class="journal-issue-field" :data-issue-field="module.type === 'question' ? 'question' : undefined" :class="{ 'is-invalid': module.type === 'question' && issueFieldErrors.question }"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" :label="module.type === 'question' ? '本期问题' : '标题 / 引言'" :invalid="module.type === 'question' ? Boolean(issueFieldErrors.question) : false" :error="module.type === 'question' ? issueFieldErrors.question || '' : ''" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
               <div v-if="module.type === 'issueMeta' || module.type === 'coverStory' || module.type === 'story' || module.type === 'question'"><div><JournalRichTextField :model-value="issueModuleString(module, 'eyebrow')" :rich-text="issueModuleString(module, 'eyebrowRichText')" label="栏目眉题" @update:model-value="setIssueModuleString(module, 'eyebrow', $event)" @update:rich-text="setIssueModuleString(module, 'eyebrowRichText', $event)" /></div></div>
               <div v-if="module.type === 'story'" class="form-grid"><div><JournalRichTextField :model-value="issueModuleString(module, 'captionLeft')" :rich-text="issueModuleString(module, 'captionLeftRichText')" label="图片左侧说明" @update:model-value="setIssueModuleString(module, 'captionLeft', $event)" @update:rich-text="setIssueModuleString(module, 'captionLeftRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'captionRight')" :rich-text="issueModuleString(module, 'captionRightRichText')" label="图片右侧说明" @update:model-value="setIssueModuleString(module, 'captionRight', $event)" @update:rich-text="setIssueModuleString(module, 'captionRightRichText', $event)" /></div></div>
               <button v-if="module.type === 'story'" type="button" class="quiet story-card-detail-link" @click="setStoryEditorTab('detail')">编辑详情页正文 →</button>
@@ -7225,7 +7514,6 @@ onBeforeUnmount(() => {
                 <p v-if="!journalPastIssues.length" class="muted">还没有其他往期或归档期次。</p>
               </div>
             </section>
-            <p v-if="issueValidationMessage" class="error issue-validation-message" role="alert">{{ issueValidationMessage }}</p>
             <p v-if="issueConflict" class="error" role="alert">草稿已被其他管理员修改；本地内容已保留，请载入最新版本后核对。 <button type="button" class="quiet" :disabled="uploading" @click="rebaseIssueEdits">载入最新版本</button></p>
             <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p>
             <footer class="journal-savebar" :class="{ 'is-dirty': issueDraftDirty }">
@@ -7319,7 +7607,7 @@ onBeforeUnmount(() => {
             <div class="directory-toolbar">
               <div class="directory-toolbar-copy">
                 <strong>目录顺序</strong>
-                <p class="muted">小程序按这个顺序编号 01、02、03…；新增的条目排在最后。</p>
+                <p class="muted">小程序按这个顺序编号 01、02、03…；新增的条目排在最后。「日常之物」开关只控制该目录入口是否开启，商城是否开放请在系统设置中单独配置。</p>
               </div>
               <div class="directory-toolbar-actions">
                 <select v-model="newPracticeEntryTarget" :disabled="practiceContentSaving || practiceContentConflict" aria-label="新增条目点进去打开哪一页">
@@ -7341,13 +7629,13 @@ onBeforeUnmount(() => {
                 <button
                   type="button"
                   class="practice-directory-state"
-                  :class="{ off: !entry.enabled, saving: storeToggleSaving && isDailyGoodsPracticeEntry(entry) }"
-                  :disabled="practiceContentSaving || practiceContentConflict || storeToggleSaving || (isDailyGoodsPracticeEntry(entry) && !isSuperAdmin)"
+                  :class="{ off: !entry.enabled }"
+                  :disabled="practiceContentSaving || practiceContentConflict || (isDailyGoodsPracticeEntry(entry) && !isSuperAdmin)"
                   :aria-pressed="entry.enabled"
                   :aria-label="`${practiceEntryText(entry.titleRichText) || '目录入口'}${entry.enabled ? '已开启，点击关闭' : '已关闭，点击开启'}`"
-                  :title="isDailyGoodsPracticeEntry(entry) && !isSuperAdmin ? '仅超级管理员可切换商城开放状态' : entry.enabled ? '点击关闭' : '点击开启'"
+                  :title="isDailyGoodsPracticeEntry(entry) && !isSuperAdmin ? '仅超级管理员可切换日常之物入口' : entry.enabled ? '点击关闭' : '点击开启'"
                   @click="togglePracticeEntryEnabled(entry)"
-                >{{ storeToggleSaving && isDailyGoodsPracticeEntry(entry) ? '同步中…' : entry.enabled ? '开启' : '关闭' }}</button>
+                >{{ entry.enabled ? '开启' : '关闭' }}</button>
                 <span class="practice-directory-actions">
                   <button type="button" class="practice-directory-move" :disabled="index === 0 || practiceContentSaving || practiceContentConflict" aria-label="上移" @click="movePracticeEntry(entry, -1)">↑</button>
                   <button type="button" class="practice-directory-move" :disabled="index === practiceContent.entries.length - 1 || practiceContentSaving || practiceContentConflict" aria-label="下移" @click="movePracticeEntry(entry, 1)">↓</button>
@@ -7362,7 +7650,7 @@ onBeforeUnmount(() => {
             <PracticeSaveBar
               :dirty="practiceContentDirty"
               :conflict="practiceContentConflict"
-              :saving="practiceContentSaving || storeToggleSaving"
+              :saving="practiceContentSaving"
               label="实践目录 · 顺序、入口与状态"
               :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
               reload-label="放弃修改并载入最新版本"
@@ -7523,7 +7811,7 @@ onBeforeUnmount(() => {
         <div v-else-if="dailyObjectsContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序日常之物预览">
             <PracticePagePreview v-if="practiceEntryTab('daily-objects') === 'home' && practiceContent" :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
-            <DailyObjectsPreview v-else :content="dailyObjectsContent" :image-urls="dailyObjectPreviewUrls" :active-key="activeDailyKey" @pick="pickDailyKey" />
+            <DailyObjectsPreview v-else :content="dailyObjectsContent" :image-urls="dailyObjectPreviewUrls" :article-image-url="dailyObjectArticlePreviewUrl" :mode="dailyObjectsPreviewMode" :active-key="activeDailyKey" @pick="pickDailyKey" />
           </aside>
           <form v-if="practiceEntryTab('daily-objects') === 'home' && practiceContent" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
             <div class="practice-entry-toolbar">
@@ -7531,14 +7819,22 @@ onBeforeUnmount(() => {
               <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || (practiceContent?.entries.length ?? 0) >= 100" @click="addPracticeEntry('daily-goods')">＋ 新增目录</button>
             </div>
             <p v-if="!practiceEntriesFor('daily-objects').length" class="muted">这一页还没有入口卡片，先新增一个。</p>
-            <PracticeEntryEditor v-for="entry in practiceEntriesFor('daily-objects')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict || (isDailyGoodsPracticeEntry(entry) && (!isSuperAdmin || storeToggleSaving))" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
+            <PracticeEntryEditor v-for="entry in practiceEntriesFor('daily-objects')" :key="entry.key" :entry="entry" :index="practiceEntryIndex(entry.key)" :disabled="practiceContentSaving || practiceContentConflict || (isDailyGoodsPracticeEntry(entry) && !isSuperAdmin)" @change="markPracticeContentDirty" @toggle-enabled="togglePracticeEntryEnabled(entry)" @delete="removePracticeEntry(entry)" />
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
             <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="日常之物 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
           </form>
           <form v-else class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent" @focusin="focusDailyField">
-          <section class="daily-shop-gate"><div><h3>商城入口</h3><p>商城功能暂未开放。准备好商品内容后，可在入口状态中一键开启。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置商城开启状态</button></section>
+          <section class="daily-shop-gate"><div><h3>开放设置</h3><p>「实践目录 → 日常之物」入口控制目录是否开启；「系统设置 → 商城开放」独立控制商城是否对外营业。两处都开启后才会展示商品。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置目录入口状态</button></section>
+          <section class="observation-copy-group daily-landing-editor"><h3>未开放页</h3><p class="field-help full">目录入口或商城关闭时展示。文章标题、节选、配图与公众号链接未填写时，小程序会分别沿用首页人物故事中的对应内容。</p><div class="daily-objects-fields">
+            <div class="daily-field" data-daily-field="landing"><label class="full">首屏标题<textarea v-model="dailyObjectsContent.landingTitle" rows="4" maxlength="500" @input="markDailyObjectsDirty"></textarea></label><label class="full">首屏说明<textarea v-model="dailyObjectsContent.landingIntro" rows="3" maxlength="500" @input="markDailyObjectsDirty"></textarea></label><label>开放状态<input v-model="dailyObjectsContent.landingStatus" maxlength="120" @input="markDailyObjectsDirty" /></label><label>品牌中文<input v-model="dailyObjectsContent.brandSubtitle" maxlength="80" @input="markDailyObjectsDirty" /></label></div>
+            <div class="daily-field" data-daily-field="her-days"><label>栏目标题<input v-model="dailyObjectsContent.herDaysTitle" maxlength="80" @input="markDailyObjectsDirty" /></label><label>英文标识<input v-model="dailyObjectsContent.herDaysEnglish" maxlength="80" @input="markDailyObjectsDirty" /></label></div>
+            <div class="daily-field" data-daily-field="article-title"><label>节选标签<input v-model="dailyObjectsContent.articleLabel" maxlength="80" @input="markDailyObjectsDirty" /></label><label>文章标题<input v-model="dailyObjectsContent.articleTitle" maxlength="200" @input="markDailyObjectsDirty" /></label><label class="full">文章节选<textarea v-model="dailyObjectsContent.articleExcerpt" rows="5" maxlength="1000" @input="markDailyObjectsDirty"></textarea></label></div>
+            <div class="daily-field daily-landing-image" data-daily-field="article-image"><div class="daily-image-field"><span class="daily-image-label">日常文章配图</span><img v-if="dailyObjectArticlePreviewUrl || dailyObjectsContent.articleImage.startsWith('https://') || dailyObjectsContent.articleImage.startsWith('/assets/')" class="daily-image-preview" :src="dailyObjectArticlePreviewUrl || dailyObjectsContent.articleImage" alt="日常文章配图预览" /><label class="daily-image-upload" :class="{ disabled: Boolean(dailyObjectUploadingId) || dailyObjectsSaving || dailyObjectsConflict }"><input type="file" accept="image/*" :disabled="Boolean(dailyObjectUploadingId) || dailyObjectsSaving || dailyObjectsConflict" @change="uploadDailyObjectImage($event, 'article-image')" /><span>{{ dailyObjectUploadingId === 'article-image' ? '上传中…' : '选择并上传图片' }}</span></label><small>未配置时回退首页人物故事配图。</small><input v-model="dailyObjectsContent.articleImage" aria-label="日常文章图片路径或对象键" maxlength="2048" placeholder="也可粘贴 /assets/ 路径或 HTTPS 地址" @input="markDailyObjectsDirty" /></div><div class="daily-image-metadata"><label>图片替代文字<input v-model="dailyObjectsContent.articleImageAlt" maxlength="120" @input="markDailyObjectsDirty" /></label><label>图片说明<input v-model="dailyObjectsContent.articleCaption" maxlength="300" @input="markDailyObjectsDirty" /></label></div></div>
+            <div class="daily-field" data-daily-field="article-action"><label class="full">公众号文章链接<input v-model="dailyObjectsContent.officialArticleUrl" type="url" maxlength="2048" placeholder="https://mp.weixin.qq.com/s/..." @input="markDailyObjectsDirty" /></label><label class="full">阅读按钮文字<input v-model="dailyObjectsContent.officialArticleButton" maxlength="120" @input="markDailyObjectsDirty" /></label></div>
+            <div class="daily-field" data-daily-field="everyday-explore"><label>探索标题<input v-model="dailyObjectsContent.everydayObjectsTitle" maxlength="80" @input="markDailyObjectsDirty" /></label><label>英文标识<input v-model="dailyObjectsContent.everydayObjectsEnglish" maxlength="80" @input="markDailyObjectsDirty" /></label><label class="full">探索说明<textarea v-model="dailyObjectsContent.everydayObjectsIntro" rows="3" maxlength="500" @input="markDailyObjectsDirty"></textarea></label></div>
+          </div></section>
           <section class="observation-copy-group"><h3>商品页首屏</h3><div class="daily-objects-fields">
             <div class="daily-field" data-daily-field="brand"><label>品牌英文<input v-model="dailyObjectsContent.brandName" maxlength="80" @input="markDailyObjectsDirty" /></label><label>品牌中文<input v-model="dailyObjectsContent.brandSubtitle" maxlength="80" @input="markDailyObjectsDirty" /></label></div>
             <div class="daily-field" data-daily-field="header"><label>英文眉题<input v-model="dailyObjectsContent.eyebrow" maxlength="80" @input="markDailyObjectsDirty" /></label><label>页面标题<input v-model="dailyObjectsContent.title" maxlength="120" @input="markDailyObjectsDirty" /></label>
@@ -7692,18 +7988,10 @@ onBeforeUnmount(() => {
 </Teleport>
       </section>
       <section v-if="activeSection === 'contributions'" id="discussion-contributions" class="content-area discussion-management">
-        <div class="section-heading">
-          <div><p class="eyebrow">DISCUSSION / MODERATION</p><h2>讨论管理</h2></div>
+        <div class="section-heading discussion-page-heading">
+          <div><p class="eyebrow">TOGETHER / CONTENT</p><h2>一起谈谈内容</h2><p class="admin-page-description">审核主经历与回复留言，处理公开状态和精华展示；会员发布权限请前往「一起谈谈权限」。</p></div>
+          <div class="section-tools discussion-page-actions"><button type="button" class="quiet" :disabled="discussionContributionLoading" @click="refreshDiscussionContributions()">{{ discussionContributionLoading ? '刷新中…' : '刷新内容' }}</button></div>
         </div>
-        <div class="discussion-management-toolbar">
-          <div class="discussion-management-tabs" role="tablist" aria-label="讨论管理视图">
-            <button type="button" role="tab" :aria-selected="discussionManagementView === 'content'" :class="{ active: discussionManagementView === 'content' }" @click="setDiscussionManagementView('content')">内容管理</button>
-            <button type="button" role="tab" :aria-selected="discussionManagementView === 'restrictions'" :class="{ active: discussionManagementView === 'restrictions' }" @click="setDiscussionManagementView('restrictions')">用户限制</button>
-          </div>
-          <button type="button" class="quiet discussion-management-refresh" :disabled="discussionContributionLoading || discussionRestrictionLoading" @click="discussionManagementView === 'content' ? refreshDiscussionContributions() : refreshDiscussionRestrictions()">{{ (discussionManagementView === 'content' ? discussionContributionLoading : discussionRestrictionLoading) ? '刷新中…' : '刷新' }}</button>
-        </div>
-
-        <template v-if="discussionManagementView === 'content'">
           <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
           <p v-if="discussionContributionError" class="error" role="alert">{{ discussionContributionError }}</p>
           <div class="discussion-summary-tabs" aria-label="发布状态概览">
@@ -7769,56 +8057,93 @@ onBeforeUnmount(() => {
                       <p v-else class="muted">先将内容发布并公开，才能设置精华。</p>
                     </div>
                     <div class="discussion-moderation-block discussion-restriction-entry">
-                      <div><h4>限制该用户投稿</h4><p>只限制讨论投稿，不会封禁账号的其他功能。可设置到期时间或长期限制。</p></div>
-                      <button type="button" class="quiet" @click="prefillDiscussionRestriction(selectedDiscussionContribution); selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">限制该用户</button>
+                      <div><h4>停用一起谈谈权限</h4><p>仅限制在一起谈谈中发布经历和回复，不会停用账号，也不影响登录、观察、实践和商城。</p></div>
+                      <button type="button" class="quiet" @click="prefillDiscussionRestriction(selectedDiscussionContribution); selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">管理权限</button>
                     </div>
                   </template>
                 </div>
               </section>
             </div>
           </Teleport>
-        </template>
+      </section>
 
-        <template v-else>
-          <div class="discussion-restriction-notice"><strong>仅限制讨论投稿</strong><span>不会封禁账号的其他功能。限制原因会进入后台审计记录，撤销后用户可继续投稿。</span></div>
-          <p v-if="discussionRestrictionActionMessage" class="status-message" role="status">{{ discussionRestrictionActionMessage }}</p>
-          <p v-if="discussionRestrictionError" class="error" role="alert">{{ discussionRestrictionError }}</p>
-          <div class="discussion-summary-tabs" aria-label="用户限制状态概览">
-            <button v-for="status in discussionRestrictionStatuses" :key="status" type="button" :class="{ active: discussionRestrictionStatus === status }" @click="discussionRestrictionStatus = status; refreshDiscussionRestrictions()"><span>{{ discussionRestrictionStatusLabel(status) }}</span><strong>{{ discussionRestrictionSummary[status] }}</strong></button>
-            <button type="button" :class="{ active: discussionRestrictionStatus === '' }" @click="discussionRestrictionStatus = ''; refreshDiscussionRestrictions()"><span>全部</span><strong>{{ discussionRestrictionGrandTotal }}</strong></button>
+      <section v-if="activeSection === 'discussion-restrictions'" id="discussion-restrictions" class="content-area discussion-management discussion-restrictions-page">
+        <div class="section-heading discussion-page-heading">
+          <div><p class="eyebrow">TOGETHER / ACCESS</p><h2>一起谈谈权限</h2><p class="admin-page-description">单独管理会员在一起谈谈中的发布与回复权限，不影响账号登录、观察、实践和商城。</p></div>
+          <div class="section-tools discussion-page-actions">
+            <button type="button" class="quiet" :disabled="discussionRestrictionLoading" @click="refreshDiscussionRestrictions()">{{ discussionRestrictionLoading ? '刷新中…' : '刷新记录' }}</button>
+            <button type="button" class="discussion-primary-action" @click="openNewDiscussionRestrictionDialog">停用权限</button>
           </div>
-          <article id="discussion-restriction-form" class="discussion-restriction-form-card">
-            <div class="discussion-restriction-form-heading"><div><p class="eyebrow">NEW RESTRICTION</p><h3>新增用户限制</h3></div><small>留空结束时间表示长期限制，可随时撤销。</small></div>
-            <p v-if="discussionRestrictionPrefillNickname" class="discussion-restriction-prefill">正在为「{{ discussionRestrictionPrefillNickname }}」创建讨论投稿限制。</p>
-            <form class="discussion-restriction-form" @submit.prevent="createDiscussionRestriction">
-              <label>用户 UUID<input id="discussion-restriction-user" v-model="discussionRestrictionForm.userId" type="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></label>
-              <label>限制原因<textarea v-model="discussionRestrictionForm.reason" rows="1" minlength="2" maxlength="200" placeholder="例如：多次发布广告或与主题无关的内容" required /></label>
-              <label>结束时间（可选）<input v-model="discussionRestrictionForm.endsAt" type="datetime-local" /></label>
-              <div class="form-actions"><button type="submit" :disabled="discussionRestrictionCreating">{{ discussionRestrictionCreating ? '创建中…' : '创建限制' }}</button></div>
-            </form>
-            <p v-if="discussionRestrictionCreateMessage" class="status-message" role="status">{{ discussionRestrictionCreateMessage }}</p>
-            <p v-if="discussionRestrictionCreateError" class="error" role="alert">{{ discussionRestrictionCreateError }}</p>
-          </article>
-          <div class="filters" aria-label="用户限制筛选"><label>限制状态<select v-model="discussionRestrictionStatus" @change="refreshDiscussionRestrictions"><option value="active">生效中</option><option value="scheduled">待生效</option><option value="expired">已到期</option><option value="revoked">已撤销</option><option value="">全部</option></select></label></div>
+        </div>
+
+        <div class="discussion-restriction-notice"><strong>仅停用一起谈谈权限</strong><span>停用后，该会员不能在一起谈谈发布经历或回复；账号仍可正常登录，观察、实践和商城等功能不受影响。临时停用到期自动恢复，永久停用需手动恢复。</span></div>
+        <p v-if="discussionRestrictionCreateMessage" class="status-message" role="status">{{ discussionRestrictionCreateMessage }}</p>
+        <p v-if="discussionRestrictionActionMessage" class="status-message" role="status">{{ discussionRestrictionActionMessage }}</p>
+        <p v-if="discussionRestrictionError" class="error" role="alert">{{ discussionRestrictionError }}</p>
+
+        <div class="discussion-summary-tabs" aria-label="一起谈谈权限状态概览">
+          <button v-for="status in discussionRestrictionStatuses" :key="status" type="button" :class="{ active: discussionRestrictionStatus === status }" @click="discussionRestrictionStatus = status; refreshDiscussionRestrictions()"><span>{{ discussionRestrictionStatusLabel(status) }}</span><strong>{{ discussionRestrictionSummary[status] }}</strong></button>
+          <button type="button" :class="{ active: discussionRestrictionStatus === '' }" @click="discussionRestrictionStatus = ''; refreshDiscussionRestrictions()"><span>全部</span><strong>{{ discussionRestrictionGrandTotal }}</strong></button>
+        </div>
+
+        <div class="discussion-table-panel">
+          <div class="discussion-table-toolbar">
+            <div><strong>权限记录</strong><small>按状态筛选，及时恢复临时或永久停用的权限。</small></div>
+            <div class="filters" aria-label="一起谈谈权限筛选"><label>权限状态<select v-model="discussionRestrictionStatus" @change="refreshDiscussionRestrictions"><option value="active">停用中</option><option value="scheduled">待停用</option><option value="expired">已到期</option><option value="revoked">已恢复</option><option value="">全部</option></select></label></div>
+          </div>
           <div class="discussion-restriction-table" aria-live="polite">
-            <div class="discussion-restriction-head"><span>用户</span><span>原因</span><span>限制期限</span><span>状态</span><span>操作人</span><span>操作</span></div>
+            <div class="discussion-restriction-head"><span>用户</span><span>停用原因</span><span>停用期限</span><span>状态</span><span>操作人</span><span>操作</span></div>
             <div v-for="restriction in discussionRestrictions" :key="restriction.id" class="discussion-restriction-row">
               <span><strong>{{ restriction.nickname || '未设置昵称' }}</strong><small class="mono">{{ restriction.userId }}</small></span>
               <span>{{ restriction.reason }}</span>
               <span>{{ discussionRestrictionPeriod(restriction) }}</span>
               <span><strong class="discussion-status-pill" :class="'is-' + restriction.effectiveStatus">{{ discussionRestrictionStatusLabel(restriction.effectiveStatus) }}</strong></span>
               <span>{{ restriction.createdBy }}<small>{{ displayDate(restriction.createdAt) }}</small></span>
-              <span><button v-if="restriction.effectiveStatus === 'active' || restriction.effectiveStatus === 'scheduled'" type="button" class="quiet danger" :disabled="discussionRestrictionSavingId === restriction.id" @click="revokeDiscussionRestriction(restriction)">{{ discussionRestrictionSavingId === restriction.id ? '撤销中…' : '撤销限制' }}</button><small v-else-if="restriction.revokedAt">撤销于 {{ displayDate(restriction.revokedAt) }}</small></span>
+              <span><button v-if="restriction.effectiveStatus === 'active' || restriction.effectiveStatus === 'scheduled'" type="button" class="quiet" :disabled="discussionRestrictionSavingId === restriction.id" @click="revokeDiscussionRestriction(restriction)">{{ discussionRestrictionSavingId === restriction.id ? '恢复中…' : '恢复权限' }}</button><small v-else-if="restriction.revokedAt">恢复于 {{ displayDate(restriction.revokedAt) }}</small></span>
             </div>
-            <p v-if="discussionRestrictionLoading && !discussionRestrictions.length" class="muted" role="status">正在读取用户限制…</p>
-            <p v-else-if="!discussionRestrictionLoading && !discussionRestrictions.length" class="muted">当前筛选下没有用户限制。</p>
-            <div v-if="discussionRestrictionHasMore || discussionRestrictionMoreError" class="table-actions"><button type="button" class="quiet" :disabled="discussionRestrictionLoadingMore" @click="discussionRestrictionMoreError ? refreshDiscussionRestrictions() : loadMoreDiscussionRestrictions()">{{ discussionRestrictionLoadingMore ? '加载中…' : discussionRestrictionMoreError || '加载更多限制' }}</button></div>
+            <p v-if="discussionRestrictionLoading && !discussionRestrictions.length" class="muted" role="status">正在读取一起谈谈权限记录…</p>
+            <p v-else-if="!discussionRestrictionLoading && !discussionRestrictions.length" class="muted">当前筛选下没有一起谈谈权限记录。</p>
+            <div v-if="discussionRestrictionHasMore || discussionRestrictionMoreError" class="table-actions"><button type="button" class="quiet" :disabled="discussionRestrictionLoadingMore" @click="discussionRestrictionMoreError ? refreshDiscussionRestrictions() : loadMoreDiscussionRestrictions()">{{ discussionRestrictionLoadingMore ? '加载中…' : discussionRestrictionMoreError || '加载更多记录' }}</button></div>
           </div>
-        </template>
+        </div>
+
+        <Teleport to="body">
+          <div v-if="discussionRestrictionDialogOpen" class="observation-modal-backdrop" @click.self="closeDiscussionRestrictionDialog">
+            <section class="observation-detail-panel discussion-restriction-dialog" role="dialog" aria-modal="true" aria-labelledby="discussion-restriction-dialog-title" aria-describedby="discussion-restriction-dialog-description" tabindex="-1" @keydown.esc.stop="closeDiscussionRestrictionDialog">
+              <div class="section-heading">
+                <div><p class="eyebrow">TOGETHER ACCESS</p><h3 id="discussion-restriction-dialog-title">停用一起谈谈权限</h3></div>
+                <button type="button" class="quiet" :disabled="discussionRestrictionCreating" @click="closeDiscussionRestrictionDialog">关闭</button>
+              </div>
+              <div class="panel-body discussion-restriction-dialog-body">
+                <p id="discussion-restriction-dialog-description" class="discussion-dialog-description">临时停用会在到期后自动恢复；永久停用需要管理员手动恢复。</p>
+                <p v-if="discussionRestrictionPrefillNickname" class="discussion-restriction-prefill">正在为「{{ discussionRestrictionPrefillNickname }}」管理一起谈谈权限。</p>
+                <form class="discussion-restriction-form" novalidate @input="discussionRestrictionCreateError = ''" @submit.prevent="createDiscussionRestriction">
+                  <label class="discussion-restriction-user-field">用户 UUID<input id="discussion-restriction-user" v-model="discussionRestrictionForm.userId" type="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></label>
+                  <label class="discussion-restriction-reason-field">停用原因<textarea id="discussion-restriction-reason" v-model="discussionRestrictionForm.reason" rows="3" minlength="2" maxlength="200" placeholder="例如：多次发布不当言论" required /></label>
+                  <fieldset class="discussion-restriction-duration">
+                    <legend>停用方式</legend>
+                    <div class="discussion-restriction-modes">
+                      <label><input v-model="discussionRestrictionMode" type="radio" value="temporary" />临时停用</label>
+                      <label><input v-model="discussionRestrictionMode" type="radio" value="permanent" />永久停用</label>
+                    </div>
+                    <input v-if="discussionRestrictionMode === 'temporary'" id="discussion-restriction-ends-at" v-model="discussionRestrictionForm.endsAt" type="datetime-local" :min="discussionRestrictionEarliestEndsAt" aria-label="临时停用结束时间" required />
+                    <small v-if="discussionRestrictionMode === 'temporary'">默认 24 小时后自动恢复，可按实际停用时长调整。</small>
+                    <small v-else>不设置结束时间，需手动恢复权限。</small>
+                  </fieldset>
+                  <p v-if="discussionRestrictionCreateError" class="error discussion-restriction-dialog-error" role="alert">{{ discussionRestrictionCreateError }}</p>
+                  <div class="form-actions discussion-restriction-dialog-actions">
+                    <button type="button" class="quiet" :disabled="discussionRestrictionCreating" @click="closeDiscussionRestrictionDialog">取消</button>
+                    <button type="submit" :disabled="discussionRestrictionCreating">{{ discussionRestrictionCreating ? '处理中…' : '确认停用' }}</button>
+                  </div>
+                </form>
+              </div>
+            </section>
+          </div>
+        </Teleport>
       </section>
       <section v-if="activeSection === 'discussion-reports'" id="discussion-reports" class="content-area">
         <div class="reports-toolbar"><small v-if="discussionReportSummary.pending" class="muted">待处理 {{ discussionReportSummary.pending }} 条</small><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button></div>
-        <p class="muted">这里只处理用户提交的举报；讨论内容的发布与用户限制在「讨论管理」页面处理。</p>
+        <p class="muted">这里只处理用户提交的举报；互动内容审核在「一起谈谈内容」处理，会员权限在「一起谈谈权限」处理。</p>
         <p v-if="discussionReportActionMessage" class="status-message" role="status">{{ discussionReportActionMessage }}</p>
         <p v-if="discussionReportError" class="error" role="alert">{{ discussionReportError }}</p>
         <div class="filters" aria-label="内容举报筛选"><label>处理状态<select v-model="discussionReportStatus" @change="refreshDiscussionReports()"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionReportIssueCode" @change="refreshDiscussionReports()"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
@@ -7897,12 +8222,16 @@ onBeforeUnmount(() => {
       </section>
       <section v-if="activeSection === 'members'" id="member-directory" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">MEMBER DIRECTORY</p><h2>会员列表</h2></div></div>
+        <div class="member-permission-guide" role="note" aria-label="停用账号与一起谈谈权限的区别">
+          <div><strong>停用账号</strong><span>阻止会员登录并使用全部功能，仅超级管理员可操作。</span></div>
+          <div><strong>一起谈谈权限</strong><span>只限制在一起谈谈发布经历和回复，不影响登录、观察、实践和商城。</span></div>
+        </div>
         <div class="filters member-filters" aria-label="会员筛选"><label>昵称、ID 或手机号后四位<input v-model="memberQuery" maxlength="80" placeholder="搜索会员资料" @keyup.enter="refreshMembers()" /></label><label>注册自<DatePickerField v-model="memberFrom" aria-label="注册自" clearable /></label><label>注册至<DatePickerField v-model="memberTo" aria-label="注册至" clearable /></label><button class="quiet" :disabled="memberLoading" @click="refreshMembers()">{{ memberLoading ? '读取中…' : '筛选会员' }}</button></div>
         <p v-if="memberError" class="error" role="alert">{{ memberError }}</p>
         <p class="muted">当前条件 {{ memberTotal }} 位会员</p>
         <div class="observation-table">
-          <div class="observation-head member-head"><span>会员资料</span><span>生日</span><span>收货地址</span><span>注册时间</span><span>手机号</span><span>观察记录</span><span>账号状态</span><span>详情 / 管理</span></div>
-          <div v-for="member in members" :key="member.id" class="observation-row member-head"><div class="member-summary"><img v-if="member.avatarUrl" class="member-avatar" :src="member.avatarUrl" :alt="member.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ member.nickname ? member.nickname.slice(0, 1) : 'M' }}</span><span class="member-summary-copy"><strong>{{ member.nickname || '未设置昵称' }}</strong></span></div><span class="member-birthday">{{ memberBirthday(member) }}</span><span class="member-address">{{ isSuperAdmin ? memberAddressRegion(member.address) : '仅超级管理员可见' }}</span><span>{{ displayDate(member.createdAt) }}</span><span class="member-phone">{{ member.phoneNumber || member.phoneMasked || '未绑定' }}</span><span>{{ member.observationCount }}</span><span>{{ member.status === 'active' ? '正常' : '已停用' }}</span><span class="member-actions"><button class="quiet" @click="showMember(member.id)">详情</button><button v-if="isSuperAdmin" class="quiet" @click="toggleMemberStatus(member)">{{ member.status === 'active' ? '停用' : '恢复' }}</button></span></div>
+          <div class="observation-head member-head"><span>会员资料</span><span>生日</span><span>收货地址</span><span>注册时间</span><span>手机号</span><span>观察记录</span><span>账号状态</span><span>操作</span></div>
+          <div v-for="member in members" :key="member.id" class="observation-row member-head"><div class="member-summary"><img v-if="member.avatarUrl" class="member-avatar" :src="member.avatarUrl" :alt="member.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ member.nickname ? member.nickname.slice(0, 1) : 'M' }}</span><span class="member-summary-copy"><strong>{{ member.nickname || '未设置昵称' }}</strong></span></div><span class="member-birthday">{{ memberBirthday(member) }}</span><span class="member-address">{{ isSuperAdmin ? memberAddressRegion(member.address) : '仅超级管理员可见' }}</span><span>{{ displayDate(member.createdAt) }}</span><span class="member-phone">{{ member.phoneNumber || member.phoneMasked || '未绑定' }}</span><span>{{ member.observationCount }}</span><span>{{ member.status === 'active' ? '正常' : '已停用' }}</span><span class="member-actions"><button type="button" class="quiet" @click="showMember(member.id)">详情</button><button v-if="canAccessModule('contributions')" type="button" class="quiet" @click="openMemberDiscussionRestriction(member)">一起谈谈权限</button><button v-if="isSuperAdmin" type="button" class="quiet" @click="toggleMemberStatus(member)">{{ member.status === 'active' ? '停用账号' : '恢复账号' }}</button></span></div>
           <p v-if="!members.length && !memberLoading" class="muted">没有找到会员记录。</p>
           <div v-if="memberOffset < memberTotal" class="table-actions"><button class="quiet" :disabled="memberLoading" @click="refreshMembers(true)">加载更多会员</button></div>
         </div>
@@ -7980,7 +8309,7 @@ onBeforeUnmount(() => {
 <section v-if="activeSection === 'settings'" id="system-settings" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">BUSINESS SETTINGS</p><h2>系统设置</h2></div></div>
         <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p><p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>与「实践 → 日常之物」入口使用同一状态。在任一处开启或关闭后都会同步，并立即影响小程序展示。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
+        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
       </section>
       <ModuleStateMachine
         v-if="activeSection === 'status-machine'"
@@ -8226,6 +8555,28 @@ onBeforeUnmount(() => {
       </div>
     </template>
     </main>
+    <Teleport to="body">
+      <ImageCropDialog
+        v-if="pendingImageCrop"
+        :key="pendingImageCrop.id"
+        :file="pendingImageCrop.file"
+        :title="pendingImageCrop.title"
+        @cancel="cancelImageCrop"
+        @confirm="confirmImageCrop"
+      />
+    </Teleport>
+    <Teleport to="body">
+      <div v-if="issueValidationDialogOpen && issueValidationMessage" class="admin-error-backdrop issue-validation-backdrop" @click.self="closeIssueValidationDialog">
+        <section class="admin-error-dialog issue-validation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="issue-validation-title" aria-describedby="issue-validation-copy" @keydown.esc.stop.prevent="closeIssueValidationDialog">
+          <p class="eyebrow">必填信息</p>
+          <h3 id="issue-validation-title">请完善必填信息</h3>
+          <p id="issue-validation-copy" class="admin-error-copy">{{ issueValidationMessage }}</p>
+          <div class="admin-error-actions">
+            <button type="button" @click="closeIssueValidationDialog">知道了</button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
     <Teleport to="body">
       <div v-if="adminErrorDialog" class="admin-error-backdrop" @click.self="closeAdminError">
         <section class="admin-error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-error-title" @keydown.esc="closeAdminError">

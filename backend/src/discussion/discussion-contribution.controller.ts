@@ -9,6 +9,7 @@ import { DatabaseService } from '../database/database.service';
 import { DataEncryptionService } from '../security/data-encryption.service';
 import { loadPublishedDiscussion } from './published-discussion';
 import { DiscussionReplyNotificationService } from './discussion-reply-notification.service';
+import { findActiveDiscussionRestriction } from './discussion-restrictions';
 
 interface ContributionRow {
   id: string;
@@ -68,14 +69,8 @@ export class DiscussionContributionController {
   }
 
   private async ensureCanParticipate(client: Pick<PoolClient, 'query'>, userId: string) {
-    const restriction = await client.query(
-      `select id from discussion_user_restrictions
-       where user_id = $1 and revoked_at is null and starts_at <= now()
-         and (ends_at is null or ends_at > now())
-       order by starts_at desc limit 1`,
-      [userId],
-    );
-    if (restriction.rows[0]) throw new ForbiddenException('当前账号已被限制参与讨论');
+    const restriction = await findActiveDiscussionRestriction(client, userId);
+    if (restriction) throw new ForbiddenException('当前账号已被限制参与讨论');
   }
 
   private present(row: ContributionRow) {

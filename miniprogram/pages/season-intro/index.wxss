@@ -83,7 +83,8 @@ page { background: #e7dfd1; }
 }
 
 /* 生日选择 */
-.season-form { margin-top: 40rpx; }
+.season-form { margin-top: 40rpx; transition: opacity .18s ease; }
+.season-form.is-locked { opacity: .5; }
 .season-label { color: #4a3f38; font-size: 26rpx; font-weight: 600; line-height: 1.5; }
 .birth-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56rpx; margin-top: 26rpx; }
 .birth-field { display: block; }
@@ -129,6 +130,7 @@ page { background: #e7dfd1; }
   letter-spacing: 1rpx;
 }
 .season-primary:active { opacity: .88; }
+.season-primary.is-locked { background: #a08f80; }
 
 /* 说明折叠 */
 .season-guide-toggle {
@@ -144,6 +146,18 @@ page { background: #e7dfd1; }
 }
 .season-guide-toggle:active { opacity: .68; }
 .guide-caret { flex: 0 0 auto; color: #663124; font-size: 52rpx; line-height: 1; }
+.season-guide-state {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 5rpx 13rpx;
+  border: 1rpx solid rgba(102, 49, 36, .34);
+  border-radius: 999rpx;
+  color: #663124;
+  font-size: 20rpx;
+  line-height: 1.2;
+  letter-spacing: 1rpx;
+}
+.season-guide-state.is-read { border-color: rgba(92, 73, 60, .2); color: #8b6b58; }
 /* 说明正文：不加底色、不拉伸字距，按页面对齐方式自然换行 */
 .season-guide-body {
   display: grid;
@@ -165,6 +179,20 @@ page { background: #e7dfd1; }
   line-height: 1.7;
   letter-spacing: 1rpx;
 }
+.season-guide-gate { display: grid; gap: 18rpx; margin-top: 16rpx; padding-top: 24rpx; border-top: 1rpx solid rgba(92, 73, 60, .18); }
+.season-guide-gate-note { color: #7b5a45; font-size: 22rpx; line-height: 1.65; }
+.season-guide-confirm {
+  display: flex;
+  min-height: 84rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4rpx;
+  background: #663124;
+  color: #fffaf4;
+  font-size: 27rpx;
+  letter-spacing: 1rpx;
+}
+.season-guide-confirm:active { opacity: .82; }
 
 /* 次要操作 */
 .season-secondary {

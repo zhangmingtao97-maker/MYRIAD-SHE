@@ -19,6 +19,7 @@ Page({
       const data = await request<PracticeContent>('/content/practice');
       if (generation !== this.requestGeneration) return;
       if (!isPracticeContent(data)) throw new Error('实践内容格式无效');
+      // 目录是否点亮只由实践目录自身的入口开关决定；商城总闸在小程序日常之物页单独判断。
       this.setData({ ...data, loading: false, error: '' });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
@@ -35,6 +36,11 @@ Page({
     // 后台可以新增 / 删除目录条目，每个条目用 target 指向要打开的页面；
     // 老数据没有 target 时回落到它自己的 key。
     const target = String((entry as { target?: string }).target || entry.key);
+    // 日常之物目录入口关闭或商城总闸关闭时，都进入落地页查看未开放状态。
+    if (target === 'daily-goods') {
+      wx.navigateTo({ url: '/pages/daily-objects/index' });
+      return;
+    }
     if (!entry.enabled) {
       wx.showToast({ title: '该实践尚未开放', icon: 'none' });
       return;
@@ -45,10 +51,6 @@ Page({
     }
     if (target === 'observation') {
       wx.navigateTo({ url: '/pages/observation/index' });
-      return;
-    }
-    if (target === 'daily-goods') {
-      wx.navigateTo({ url: '/pages/daily-objects/index' });
       return;
     }
   },

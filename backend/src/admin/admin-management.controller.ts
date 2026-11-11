@@ -410,8 +410,7 @@ export class AdminManagementController {
         values[key] = value.trim();
       }
     }
-    const storeEnabled = values.store_enabled;
-    if (storeEnabled !== undefined && request.user?.role !== 'super_admin') {
+    if (values.store_enabled !== undefined && request.user?.role !== 'super_admin') {
       throw new ForbiddenException('仅超级管理员可以修改商城开放状态');
     }
     await this.database.withTransaction(async (client) => {
@@ -424,42 +423,6 @@ export class AdminManagementController {
           on conflict (key) do update set value = excluded.value, updated_by = excluded.updated_by, updated_at = now()`, [key, JSON.stringify(value), request.user?.sub ?? null]);
       }
 
-      // 商城开放与实践目录的 daily-goods 入口是同一个业务状态。这里在同一事务内同步，
-      // 避免只改到一处后小程序仍显示未开放，或旧草稿发布后把状态覆盖回去。
-      if (typeof storeEnabled === 'boolean') {
-        await client.query(
-          `update content_practice_entries
-              set enabled = $1, updated_at = now()
-            where coalesce(target, key) = 'daily-goods'`,
-          [storeEnabled],
-        );
-        const draft = await client.query<{ content: unknown }>(
-          `select content from admin_content_drafts where content_key = 'practice' for update`,
-        );
-        const draftContent = draft.rows[0]?.content;
-        if (draftContent && typeof draftContent === 'object' && !Array.isArray(draftContent)) {
-          const record = draftContent as Record<string, unknown>;
-          const draftEntries = Array.isArray(record.entries) ? record.entries : null;
-          let changed = false;
-          const synchronizedEntries = draftEntries?.map((entry) => {
-            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
-            const item = entry as Record<string, unknown>;
-            if (item.target !== 'daily-goods' && item.key !== 'daily-goods') return entry;
-            changed = true;
-            return { ...item, enabled: storeEnabled };
-          });
-          if (draftEntries && synchronizedEntries && changed) {
-            // 保持草稿版本号不变，避免其他已打开的管理页面无谓地进入版本冲突。
-            await client.query(
-              `update admin_content_drafts
-                  set content = $1::jsonb, updated_by = $2, updated_at = now()
-                where content_key = 'practice'`,
-              [JSON.stringify({ ...record, entries: synchronizedEntries }), request.user?.sub ?? null],
-            );
-          }
-        }
-      }
-
       await this.audit.record({
         actorType: 'admin',
         actorId: request.user?.sub,
@@ -468,7 +431,6 @@ export class AdminManagementController {
         metadata: {
           previous: previousValues,
           next: values,
-          ...(typeof storeEnabled === 'boolean' ? { synchronizedPracticeEntry: 'daily-goods', synchronizedDraft: true } : {}),
         },
       }, client);
     });

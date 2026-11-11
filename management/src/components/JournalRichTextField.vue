@@ -7,12 +7,16 @@ const props = withDefaults(defineProps<{
   richText?: string;
   label: string;
   disabled?: boolean;
+  invalid?: boolean;
+  error?: string;
   minFontSize?: number;
   maxFontSize?: number;
 }>(), {
   modelValue: '',
   richText: '',
   disabled: false,
+  invalid: false,
+  error: '',
   minFontSize: 10,
   maxFontSize: 72,
 });
@@ -57,6 +61,8 @@ function updateRichText(value: string) {
       :model-value="editorHtml"
       :label="label"
       :disabled="disabled"
+      :invalid="invalid"
+      :error="error"
       :min-font-size="minFontSize"
       :max-font-size="maxFontSize"
       @update:model-value="updateRichText"

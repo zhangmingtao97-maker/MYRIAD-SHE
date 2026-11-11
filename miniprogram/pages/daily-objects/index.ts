@@ -29,6 +29,7 @@ Page({
     articleImageAlt: '人物日常图片',
     articleCaption: '',
     officialArticleUrl: '',
+    articleButtonLabel: '前往公众号阅读完整文章',
     loading: true,
     error: '',
     accessAvailable: false,
@@ -42,7 +43,7 @@ Page({
     void this.loadPreviewAccess();
   },
   onShow() {
-    if (!this.data.accessAvailable && !this.data.loading) void this.loadPreviewAccess();
+    if (!this.data.loading) void this.loadPreviewAccess();
   },
   onHide() {
     this.requestGeneration += 1;
@@ -65,11 +66,11 @@ Page({
       if (generation !== this.requestGeneration) return;
       if (!isDailyObjectsContent(shop)) throw new Error('日常之物内容格式无效');
       // 总闸开启且「日常之物」入口启用，才展示商品；否则只显示未开放落地页。
-      const entryEnabled = data.entries.some((entry) => entry.key === 'daily-goods' && entry.enabled);
+      const entryEnabled = data.entries.some((entry) => String(entry.target || entry.key) === 'daily-goods' && entry.enabled);
       const shopOpen = status.open === true && entryEnabled;
       const story = home.modules?.find((module) => module.type === 'story' && module.enabled);
-      const articleTitle = normalizedText(story?.title) || '她的日常，仍在继续。';
-      const articleText = articleExcerpt(story?.body) || '从具体的生活细节里，看见一个人如何慢慢回到自己的节奏。';
+      const articleTitle = normalizedText(shop.articleTitle) || normalizedText(story?.title) || '她的日常，仍在继续。';
+      const articleText = normalizedText(shop.articleExcerpt) || articleExcerpt(story?.body) || '从具体的生活细节里，看见一个人如何慢慢回到自己的节奏。';
       this.setData({
         loading: false,
         error: '',
@@ -79,10 +80,11 @@ Page({
         products: shopOpen ? shop.products.filter((product) => product.enabled) : [],
         articleTitle,
         articleExcerpt: articleText,
-        articleImageUrl: normalizedText(story?.imageUrl),
-        articleImageAlt: normalizedText(story?.altText) || '人物日常图片',
-        articleCaption: normalizedText(story?.captionRight) || normalizedText(story?.captionLeft),
-        officialArticleUrl: normalizedText(story?.officialArticleUrl),
+        articleImageUrl: normalizedText(shop.articleImageUrl) || normalizedText(shop.articleImage) || normalizedText(story?.imageUrl),
+        articleImageAlt: normalizedText(shop.articleImageAlt) || normalizedText(story?.altText) || '人物日常图片',
+        articleCaption: normalizedText(shop.articleCaption) || normalizedText(story?.captionRight) || normalizedText(story?.captionLeft),
+        officialArticleUrl: normalizedText(shop.officialArticleUrl) || normalizedText(story?.officialArticleUrl),
+        articleButtonLabel: normalizedText(shop.officialArticleButton) || '前往公众号阅读完整文章',
       });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;

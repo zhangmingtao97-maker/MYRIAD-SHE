@@ -5,7 +5,7 @@ import type { DeletionState, UserExport, UserSettings } from '../../utils/privac
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 import { clearCloudPreferenceCaches } from '../../utils/cloud-preference';
 import { cacheNotificationsEnabled, saveNotificationsEnabled, subscribeNotificationsEnabled } from '../../utils/notification-preference';
-import { cacheSeasonPaused, isSeasonPaused, preferencesWithSeasonPaused, saveSeasonPaused, seasonPreferencesPaused, subscribeSeasonPaused } from '../../utils/season-preference';
+import { cacheSeasonPaused, clearSeasonGuideRead, isSeasonPaused, preferencesWithSeasonPaused, saveSeasonPaused, seasonPreferencesPaused, subscribeSeasonPaused } from '../../utils/season-preference';
 
 const app = getApp<IAppOption>();
 
@@ -159,6 +159,7 @@ Page({
       wx.removeStorageSync('myriad_she_access_token_expires_at');
       wx.removeStorageSync('myriad_she_user_id');
       wx.removeStorageSync(discussionStorageKey);
+      clearSeasonGuideRead();
       app.globalData.accessToken = '';
       app.globalData.accessTokenExpiresAt = 0;
       app.globalData.userId = '';

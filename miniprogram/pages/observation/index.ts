@@ -4,7 +4,7 @@ import type { LifeCard, PracticeContent, PublishedIssue } from '../../utils/cont
 import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation, ObservationMethod } from '../../utils/observation';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
-import { cacheSeasonPaused, readSeasonPaused, saveSeasonPaused, subscribeSeasonPaused } from '../../utils/season-preference';
+import { cacheSeasonPaused, hasReadSeasonGuide, readSeasonPaused, saveSeasonPaused, subscribeSeasonPaused } from '../../utils/season-preference';
 
 const app = getApp<IAppOption>();
 
@@ -13,6 +13,7 @@ Page({
     statusBarHeight: 0,
     navTitle: '此刻观察',
     seasonGuideOpen: false,
+    seasonGuideRead: false,
     seasonPaused: false,
     seasonSteps: [{ key: 'card', label: '底色' }, { key: 'experience', label: '此刻' }, { key: 'season', label: '选择' }, { key: 'sevenDayAction', label: '行动' }],
     lifeCard: null as (LifeCard & { suitSymbol: string; sourceParagraphs: string[] }) | null,
@@ -76,7 +77,7 @@ Page({
   },
   onLoad(options: Record<string, string>) {
     enableShareMenu();
-    this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
+    this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, seasonGuideRead: hasReadSeasonGuide() });
     this.seasonPausedUnsubscribe = subscribeSeasonPaused((paused) => {
       if (paused !== this.data.seasonPaused) this.setData({ seasonPaused: paused });
     });
@@ -96,6 +97,10 @@ Page({
   applyEntryMethod(options: Record<string, string>) {
     const method = options.method;
     if (method !== 'season' && method !== 'reality') return;
+    if (method === 'season' && !hasReadSeasonGuide()) {
+      wx.redirectTo({ url: '/pages/season-intro/index' });
+      return;
+    }
     this.startMethod(method as ObservationMethod);
     if (method !== 'season') return;
     const month = Number(options.birthMonth);
@@ -163,6 +168,8 @@ Page({
   },
   onShow() {
     this.syncSeasonPaused();
+    const seasonGuideRead = hasReadSeasonGuide();
+    if (seasonGuideRead !== this.data.seasonGuideRead) this.setData({ seasonGuideRead });
     if (app.globalData.accountDeleted) {
       this.showAccountDeleted();
       return;

@@ -1,6 +1,6 @@
 import { apiErrorMessage, request } from '../../utils/request';
-import { isPracticeContent } from '../../utils/content';
-import type { PracticeContent } from '../../utils/content';
+import { isPracticeContent, isStoreStatus } from '../../utils/content';
+import type { PracticeContent, StoreStatus } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 import { plainTextFromHtml } from '../../utils/rich-text';
 
@@ -28,7 +28,7 @@ Page({
     void this.loadBagContent();
   },
   onShow() {
-    if (!this.data.accessAvailable && !this.data.loading) void this.loadBagContent();
+    if (!this.data.loading) void this.loadBagContent();
   },
   onHide() {
     this.requestGeneration += 1;
@@ -38,10 +38,14 @@ Page({
     const generation = ++this.requestGeneration;
     this.setData({ loading: true, error: '' });
     try {
-      const content = await request<PracticeContent>('/content/practice');
+      const [content, status] = await Promise.all([
+        request<PracticeContent>('/content/practice'),
+        request<StoreStatus>('/content/store-status'),
+      ]);
       if (generation !== this.requestGeneration) return;
       if (!isPracticeContent(content)) throw new Error('购物袋页面内容格式无效');
-      if (!content.entries.some((entry) => entry.key === 'daily-goods' && entry.enabled)) throw new Error('日常之物尚未开放');
+      if (!isStoreStatus(status)) throw new Error('商城状态格式无效');
+      if (!status.open || !content.entries.some((entry) => String(entry.target || entry.key) === 'daily-goods' && entry.enabled)) throw new Error('日常之物尚未开放');
       this.setData({ loading: false, error: '', accessAvailable: true });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;

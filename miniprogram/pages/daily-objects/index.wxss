@@ -51,7 +51,7 @@ page { height: 100vh; overflow: hidden; background: #e7dfd1; color: #5c493c; fon
 .landing-brand { color: #663124; }
 .landing-logo { display: block; width: 222rpx; height: 178rpx; margin-left: -8rpx; }
 .landing-meta { margin-top: 86rpx; color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 22rpx; line-height: 1.5; letter-spacing: .06em; }
-.landing-title { margin-top: 68rpx; color: #5c493c; font-size: 58rpx; font-weight: 600; line-height: 1.45; }
+.landing-title { margin-top: 68rpx; color: #5c493c; font-size: 58rpx; font-weight: 600; line-height: 1.45; white-space: pre-line; }
 .landing-intro { margin-top: 38rpx; color: #5c493c; font-size: 28rpx; font-weight: 600; line-height: 1.8; }
 .landing-status { margin-top: 42rpx; color: #8b6b58; font-size: 22rpx; line-height: 1.6; }
 .landing-daily { margin: 68rpx -62rpx 0; border-top: 1rpx solid rgba(92, 73, 60, .28); }

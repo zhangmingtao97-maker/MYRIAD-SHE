@@ -46,7 +46,9 @@ function harness() {
       return { rows: [] };
     }
     if (sql.includes('select id from users where id = $1 for share')) return { rows: [{ id: String(values[0]) }] };
-    if (sql.includes('select id from discussion_user_restrictions')) return { rows: state.restrictionActive ? [{ id: 'restriction-id' }] : [] };
+    if (sql.includes('from discussion_user_restrictions') && sql.includes('starts_at <= now()')) {
+      return { rows: state.restrictionActive ? [{ id: 'restriction-id', reason: '限制发言', startsAt: new Date(), endsAt: null }] : [] };
+    }
     if (sql.includes('from content_issues issue')) return values[0] === 'issue-02'
       ? { rows: [{ issueCode: 'issue-02', issueLabel: 'ISSUE 02', discussion: defaultDiscussionContent() }] }
       : { rows: [] };

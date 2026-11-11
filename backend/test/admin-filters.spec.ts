@@ -288,24 +288,13 @@ test('database pagination counts reject invalid or unsafe values', () => {
   assert.throws(() => parseDatabaseCount('9007199254740992'));
 });
 
-test('store setting updates the practice entry and draft in one transaction', async () => {
+test('store setting no longer updates the practice entry or draft', async () => {
   const statements: Array<{ sql: string; values: unknown[] }> = [];
-  const draft = {
-    editVersion: 4,
-    title: '实践',
-    entries: [
-      { key: 'observation', enabled: true },
-      { key: 'daily-goods', enabled: false },
-    ],
-  };
   const client = {
     query: async (sql: string, values: unknown[] = []) => {
       statements.push({ sql, values });
       if (sql.includes('select key, value from system_settings')) {
         return { rows: [{ key: 'store_enabled', value: false }] };
-      }
-      if (sql.includes('select content from admin_content_drafts')) {
-        return { rows: [{ content: draft }] };
       }
       return { rows: [] };
     },
@@ -332,13 +321,9 @@ test('store setting updates the practice entry and draft in one transaction', as
   );
 
   assert.equal(result.store_enabled.value, true);
-  const entryUpdate = statements.find(({ sql }) => sql.includes('update content_practice_entries'));
-  assert.deepEqual(entryUpdate?.values, [true]);
-  const draftUpdate = statements.find(({ sql }) => sql.includes('update admin_content_drafts'));
-  assert.ok(draftUpdate);
-  const synchronizedDraft = JSON.parse(String(draftUpdate.values[0])) as { editVersion: number; entries: Array<{ key: string; enabled: boolean }> };
-  assert.equal(synchronizedDraft.editVersion, 4);
-  assert.equal(synchronizedDraft.entries.find((entry) => entry.key === 'daily-goods')?.enabled, true);
+  assert.equal(statements.some(({ sql }) => sql.includes('insert into system_settings')), true);
+  assert.equal(statements.some(({ sql }) => sql.includes('update content_practice_entries')), false);
+  assert.equal(statements.some(({ sql }) => sql.includes('admin_content_drafts')), false);
   assert.deepEqual(auditActions, ['system.settings.updated']);
 });
 
