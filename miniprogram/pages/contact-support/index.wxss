@@ -6,9 +6,26 @@
 .support-intro { margin-top: 22rpx; color: #5c493c; font-size: 25rpx; line-height: 1.8; }
 .support-section { margin-top: 52rpx; padding-top: 54rpx; border-top: 1rpx solid rgba(92, 73, 60, .28); }
 .support-heading { color: #5c493c; font-size: 36rpx; font-weight: 600; line-height: 1.4; }
-.support-copy { margin-top: 42rpx; color: #5c493c; font-size: 24rpx; line-height: 1.9; }
-.support-button { position: relative; display: flex; width: 100%; height: 88rpx; align-items: center; justify-content: center; box-sizing: border-box; font-size: 24rpx; }
-.support-button-primary { margin-top: 48rpx; background: #663124; color: #f5f0e8; font-weight: 600; }
+.support-copy { margin-top: 30rpx; color: #5c493c; font-size: 24rpx; line-height: 1.9; }
+.support-state { display: flex; min-height: 220rpx; flex-direction: column; justify-content: center; gap: 18rpx; margin-top: 46rpx; padding: 28rpx 30rpx; border: 1rpx solid rgba(92, 73, 60, .22); color: #8b6b58; font-size: 24rpx; line-height: 1.8; }
+.support-state-error { color: #8c4035; }
+.support-inline-action { display: inline-flex; min-height: 76rpx; align-items: center; align-self: flex-start; border-bottom: 1rpx solid rgba(102, 49, 36, .5); color: #663124; font-size: 23rpx; font-weight: 600; line-height: 1.5; }
+.support-inline-action-muted { border-bottom-color: rgba(92, 73, 60, .28); color: #8b6b58; }
+.support-contact-card { margin-top: 30rpx; padding: 30rpx 30rpx 0; border: 1rpx solid rgba(92, 73, 60, .28); background: rgba(245, 240, 232, .48); }
+.support-contact-card-appeal { border-color: rgba(102, 49, 36, .38); background: rgba(102, 49, 36, .055); }
+.support-contact-label { display: block; color: #8b6b58; font-size: 20rpx; font-weight: 600; line-height: 1.5; letter-spacing: .08em; }
+.support-contact-value { display: block; margin-top: 14rpx; color: #4a3f38; font-size: 28rpx; font-weight: 600; line-height: 1.75; word-break: break-all; }
+.support-copy-action { display: flex; min-height: 84rpx; align-items: center; justify-content: space-between; margin-top: 18rpx; border-top: 1rpx solid rgba(92, 73, 60, .18); color: #663124; font-size: 23rpx; font-weight: 600; line-height: 1.5; }
+.support-copy-action text { font-family: Georgia, serif; font-size: 28rpx; }
+.support-empty { margin-top: 30rpx; padding: 30rpx; border-left: 5rpx solid rgba(102, 49, 36, .56); background: rgba(102, 49, 36, .055); }
+.support-empty-title { display: block; color: #4a3f38; font-size: 25rpx; font-weight: 600; line-height: 1.7; }
+.support-empty-copy { display: block; margin-top: 10rpx; color: #5c493c; font-size: 23rpx; line-height: 1.85; }
+.support-note { margin-top: 22rpx; color: #8b6b58; font-size: 21rpx; line-height: 1.8; }
+.support-service-section { margin-top: 64rpx; }
+.support-button { position: relative; display: flex; width: 100%; height: 92rpx; align-items: center; justify-content: center; padding: 0; border-radius: 0; box-sizing: border-box; font-size: 24rpx; line-height: normal; }
+.support-button::after { border: 0; }
+.support-button-primary { margin-top: 40rpx; background: #663124; color: #f5f0e8; font-weight: 600; }
 .support-button-primary text { position: absolute; right: 28rpx; font-family: Georgia, serif; font-size: 30rpx; }
-.support-button-secondary { margin-top: 20rpx; border: 1rpx solid rgba(92, 73, 60, .35); color: #5c493c; }
+.support-footer-actions { display: flex; align-items: center; justify-content: space-between; gap: 28rpx; margin-top: 54rpx; padding-top: 24rpx; border-top: 1rpx solid rgba(92, 73, 60, .18); }
+.support-footer-actions .support-inline-action { align-self: auto; }
 @media (max-width: 360px) { .support-content { padding-right: 44rpx; padding-left: 44rpx; } }

@@ -9,13 +9,48 @@
     <view class="support-content">
       <view class="support-eyebrow">A LITTLE SUPPORT</view>
       <view class="support-title">需要什么帮助？</view>
-      <view class="support-intro">关于物品、配送或售后，可以从这里与品牌联系。</view>
+      <view class="support-intro">关于物品、配送、售后或一起谈谈使用问题，可以在这里联系品牌。编辑团队会把可用的沟通渠道集中展示在这里。</view>
 
-      <view class="support-section">
-        <view class="support-heading">联系支持</view>
-        <view class="support-copy">正式客服渠道与服务时段待确认。上线后，这里会打开品牌的客服窗口。描述遇到的情况，并附上商品名称或订单编号，方便继续沟通。</view>
-        <view class="support-button support-button-primary" role="button" aria-label="联系支持" tabindex="0" bindtap="handleContact">联系支持<text>→</text></view>
-        <view class="support-button support-button-secondary" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">返回</view>
+      <view wx:if="{{loading}}" class="support-state" role="status" aria-live="polite">正在读取客服联系方式…</view>
+      <view wx:elif="{{error}}" class="support-state support-state-error" role="alert">
+        <text>{{error}}</text>
+        <view class="support-inline-action" role="button" aria-label="重新读取联系方式" tabindex="0" bindtap="loadContacts">重新读取</view>
+      </view>
+      <block wx:else>
+        <view class="support-section">
+          <view class="support-heading">客服联系方式</view>
+          <view wx:if="{{supportContact}}" class="support-contact-card">
+            <text class="support-contact-label">当前可用渠道</text>
+            <text class="support-contact-value" selectable>{{supportContact}}</text>
+            <view class="support-copy-action" role="button" aria-label="复制客服联系方式" tabindex="0" data-contact="{{supportContact}}" bindtap="copyContact">复制联系方式 <text>→</text></view>
+          </view>
+          <view wx:else class="support-empty">
+            <text class="support-empty-title">客服联系方式暂未配置</text>
+            <text class="support-empty-copy">可直接点击下方「联系微信客服」留言，或稍后再回来查看。</text>
+          </view>
+          <view wx:if="{{supportContact && appealContact === supportContact}}" class="support-note">一起谈谈申诉也使用这个渠道。申诉时请说明账号昵称，并附上停用页面截图。</view>
+        </view>
+
+        <view wx:if="{{appealContact && appealContact !== supportContact}}" class="support-section">
+          <view class="support-heading">一起谈谈申诉</view>
+          <view class="support-contact-card support-contact-card-appeal">
+            <text class="support-contact-label">申诉专用渠道</text>
+            <text class="support-contact-value" selectable>{{appealContact}}</text>
+            <view class="support-copy-action" role="button" aria-label="复制申诉联系方式" tabindex="0" data-contact="{{appealContact}}" bindtap="copyContact">复制申诉渠道 <text>→</text></view>
+          </view>
+          <view class="support-note">申诉时请说明账号昵称、停用原因，并附上停用页面截图，方便编辑团队核对。</view>
+        </view>
+      </block>
+
+      <view class="support-section support-service-section">
+        <view class="support-heading">联系微信客服</view>
+        <view class="support-copy">如果上面的渠道暂未配置，或需要进一步人工协助，可以直接进入小程序客服会话。描述遇到的情况，并附上订单编号或相关截图，方便继续沟通。</view>
+        <button class="support-button support-button-primary" open-type="contact" aria-label="联系微信客服">联系微信客服<text>→</text></button>
+      </view>
+
+      <view class="support-footer-actions">
+        <view class="support-inline-action" role="button" aria-label="重新读取联系方式" tabindex="0" bindtap="loadContacts">刷新联系方式</view>
+        <view class="support-inline-action support-inline-action-muted" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">返回</view>
       </view>
     </view>
   </scroll-view>

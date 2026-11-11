@@ -5,6 +5,7 @@
     <view class="discussion-control discussion-more" style="top: {{statusBarHeight}}px" role="button" aria-label="更多讨论选项" tabindex="0" bindtap="handleMore">···</view>
   </view>
   <view wx:if="{{loading}}" class="discussion-state" role="status" aria-live="polite">正在读取本期讨论…</view>
+  <discussion-restricted id="discussion-restricted" wx:elif="{{restricted}}" reason="{{restrictionReason}}" recovery-text="{{restrictionMessage}}" appeal-contact="{{appealContact}}" support-contact="{{supportContact}}" status-bar-height="{{statusBarHeight}}" />
   <view wx:elif="{{error}}" class="discussion-state discussion-error" role="alert"><text>{{error}}</text><view class="discussion-retry" role="button" aria-label="重新读取本期讨论" tabindex="0" bindtap="load">重新读取</view></view>
   <block wx:elif="{{content}}">
     <view class="discussion-intro">

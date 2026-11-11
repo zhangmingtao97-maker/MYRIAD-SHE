@@ -24,13 +24,35 @@ try {
   const permissions = ['journal', 'practice', 'pages', 'media', 'contributions', 'discussion-reports', 'observations', 'privacy', 'members', 'audit', 'life-cards', 'life-card-views', 'settings'];
   const copy = (richText) => ({ richText, fontSize: 14, color: '#5c493c' });
   const copies = (keys) => Object.fromEntries(keys.split(' ').map((key) => [key, copy('让日常成为新的开始')]));
+  const realityStage = (label, align = 'left', spacing = 'standard') => ({
+    stageLabel: copy(label),
+    title: copy('这一刻，真实发生了什么？'),
+    description: copy('只写事实也可以，不急着解释。'),
+    inputLabel: copy('写下这一刻'),
+    placeholder: copy('把最接近此刻的感受写下来……'),
+    nextLabel: copy('继续'),
+    previousLabel: copy('上一步'),
+    footer: copy('草稿仅自己可见；完成后仍可修改或删除。'),
+    align,
+    spacing,
+  });
   const practice = {
     editVersion: 1, title: '实践', titleRichText: '实践', titleFontSize: 12, titleColor: '#8b6b58',
     intro: '从此刻开始，和日常相遇', introRichText: '从此刻开始，和日常相遇', introFontSize: 32, introColor: '#40362f',
     metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58',
-    observationCopy: copies('metaLeft metaRight introTitle introDescription realityContext realityTitle realityDescription realityAction seasonContext seasonTitle seasonDescription seasonGuide seasonAction privacyLabel privacyCopy'),
+    observationCopy: {
+      ...copies('metaLeft metaRight introTitle introDescription realityContext realityTitle realityDescription realityAction seasonContext seasonTitle seasonDescription seasonGuide seasonAction privacyLabel privacyCopy'),
+      realityStages: {
+        situation: realityStage('底色'),
+        body: realityStage('此刻', 'center', 'roomy'),
+        need: realityStage('选择'),
+        nextAction: realityStage('行动', 'right', 'compact'),
+      },
+    },
     sharedPracticeCopy: copies('topbarTitle metaLeft metaRight heroTitle heroIntro onlineNumber onlineContext onlineIssueLabel onlineIssueTheme onlineQuestion onlineCopy onlineAction offlineNumber offlineContext offlineTitle offlineCopy noticeLabel noticeCode rule1Number rule1Title rule1Copy rule2Number rule2Title rule2Copy rule3Number rule3Title rule3Copy rule4Number rule4Title rule4Copy nextAction'),
+    footerCopy: { brand: copy('MYRIAD SHE'), line1: copy('看见真实经验'), label: copy('此刻归安'), line2: copy('让一件小事发生') },
     entries: ['observation', 'shared-practice', 'daily-goods'].map((key, index) => ({ key, target: key, title: ['此刻观察', '共同实践', '日常之物'][index], description: '从生活的小事开始，寻找自己的节奏。', contextRichText: '一份日常练习', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: ['此刻观察', '共同实践', '日常之物'][index], titleFontSize: 22, titleColor: '#40362f', descriptionRichText: '从生活的小事开始，寻找自己的节奏。', descriptionFontSize: 14, descriptionColor: '#5c493c', enabled: true })),
+    offlineActivitiesPublished: false,
   };
   const daily = { editVersion: 1, brandName: 'MYRIAD SHE', brandSubtitle: '让日常发生', bagLabel: '购物袋', bagCount: '0', eyebrow: 'DAILY OBJECTS', title: '日常之物', intro: '留在身边的简单物件', previewNote: '预览草稿', supportLabel: '联系支持', landingTitle: '物不是答案。\n它只在日常里，\n支持一个动作发生。', landingIntro: '从具体的使用场景出发。', landingStatus: '正在研究 · 尚未开放', herDaysTitle: '她的日常', herDaysEnglish: 'HER DAYS', articleLabel: '日常节选', articleTitle: '在窗边坐一会儿', articleExcerpt: '今天把杯子放回桌面，也把自己放回当下。', articleImage: '', articleImageAlt: '窗边的人物日常', articleCaption: '日常里的一个安静片刻', officialArticleUrl: 'https://mp.weixin.qq.com/s/example', officialArticleButton: '阅读完整文章', everydayObjectsTitle: '日常好物探索', everydayObjectsEnglish: 'EVERYDAY OBJECTS', everydayObjectsIntro: '基于观察到的人物日常，对日常好物的思考及探索。', products: [{ id: 'notebook', name: '随身记录本', english: 'EVERYDAY NOTES', image: '', price: '68', priceLabel: 'CNY', description: '把今天值得记下的小事留在纸上。', optionDetails: '米白 / A5', dailyUseDetails: '适合日常书写', deliveryDetails: '三个工作日内发出', enabled: true }] };
   const mine = { editVersion: 1, ...Object.fromEntries('title intro observationHeading emptyTitle emptyIntro startButton discussionHeading discussionCount discussionEmptyAction discussionIntro practiceHeading practiceCount practiceEmptyTitle practiceIntro privacyHeading privacyAction'.split(' ').map((key) => [key, '我的日常与观察'])) };
@@ -199,6 +221,7 @@ try {
   const errors = [];
   const requests = [];
   let failDaily = false;
+  let practiceCopyOfflinePublished = false;
   browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
   async function prepare(page, role = 'super_admin', modules = permissions) {
     page.on('pageerror', (error) => errors.push(error.message));
@@ -262,7 +285,20 @@ try {
       if (path === '/content/mine/manage') return send(mine);
       if (path === '/content/about/manage') return send(about);
       if (path === '/content/discussion/manage') return send({ draftContent: discussion, editVersion: 1, publishedVersion: 0, publishedAt: null, issueStatus: 'draft' });
-      if (path === '/content/practice-copy/manage') return send({ copy: { onlineParagraphs: ['和自己的节奏相遇'], rules: [] }, source: 'default' });
+      if (path === '/content/practice-copy/manage' && route.request().method() === 'PUT') {
+        practiceCopyOfflinePublished = body?.offlineActivitiesPublished === true;
+        return send({ saved: true, issueCode: body?.issueCode, offlineActivitiesPublished: practiceCopyOfflinePublished, copy: body?.copy });
+      }
+      if (path === '/content/practice-copy/manage') {
+        return send({
+          copy: {
+            onlineParagraphs: [copy('和自己的节奏相遇')],
+            rules: [{ number: copy('01'), title: copy('报名后按时参加'), copy: copy('请留意活动开始时间与集合地点。') }],
+          },
+          source: 'issue',
+          offlineActivitiesPublished: practiceCopyOfflinePublished,
+        });
+      }
       if (/^\/content\/legal-documents\/[^/]+\/manage$/.test(path)) return send({ ...legal, title: copy(path.includes('privacy-policy') ? '隐私政策' : '用户协议') });
       if (path.startsWith('/content/privacy-revisions/')) return send(path.endsWith('about-page') ? [{ version: 1, publishedAt: timestamp, publishedBy: '测试编辑', content: about }] : [{ version: 1, publishedAt: timestamp, publishedBy: '测试编辑', content: legal }]);
       if (path === '/admin/observations/lifecycle') return send({ retentionDays: 90, draftCount: 12, savedCount: 328, realityCount: 200, seasonCount: 140, wellFormedEnvelopeCount: 340, legacyPlaintextCount: 0, invalidEnvelopeCount: 0, staleDraftCount: 2, oldestDraftAt: timestamp });
@@ -405,6 +441,28 @@ try {
     await noOverflow(`desktop ${label}`);
     if (['首页策展', '实践页面', '会员列表', '操作记录', '系统设置', '模块状态机', '员工与权限'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 首页策展: 'editor', 实践页面: 'practice', 会员列表: 'members', 操作记录: 'audit', 系统设置: 'settings', 模块状态机: 'module-states', 员工与权限: 'employees' })[label]}-desktop.png`), fullPage: true });
   }
+  await navigate('实践页面');
+  const practiceFooterEditor = page.locator('#practice-content .practice-footer-editor');
+  await practiceFooterEditor.waitFor();
+  assert.equal(await practiceFooterEditor.locator('.rich-text-field').count(), 4, 'practice footer should expose four editable rich-text fields');
+  for (const label of ['页尾品牌', '页尾主文案一', '页尾小标题', '页尾主文案二']) {
+    assert.equal(await practiceFooterEditor.locator('.rich-text-label').filter({ hasText: label }).count(), 1, `practice footer field should exist: ${label}`);
+  }
+  const practiceFooterPreview = page.locator('#practice-content .practice-preview-signature[data-preview-key="footer"]');
+  await practiceFooterPreview.click();
+  await page.waitForFunction(() => document.querySelector('#practice-content .practice-footer-editor')?.classList.contains('is-locating'));
+  await navigate('共同实践');
+  await page.getByRole('tab', { name: '详情页', exact: true }).click();
+  await page.getByLabel('选择期刊').selectOption('issue-03');
+  const offlinePublishToggle = page.getByLabel(/^线下活动已发布/);
+  await offlinePublishToggle.waitFor();
+  assert.equal(await offlinePublishToggle.isChecked(), false, 'offline activity copy should be unpublished by default');
+  const sharedPreview = page.locator('#practice-shared-content .preview-rail');
+  assert.equal(await sharedPreview.getByText('线下活动说明', { exact: true }).count(), 0, 'unpublished offline activity copy should stay hidden in the preview');
+  await offlinePublishToggle.check();
+  await sharedPreview.getByText('线下活动说明', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '保存该期文案', exact: true }).click();
+  await page.getByText('已保存该期文案与线下活动发布状态').waitFor();
   await navigate('模块状态机');
   const stateMachinePage = page.locator('#module-state-machine');
   await stateMachinePage.locator('.module-state-table tbody tr').first().waitFor();
@@ -802,16 +860,45 @@ try {
   await refreshChoice(true);
   assert.equal(await cardTitle.inputValue(), cards[0].title);
   await navigate('此刻观察');
-  const observationInput = page.locator('#practice-observation-content textarea').first();
-  const observationOriginal = await observationInput.inputValue();
+  const realityTab = page.getByRole('tab', { name: '现实处境四页', exact: true });
+  await realityTab.click();
+  const stageTabs = page.getByRole('tablist', { name: '现实处境四页阶段', exact: true });
+  await stageTabs.waitFor();
+  assert.equal(await stageTabs.locator('button').count(), 4, 'reality editor should expose all four stages');
+  for (let index = 0; index < 4; index += 1) {
+    await stageTabs.locator('button').nth(index).click();
+    assert.equal(await stageTabs.locator('button').nth(index).getAttribute('aria-selected'), 'true');
+    const stageKeys = ['situation', 'body', 'need', 'nextAction'];
+    assert.equal(await page.locator(`#practice-observation-content [data-reality-field^="reality:${stageKeys[index]}:"]`).count(), 8, `reality stage ${stageKeys[index]} should expose eight editors`);
+  }
+  await stageTabs.locator('button').nth(1).click();
+  const realityControls = page.locator('#practice-observation-content .reality-stage-controls select');
+  assert.equal(await realityControls.nth(0).inputValue(), 'center');
+  assert.equal(await realityControls.nth(1).inputValue(), 'roomy');
+  await stageTabs.locator('button').nth(2).click();
+  await page.locator('#practice-observation-content [data-preview-key="reality:need:title"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-reality-field="reality:need:title"]')?.classList.contains('is-locating'));
+  const needTitle = page.locator('[data-reality-field="reality:need:title"] .rich-text-canvas');
+  await needTitle.fill('');
+  await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
+  const realityValidationDialog = page.getByRole('alertdialog', { name: '操作未完成', exact: true });
+  await realityValidationDialog.waitFor();
+  assert.equal((await realityValidationDialog.locator('.admin-error-copy').innerText()).trim(), '现实处境“选择”阶段缺少“标题”');
+  await realityValidationDialog.getByRole('button', { name: '知道了', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-reality-field="reality:need:title"] .rich-text-canvas'));
+  await needTitle.fill('此刻，你愿意把选择权放在哪里？');
+  await page.getByRole('tab', { name: '基础文案', exact: true }).click();
+  const observationInput = page.locator('#practice-observation-content [data-copy-field="metaLeft"] .rich-text-canvas');
+  await observationInput.waitFor();
+  const observationOriginal = await observationInput.innerText();
   await observationInput.fill('保留观察文案草稿');
   await navigate('会员列表');
   await navigate('此刻观察');
-  assert.equal(await observationInput.inputValue(), '保留观察文案草稿');
+  assert.equal(await observationInput.innerText(), '保留观察文案草稿');
   await refreshChoice(false);
-  assert.equal(await observationInput.inputValue(), '保留观察文案草稿');
+  assert.equal(await observationInput.innerText(), '保留观察文案草稿');
   await refreshChoice(true);
-  assert.equal(await observationInput.inputValue(), observationOriginal);
+  assert.equal(await observationInput.innerText(), observationOriginal);
   await navigate('日常之物');
   const dailyInput = page.locator('#practice-daily-objects-content').getByLabel('页面标题', { exact: true });
   await dailyInput.fill('保留物品草稿');
@@ -897,6 +984,7 @@ try {
     requests.every((request) => request.method === 'GET'
       || (request.method === 'POST' && /^\/admin\/notifications\/(read-all|[0-9a-f-]{36}\/read)$/.test(request.path))
       || (request.method === 'POST' && request.path === '/admin/discussion-restrictions')
+      || (request.method === 'PUT' && request.path === '/content/practice-copy/manage')
       || (request.method === 'PATCH' && request.path === '/content/issues/issue-1')
       || (request.method === 'PATCH' && /^\/content\/issues\/(issue-1|issue-2)\/lifecycle$/.test(request.path))
       || (request.method === 'DELETE' && request.path === '/content/issues/issue-1')),

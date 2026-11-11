@@ -17,6 +17,7 @@ import ImageCropDialog from './components/ImageCropDialog.vue';
 import AboutPagePreview from './components/AboutPagePreview.vue';
 import MinePagePreview from './components/MinePagePreview.vue';
 import CopyPagePreview from './components/CopyPagePreview.vue';
+import RealityStagesPreview from './components/RealityStagesPreview.vue';
 import AudioPagePreview from './components/AudioPagePreview.vue';
 import StoryDetailPreview from './components/StoryDetailPreview.vue';
 import PracticeEntryEditor from './components/PracticeEntryEditor.vue';
@@ -89,8 +90,34 @@ type PracticeEntry = {
 };
 type ObservationCopyKey = 'metaLeft' | 'metaRight' | 'introTitle' | 'introDescription' | 'realityContext' | 'realityTitle' | 'realityDescription' | 'realityAction' | 'seasonContext' | 'seasonTitle' | 'seasonDescription' | 'seasonGuide' | 'seasonAction' | 'privacyLabel' | 'privacyCopy';
 type ObservationCopyItem = { richText: string; fontSize: number; color: string };
+type RealityStageKey = 'situation' | 'body' | 'need' | 'nextAction';
+type RealityStageCopyKey = 'stageLabel' | 'title' | 'description' | 'inputLabel' | 'placeholder' | 'nextLabel' | 'previousLabel' | 'footer';
+type RealityStageCopy = Record<RealityStageCopyKey, ObservationCopyItem> & {
+  align: 'left' | 'center' | 'right';
+  spacing: 'compact' | 'standard' | 'roomy';
+};
+type PracticeObservationCopy = Record<ObservationCopyKey, ObservationCopyItem> & {
+  realityStages: Record<RealityStageKey, RealityStageCopy>;
+};
+const realityStageDefinitions: Array<{ key: RealityStageKey; label: string }> = [
+  { key: 'situation', label: '底色' },
+  { key: 'body', label: '此刻' },
+  { key: 'need', label: '选择' },
+  { key: 'nextAction', label: '行动' },
+];
+const realityStageCopyFields: Array<{ key: RealityStageCopyKey; label: string }> = [
+  { key: 'stageLabel', label: '阶段名' },
+  { key: 'title', label: '标题' },
+  { key: 'description', label: '说明' },
+  { key: 'inputLabel', label: '输入提示' },
+  { key: 'placeholder', label: '占位文案' },
+  { key: 'nextLabel', label: '下一步按钮' },
+  { key: 'previousLabel', label: '上一步按钮' },
+  { key: 'footer', label: '底部说明' },
+];
 type SharedPracticeCopyKey = 'topbarTitle' | 'metaLeft' | 'metaRight' | 'heroTitle' | 'heroIntro' | 'onlineNumber' | 'onlineContext' | 'onlineIssueLabel' | 'onlineIssueTheme' | 'onlineQuestion' | 'onlineCopy' | 'onlineAction' | 'offlineNumber' | 'offlineContext' | 'offlineTitle' | 'offlineCopy' | 'noticeLabel' | 'noticeCode' | 'rule1Number' | 'rule1Title' | 'rule1Copy' | 'rule2Number' | 'rule2Title' | 'rule2Copy' | 'rule3Number' | 'rule3Title' | 'rule3Copy' | 'rule4Number' | 'rule4Title' | 'rule4Copy' | 'nextAction';
-type PracticeContent = { editVersion: number; draft?: boolean; title: string; titleRichText: string; titleFontSize: number; titleColor: string; intro: string; introRichText: string; introFontSize: number; introColor: string; metaLeftRichText: string; metaLeftFontSize: number; metaLeftColor: string; metaRightRichText: string; metaRightFontSize: number; metaRightColor: string; observationCopy: Record<ObservationCopyKey, ObservationCopyItem>; sharedPracticeCopy: Record<SharedPracticeCopyKey, ObservationCopyItem>; entries: PracticeEntry[] };
+type PracticeFooterCopyKey = 'brand' | 'line1' | 'label' | 'line2';
+type PracticeContent = { editVersion: number; draft?: boolean; title: string; titleRichText: string; titleFontSize: number; titleColor: string; intro: string; introRichText: string; introFontSize: number; introColor: string; metaLeftRichText: string; metaLeftFontSize: number; metaLeftColor: string; metaRightRichText: string; metaRightFontSize: number; metaRightColor: string; observationCopy: PracticeObservationCopy; sharedPracticeCopy: Record<SharedPracticeCopyKey, ObservationCopyItem>; footerCopy: Record<PracticeFooterCopyKey, ObservationCopyItem>; entries: PracticeEntry[] };
 const practiceContent = ref<PracticeContent | null>(null);
 type PrivacyCopyItem = { richText: string; fontSize: number; color: string };
 type AboutPageContent = { editVersion: number; brandIntro: string; contentSources: string; contactInfo: string };
@@ -444,6 +471,12 @@ const practiceCopyLoading = ref(false);
 const practiceCopySaving = ref(false);
 const practiceCopyError = ref('');
 const practiceCopyMessage = ref('');
+const practiceCopyOfflinePublished = ref(false);
+const visibleSharedPracticeCopyGroups = computed(() => (
+  practiceCopyOfflinePublished.value
+    ? sharedPracticeCopyGroups
+    : sharedPracticeCopyGroups.filter((group) => group.title !== '线下活动说明')
+));
 const practiceCopyParagraphs = ref<CopyItem[]>([]);
 const practiceCopyRules = ref<Array<{ number: CopyItem; title: CopyItem; copy: CopyItem }>>([]);
 
@@ -455,11 +488,13 @@ async function loadPracticeCopy() {
   practiceCopyLoading.value = true;
   practiceCopyError.value = '';
   practiceCopyMessage.value = '';
+  practiceCopyOfflinePublished.value = false;
   try {
     const response = await apiFetch(`${apiBase}/content/practice-copy/manage?issueCode=${encodeURIComponent(code)}`, { headers: adminHeaders() });
     if (!response.ok) throw new Error(await responseMessage(response, '无法读取该期文案'));
     const result = await response.json();
     practiceCopySource.value = result.source === 'issue' ? 'issue' : 'global';
+    practiceCopyOfflinePublished.value = result.offlineActivitiesPublished === true;
     practiceCopyParagraphs.value = Array.isArray(result.copy?.onlineParagraphs) ? result.copy.onlineParagraphs : [];
     practiceCopyRules.value = Array.isArray(result.copy?.rules) ? result.copy.rules : [];
   } catch (caught) {
@@ -482,6 +517,7 @@ async function savePracticeCopy() {
       headers: adminHeaders(true),
       body: JSON.stringify({
         issueCode: code,
+        offlineActivitiesPublished: practiceCopyOfflinePublished.value,
         copy: {
           onlineParagraphs: practiceCopyParagraphs.value,
           rules: practiceCopyRules.value,
@@ -489,8 +525,9 @@ async function savePracticeCopy() {
       }),
     });
     if (!response.ok) throw new Error(await responseMessage(response, '保存失败'));
-    practiceCopySource.value = 'issue';
-    practiceCopyMessage.value = '已保存该期文案';
+    const result = await response.json();
+    practiceCopyOfflinePublished.value = result.offlineActivitiesPublished === true;
+    practiceCopyMessage.value = '已保存该期文案与线下活动发布状态';
   } catch (caught) {
     practiceCopyError.value = caught instanceof Error ? caught.message : '保存失败';
   } finally {
@@ -739,7 +776,7 @@ const memberDetail = ref<MemberDetail | null>(null);
 const memberError = ref('');
 const memberLoading = ref(false);
 const memberPageSize = 50;
-const systemSettings = ref({ store_enabled: false, maintenance_notice: '', support_contact: '' });
+const systemSettings = ref({ store_enabled: false, maintenance_notice: '', support_contact: '', discussion_appeal_contact: '' });
 const systemSettingsOriginal = ref({ ...systemSettings.value });
 
 interface LifeCardRow { month: number; day: number; suit: string; rank: string; theme: string; title: string; summary: string; prompt: string; note: string; sourceNote: string }
@@ -2097,12 +2134,17 @@ const audioLibraryPreviewUrls = ref<Record<string, string>>({});
 const audioLibraryError = ref('');
 const adminErrorDialog = ref('');
 const adminErrorButton = ref<HTMLButtonElement | null>(null);
-function presentAdminError(message: string) {
+let adminErrorAfterClose: (() => void) | null = null;
+function presentAdminError(message: string, afterClose?: () => void) {
   const text = String(message || '').trim();
   adminErrorDialog.value = text || '操作未完成，请稍后重试。';
+  adminErrorAfterClose = afterClose ?? null;
 }
 function closeAdminError() {
+  const afterClose = adminErrorAfterClose;
+  adminErrorAfterClose = null;
   adminErrorDialog.value = '';
+  if (afterClose) void nextTick(afterClose);
 }
 const adminErrorSources = [
   error, privacyPageError, dailyObjectsError, practiceContentError, minePageContentError,
@@ -2458,6 +2500,25 @@ function isPracticeContent(raw: unknown): raw is PracticeContent {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
   const value = raw as Record<string, unknown>;
   const boundedText = (candidate: unknown, maximum: number, minimum = 0) => typeof candidate === 'string' && candidate.length >= minimum && candidate.length <= maximum;
+  const isCopyItem = (item: unknown) => item && typeof item === 'object' && !Array.isArray(item)
+    && boundedText((item as Record<string, unknown>).richText, 2000, 1)
+    && typeof (item as Record<string, unknown>).fontSize === 'number' && Number.isSafeInteger((item as Record<string, unknown>).fontSize) && Number((item as Record<string, unknown>).fontSize) >= 10 && Number((item as Record<string, unknown>).fontSize) <= 48
+    && typeof (item as Record<string, unknown>).color === 'string' && /^#[0-9a-f]{6}$/i.test(String((item as Record<string, unknown>).color));
+  const isRealityStage = (stage: unknown) => {
+    if (!stage || typeof stage !== 'object' || Array.isArray(stage)) return false;
+    const record = stage as Record<string, unknown>;
+    return realityStageCopyFields.every((field) => isCopyItem(record[field.key]))
+      && ['left', 'center', 'right'].includes(String(record.align))
+      && ['compact', 'standard', 'roomy'].includes(String(record.spacing));
+  };
+  const observation = value.observationCopy && typeof value.observationCopy === 'object' && !Array.isArray(value.observationCopy)
+    ? value.observationCopy as Record<string, unknown>
+    : null;
+  const realityStages = observation?.realityStages && typeof observation.realityStages === 'object' && !Array.isArray(observation.realityStages)
+    ? observation.realityStages as Record<string, unknown>
+    : null;
+  if (!value.footerCopy || typeof value.footerCopy !== 'object' || Array.isArray(value.footerCopy)
+    || !['brand', 'line1', 'label', 'line2'].every((key) => isCopyItem((value.footerCopy as Record<string, unknown>)[key]))) return false;
   if (typeof value.editVersion !== 'number' || !Number.isSafeInteger(value.editVersion) || value.editVersion < 1
     || !boundedText(value.title, 80, 1) || !boundedText(value.titleRichText, 2000, 1)
     || typeof value.titleFontSize !== 'number' || !Number.isSafeInteger(value.titleFontSize) || value.titleFontSize < 10 || value.titleFontSize > 48
@@ -2468,12 +2529,11 @@ function isPracticeContent(raw: unknown): raw is PracticeContent {
     || typeof value.introColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.introColor)
     || !boundedText(value.metaLeftRichText, 2000, 1) || typeof value.metaLeftFontSize !== 'number' || !Number.isSafeInteger(value.metaLeftFontSize) || value.metaLeftFontSize < 10 || value.metaLeftFontSize > 48 || typeof value.metaLeftColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.metaLeftColor)
     || !boundedText(value.metaRightRichText, 2000, 1) || typeof value.metaRightFontSize !== 'number' || !Number.isSafeInteger(value.metaRightFontSize) || value.metaRightFontSize < 10 || value.metaRightFontSize > 48 || typeof value.metaRightColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.metaRightColor)
-    || !value.observationCopy || typeof value.observationCopy !== 'object' || Array.isArray(value.observationCopy)
-    || !observationCopyGroups.flatMap((group) => group.fields).every((field) => Object.hasOwn(value.observationCopy as object, field.key))
-    || !Object.values(value.observationCopy as Record<string, unknown>).every((item) => item && typeof item === 'object' && !Array.isArray(item)
-      && boundedText((item as Record<string, unknown>).richText, 2000, 1)
-      && typeof (item as Record<string, unknown>).fontSize === 'number' && Number.isSafeInteger((item as Record<string, unknown>).fontSize) && Number((item as Record<string, unknown>).fontSize) >= 10 && Number((item as Record<string, unknown>).fontSize) <= 48
-      && typeof (item as Record<string, unknown>).color === 'string' && /^#[0-9a-f]{6}$/i.test(String((item as Record<string, unknown>).color)))
+    || !observation
+    || !observationCopyGroups.flatMap((group) => group.fields).every((field) => Object.hasOwn(observation, field.key))
+    || !observationCopyGroups.flatMap((group) => group.fields).every((field) => isCopyItem(observation[field.key]))
+    || !realityStages
+    || !realityStageDefinitions.every((stage) => isRealityStage(realityStages[stage.key]))
     || !value.sharedPracticeCopy || typeof value.sharedPracticeCopy !== 'object' || Array.isArray(value.sharedPracticeCopy)
     || !sharedPracticeCopyGroups.flatMap((group) => group.fields).every((field) => Object.hasOwn(value.sharedPracticeCopy as object, field.key))
 || !Object.entries(value.sharedPracticeCopy as Record<string, unknown>).every(([key, item]) => {
@@ -2518,15 +2578,44 @@ function practiceContentFormatError(raw: unknown) {
   const missing = sharedPracticeCopyGroups.flatMap((group) => group.fields).map((field) => field.key)
     .filter((key) => !Object.hasOwn(value.sharedPracticeCopy as object, key));
   if (missing.length) return `实践页面配置格式无效：共同实践文案缺少 ${missing.join('、')}，请刷新后重试。`;
-    const shared = value.sharedPracticeCopy as Record<string, unknown>;
-    const invalid = sharedPracticeCopyGroups.flatMap((group) => group.fields).map((field) => field.key).find((key) => {
-      const item = shared[key] as Record<string, unknown> | undefined;
+  const observation = value.observationCopy && typeof value.observationCopy === 'object' && !Array.isArray(value.observationCopy)
+    ? value.observationCopy as Record<string, unknown>
+    : null;
+  if (!observation) return '实践页面配置格式无效：API 尚未返回此刻观察文案，请确认 API 已更新并刷新页面。';
+  const flatMissing = observationCopyGroups.flatMap((group) => group.fields).map((field) => field.key)
+    .filter((key) => !Object.hasOwn(observation, key));
+  if (flatMissing.length) return `实践页面配置格式无效：此刻观察文案缺少 ${flatMissing.join('、')}，请刷新后重试。`;
+  if (!observation.realityStages || typeof observation.realityStages !== 'object' || Array.isArray(observation.realityStages)) {
+    return '实践页面配置格式无效：API 尚未返回现实处境四页文案，请确认 API 已更新并刷新页面。';
+  }
+  const stages = observation.realityStages as Record<string, unknown>;
+  for (const stage of realityStageDefinitions) {
+    const stageCopy = stages[stage.key];
+    if (!stageCopy || typeof stageCopy !== 'object' || Array.isArray(stageCopy)) {
+      return `实践页面配置格式无效：现实处境“${stage.label}”阶段缺失，请刷新后重试。`;
+    }
+    const record = stageCopy as Record<string, unknown>;
+    const fieldMissing = realityStageCopyFields.filter((field) => !Object.hasOwn(record, field.key));
+    if (fieldMissing.length) return `实践页面配置格式无效：现实处境“${stage.label}”阶段缺少“${fieldMissing[0].label}”，请刷新后重试。`;
+    const invalidField = realityStageCopyFields.find((field) => {
+      const item = record[field.key] as Record<string, unknown> | undefined;
       return !item || typeof item.richText !== 'string' || !item.richText.length || item.richText.length > 2000
         || typeof item.fontSize !== 'number' || !Number.isSafeInteger(item.fontSize) || item.fontSize < 10 || item.fontSize > 48
         || typeof item.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.color);
     });
-    if (invalid) return `实践页面配置格式无效：共同实践文案“${invalid}”的文字、字号或颜色无效，请在后台调整后重新读取。`;
-    return '实践页面配置格式无效：实践目录或观察文案字段无效，请刷新页面重新读取。';
+    if (invalidField) return `实践页面配置格式无效：现实处境“${stage.label}”阶段的“${invalidField.label}”文字、字号或颜色无效，请刷新后重试。`;
+    if (!['left', 'center', 'right'].includes(String(record.align))) return `实践页面配置格式无效：现实处境“${stage.label}”阶段的对齐方式无效，请刷新后重试。`;
+    if (!['compact', 'standard', 'roomy'].includes(String(record.spacing))) return `实践页面配置格式无效：现实处境“${stage.label}”阶段的间距无效，请刷新后重试。`;
+  }
+  const shared = value.sharedPracticeCopy as Record<string, unknown>;
+  const invalid = sharedPracticeCopyGroups.flatMap((group) => group.fields).map((field) => field.key).find((key) => {
+    const item = shared[key] as Record<string, unknown> | undefined;
+    return !item || typeof item.richText !== 'string' || !item.richText.length || item.richText.length > 2000
+      || typeof item.fontSize !== 'number' || !Number.isSafeInteger(item.fontSize) || item.fontSize < 10 || item.fontSize > 48
+      || typeof item.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.color);
+  });
+  if (invalid) return `实践页面配置格式无效：共同实践文案“${invalid}”的文字、字号或颜色无效，请在后台调整后重新读取。`;
+  return '实践页面格式无效：实践目录字段无效，请刷新页面重新读取。';
 }
 
 function isPrivacyCopyItem(value: unknown, maximum = 2000): value is PrivacyCopyItem {
@@ -2542,20 +2631,6 @@ function isPrivacyPageContent(raw: unknown): raw is AboutPageContent {
   const value = raw as Record<string, unknown>;
   return Number.isSafeInteger(value.editVersion) && Number(value.editVersion) >= 1
     && ['brandIntro', 'contentSources', 'contactInfo'].every((key) => typeof value[key] === 'string' && String(value[key]).trim().length > 0 && String(value[key]).length <= 6000);
-}
-
-function normalizeObservationCopyForEditor(value: string) {
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = value.replace(/<br\s*\/?\s*>/gi, '\n').replace(/<\/(?:p|div)\s*>/gi, '\n').replace(/<[^>]*>/g, '');
-  return textarea.value.trim();
-}
-
-function updateObservationCopyText(key: ObservationCopyKey, event: Event) {
-  if (!practiceContent.value || practiceContentSaving.value || practiceContentConflict.value) return;
-  const input = event.target as HTMLTextAreaElement;
-  const escapedText = input.value.replace(/\r\n?/g, '\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  practiceContent.value.observationCopy[key].richText = escapedText.replace(/\n/g, '<br/>');
-  markPracticeContentDirty();
 }
 
 function markPracticeContentDirty() {
@@ -2804,7 +2879,7 @@ const sharedPracticeExtraSections = computed(() => {
       })),
     });
   }
-  if (practiceCopyRules.value.length) {
+  if (practiceCopyOfflinePublished.value && practiceCopyRules.value.length) {
     sections.push({
       key: 'issue-rules',
       title: '线下活动说明条目（' + practiceCopyIssueCode.value + '）',
@@ -2822,22 +2897,59 @@ const sharedPracticeExtraSections = computed(() => {
 
 // 此刻观察预览：每个文案字段对应一个区块。
 const activeObservationKey = ref('');
+const activeRealityStage = ref<RealityStageKey>('situation');
+const observationDetailView = ref<'flat' | 'reality'>('flat');
+const observationDetailCopy = computed<Record<string, ObservationCopyItem>>(() => {
+  const observation = practiceContent.value?.observationCopy;
+  if (!observation) return {};
+  return Object.fromEntries(observationCopyGroups.flatMap((group) => group.fields)
+    .map((field) => [field.key, observation[field.key]]));
+});
+const observationRealityCopy = computed(() => practiceContent.value?.observationCopy.realityStages || null);
 
-function pickObservationKey(key: string) {
+function revealObservationTarget(key: string, focus = false) {
   activeObservationKey.value = key;
+  const realityPrefix = 'reality:';
+  if (key.startsWith(realityPrefix)) {
+    const [, stage, field] = key.split(':');
+    if (realityStageDefinitions.some((item) => item.key === stage)) {
+      activeRealityStage.value = stage as RealityStageKey;
+    }
+    if (realityStageCopyFields.some((item) => item.key === field)) observationDetailView.value = 'reality';
+  } else if (key) {
+    observationDetailView.value = 'flat';
+  }
   nextTick(() => {
-    const target = document.querySelector<HTMLElement>('[data-copy-field="' + key + '"]');
+    const target = document.querySelector<HTMLElement>(
+      key.startsWith(realityPrefix)
+        ? `[data-reality-field="${key}"]`
+        : `[data-copy-field="${key}"]`,
+    );
     if (!target) return;
     target.scrollIntoView({ block: 'center', behavior: 'smooth' });
     target.classList.add('is-locating');
+    if (focus) target.querySelector<HTMLElement>('.rich-text-canvas')?.focus({ preventScroll: true });
     window.setTimeout(() => target.classList.remove('is-locating'), 1400);
   });
 }
 
+function pickObservationKey(key: string) {
+  activeObservationKey.value = key;
+  revealObservationTarget(key);
+}
+
 function focusObservationField(event: FocusEvent) {
-  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-field]');
-  const key = holder?.dataset.copyField;
-  if (key && key !== activeObservationKey.value) activeObservationKey.value = key;
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-field], [data-reality-field]');
+  const key = holder?.dataset.realityField || holder?.dataset.copyField;
+  if (!key) return;
+  if (holder?.dataset.realityField) {
+    const stage = key.split(':')[1];
+    if (realityStageDefinitions.some((item) => item.key === stage)) activeRealityStage.value = stage as RealityStageKey;
+    observationDetailView.value = 'reality';
+  } else {
+    observationDetailView.value = 'flat';
+  }
+  if (key !== activeObservationKey.value) activeObservationKey.value = key;
 }
 
 // —— 微声音二级页（列表 / 详情）预览 ——
@@ -3242,7 +3354,7 @@ async function toggleMemberStatus(member: Member) {
     const reason = window.prompt(`请填写${actionLabel}的原因（必填，最多 500 字）`);
     if (reason === null) return;
     if (!reason.trim()) { memberError.value = '操作原因不能为空。'; return; }
-    if (status === 'suspended' && !window.confirm(`停用账号会立即阻止该会员登录和使用全部功能。\n\n如果只限制一起谈谈的发布和回复，请使用「一起谈谈权限」。确认停用账号？`)) return;
+    if (status === 'suspended' && !window.confirm(`停用账号会立即阻止该会员登录和使用全部功能。\n\n如果只需停用一起谈谈权限，请使用「一起谈谈权限」。确认停用账号？`)) return;
     const response = await apiFetch(`${apiBase}/admin/users/${encodeURIComponent(member.id)}/status`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify({ status, reason: reason.trim() }) });
     if (!response.ok) throw new Error(await responseMessage(response, '会员状态更新失败'));
     await refreshMembers();
@@ -3260,6 +3372,7 @@ async function loadSystemSettings() {
       store_enabled: result.store_enabled?.value === true,
       maintenance_notice: typeof result.maintenance_notice?.value === 'string' ? result.maintenance_notice.value : '',
       support_contact: typeof result.support_contact?.value === 'string' ? result.support_contact.value : '',
+      discussion_appeal_contact: typeof result.discussion_appeal_contact?.value === 'string' ? result.discussion_appeal_contact.value : '',
     };
     systemSettings.value = next;
     systemSettingsOriginal.value = { ...next };
@@ -3279,7 +3392,7 @@ async function saveSystemSettings() {
     if (typeof saved.store_enabled?.value !== 'boolean') throw new Error('服务器未返回商城开放状态');
     systemSettings.value = { ...systemSettings.value, store_enabled: saved.store_enabled.value };
     systemSettingsOriginal.value = { ...systemSettings.value };
-    settingsMessage.value = '系统设置已保存。商城开放状态已更新；日常之物目录入口状态请在「实践目录」中单独设置。';
+    settingsMessage.value = '系统设置已保存。申诉联系方式留空时会自动使用联系支持渠道；日常之物目录入口状态请在「实践目录」中单独设置。';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '系统设置保存失败'; }
   finally { settingsSaving.value = false; }
 }
@@ -3988,6 +4101,20 @@ function practiceContentPayload(content: PracticeContent) {
 async function savePracticeContent() {
   const content = practiceContent.value;
   if (!content || practiceContentSaving.value || practiceContentConflict.value) return;
+  const missingFlatField = observationCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(content.observationCopy[field.key].richText));
+  if (missingFlatField) {
+    presentAdminError(`此刻观察缺少“${missingFlatField.label}”`, () => revealObservationTarget(missingFlatField.key, true));
+    return;
+  }
+  for (const stage of realityStageDefinitions) {
+    const missingField = realityStageCopyFields.find((field) => !hasRichTextContent(content.observationCopy.realityStages[stage.key][field.key].richText));
+    if (!missingField) continue;
+    const fieldKey = `reality:${stage.key}:${missingField.key}`;
+    presentAdminError(`现实处境“${stage.label}”阶段缺少“${missingField.label}”`, () => revealObservationTarget(fieldKey, true));
+    return;
+  }
   const derivedCopy = content.sharedPracticeCopy
     ? { onlineParagraphs: (content.sharedPracticeCopy as Record<string, unknown>).onlineParagraphs, rules: (content.sharedPracticeCopy as Record<string, unknown>).rules }
     : null;
@@ -7723,6 +7850,22 @@ onBeforeUnmount(() => {
                 <RichTextEditor v-model="practiceContent.introRichText" v-model:font-size="practiceContent.introFontSize" v-model:color="practiceContent.introColor" label="页面说明" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
               </div>
             </div>
+            <section class="observation-copy-group practice-footer-editor" data-practice-field="footer">
+              <h3>页尾文案</h3>
+              <p class="field-help">这四项对应实践页最底部的品牌与签名文案。支持富文本、字号、颜色与行内排版。</p>
+              <div class="practice-field">
+                <RichTextEditor v-model="practiceContent.footerCopy.brand.richText" v-model:font-size="practiceContent.footerCopy.brand.fontSize" v-model:color="practiceContent.footerCopy.brand.color" label="页尾品牌" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+              <div class="practice-field">
+                <RichTextEditor v-model="practiceContent.footerCopy.line1.richText" v-model:font-size="practiceContent.footerCopy.line1.fontSize" v-model:color="practiceContent.footerCopy.line1.color" label="页尾主文案一" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+              <div class="practice-field">
+                <RichTextEditor v-model="practiceContent.footerCopy.label.richText" v-model:font-size="practiceContent.footerCopy.label.fontSize" v-model:color="practiceContent.footerCopy.label.color" label="页尾小标题" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+              <div class="practice-field">
+                <RichTextEditor v-model="practiceContent.footerCopy.line2.richText" v-model:font-size="practiceContent.footerCopy.line2.fontSize" v-model:color="practiceContent.footerCopy.line2.color" label="页尾主文案二" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+              </div>
+            </section>
             <p v-if="practiceContentConflict" class="error full" role="alert">实践页面已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
@@ -7730,7 +7873,7 @@ onBeforeUnmount(() => {
             :dirty="practiceContentDirty"
             :conflict="practiceContentConflict"
             :saving="practiceContentSaving"
-            label="实践页面 · 标题、页眉与说明"
+            label="实践页面 · 标题、页眉、说明与页尾"
             :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
             reload-label="放弃修改并载入最新版本"
             @publish="publishPracticeContent"
@@ -7816,7 +7959,8 @@ onBeforeUnmount(() => {
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序此刻观察页预览">
             <PracticePagePreview v-if="practiceEntryTab('observation') === 'home'" :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
-            <CopyPagePreview v-else title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="practiceContent.observationCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <CopyPagePreview v-else-if="observationDetailView === 'flat'" title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="observationDetailCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <RealityStagesPreview v-else-if="observationRealityCopy" :copy="observationRealityCopy" :stage="activeRealityStage" :active-key="activeObservationKey" @pick="pickObservationKey" />
           </aside>
           <form v-if="practiceEntryTab('observation') === 'home'" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
             <div class="practice-entry-toolbar">
@@ -7830,18 +7974,49 @@ onBeforeUnmount(() => {
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
             <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="此刻观察 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
           </form>
-          <form v-else class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
-          <div class="observation-copy-groups"><section v-for="group in observationCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><label v-for="field in group.fields" :key="field.key" :data-copy-field="field.key" class="observation-copy-field"><span>{{ field.label }}</span><textarea :value="normalizeObservationCopyForEditor(practiceContent.observationCopy[field.key].richText)" rows="3" maxlength="240" :disabled="practiceContentSaving || practiceContentConflict" @input="updateObservationCopyText(field.key, $event)" /></label></section></div>
-          <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-          <PracticeSaveBar
-            :dirty="practiceContentDirty"
-            :conflict="practiceContentConflict"
-            :saving="practiceContentSaving"
-            label="此刻观察 · 详情页"
-            :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
-            @publish="publishPracticeContent"
-            @reload="reloadPracticeContent"
-          />
+          <form v-else class="practice-form observation-detail-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
+            <div class="practice-entry-tabs observation-detail-tabs" role="tablist" aria-label="此刻观察详情页编辑范围">
+              <button type="button" role="tab" :class="{ active: observationDetailView === 'flat' }" :aria-selected="observationDetailView === 'flat'" @click="observationDetailView = 'flat'">基础文案</button>
+              <button type="button" role="tab" :class="{ active: observationDetailView === 'reality' }" :aria-selected="observationDetailView === 'reality'" @click="observationDetailView = 'reality'">现实处境四页</button>
+            </div>
+            <div v-if="observationDetailView === 'flat'" class="observation-copy-groups">
+              <section v-for="group in observationCopyGroups" :key="group.title" class="observation-copy-group">
+                <h3>{{ group.title }}</h3>
+                <div v-for="field in group.fields" :key="field.key" :data-copy-field="field.key" class="copy-field">
+                  <RichTextEditor v-model="practiceContent.observationCopy[field.key].richText" v-model:font-size="practiceContent.observationCopy[field.key].fontSize" v-model:color="practiceContent.observationCopy[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                </div>
+              </section>
+            </div>
+            <div v-else class="reality-stage-editor">
+              <div class="reality-stage-tabs" role="tablist" aria-label="现实处境四页阶段">
+                <button v-for="(stage, index) in realityStageDefinitions" :key="stage.key" type="button" role="tab" :class="{ active: activeRealityStage === stage.key }" :aria-selected="activeRealityStage === stage.key" @click="activeRealityStage = stage.key">0{{ index + 1 }} {{ stage.label }}</button>
+              </div>
+              <div class="reality-stage-controls">
+                <label>对齐方式<select v-model="practiceContent.observationCopy.realityStages[activeRealityStage].align" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option></select></label>
+                <label>内容间距<select v-model="practiceContent.observationCopy.realityStages[activeRealityStage].spacing" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="compact">紧凑</option><option value="standard">标准</option><option value="roomy">宽松</option></select></label>
+              </div>
+              <div class="observation-copy-groups">
+                <section class="observation-copy-group reality-stage-copy-group">
+                  <h3>{{ realityStageDefinitions.find((stage) => stage.key === activeRealityStage)?.label }} · 页面内容</h3>
+                  <div v-for="field in realityStageCopyFields" :key="field.key" :data-reality-field="`reality:${activeRealityStage}:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.realityStages[activeRealityStage][field.key].richText" v-model:font-size="practiceContent.observationCopy.realityStages[activeRealityStage][field.key].fontSize" v-model:color="practiceContent.observationCopy.realityStages[activeRealityStage][field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+              </div>
+            </div>
+            <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
+            <p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p>
+            <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
+            <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
+            <PracticeSaveBar
+              :dirty="practiceContentDirty"
+              :conflict="practiceContentConflict"
+              :saving="practiceContentSaving"
+              label="此刻观察 · 详情页"
+              :can-publish="isSuperAdmin && Boolean(practiceContent && practiceContent.draft)"
+              @publish="publishPracticeContent"
+              @reload="reloadPracticeContent"
+            />
           </form>
         </div>
       </section>
@@ -7855,7 +8030,7 @@ onBeforeUnmount(() => {
         <div v-else-if="practiceContent" class="preview-layout has-preview">
           <aside class="preview-rail" aria-label="小程序共同实践页预览">
             <PracticePagePreview v-if="practiceEntryTab('shared-practice') === 'home'" :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
-            <CopyPagePreview v-else :title="practiceCopyIssueCode ? `共同实践 · 按期` : `共同实践`" :subtitle="practiceCopyIssueCode ? practiceCopyIssueCode : `SHARED PRACTICE`" :groups="sharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :extra-sections="sharedPracticeExtraSections" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <CopyPagePreview v-else :title="practiceCopyIssueCode ? `共同实践 · 按期` : `共同实践`" :subtitle="practiceCopyIssueCode ? practiceCopyIssueCode : `SHARED PRACTICE`" :groups="visibleSharedPracticeCopyGroups" :copy="practiceContent.sharedPracticeCopy" :extra-sections="sharedPracticeExtraSections" :active-key="activeObservationKey" @pick="pickObservationKey" />
           </aside>
           <form v-if="practiceEntryTab('shared-practice') === 'home'" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
             <div class="practice-entry-toolbar">
@@ -7893,6 +8068,14 @@ onBeforeUnmount(() => {
             <p class="muted practice-copy-source">
               当前来源：{{ practiceCopySource === 'issue' ? '该期独立文案' : '全局默认值（尚未为该期单独保存）' }}
             </p>
+
+            <label class="setting-toggle practice-copy-publish-toggle">
+              <span>
+                <strong>线下活动已发布</strong>
+                <small>关闭时，小程序仅隐藏本期的线下活动说明；下方条目仍可提前编辑和保存，开启后立即展示。</small>
+              </span>
+              <input v-model="practiceCopyOfflinePublished" type="checkbox" :disabled="practiceCopySaving" />
+            </label>
 
             <section class="practice-copy-block">
               <header><h4>线上 · 讨论说明段落</h4><button type="button" class="quiet" @click="addParagraph">+ 添加段落</button></header>
@@ -8203,7 +8386,7 @@ onBeforeUnmount(() => {
                       <p v-else class="muted">先将内容发布并公开，才能设置精华。</p>
                     </div>
                     <div class="discussion-moderation-block discussion-restriction-entry">
-                      <div><h4>停用一起谈谈权限</h4><p>仅限制在一起谈谈中发布经历和回复，不会停用账号，也不影响登录、观察、实践和商城。</p></div>
+                      <div><h4>停用一起谈谈权限</h4><p>停用后不能查看和参与一起谈谈；不会停用账号，也不影响登录、观察、实践和商城。</p></div>
                       <button type="button" class="quiet" @click="prefillDiscussionRestriction(selectedDiscussionContribution); selectedDiscussionContribution = null; selectedDiscussionContributionError = ''; discussionContributionActionMessage = ''">管理权限</button>
                     </div>
                   </template>
@@ -8215,14 +8398,14 @@ onBeforeUnmount(() => {
 
       <section v-if="activeSection === 'discussion-restrictions'" id="discussion-restrictions" class="content-area discussion-management discussion-restrictions-page">
         <div class="section-heading discussion-page-heading">
-          <div><p class="eyebrow">TOGETHER / ACCESS</p><h2>一起谈谈权限</h2><p class="admin-page-description">单独管理会员在一起谈谈中的发布与回复权限，不影响账号登录、观察、实践和商城。</p></div>
+          <div><p class="eyebrow">TOGETHER / ACCESS</p><h2>一起谈谈权限</h2><p class="admin-page-description">单独管理会员查看和参与一起谈谈的权限，不影响账号登录、观察、实践和商城。</p></div>
           <div class="section-tools discussion-page-actions">
             <button type="button" class="quiet" :disabled="discussionRestrictionLoading" @click="refreshDiscussionRestrictions()">{{ discussionRestrictionLoading ? '刷新中…' : '刷新记录' }}</button>
             <button type="button" class="discussion-primary-action" @click="openNewDiscussionRestrictionDialog">停用权限</button>
           </div>
         </div>
 
-        <div class="discussion-restriction-notice"><strong>仅停用一起谈谈权限</strong><span>停用后，该会员不能在一起谈谈发布经历或回复；账号仍可正常登录，观察、实践和商城等功能不受影响。临时停用到期自动恢复，永久停用需手动恢复。</span></div>
+        <div class="discussion-restriction-notice"><strong>仅停用一起谈谈权限</strong><span>停用后，该会员不能查看或参与一起谈谈；账号仍可正常登录，观察、实践和商城等功能不受影响。临时停用到期自动恢复，永久停用需手动恢复。</span></div>
         <p v-if="discussionRestrictionCreateMessage" class="status-message" role="status">{{ discussionRestrictionCreateMessage }}</p>
         <p v-if="discussionRestrictionActionMessage" class="status-message" role="status">{{ discussionRestrictionActionMessage }}</p>
         <p v-if="discussionRestrictionError" class="error" role="alert">{{ discussionRestrictionError }}</p>
@@ -8370,7 +8553,7 @@ onBeforeUnmount(() => {
         <div class="section-heading"><div><p class="eyebrow">MEMBER DIRECTORY</p><h2>会员列表</h2></div></div>
         <div class="member-permission-guide" role="note" aria-label="停用账号与一起谈谈权限的区别">
           <div><strong>停用账号</strong><span>阻止会员登录并使用全部功能，仅超级管理员可操作。</span></div>
-          <div><strong>一起谈谈权限</strong><span>只限制在一起谈谈发布经历和回复，不影响登录、观察、实践和商城。</span></div>
+          <div><strong>一起谈谈权限</strong><span>停用后不能查看和参与一起谈谈；不影响登录、观察、实践和商城。</span></div>
         </div>
         <div class="filters member-filters" aria-label="会员筛选"><label>昵称、ID 或手机号后四位<input v-model="memberQuery" maxlength="80" placeholder="搜索会员资料" @keyup.enter="refreshMembers()" /></label><label>注册自<DatePickerField v-model="memberFrom" aria-label="注册自" clearable /></label><label>注册至<DatePickerField v-model="memberTo" aria-label="注册至" clearable /></label><button class="quiet" :disabled="memberLoading" @click="refreshMembers()">{{ memberLoading ? '读取中…' : '筛选会员' }}</button></div>
         <p v-if="memberError" class="error" role="alert">{{ memberError }}</p>
@@ -8455,7 +8638,7 @@ onBeforeUnmount(() => {
 <section v-if="activeSection === 'settings'" id="system-settings" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">BUSINESS SETTINGS</p><h2>系统设置</h2></div></div>
         <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p><p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
+        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
       </section>
       <ModuleStateMachine
         v-if="activeSection === 'status-machine'"

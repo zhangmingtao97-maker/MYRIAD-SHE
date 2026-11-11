@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test:legal-ui": "node test/legal-documents.browser.mjs",
     "test:dashboard": "node test/dashboard.browser.mjs",
-    "test:admin": "node test/admin-experience.browser.mjs"
+    "test:admin": "node test/admin-experience.browser.mjs",
+    "test:rich-text": "node test/rich-text-editor.browser.mjs"
   },
   "dependencies": {
     "cropperjs": "^1.6.2",

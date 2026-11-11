@@ -1,7 +1,7 @@
 export type MiniProgramEnvironment = 'dev' | 'prod';
 
 // Switch this value before using the WeChat Developer Tools.
-const ENV: MiniProgramEnvironment = 'dev';
+const ENV: MiniProgramEnvironment = 'prod';
 
 const ENV_CONFIG: Record<MiniProgramEnvironment, { baseUrl: string }> = {
   dev: {

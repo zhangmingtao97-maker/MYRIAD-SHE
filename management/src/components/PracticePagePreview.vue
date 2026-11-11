@@ -18,7 +18,14 @@ interface PracticePreviewEntry {
   descriptionColor?: string;
 }
 
+interface PracticePreviewCopyItem {
+  richText?: string;
+  fontSize?: number;
+  color?: string;
+}
+
 interface PracticePreviewContent {
+  footerCopy?: Record<'brand' | 'line1' | 'label' | 'line2', PracticePreviewCopyItem | undefined>;
   titleRichText?: string;
   titleFontSize?: number;
   titleColor?: string;
@@ -108,12 +115,18 @@ const pick = (key: string) => emit('pick', key);
       <p v-if="!entries.length" class="practice-preview-empty">还没有实践目录。</p>
     </div>
 
-    <div class="practice-preview-signature" aria-label="MYRIAD SHE，看见真实经验，此刻归安，让一件小事发生。">
+    <div
+      class="practice-preview-signature preview-block"
+      :class="{ 'is-preview-active': activeKey === 'footer' }"
+      data-preview-key="footer"
+      aria-label="实践页页尾"
+      @click="pick('footer')"
+    >
       <div class="practice-preview-signature-grid">
-        <small>MYRIAD SHE</small>
-        <strong>看见真实经验</strong>
-        <small>此刻归安</small>
-        <strong>让一件小事发生</strong>
+        <small :style="{ fontSize: `${content.footerCopy?.brand?.fontSize || 11}px`, color: content.footerCopy?.brand?.color || '#5c493c' }"><RichTextView :text="content.footerCopy?.brand?.richText" :rich-text="content.footerCopy?.brand?.richText" fallback="MYRIAD SHE" :inline="true" /></small>
+        <strong :style="{ fontSize: `${content.footerCopy?.line1?.fontSize || 16}px`, color: content.footerCopy?.line1?.color || '#40362f' }"><RichTextView :text="content.footerCopy?.line1?.richText" :rich-text="content.footerCopy?.line1?.richText" fallback="看见真实经验" :inline="true" /></strong>
+        <small :style="{ fontSize: `${content.footerCopy?.label?.fontSize || 11}px`, color: content.footerCopy?.label?.color || '#5c493c' }"><RichTextView :text="content.footerCopy?.label?.richText" :rich-text="content.footerCopy?.label?.richText" fallback="此刻归安" :inline="true" /></small>
+        <strong :style="{ fontSize: `${content.footerCopy?.line2?.fontSize || 16}px`, color: content.footerCopy?.line2?.color || '#40362f' }"><RichTextView :text="content.footerCopy?.line2?.richText" :rich-text="content.footerCopy?.line2?.richText" fallback="让一件小事发生" :inline="true" /></strong>
       </div>
       <img class="practice-preview-signature-flower" src="/practice-signature-flower.svg" alt="" aria-hidden="true" />
     </div>

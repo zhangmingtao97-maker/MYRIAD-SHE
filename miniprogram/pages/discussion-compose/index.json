@@ -1,1 +1,1 @@
-{ "navigationStyle": "custom" }
+{ "navigationStyle": "custom", "usingComponents": { "discussion-restricted": "/components/discussion-restricted/index" } }

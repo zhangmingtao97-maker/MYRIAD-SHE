@@ -23,6 +23,12 @@ const emit = defineEmits<{ 'update:modelValue': [value: string]; 'update:fontSiz
 const editor = ref<HTMLDivElement | null>(null);
 const selectedColor = ref(props.color || '#5c493c');
 const selectedFontSize = ref(props.fontSize ? String(props.fontSize) : '');
+type TextAlignment = 'left' | 'center' | 'right' | 'justify';
+const alignmentOptions: TextAlignment[] = ['left', 'center', 'right', 'justify'];
+const alignmentLabels: Record<TextAlignment, string> = { left: '左对齐', center: '居中对齐', right: '右对齐', justify: '两端对齐' };
+const selectedAlignment = ref<TextAlignment>('left');
+const lineHeightOptions = ['1.2', '1.4', '1.6', '1.8', '2'];
+const selectedLineHeight = ref('1.6');
 const errorDescriptionId = `${useId()}-error`;
 const errorDescription = computed(() => props.invalid && props.error ? errorDescriptionId : undefined);
 let savedRange: Range | null = null;
@@ -91,6 +97,35 @@ function formattingRange(): Range | null {
   const range = document.createRange();
   range.selectNodeContents(block);
   return range;
+}
+
+const blockSelector = 'p,div,li,h1,h2,h3,h4,h5,h6,blockquote';
+
+function formattingBlocks(range: Range) {
+  const node = editor.value;
+  if (!node) return [] as HTMLElement[];
+  return Array.from(node.querySelectorAll<HTMLElement>(blockSelector))
+    .filter((block) => !block.querySelector(blockSelector))
+    .filter((block) => range.intersectsNode(block));
+}
+
+function applyBlockStyle(apply: (block: HTMLElement) => void) {
+  if (props.disabled) return;
+  restoreSelection();
+  const range = formattingRange();
+  if (!range) return;
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  let blocks = formattingBlocks(range);
+  if (!blocks.length) {
+    document.execCommand('formatBlock', false, 'p');
+    const block = currentBlock();
+    if (block && block !== editor.value) blocks = [block];
+  }
+  if (!blocks.length) return;
+  blocks.forEach(apply);
+  syncValue();
 }
 
 function textNodesForRange(range: Range) {
@@ -182,6 +217,37 @@ function applyFontSize(event: Event) {
   syncValue();
 }
 
+function applyAlignment(alignment: TextAlignment) {
+  selectedAlignment.value = alignment;
+  applyBlockStyle((block) => { block.style.textAlign = alignment; });
+}
+
+function applyLineHeight(event: Event) {
+  if (props.disabled) return;
+  const lineHeight = (event.target as HTMLSelectElement).value;
+  if (!lineHeightOptions.includes(lineHeight)) return;
+  selectedLineHeight.value = lineHeight;
+  restoreSelection();
+  const range = formattingRange();
+  if (!range) return;
+  styleTextRange(range, (span) => { span.style.lineHeight = lineHeight; });
+  syncValue();
+}
+
+function syncAlignmentState() {
+  const block = currentBlock();
+  if (!block || block === editor.value) return;
+  const alignment = window.getComputedStyle(block).textAlign;
+  if (alignment === 'left' || alignment === 'center' || alignment === 'right' || alignment === 'justify') {
+    selectedAlignment.value = alignment;
+  }
+}
+
+function handleSelectionChange() {
+  rememberSelection();
+  syncAlignmentState();
+}
+
 function pastePlainText(event: ClipboardEvent) {
   if (props.disabled) return;
   event.preventDefault();
@@ -212,14 +278,27 @@ onMounted(() => {
   <div class="rich-text-field" :class="{ 'is-invalid': invalid }">
     <div class="rich-text-label">{{ label }}</div>
     <div class="rich-text-toolbar" role="toolbar" :aria-label="`${label}格式工具`">
-      <button type="button" class="rich-text-tool" aria-label="粗体" title="粗体" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyFormat('bold')"><strong>B</strong></button>
-      <button type="button" class="rich-text-tool" aria-label="斜体" title="斜体" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyFormat('italic')"><em>I</em></button>
-      <button type="button" class="rich-text-tool" aria-label="下划线" title="下划线" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyFormat('underline')"><u>U</u></button>
-      <template v-if="basic"><button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('formatBlock', 'h2')">标题</button><button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('formatBlock', 'p')">正文</button><button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('insertOrderedList')">编号列表</button><button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('insertUnorderedList')">项目列表</button></template>
-      <label v-if="!basic" class="rich-text-size">字号<select v-model="selectedFontSize" aria-label="文字字号" :disabled="disabled" @pointerdown="rememberSelection" @change="applyFontSize"><option value="" disabled>选择</option><option v-for="size in sizeOptions" :key="size" :value="String(size)">{{ size }} px</option></select></label>
-      <label v-if="!basic" class="rich-text-color">文字颜色<input v-model="selectedColor" type="color" aria-label="选择文字颜色" :disabled="disabled" @pointerdown="rememberSelection" @change="applyColor" /></label>
+      <span class="rich-text-toolbar-group">
+        <button type="button" class="rich-text-tool" aria-label="粗体" title="粗体" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyFormat('bold')"><strong>B</strong></button>
+        <button type="button" class="rich-text-tool" aria-label="斜体" title="斜体" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyFormat('italic')"><em>I</em></button>
+        <button type="button" class="rich-text-tool" aria-label="下划线" title="下划线" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyFormat('underline')"><u>U</u></button>
+      </span>
+      <span v-if="basic" class="rich-text-toolbar-group">
+        <button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('formatBlock', 'h2')">标题</button>
+        <button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('formatBlock', 'p')">正文</button>
+        <button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('insertOrderedList')">编号列表</button>
+        <button type="button" class="rich-text-tool" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyStructure('insertUnorderedList')">项目列表</button>
+      </span>
+      <span class="rich-text-toolbar-group" role="group" aria-label="文字对齐">
+        <button v-for="alignment in alignmentOptions" :key="alignment" type="button" class="rich-text-tool rich-text-align-tool" :class="{ 'is-active': selectedAlignment === alignment }" :aria-label="alignmentLabels[alignment]" :title="alignmentLabels[alignment]" :aria-pressed="selectedAlignment === alignment" :disabled="disabled" @mousedown.prevent="rememberSelection" @click="applyAlignment(alignment)">
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path v-if="alignment === 'left'" d="M3 4h14M3 8h9M3 12h14M3 16h9" /><path v-else-if="alignment === 'center'" d="M3 4h14M5.5 8h9M3 12h14M5.5 16h9" /><path v-else-if="alignment === 'right'" d="M3 4h14M8 8h9M3 12h14M8 16h9" /><path v-else d="M3 4h14M3 8h14M3 12h14M3 16h14" /></svg>
+        </button>
+      </span>
+      <label class="rich-text-control rich-text-size">字号<select v-model="selectedFontSize" aria-label="文字字号" :disabled="disabled" @pointerdown="rememberSelection" @change="applyFontSize"><option value="" disabled>选择</option><option v-for="size in sizeOptions" :key="size" :value="String(size)">{{ size }} px</option></select></label>
+      <label class="rich-text-control rich-text-line-height">行距<select v-model="selectedLineHeight" aria-label="文字行距" :disabled="disabled" @pointerdown="rememberSelection" @change="applyLineHeight"><option v-for="lineHeight in lineHeightOptions" :key="lineHeight" :value="lineHeight">{{ lineHeight }}</option></select></label>
+      <label class="rich-text-control rich-text-color">颜色<input v-model="selectedColor" type="color" aria-label="选择文字颜色" :disabled="disabled" @pointerdown="rememberSelection" @change="applyColor" /></label>
     </div>
-    <small v-if="!basic" class="rich-text-help">选中文字时只调整选区；未选中时只调整当前段落。</small>
+    <small class="rich-text-help">选中文字时只调整选区；未选中时只调整当前段落。标题、正文、按钮等文字均可分别设置字号、颜色、对齐和行距。</small>
     <div
       ref="editor"
       class="rich-text-canvas"
@@ -232,8 +311,9 @@ onMounted(() => {
       :contenteditable="!disabled"
       @input="syncValue"
       @paste="pastePlainText"
-      @keyup="rememberSelection"
-      @mouseup="rememberSelection"
+      @keyup="handleSelectionChange"
+      @mouseup="handleSelectionChange"
+      @focus="handleSelectionChange"
       @blur="rememberSelection"
     />
     <p v-if="invalid && error" :id="errorDescriptionId" class="rich-text-error" role="alert">{{ error }}</p>

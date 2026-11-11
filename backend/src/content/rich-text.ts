@@ -7,7 +7,7 @@ export interface RichTextOptions {
   maxHtmlCharacters?: number;
 }
 
-const allowedTags = new Set(['p', 'div', 'br', 'span', 'font', 'strong', 'b', 'em', 'i', 'u']);
+const allowedTags = new Set(['p', 'div', 'br', 'span', 'font', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li']);
 const blockedTags = new Set(['script', 'style', 'iframe', 'object', 'svg', 'math']);
 
 export function decodeRichTextEntities(value: string) {
@@ -52,6 +52,20 @@ export function safeRichTextFontSize(attributes: string, minFontSize = 10, maxFo
   const legacySize = /\bsize\s*=\s*(["']?)([1-7])\1/i.exec(attributes)?.[2];
   const legacyPixels: Record<string, number> = { '1': 12, '2': 14, '3': 16, '4': 18, '5': 24, '6': 32, '7': 48 };
   return legacySize ? `${legacyPixels[legacySize]}px` : '';
+}
+
+export function safeRichTextTextAlign(attributes: string) {
+  const style = /\bstyle\s*=\s*(["'])(.*?)\1/i.exec(attributes)?.[2] ?? '';
+  const candidate = /(?:^|;)\s*text-align\s*:\s*([^;]+)/i.exec(style)?.[1]?.trim().toLowerCase();
+  return candidate === 'left' || candidate === 'center' || candidate === 'right' || candidate === 'justify' ? candidate : '';
+}
+
+export function safeRichTextLineHeight(attributes: string) {
+  const style = /\bstyle\s*=\s*(["'])(.*?)\1/i.exec(attributes)?.[2] ?? '';
+  const candidate = /(?:^|;)\s*line-height\s*:\s*([0-9]+(?:\.[0-9]{1,2})?)\s*(?:;|$)/i.exec(style)?.[1];
+  if (!candidate) return '';
+  const lineHeight = Number(candidate);
+  return Number.isFinite(lineHeight) && lineHeight >= 1 && lineHeight <= 3 ? String(lineHeight) : '';
 }
 
 export function plainTextFromRichText(value: string) {
@@ -115,8 +129,15 @@ export function sanitizeRichText(value: unknown, maximumCharacters: number, labe
       if (tag === 'span') {
         const color = safeRichTextColor(opening[2]);
         const fontSize = safeRichTextFontSize(opening[2], minFontSize, maxFontSize);
-        const styles = [fontSize && `font-size:${fontSize}`, color && `color:${color}`].filter(Boolean);
+        const textAlign = safeRichTextTextAlign(opening[2]);
+        const lineHeight = safeRichTextLineHeight(opening[2]);
+        const styles = [fontSize && `font-size:${fontSize}`, color && `color:${color}`, textAlign && `text-align:${textAlign}`, lineHeight && `line-height:${lineHeight}`].filter(Boolean);
         html += styles.length ? `<span style="${styles.join(';')}">` : '<span>';
+      } else if (tag === 'p' || tag === 'li') {
+        const textAlign = safeRichTextTextAlign(opening[2]);
+        const lineHeight = safeRichTextLineHeight(opening[2]);
+        const styles = [textAlign && `text-align:${textAlign}`, lineHeight && `line-height:${lineHeight}`].filter(Boolean);
+        html += styles.length ? `<${tag} style="${styles.join(';')}">` : `<${tag}>`;
       } else {
         html += `<${tag}>`;
       }

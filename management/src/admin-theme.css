@@ -1400,6 +1400,17 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .practice-copy-panel-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .practice-copy-panel-actions select { min-height: 38px; min-width: 190px; }
 .practice-copy-source { margin: 12px 0 0; font-size: 12.5px; }
+.practice-copy-publish-toggle {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  align-items: flex-start !important;
+}
+.practice-copy-publish-toggle span { gap: 6px; }
+.practice-copy-publish-toggle small { color: var(--muted); line-height: 1.6; }
+.practice-copy-publish-toggle input { flex: 0 0 auto; margin-top: 2px; }
 .practice-copy-block { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
 .practice-copy-block > header {
   display: flex;

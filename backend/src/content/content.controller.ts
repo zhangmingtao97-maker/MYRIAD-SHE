@@ -16,6 +16,8 @@ import { defaultDiscussionContent, DiscussionContent, validateDiscussionContent 
 import { plainTextFromRichText, sanitizeRichText } from './rich-text';
 import { DataEncryptionService } from '../security/data-encryption.service';
 import { mergePublishedCommunityContent } from '../discussion/published-community';
+import { findActiveDiscussionRestriction } from '../discussion/discussion-restrictions';
+import { readDiscussionSupportSettings } from '../discussion/discussion-support-settings';
 
 const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const allowedAudioTypes = ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-m4a'];
@@ -221,6 +223,33 @@ class ObservationCopyItemDto {
   @IsString() @Matches(/^#[0-9a-fA-F]{6}$/) color!: string;
 }
 
+class RealityStageCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stageLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) title?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) description?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) inputLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) placeholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) nextLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previousLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) footer?: ObservationCopyItemDto;
+  @IsOptional() @IsIn(['left', 'center', 'right']) align?: 'left' | 'center' | 'right';
+  @IsOptional() @IsIn(['compact', 'standard', 'roomy']) spacing?: 'compact' | 'standard' | 'roomy';
+}
+
+class RealityStagesCopyDto {
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => RealityStageCopyDto) situation?: RealityStageCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => RealityStageCopyDto) body?: RealityStageCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => RealityStageCopyDto) need?: RealityStageCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => RealityStageCopyDto) nextAction?: RealityStageCopyDto;
+}
+
+class PracticeFooterCopyDto {
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationCopyItemDto) brand?: ObservationCopyItemDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationCopyItemDto) line1?: ObservationCopyItemDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationCopyItemDto) label?: ObservationCopyItemDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationCopyItemDto) line2?: ObservationCopyItemDto;
+}
+
 class ObservationCopyDto {
   @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) metaLeft?: ObservationCopyItemDto;
   @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) metaRight?: ObservationCopyItemDto;
@@ -237,6 +266,7 @@ class ObservationCopyDto {
   @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) seasonAction?: ObservationCopyItemDto;
   @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) privacyLabel?: ObservationCopyItemDto;
   @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) privacyCopy?: ObservationCopyItemDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => RealityStagesCopyDto) realityStages?: RealityStagesCopyDto;
 }
 
 class SharedPracticeCopyDto {
@@ -337,6 +367,7 @@ class PracticeContentDto {
   @IsOptional() @IsString() @Matches(/^#[0-9a-fA-F]{6}$/) metaRightColor?: string;
   @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationCopyDto) observationCopy?: ObservationCopyDto;
   @IsOptional() @IsObject() @ValidateNested() @Type(() => SharedPracticeCopyDto) sharedPracticeCopy?: SharedPracticeCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => PracticeFooterCopyDto) footerCopy?: PracticeFooterCopyDto;
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => PracticeEntryDto) entries!: PracticeEntryDto[];
 }
 
@@ -470,6 +501,9 @@ function sanitizeMinePageContentFields<T extends Record<string, unknown>>(fields
   }
   return sanitized;
 }
+const realityStageKeys = ['situation', 'body', 'need', 'nextAction'] as const;
+type RealityStageKey = typeof realityStageKeys[number];
+type RealityStageSpacing = 'compact' | 'standard' | 'roomy';
 const defaultObservationCopy = {
   metaLeft: { richText: '此刻归安', fontSize: 12, color: '#8b6b58' },
   metaRight: { richText: 'PRIVATE PRACTICE', fontSize: 12, color: '#663124' },
@@ -486,24 +520,141 @@ const defaultObservationCopy = {
   seasonAction: { richText: '了解方法并开始', fontSize: 14, color: '#663124' },
   privacyLabel: { richText: '仅自己可见', fontSize: 13, color: '#663124' },
   privacyCopy: { richText: '所有观察默认私密。你可以修改、删除或随时停止。', fontSize: 12, color: '#76695f' },
+  realityStages: {
+    situation: {
+      stageLabel: { richText: '底色', fontSize: 11, color: '#663124' },
+      title: { richText: '此刻，真实发生了什么？', fontSize: 27, color: '#663124' },
+      description: { richText: '只写事实也可以，不急着解释。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '写下这一刻', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '例如：这周我反复答应了原本不想接下的事……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '继续', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left' as const,
+      spacing: 'standard' as RealityStageSpacing,
+    },
+    body: {
+      stageLabel: { richText: '此刻', fontSize: 11, color: '#663124' },
+      title: { richText: '你现在最明显的感受是什么？', fontSize: 27, color: '#663124' },
+      description: { richText: '可以是一种情绪、身体感受，或“暂时说不清”。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '或者，用自己的话写下', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '把最接近此刻的感受写下来……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '继续', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left' as const,
+      spacing: 'standard' as RealityStageSpacing,
+    },
+    need: {
+      stageLabel: { richText: '选择', fontSize: 11, color: '#663124' },
+      title: { richText: '此刻，你愿意把选择权放在哪里？', fontSize: 27, color: '#663124' },
+      description: { richText: '不是解决全部，只是辨认一个现在可以选择的方向。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '或者，用自己的话写下', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '例如：今天先不回复，明早再决定……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '继续', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left' as const,
+      spacing: 'standard' as RealityStageSpacing,
+    },
+    nextAction: {
+      stageLabel: { richText: '行动', fontSize: 11, color: '#663124' },
+      title: { richText: '接下来七天，你愿意做哪一件小事？', fontSize: 27, color: '#663124' },
+      description: { richText: '让它小到真的可以发生。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '写下这一件小事', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '例如：把那句话写下来，先不发送……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '私密保存这次观察', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left' as const,
+      spacing: 'standard' as RealityStageSpacing,
+    },
+  },
 };
 
-function sanitizeObservationCopy(raw: unknown) {
+type PracticeFooterCopyKey = 'brand' | 'line1' | 'label' | 'line2';
+type PracticeFooterCopy = Record<PracticeFooterCopyKey, { richText: string; fontSize: number; color: string }>;
+const practiceFooterCopyKeys: PracticeFooterCopyKey[] = ['brand', 'line1', 'label', 'line2'];
+const defaultPracticeFooterCopy: PracticeFooterCopy = {
+  brand: { richText: 'MYRIAD SHE', fontSize: 11, color: '#5c493c' },
+  line1: { richText: '看见真实经验', fontSize: 16, color: '#40362f' },
+  label: { richText: '此刻归安', fontSize: 11, color: '#5c493c' },
+  line2: { richText: '让一件小事发生', fontSize: 16, color: '#40362f' },
+};
+
+function sanitizePracticeFooterCopy(raw: unknown): PracticeFooterCopy {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
-  return Object.fromEntries(Object.entries(defaultObservationCopy).map(([key, fallback]) => {
+  return Object.fromEntries(practiceFooterCopyKeys.map((key) => {
+    const fallback = defaultPracticeFooterCopy[key];
     const item = source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])
       ? source[key] as Record<string, unknown>
       : {};
-    const richText = sanitizeMinePageRichText(item.richText ?? fallback.richText, 240, `此刻观察${key}`)
-      .replace(/<p\b[^>]*>/gi, '')
-      .replace(/<\/p\s*>/gi, '<br/>')
-      .replace(/<\/?(?:span|strong|b|em|i|u)\b[^>]*>/gi, '');
+    const richText = sanitizeMinePageRichText(item.richText ?? fallback.richText, 80, `实践页页尾${key}`);
     const fontSize = Number.isSafeInteger(item.fontSize) && Number(item.fontSize) >= 10 && Number(item.fontSize) <= 48
       ? Number(item.fontSize)
       : fallback.fontSize;
     const color = typeof item.color === 'string' && /^#[0-9a-f]{6}$/i.test(item.color) ? item.color.toLowerCase() : fallback.color;
     return [key, { richText, fontSize, color }];
+  })) as PracticeFooterCopy;
+}
+
+const observationCopyFlatKeys = [
+  'metaLeft', 'metaRight', 'introTitle', 'introDescription', 'realityContext', 'realityTitle', 'realityDescription', 'realityAction',
+  'seasonContext', 'seasonTitle', 'seasonDescription', 'seasonGuide', 'seasonAction', 'privacyLabel', 'privacyCopy',
+] as const;
+const realityStageCopyKeys = ['stageLabel', 'title', 'description', 'inputLabel', 'placeholder', 'nextLabel', 'previousLabel', 'footer'] as const;
+type ObservationCopyItemValue = { richText: string; fontSize: number; color: string };
+type RealityStageCopyValue = Record<typeof realityStageCopyKeys[number], ObservationCopyItemValue> & {
+  align: 'left' | 'center' | 'right';
+  spacing: RealityStageSpacing;
+};
+type ObservationCopyValue = Record<typeof observationCopyFlatKeys[number], ObservationCopyItemValue> & {
+  realityStages: Record<RealityStageKey, RealityStageCopyValue>;
+};
+
+function sanitizeObservationCopyItem(raw: unknown, fallback: ObservationCopyItemValue, label: string, stripFormatting: boolean) {
+  const item = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+  let richText = sanitizeMinePageRichText(item.richText ?? fallback.richText, 500, label);
+  if (stripFormatting) {
+    richText = richText
+      .replace(/<p\b[^>]*>/gi, '')
+      .replace(/<\/p\s*>/gi, '<br/>')
+      .replace(/<\/?(?:span|strong|b|em|i|u)\b[^>]*>/gi, '');
+  }
+  const fontSize = Number.isSafeInteger(item.fontSize) && Number(item.fontSize) >= 10 && Number(item.fontSize) <= 48
+    ? Number(item.fontSize)
+    : fallback.fontSize;
+  const color = typeof item.color === 'string' && /^#[0-9a-f]{6}$/i.test(item.color) ? item.color.toLowerCase() : fallback.color;
+  return { richText, fontSize, color };
+}
+
+function sanitizeObservationCopy(raw: unknown): ObservationCopyValue {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+  const flat = Object.fromEntries(observationCopyFlatKeys.map((key) => {
+    const fallback = defaultObservationCopy[key];
+    return [key, sanitizeObservationCopyItem(source[key], fallback, `此刻观察${key}`, true)];
   }));
+  const rawStages = source.realityStages && typeof source.realityStages === 'object' && !Array.isArray(source.realityStages)
+    ? source.realityStages as Record<string, unknown>
+    : {};
+  const realityStages = Object.fromEntries(realityStageKeys.map((stageKey) => {
+    const fallback = defaultObservationCopy.realityStages[stageKey];
+    const stageSource = rawStages[stageKey] && typeof rawStages[stageKey] === 'object' && !Array.isArray(rawStages[stageKey])
+      ? rawStages[stageKey] as Record<string, unknown>
+      : {};
+    const copy = Object.fromEntries(realityStageCopyKeys.map((fieldKey) => [
+      fieldKey,
+      sanitizeObservationCopyItem(stageSource[fieldKey], fallback[fieldKey], `现实处境${stageKey}${fieldKey}`, false),
+    ]));
+    const align = stageSource.align === 'left' || stageSource.align === 'center' || stageSource.align === 'right'
+      ? stageSource.align
+      : fallback.align;
+    const spacing = stageSource.spacing === 'compact' || stageSource.spacing === 'standard' || stageSource.spacing === 'roomy'
+      ? stageSource.spacing
+      : fallback.spacing;
+    return [stageKey, { ...copy, align, spacing }];
+  }));
+  return { ...flat, realityStages } as ObservationCopyValue;
 }
 
 const defaultSharedPracticeCopy = {
@@ -701,6 +852,21 @@ export class ContentController {
   private readonly homeCacheKey = 'myriad-she:content:home:v5';
 
   constructor(private readonly database: DatabaseService, private readonly storage: StorageService, private readonly audit: AuditService, private readonly config: ConfigService, private readonly redis: RedisService, private readonly jwt: JwtService, @Optional() private readonly encryption?: DataEncryptionService) {}
+
+  private async activeDiscussionRestrictionForRequest(request?: Request) {
+    const header = request?.headers.authorization;
+    if (typeof header !== 'string' || !header.startsWith('Bearer ')) return null;
+    if (header.length > 7 + 16_384) return null;
+    let payload: { sub?: string; role?: string; exp?: number };
+    try {
+      payload = await this.jwt.verifyAsync<{ sub?: string; role?: string; exp?: number }>(header.slice(7));
+    } catch {
+      return null;
+    }
+    if (typeof payload.sub !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.sub)) return null;
+    if (payload.role !== 'user' || !payload.exp || payload.exp * 1000 <= Date.now()) return null;
+    return findActiveDiscussionRestriction(this.database, payload.sub);
+  }
 
   private publicContentCacheTtlSeconds() {
     const configured = Number(this.config.get('CONTENT_PUBLIC_CACHE_TTL_SECONDS', 60));
@@ -1694,8 +1860,13 @@ export class ContentController {
 
   @Get('discussion')
   @Header('Cache-Control', 'no-store')
-  async discussion(@Query('issueCode') issueCode?: string) {
+  async discussion(@Query('issueCode') issueCode?: string, @Req() request?: Request) {
     if (issueCode !== undefined && (typeof issueCode !== 'string' || issueCode.length < 2 || issueCode.length > 64)) throw new BadRequestException('期刊编号无效');
+    const restriction = await this.activeDiscussionRestrictionForRequest(request);
+    if (restriction) {
+      const contacts = await readDiscussionSupportSettings(this.database);
+      throw new ForbiddenException({ code: 'discussion_restricted', message: '一起谈谈权限已停用，暂时不能查看或参与讨论', reason: restriction.reason, endsAt: restriction.endsAt, ...contacts });
+    }
     const result = await this.database.query<{ snapshot: { issue: { code: string; label: string }; discussion?: DiscussionContent }; version: number }>(
       `select publication.snapshot, publication.version from content_issues issue
        join content_issue_publications publication on publication.issue_id = issue.id and publication.version = issue.published_version
@@ -2112,25 +2283,42 @@ export class ContentController {
   }
 
   /**
-   * 解析共同实践文案：指定期刊且该期有独立文案时用该期，否则回退到全局默认值。
+   * 解析共同实践文案与线下活动发布状态：指定期刊时读取该期，缺失字段回落到全局值。
    * 返回值统一为列表化结构（onlineParagraphs / rules）。
    */
   private async resolveSharedPracticeCopy(client: PoolClient, globalCopy: unknown, issueCode?: string) {
     const code = (issueCode ?? '').trim();
-    if (!code || code.length > 64) return normalizeSharedPracticeCopy(globalCopy);
+    const fallback = normalizeSharedPracticeCopy(globalCopy);
+    if (!code || code.length > 64) return { copy: fallback, offlineActivitiesPublished: false };
     const issue = await client.query<{ id: string }>('select id from content_issues where code = $1', [code]);
     const issueId = issue.rows[0]?.id;
-    if (!issueId) return normalizeSharedPracticeCopy(globalCopy);
-    const stored = await client.query<{ copy: unknown }>('select copy from content_issue_practice_copy where issue_id = $1', [issueId]);
-    if (!stored.rows[0]) return normalizeSharedPracticeCopy(globalCopy);
-    // 以该期文案为准，缺失字段回落到全局值
-    return normalizeSharedPracticeCopy({ ...((globalCopy as Record<string, unknown>) ?? {}), ...((stored.rows[0].copy as Record<string, unknown>) ?? {}) });
+    if (!issueId) return { copy: fallback, offlineActivitiesPublished: false };
+    const stored = await client.query<{ copy: unknown; offlineActivitiesPublished: boolean }>(
+      'select copy, offline_activities_published as "offlineActivitiesPublished" from content_issue_practice_copy where issue_id = $1',
+      [issueId],
+    );
+    const row = stored.rows[0];
+    if (!row) return { copy: fallback, offlineActivitiesPublished: false };
+    return {
+      copy: normalizeSharedPracticeCopy({ ...((globalCopy as Record<string, unknown>) ?? {}), ...((row.copy as Record<string, unknown>) ?? {}) }),
+      offlineActivitiesPublished: row.offlineActivitiesPublished === true,
+    };
   }
 
-  private async readPracticeContent(issueCode?: string) {
+  /** 公开页面未指定期号时，取最新已发布期刊；没有已发布期刊则不展示线下活动。 */
+  private async resolvePublishedPracticeIssueCode(client: PoolClient, issueCode?: string) {
+    const code = (issueCode ?? '').trim();
+    if (code) return code;
+    const issue = await client.query<{ code: string }>(
+      "select code from content_issues where status = 'published' order by updated_at desc, id desc limit 1",
+    );
+    return issue.rows[0]?.code ?? '';
+  }
+
+  private async readPracticeContent(issueCode?: string, useLatestPublishedIssue = false) {
     return this.database.withTransaction(async (client) => {
       await client.query('set transaction isolation level repeatable read');
-      const pageResult = await client.query<{ title: string; titleRichText: string; titleFontSize: number; titleColor: string; intro: string; introRichText: string; introFontSize: number; introColor: string; metaLeftRichText: string; metaLeftFontSize: number; metaLeftColor: string; metaRightRichText: string; metaRightFontSize: number; metaRightColor: string; observationCopy: unknown; sharedPracticeCopy: unknown; editVersion: number }>(`select title, title_rich_text as "titleRichText", title_font_size as "titleFontSize", title_color as "titleColor", intro, intro_rich_text as "introRichText", intro_font_size as "introFontSize", intro_color as "introColor", meta_left_rich_text as "metaLeftRichText", meta_left_font_size as "metaLeftFontSize", meta_left_color as "metaLeftColor", meta_right_rich_text as "metaRightRichText", meta_right_font_size as "metaRightFontSize", meta_right_color as "metaRightColor", observation_copy as "observationCopy", shared_practice_copy as "sharedPracticeCopy", edit_version as "editVersion" from content_practice_page where id = 1`);
+      const pageResult = await client.query<{ title: string; titleRichText: string; titleFontSize: number; titleColor: string; intro: string; introRichText: string; introFontSize: number; introColor: string; metaLeftRichText: string; metaLeftFontSize: number; metaLeftColor: string; metaRightRichText: string; metaRightFontSize: number; metaRightColor: string; observationCopy: unknown; sharedPracticeCopy: unknown; footerCopy: unknown; editVersion: number }>(`select title, title_rich_text as "titleRichText", title_font_size as "titleFontSize", title_color as "titleColor", intro, intro_rich_text as "introRichText", intro_font_size as "introFontSize", intro_color as "introColor", meta_left_rich_text as "metaLeftRichText", meta_left_font_size as "metaLeftFontSize", meta_left_color as "metaLeftColor", meta_right_rich_text as "metaRightRichText", meta_right_font_size as "metaRightFontSize", meta_right_color as "metaRightColor", observation_copy as "observationCopy", shared_practice_copy as "sharedPracticeCopy", footer_copy as "footerCopy", edit_version as "editVersion" from content_practice_page where id = 1`);
       const entriesResult = await client.query<{ key: PracticeEntryKey; target: string | null; title: string; description: string; enabled: boolean; contextRichText: string; contextFontSize: number; contextColor: string; titleRichText: string; titleFontSize: number; titleColor: string; descriptionRichText: string; descriptionFontSize: number; descriptionColor: string }>(
         `select key, target, title, description, enabled,
                 context_rich_text as "contextRichText", context_font_size as "contextFontSize", context_color as "contextColor",
@@ -2149,6 +2337,10 @@ export class ContentController {
         descriptionRichText: sanitizeMinePageRichText(entry.descriptionRichText, 240, '实践目录补充说明'),
       }));
       const page = pageResult.rows[0];
+      const resolvedIssueCode = useLatestPublishedIssue
+        ? await this.resolvePublishedPracticeIssueCode(client, issueCode)
+        : (issueCode ?? '').trim();
+      const sharedPractice = await this.resolveSharedPracticeCopy(client, page.sharedPracticeCopy, resolvedIssueCode);
       return {
         ...page,
         titleRichText: sanitizeMinePageRichText(page.titleRichText || page.title, 80, '实践页面标题'),
@@ -2156,7 +2348,9 @@ export class ContentController {
         metaLeftRichText: sanitizeMinePageRichText(page.metaLeftRichText, 80, '实践页左侧页眉'),
         metaRightRichText: sanitizeMinePageRichText(page.metaRightRichText, 80, '实践页右侧页眉'),
         observationCopy: sanitizeObservationCopy(page.observationCopy),
-        sharedPracticeCopy: await this.resolveSharedPracticeCopy(client, page.sharedPracticeCopy, issueCode),
+        sharedPracticeCopy: sharedPractice.copy,
+        offlineActivitiesPublished: sharedPractice.offlineActivitiesPublished,
+        footerCopy: sanitizePracticeFooterCopy(page.footerCopy),
         entries,
       };
     });
@@ -2165,7 +2359,7 @@ export class ContentController {
   @Get('practice')
   @Header('Cache-Control', 'no-store')
   practice(@Query('issueCode') issueCode?: string) {
-    return this.readPracticeContent(issueCode);
+    return this.readPracticeContent(issueCode, true);
   }
 
   @Get('store-status')
@@ -2567,8 +2761,8 @@ export class ContentController {
       const row = issue.rows[0];
       if (!row) throw new NotFoundException('未找到该期刊');
       const page = await client.query<{ sharedPracticeCopy: unknown }>('select shared_practice_copy as "sharedPracticeCopy" from content_practice_page limit 1');
-      const stored = await client.query<{ copy: unknown; updatedAt: string }>(
-        'select copy, updated_at as "updatedAt" from content_issue_practice_copy where issue_id = $1', [row.id],
+      const stored = await client.query<{ copy: unknown; offlineActivitiesPublished: boolean; updatedAt: string }>(
+        'select copy, offline_activities_published as "offlineActivitiesPublished", updated_at as "updatedAt" from content_issue_practice_copy where issue_id = $1', [row.id],
       );
       const globalCopy = (page.rows[0]?.sharedPracticeCopy ?? {}) as Record<string, unknown>;
       const issueCopy = (stored.rows[0]?.copy ?? null) as Record<string, unknown> | null;
@@ -2579,6 +2773,7 @@ export class ContentController {
         issueTheme: row.theme,
         source: issueCopy ? 'issue' : 'global',
         updatedAt: stored.rows[0]?.updatedAt ?? null,
+        offlineActivitiesPublished: stored.rows[0]?.offlineActivitiesPublished === true,
         copy,
       };
     });
@@ -2594,16 +2789,22 @@ export class ContentController {
   ) {
     const code = String(body.issueCode ?? '').trim();
     if (!code || code.length > 64) throw new BadRequestException('期刊编号无效');
+    if (body.offlineActivitiesPublished !== undefined && typeof body.offlineActivitiesPublished !== 'boolean') {
+      throw new BadRequestException('线下活动发布状态无效');
+    }
+    const offlineActivitiesPublished = body.offlineActivitiesPublished === true;
     const copy = normalizeSharedPracticeCopy(body.copy);
     return this.database.withTransaction(async (client) => {
       const issue = await client.query<{ id: string }>('select id from content_issues where code = $1', [code]);
       const issueId = issue.rows[0]?.id;
       if (!issueId) throw new NotFoundException('未找到该期刊');
       await client.query(
-        `insert into content_issue_practice_copy (issue_id, copy, updated_at, updated_by)
-         values ($1, $2::jsonb, now(), $3)
-         on conflict (issue_id) do update set copy = excluded.copy, updated_at = now(), updated_by = excluded.updated_by`,
-        [issueId, JSON.stringify(copy), request.user?.sub ?? null],
+        `insert into content_issue_practice_copy (issue_id, copy, offline_activities_published, updated_at, updated_by)
+         values ($1, $2::jsonb, $3, now(), $4)
+         on conflict (issue_id) do update set copy = excluded.copy,
+           offline_activities_published = excluded.offline_activities_published,
+           updated_at = now(), updated_by = excluded.updated_by`,
+        [issueId, JSON.stringify(copy), offlineActivitiesPublished, request.user?.sub ?? null],
       );
       await this.audit.record({
         actorType: 'admin',
@@ -2611,9 +2812,9 @@ export class ContentController {
         action: 'content.issue_practice_copy.saved',
         resourceType: 'content_issue',
         resourceId: code,
-        metadata: { issueCode: code },
+        metadata: { issueCode: code, offlineActivitiesPublished },
       }, client);
-      return { saved: true, issueCode: code, copy };
+      return { saved: true, issueCode: code, offlineActivitiesPublished, copy };
     });
   }
 
@@ -2685,6 +2886,7 @@ export class ContentController {
     const metaRightRichText = sanitizeMinePageRichText(body.metaRightRichText ?? '此刻归安', 80, '实践页右侧页眉');
     const observationCopy = sanitizeObservationCopy(body.observationCopy);
     const sharedPracticeCopy = normalizeSharedPracticeCopy(body.sharedPracticeCopy);
+    const footerCopy = sanitizePracticeFooterCopy(body.footerCopy);
     const normalizedEntries = body.entries.map((entry) => {
       const contextRichText = sanitizeMinePageRichText(entry.contextRichText ?? '', 240, '实践目录情境文案');
       const titleRichText = sanitizeMinePageRichText(entry.titleRichText ?? entry.title, 80, '实践目录名称');
@@ -2731,7 +2933,7 @@ export class ContentController {
           intro: normalizedIntro, introRichText, introFontSize: body.introFontSize ?? 32, introColor: body.introColor ?? '#40362f',
           metaLeftRichText, metaLeftFontSize: body.metaLeftFontSize ?? 12, metaLeftColor: body.metaLeftColor ?? '#8b6b58',
           metaRightRichText, metaRightFontSize: body.metaRightFontSize ?? 12, metaRightColor: body.metaRightColor ?? '#8b6b58',
-          observationCopy, sharedPracticeCopy, entries,
+          observationCopy, sharedPracticeCopy, footerCopy, entries,
         };
         await client.query(
           `insert into admin_content_drafts (content_key, content, edit_version, updated_by)
@@ -2742,16 +2944,16 @@ export class ContentController {
         await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'content.practice.draft_saved', resourceType: 'practice_content', resourceId: 'practice-page', metadata: { editVersion: nextVersion, entryKeys: entries.map((entry) => entry.key) } }, client);
         return { ...draftContent, draft: true };
       }
-      const page = await client.query<{ title: string; titleRichText: string; titleFontSize: number; titleColor: string; intro: string; introRichText: string; introFontSize: number; introColor: string; metaLeftRichText: string; metaLeftFontSize: number; metaLeftColor: string; metaRightRichText: string; metaRightFontSize: number; metaRightColor: string; observationCopy: unknown; sharedPracticeCopy: unknown; editVersion: number }>(
+      const page = await client.query<{ title: string; titleRichText: string; titleFontSize: number; titleColor: string; intro: string; introRichText: string; introFontSize: number; introColor: string; metaLeftRichText: string; metaLeftFontSize: number; metaLeftColor: string; metaRightRichText: string; metaRightFontSize: number; metaRightColor: string; observationCopy: unknown; sharedPracticeCopy: unknown; footerCopy: unknown; editVersion: number }>(
         `update content_practice_page set title = $1, title_rich_text = $2, title_font_size = $3, title_color = $4,
            intro = $5, intro_rich_text = $6, intro_font_size = $7, intro_color = $8,
            meta_left_rich_text = $9, meta_left_font_size = $10, meta_left_color = $11,
-           meta_right_rich_text = $12, meta_right_font_size = $13, meta_right_color = $14, observation_copy = $15::jsonb, shared_practice_copy = $16::jsonb,
+           meta_right_rich_text = $12, meta_right_font_size = $13, meta_right_color = $14, observation_copy = $15::jsonb, shared_practice_copy = $16::jsonb, footer_copy = $17::jsonb,
            edit_version = edit_version + 1, updated_at = now()
          where id = 1 returning title, title_rich_text as "titleRichText", title_font_size as "titleFontSize", title_color as "titleColor", intro, intro_rich_text as "introRichText", intro_font_size as "introFontSize", intro_color as "introColor",
            meta_left_rich_text as "metaLeftRichText", meta_left_font_size as "metaLeftFontSize", meta_left_color as "metaLeftColor",
-           meta_right_rich_text as "metaRightRichText", meta_right_font_size as "metaRightFontSize", meta_right_color as "metaRightColor", observation_copy as "observationCopy", shared_practice_copy as "sharedPracticeCopy", edit_version as "editVersion"`,
-        [normalizedTitle, titleRichText, body.titleFontSize ?? 12, body.titleColor ?? '#8b6b58', normalizedIntro, introRichText, body.introFontSize ?? 32, body.introColor ?? '#40362f', metaLeftRichText, body.metaLeftFontSize ?? 12, body.metaLeftColor ?? '#8b6b58', metaRightRichText, body.metaRightFontSize ?? 12, body.metaRightColor ?? '#8b6b58', JSON.stringify(observationCopy), JSON.stringify(sharedPracticeCopy)],
+           meta_right_rich_text as "metaRightRichText", meta_right_font_size as "metaRightFontSize", meta_right_color as "metaRightColor", observation_copy as "observationCopy", shared_practice_copy as "sharedPracticeCopy", footer_copy as "footerCopy", edit_version as "editVersion"`,
+        [normalizedTitle, titleRichText, body.titleFontSize ?? 12, body.titleColor ?? '#8b6b58', normalizedIntro, introRichText, body.introFontSize ?? 32, body.introColor ?? '#40362f', metaLeftRichText, body.metaLeftFontSize ?? 12, body.metaLeftColor ?? '#8b6b58', metaRightRichText, body.metaRightFontSize ?? 12, body.metaRightColor ?? '#8b6b58', JSON.stringify(observationCopy), JSON.stringify(sharedPracticeCopy), JSON.stringify(footerCopy)],
       );
       if (!page.rows[0]) throw new NotFoundException('实践页面内容尚未初始化');
       await client.query(`delete from content_practice_entries where key <> all($1::text[])`, [keys]);
@@ -2778,11 +2980,11 @@ export class ContentController {
         action: 'content.practice.updated',
         resourceType: 'practice_content',
         resourceId: 'practice-page',
-        metadata: { fields: ['title', 'titleRichText', 'titleFontSize', 'titleColor', 'intro', 'introRichText', 'introFontSize', 'introColor', 'metaLeftRichText', 'metaLeftFontSize', 'metaLeftColor', 'metaRightRichText', 'metaRightFontSize', 'metaRightColor', 'observationCopy', 'sharedPracticeCopy'], entryKeys: entries.map((entry) => entry.key), entryCount: entries.length, entryFields: ['contextRichText', 'contextFontSize', 'contextColor', 'titleRichText', 'titleFontSize', 'titleColor', 'descriptionRichText', 'descriptionFontSize', 'descriptionColor'], enabledEntries: entries.filter((entry) => entry.enabled).map((entry) => entry.key) },
+        metadata: { fields: ['title', 'titleRichText', 'titleFontSize', 'titleColor', 'intro', 'introRichText', 'introFontSize', 'introColor', 'metaLeftRichText', 'metaLeftFontSize', 'metaLeftColor', 'metaRightRichText', 'metaRightFontSize', 'metaRightColor', 'observationCopy', 'sharedPracticeCopy', 'footerCopy'], entryKeys: entries.map((entry) => entry.key), entryCount: entries.length, entryFields: ['contextRichText', 'contextFontSize', 'contextColor', 'titleRichText', 'titleFontSize', 'titleColor', 'descriptionRichText', 'descriptionFontSize', 'descriptionColor'], enabledEntries: entries.filter((entry) => entry.enabled).map((entry) => entry.key) },
       }, client);
       await client.query(`delete from admin_content_drafts where content_key = 'practice'`);
       await this.audit.record({ actorType: 'admin', actorId: request.user?.sub, action: 'content.practice.published', resourceType: 'practice_content', resourceId: 'practice-page', metadata: { sourceDraftVersion: body.editVersion } }, client);
-      return { ...page.rows[0], observationCopy: sanitizeObservationCopy(page.rows[0].observationCopy), sharedPracticeCopy: normalizeSharedPracticeCopy(page.rows[0].sharedPracticeCopy), entries };
+      return { ...page.rows[0], observationCopy: sanitizeObservationCopy(page.rows[0].observationCopy), sharedPracticeCopy: normalizeSharedPracticeCopy(page.rows[0].sharedPracticeCopy), footerCopy: sanitizePracticeFooterCopy(page.rows[0].footerCopy), entries };
     });
   }
 

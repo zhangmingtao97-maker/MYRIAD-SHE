@@ -12,7 +12,7 @@ import { parseDatabaseCount, parsePagination } from '../pagination';
 import { StorageService } from '../storage/storage.service';
 import { DataEncryptionService } from '../security/data-encryption.service';
 
-const settingKeys = ['store_enabled', 'maintenance_notice', 'support_contact'] as const;
+const settingKeys = ['store_enabled', 'maintenance_notice', 'support_contact', 'discussion_appeal_contact'] as const;
 const roles = ['super_admin', 'content_editor', 'support_readonly'] as const;
 type AdminRole = typeof roles[number];
 type AdminRequest = Request & { user?: { sub: string; role: string } };
@@ -404,7 +404,7 @@ export class AdminManagementController {
         if (typeof value !== 'boolean') throw new BadRequestException('商城开放状态无效');
         values[key] = value;
       } else {
-        const label = key === 'maintenance_notice' ? '维护公告' : '联系支持';
+        const label = key === 'maintenance_notice' ? '维护公告' : key === 'discussion_appeal_contact' ? '一起谈谈申诉联系方式' : '联系支持';
         const maximum = key === 'maintenance_notice' ? 500 : 200;
         if (typeof value !== 'string' || value.trim().length > maximum) throw new BadRequestException(`${label}长度无效`);
         values[key] = value.trim();

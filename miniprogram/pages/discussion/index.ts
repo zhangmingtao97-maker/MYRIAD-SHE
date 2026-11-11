@@ -1,4 +1,6 @@
 import { apiErrorMessage, request } from '../../utils/request';
+import { discussionRestrictionRecoveryText, isDiscussionRestrictionError, readDiscussionAccess } from '../../utils/discussion-access';
+import type { DiscussionAccessStatus } from '../../utils/discussion-access';
 import { isPublicDiscussion } from '../../utils/discussion-content';
 import type { DiscussionCopy, DiscussionThread, PublicDiscussion } from '../../utils/discussion-content';
 import { richTextHtml } from '../../utils/rich-text';
@@ -27,17 +29,22 @@ const reportReasons = [
 ];
 
 Page({
-  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, copyHtml: {} as Partial<Record<keyof DiscussionCopy, string>>, threads: [] as DisplayThread[], myPosts: [] as DisplayLocalContribution[], draft: null as LocalDiscussionDraft | null, loading: true, error: '', localPostCount: 0, reporting: false },
+  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, copyHtml: {} as Partial<Record<keyof DiscussionCopy, string>>, threads: [] as DisplayThread[], myPosts: [] as DisplayLocalContribution[], draft: null as LocalDiscussionDraft | null, loading: true, error: '', restricted: false, restrictionReason: '', restrictionMessage: '', appealContact: '', supportContact: '', localPostCount: 0, reporting: false },
   requestGeneration: 0,
+  hasShown: false,
   reportedThreads: {} as Record<string, boolean>,
   onLoad(query: Record<string, string | undefined>) {
     enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, issueCode: query.issueCode || '' });
     void this.load();
   },
-  onShow() { this.syncLocalContent(); if (!this.data.loading) void this.loadReports(); },
+  onShow() {
+    if (!this.hasShown) { this.hasShown = true; return; }
+    void this.load();
+  },
   onHide() { this.requestGeneration += 1; if (this.data.loading) this.setData({ loading: false }); },
   syncLocalContent() {
+    if (this.data.restricted) return;
     const stored = readLocalDiscussion();
     const issueCode = this.data.issueCode;
     const mine = stored.contributions
@@ -49,11 +56,38 @@ Page({
     this.setData({ myPosts: mine.filter((entry) => !entry.threadId), localPostCount: mine.length, draft,
       threads: this.data.threads.map((thread) => ({ ...thread, reported: Boolean(this.reportedThreads[thread.id]) })) });
   },
+  applyDiscussionRestriction(access: DiscussionAccessStatus) {
+    this.setData({
+      restricted: true,
+      restrictionReason: access.reason || '',
+      restrictionMessage: discussionRestrictionRecoveryText(access.endsAt),
+      appealContact: access.appealContact || '',
+      supportContact: access.supportContact || '',
+    });
+  },
   async load() {
     const generation = ++this.requestGeneration;
-    this.setData({ loading: true, error: '' });
-    const path = this.data.issueCode ? `/content/discussion?issueCode=${encodeURIComponent(this.data.issueCode)}` : '/content/discussion';
+    this.setData({ loading: true, error: '', restricted: false, restrictionReason: '', restrictionMessage: '', appealContact: '', supportContact: '' });
     try {
+      const access = await readDiscussionAccess();
+      if (generation !== this.requestGeneration) return;
+      if (access.restricted) {
+        this.reportedThreads = {};
+        this.setData({
+          issueLabel: '',
+          content: null,
+          copyHtml: {},
+          threads: [],
+          myPosts: [],
+          draft: null,
+          localPostCount: 0,
+          loading: false,
+          error: '',
+        });
+        this.applyDiscussionRestriction(access);
+        return;
+      }
+      const path = this.data.issueCode ? `/content/discussion?issueCode=${encodeURIComponent(this.data.issueCode)}` : '/content/discussion';
       const data = await request<PublicDiscussion>(path);
       if (generation !== this.requestGeneration) return;
       if (!isPublicDiscussion(data)) throw new Error('本期讨论内容格式无效');
@@ -69,16 +103,30 @@ Page({
         })),
         loading: false,
         error: '',
+        restricted: false,
+        restrictionReason: '',
+        restrictionMessage: '',
+        appealContact: '',
+        supportContact: '',
       });
       this.syncLocalContent();
       void this.loadReports();
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
+      if (isDiscussionRestrictionError(caught)) {
+        let access: DiscussionAccessStatus | null = null;
+        try { access = await readDiscussionAccess({ requireLogin: true }); } catch { /* Show the restriction page even if contact details cannot be refreshed. */ }
+        if (generation !== this.requestGeneration) return;
+        this.reportedThreads = {};
+        this.setData({ issueLabel: '', content: null, copyHtml: {}, threads: [], myPosts: [], draft: null, localPostCount: 0, loading: false, error: '' });
+        this.applyDiscussionRestriction(access || { restricted: true, reason: null, endsAt: null, appealContact: null, supportContact: null });
+        return;
+      }
       this.setData({ loading: false, error: apiErrorMessage(caught, '暂时无法读取本期讨论') });
     }
   },
   async loadReports() {
-    if (!this.data.issueCode) return;
+    if (this.data.restricted || !this.data.issueCode) return;
     try {
       const items = await request<CloudReport[]>(`/discussion/reports/mine?issueCode=${encodeURIComponent(this.data.issueCode)}`);
       if (!Array.isArray(items)) return;
@@ -103,18 +151,28 @@ Page({
       } });
     } });
   },
+  showDiscussionRestriction() {
+    wx.showModal({
+      title: '一起谈谈权限已停用',
+      content: this.data.restrictionMessage || '你暂时不能查看或参与本期讨论。账号登录、观察、实践和商城不受影响。',
+      showCancel: false,
+      confirmText: '知道了',
+    });
+  },
   writeExperience(event?: WechatMiniprogram.CustomEvent) {
     this.openComposer(String(event?.currentTarget.dataset.threadId || ''));
   },
   replyToThread(event: WechatMiniprogram.CustomEvent) { this.openComposer(String(event.currentTarget.dataset.threadId || '')); },
   continueDraft() { if (this.data.draft) this.openComposer(this.data.draft.threadId, true, this.data.draft.parentContributionId); },
   openComposer(threadId: string, resume = false, targetContributionId?: string) {
+    if (this.data.restricted) { this.showDiscussionRestriction(); return; }
     const thread = this.data.threads.find((item) => item.id === threadId);
     const parentContributionId = targetContributionId ?? thread?.contributionId ?? '';
     const query = `issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}&threadAuthor=${encodeURIComponent(thread?.author || '')}${parentContributionId ? `&parentContributionId=${encodeURIComponent(parentContributionId)}` : ''}${resume ? '&resume=1' : ''}`;
     wx.navigateTo({ url: `/pages/discussion-compose/index?${query}` });
   },
   reportThread(event: WechatMiniprogram.CustomEvent) {
+    if (this.data.restricted) { this.showDiscussionRestriction(); return; }
     const threadId = String(event.currentTarget.dataset.threadId || '');
     const thread = this.data.threads.find((item) => item.id === threadId);
     if (!thread || this.data.reporting) return;
@@ -138,6 +196,7 @@ Page({
     } });
   },
   async submitReport(threadId: string, reason: string) {
+    if (this.data.restricted) { this.showDiscussionRestriction(); return; }
     if (this.data.reporting) return;
     this.setData({ reporting: true });
     wx.showLoading({ title: '正在提交举报', mask: true });
@@ -155,6 +214,7 @@ Page({
     }
   },
   openConversation(event: WechatMiniprogram.CustomEvent) {
+    if (this.data.restricted) { this.showDiscussionRestriction(); return; }
     const threadId = String(event.currentTarget.dataset.threadId || '');
     if (!threadId) return;
     wx.navigateTo({ url: `/pages/discussion-thread/index?issueCode=${encodeURIComponent(this.data.issueCode)}&threadId=${encodeURIComponent(threadId)}` });

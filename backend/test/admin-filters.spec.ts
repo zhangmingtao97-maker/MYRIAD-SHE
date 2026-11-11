@@ -327,6 +327,42 @@ test('store setting no longer updates the practice entry or draft', async () => 
   assert.deepEqual(auditActions, ['system.settings.updated']);
 });
 
+test('discussion appeal contact can be configured, cleared, and rejects oversized values', async () => {
+  const statements: Array<{ sql: string; values: unknown[] }> = [];
+  const client = {
+    query: async (sql: string, values: unknown[] = []) => {
+      statements.push({ sql, values });
+      return { rows: [] };
+    },
+  } as unknown as PoolClient;
+  const database = {
+    withTransaction: async (callback: (transactionClient: PoolClient) => Promise<unknown>) => callback(client),
+    query: async () => ({
+      rows: [{ key: 'discussion_appeal_contact', value: 'appeal@example.com', updatedAt: '2026-11-11T00:00:00.000Z' }],
+    }),
+  } as unknown as DatabaseService;
+  const controller = new AdminManagementController(
+    database,
+    { record: async () => undefined } as unknown as AuditService,
+    {} as JwtService,
+    new ConfigService({}),
+  );
+  const adminRequest = { user: { sub: 'admin:owner', role: 'super_admin' } } as never;
+
+  const result = await controller.saveSettings({ discussion_appeal_contact: '  appeal@example.com  ' }, adminRequest);
+  assert.equal(result.discussion_appeal_contact.value, 'appeal@example.com');
+  const insert = statements.find(({ sql }) => sql.includes('insert into system_settings'));
+  assert.deepEqual(insert?.values, ['discussion_appeal_contact', JSON.stringify('appeal@example.com'), 'admin:owner']);
+
+  await controller.saveSettings({ discussion_appeal_contact: '   ' }, adminRequest);
+  const cleared = statements.filter(({ sql }) => sql.includes('insert into system_settings')).at(-1);
+  assert.deepEqual(cleared?.values, ['discussion_appeal_contact', JSON.stringify(''), 'admin:owner']);
+
+  await assert.rejects(
+    controller.saveSettings({ discussion_appeal_contact: 'x'.repeat(201) }, adminRequest),
+    BadRequestException,
+  );
+});
 test('only super admins can change the store master switch', async () => {
   let transactionStarted = false;
   const database = {

@@ -22,12 +22,12 @@
     </block>
   </view>
 
-  <view class="page-signature" aria-label="MYRIAD SHE，看见真实经验，此刻归安，让一件小事发生。">
+  <view class="page-signature" aria-label="实践页页尾文案">
     <view class="signature-grid">
-      <view class="signature-kicker signature-brand">MYRIAD SHE</view>
-      <view class="signature-line">看见真实经验</view>
-      <view class="signature-kicker">此刻归安</view>
-      <view class="signature-line">让一件小事发生</view>
+      <rich-text class="signature-kicker signature-brand" nodes="{{footerCopy.brand.richText}}" style="font-size: {{footerCopy.brand.fontSize}}px; color: {{footerCopy.brand.color}};" />
+      <rich-text class="signature-line" nodes="{{footerCopy.line1.richText}}" style="font-size: {{footerCopy.line1.fontSize}}px; color: {{footerCopy.line1.color}};" />
+      <rich-text class="signature-kicker" nodes="{{footerCopy.label.richText}}" style="font-size: {{footerCopy.label.fontSize}}px; color: {{footerCopy.label.color}};" />
+      <rich-text class="signature-line" nodes="{{footerCopy.line2.richText}}" style="font-size: {{footerCopy.line2.fontSize}}px; color: {{footerCopy.line2.color}};" />
     </view>
     <image class="signature-flower" src="/assets/brand/practice-signature-flower.svg" mode="aspectFit" aria-hidden="true" />
   </view>

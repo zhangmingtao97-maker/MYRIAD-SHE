@@ -9,9 +9,11 @@ import type { PoolClient } from 'pg';
 import { AuditService } from '../src/admin/audit.service';
 import { ContentController } from '../src/content/content.controller';
 import { defaultDiscussionContent, validateDiscussionContent } from '../src/content/discussion-content';
+import { sanitizeRichText } from '../src/content/rich-text';
 import { DatabaseService } from '../src/database/database.service';
 import { RedisService } from '../src/cache/redis.service';
 import { StorageService } from '../src/storage/storage.service';
+import { readDiscussionSupportSettings } from '../src/discussion/discussion-support-settings';
 
 const request = { user: { sub: 'admin:test' } } as Request & { user: { sub: string } };
 const objectKey = 'content/image/orphan.webp';
@@ -59,6 +61,76 @@ test('public discussion is read from the requested issue publication snapshot', 
   assert.deepEqual(response.content, snapshot.discussion);
 });
 
+test('discussion support settings prefer the configured appeal contact and fall back to support contact', async () => {
+  const configured = {
+    query: async () => ({
+      rows: [
+        { key: 'support_contact', value: ' 客服微信：myriad-care ' },
+        { key: 'discussion_appeal_contact', value: ' appeal@example.com ' },
+      ],
+    }),
+  } as unknown as Parameters<typeof readDiscussionSupportSettings>[0];
+  assert.deepEqual(await readDiscussionSupportSettings(configured), {
+    supportContact: '客服微信：myriad-care',
+    appealContact: 'appeal@example.com',
+  });
+
+  const fallback = {
+    query: async () => ({
+      rows: [
+        { key: 'support_contact', value: '客服企业微信：myriad-service' },
+        { key: 'discussion_appeal_contact', value: '   ' },
+      ],
+    }),
+  } as unknown as Parameters<typeof readDiscussionSupportSettings>[0];
+  assert.deepEqual(await readDiscussionSupportSettings(fallback), {
+    supportContact: '客服企业微信：myriad-service',
+    appealContact: '客服企业微信：myriad-service',
+  });
+});
+
+test('public discussion rejects an authenticated user with an active discussion restriction before loading content', async () => {
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+  const database = {
+    query: async (sql: string, values: unknown[]) => {
+      calls.push({ sql, values });
+      if (sql.includes('from discussion_user_restrictions')) {
+        return { rows: [{ id: 'restriction-id', reason: '不当言论', startsAt: new Date('2026-11-11T07:25:32.000Z'), endsAt: new Date('2026-11-12T07:25:00.000Z') }] };
+      }
+      if (sql.includes('from system_settings')) {
+        return {
+          rows: [
+            { key: 'support_contact', value: '客服微信：myriad-care' },
+            { key: 'discussion_appeal_contact', value: 'appeal@example.com' },
+          ],
+        };
+      }
+      throw new Error(`unexpected content query: ${sql}`);
+    },
+  } as unknown as DatabaseService;
+  const jwt = { verifyAsync: async () => ({ sub: '0a1cf954-aaa2-4495-86be-f4ce6699ca4a', role: 'user', exp: Math.floor(Date.now() / 1000) + 60 }) } as unknown as JwtService;
+  const controller = new ContentController(database, {} as StorageService, {} as AuditService, new ConfigService({}), {} as RedisService, jwt);
+  const authenticatedRequest = { headers: { authorization: 'Bearer restricted-user-token' } } as Request;
+  let restrictionError: unknown;
+  try {
+    await controller.discussion('ISSUE 02', authenticatedRequest);
+  } catch (caught) {
+    restrictionError = caught;
+  }
+  assert.ok(restrictionError instanceof ForbiddenException);
+  assert.deepEqual(restrictionError.getResponse(), {
+    code: 'discussion_restricted',
+    message: '一起谈谈权限已停用，暂时不能查看或参与讨论',
+    reason: '不当言论',
+    endsAt: new Date('2026-11-12T07:25:00.000Z'),
+    supportContact: '客服微信：myriad-care',
+    appealContact: 'appeal@example.com',
+  });
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].sql, /from discussion_user_restrictions/);
+  assert.deepEqual(calls[0].values, ['0a1cf954-aaa2-4495-86be-f4ce6699ca4a']);
+  assert.match(calls[1].sql, /from system_settings/);
+});
 test('public discussion prefers an independently published discussion page', async () => {
   const snapshot = { issue: { code: 'ISSUE 02', label: '本期' }, discussion: defaultDiscussionContent() };
   const independent = defaultDiscussionContent();
@@ -152,9 +224,14 @@ function harness(input: { referenced?: boolean; failIntentAudit?: boolean; failC
   return { controller, events, committedAuditActions, signedTokens, referenceSqls };
 }
 
-function practiceHarness() {
+function practiceHarness(options: { offlineActivitiesPublished?: boolean } = {}) {
   const events: string[] = [];
-  const page = { title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 32, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', observationCopy: practiceUpdate().observationCopy, sharedPracticeCopy: practiceUpdate().sharedPracticeCopy, editVersion: 1 };
+  const issueCode = 'issue-02';
+  const issuePracticeCopy = {
+    copy: practiceUpdate().sharedPracticeCopy,
+    offlineActivitiesPublished: options.offlineActivitiesPublished === true,
+  };
+  const page = { title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 32, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', observationCopy: practiceUpdate().observationCopy, sharedPracticeCopy: practiceUpdate().sharedPracticeCopy, footerCopy: practiceUpdate().footerCopy, editVersion: 1 };
   const entries = [
     { key: 'observation', title: '此刻观察', description: '从现实处境开始，也可以从四时气韵开始', enabled: true, contextRichText: '一个人 · 随时可以开始', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: '此刻观察', titleFontSize: 16, titleColor: '#40362f', descriptionRichText: '从现实处境开始，也可以从四时气韵开始', descriptionFontSize: 13, descriptionColor: '#40362f' },
     { key: 'shared-practice', title: '共同实践', description: '有真实活动时才开放', enabled: false, contextRichText: '与他人 · 从一个问题开始', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: '共同实践', titleFontSize: 16, titleColor: '#40362f', descriptionRichText: '本期线上讨论 · 未来线下相见', descriptionFontSize: 13, descriptionColor: '#40362f' },
@@ -165,6 +242,15 @@ function practiceHarness() {
       if (sql.includes('set transaction isolation level repeatable read')) {
         events.push('transaction:repeatable-read');
         return { rows: [] };
+      }
+      if (sql.includes("select code from content_issues where status = 'published'")) {
+        return { rows: [{ code: issueCode }] };
+      }
+      if (sql.includes('select id from content_issues where code = $1')) {
+        return { rows: [{ id: 'issue-02-id' }] };
+      }
+      if (sql.includes('from content_issue_practice_copy where issue_id = $1')) {
+        return { rows: [{ ...issuePracticeCopy, copy: { ...issuePracticeCopy.copy } }] };
       }
       if (sql.includes('select title, title_rich_text as "titleRichText"')) {
         return { rows: [{ ...page }] };
@@ -197,7 +283,6 @@ function practiceHarness() {
       }
       if (sql.includes('update content_practice_page')) {
         page.title = String(values[0]);
-        page.title = String(values[0]);
         page.titleRichText = String(values[1]);
         page.titleFontSize = Number(values[2]);
         page.titleColor = String(values[3]);
@@ -213,6 +298,7 @@ function practiceHarness() {
         page.metaRightColor = String(values[13]);
         page.observationCopy = JSON.parse(String(values[14]));
         page.sharedPracticeCopy = JSON.parse(String(values[15]));
+        page.footerCopy = JSON.parse(String(values[16]));
         page.editVersion += 1;
         events.push('page:updated');
         return { rows: [{ ...page }] };
@@ -307,6 +393,18 @@ test('public archive returns only published publication metadata', async () => {
 
 function practiceUpdate() {
   const sharedCopyKeys = ['topbarTitle', 'metaLeft', 'metaRight', 'heroTitle', 'heroIntro', 'onlineNumber', 'onlineContext', 'onlinePreview', 'onlineIssueLabel', 'onlineIssueTheme', 'onlineQuestion', 'onlineCopy', 'onlineAction', 'offlineNumber', 'offlineContext', 'offlineTitle', 'offlineCopy', 'noticeLabel', 'noticeCode', 'rule1Number', 'rule1Title', 'rule1Copy', 'rule2Number', 'rule2Title', 'rule2Copy', 'rule3Number', 'rule3Title', 'rule3Copy', 'rule4Number', 'rule4Title', 'rule4Copy', 'nextAction'];
+  const realityStage = (stageLabel: string, title: string, description: string, inputLabel: string, placeholder: string, nextLabel = '继续') => ({
+    stageLabel: { richText: stageLabel, fontSize: 11, color: '#663124' },
+    title: { richText: title, fontSize: 27, color: '#663124' },
+    description: { richText: description, fontSize: 14, color: '#40362f' },
+    inputLabel: { richText: inputLabel, fontSize: 12, color: '#8b6b58' },
+    placeholder: { richText: placeholder, fontSize: 14, color: '#40362f' },
+    nextLabel: { richText: nextLabel, fontSize: 14, color: '#663124' },
+    previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+    footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+    align: 'left' as 'left' | 'center' | 'right',
+    spacing: 'standard' as 'compact' | 'standard' | 'roomy',
+  });
   return {
     editVersion: 1,
     title: '实践',
@@ -325,8 +423,20 @@ function practiceUpdate() {
       realityContext: { richText: '从经验出发', fontSize: 12, color: '#8b6b58' }, realityTitle: { richText: '从现实处境开始', fontSize: 22, color: '#663124' }, realityDescription: { richText: '沿着正在发生的事，理清感受、需要，以及此刻真正能做的一步。', fontSize: 14, color: '#40362f' }, realityAction: { richText: '开始观察', fontSize: 14, color: '#663124' },
       seasonContext: { richText: '换一个观察角度', fontSize: 12, color: '#8b6b58' }, seasonTitle: { richText: '从四时气韵开始', fontSize: 22, color: '#663124' }, seasonDescription: { richText: '从生日对应的生命牌出发，回看真实经验，辨认一件事中的变化与自己的选择。', fontSize: 14, color: '#40362f' }, seasonGuide: { richText: '先了解四时气韵是什么', fontSize: 13, color: '#663124' }, seasonAction: { richText: '了解方法并开始', fontSize: 14, color: '#663124' },
       privacyLabel: { richText: '仅自己可见', fontSize: 13, color: '#663124' }, privacyCopy: { richText: '所有观察默认私密。你可以修改、删除或随时停止。', fontSize: 12, color: '#76695f' },
+      realityStages: {
+        situation: realityStage('底色', '此刻，真实发生了什么？', '只写事实也可以，不急着解释。', '写下这一刻', '例如：这周我反复答应了原本不想接下的事……'),
+        body: realityStage('此刻', '你现在最明显的感受是什么？', '可以是一种情绪、身体感受，或“暂时说不清”。', '或者，用自己的话写下', '把最接近此刻的感受写下来……'),
+        need: realityStage('选择', '此刻，你愿意把选择权放在哪里？', '不是解决全部，只是辨认一个现在可以选择的方向。', '或者，用自己的话写下', '例如：今天先不回复，明早再决定……'),
+        nextAction: realityStage('行动', '接下来七天，你愿意做哪一件小事？', '让它小到真的可以发生。', '写下这一件小事', '例如：把那句话写下来，先不发送……', '私密保存这次观察'),
+      },
     },
     sharedPracticeCopy: Object.fromEntries(sharedCopyKeys.map((key) => [key, { richText: key, fontSize: 12, color: '#40362f' }])),
+    footerCopy: {
+      brand: { richText: 'MYRIAD SHE', fontSize: 11, color: '#5c493c' },
+      line1: { richText: '看见真实经验', fontSize: 16, color: '#40362f' },
+      label: { richText: '此刻归安', fontSize: 11, color: '#5c493c' },
+      line2: { richText: '让一件小事发生', fontSize: 16, color: '#40362f' },
+    },
     entries: [
       { key: 'observation', title: '此刻观察', description: '从现实处境开始，也可以从四时气韵开始', enabled: true, contextRichText: '一个人 · 随时可以开始', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: '此刻观察', titleFontSize: 16, titleColor: '#40362f', descriptionRichText: '从现实处境开始，也可以从四时气韵开始', descriptionFontSize: 13, descriptionColor: '#40362f' },
       { key: 'shared-practice', title: '共同实践', description: '有真实活动时才开放', enabled: false, contextRichText: '与他人 · 从一个问题开始', contextFontSize: 12, contextColor: '#8b6b58', titleRichText: '共同实践', titleFontSize: 16, titleColor: '#40362f', descriptionRichText: '本期线上讨论 · 未来线下相见', descriptionFontSize: 13, descriptionColor: '#40362f' },
@@ -471,6 +581,26 @@ test('mine page rich text keeps allowed formatting, color, and font size while r
   assert.equal(updated.intro, content.intro);
 });
 
+test('rich text sanitizer preserves typography while removing unsafe styles and out-of-range values', () => {
+  const html = sanitizeRichText(
+    '<p style="text-align:center;line-height:1.8;background:red">标题</p>'
+      + '<span style="font-size:18px;color:#663124;text-align:right;line-height:2;background:blue">文字</span>'
+      + '<p style="text-align:justify;line-height:9">正文</p>'
+      + '<span style="font-size:8px;color:javascript:alert(1);text-align:center">越界</span>'
+      + '<ol><li style="text-align:center">一</li><li>二</li></ol>',
+    1000,
+    '测试富文本',
+  );
+  assert.equal(
+    html,
+    '<p style="text-align:center;line-height:1.8">标题</p>'
+      + '<span style="font-size:18px;color:#663124;text-align:right;line-height:2">文字</span>'
+      + '<p style="text-align:justify">正文</p>'
+      + '<span style="text-align:center">越界</span>'
+      + '<ol><li style="text-align:center">一</li><li>二</li></ol>',
+  );
+});
+
 test('mine page rich text drops unsafe and out-of-range font sizes', async () => {
   const { controller, content } = minePageHarness();
   const updated = await controller.updateMinePageContent(request, {
@@ -611,6 +741,39 @@ test('public practice content is read from the cloud database', async () => {
   assert.equal(result.entries.length, 3);
   assert.equal(result.entries[0].enabled, true);
   assert.ok(events.includes('transaction:repeatable-read'));
+});
+
+test('practice page footer falls back to the published defaults when old data has no footer', async () => {
+  const { controller, page } = practiceHarness();
+  (page as unknown as { footerCopy?: unknown }).footerCopy = undefined;
+
+  const result = await controller.practice();
+
+  assert.deepEqual(result.footerCopy, {
+    brand: { richText: 'MYRIAD SHE', fontSize: 11, color: '#5c493c' },
+    line1: { richText: '看见真实经验', fontSize: 16, color: '#40362f' },
+    label: { richText: '此刻归安', fontSize: 11, color: '#5c493c' },
+    line2: { richText: '让一件小事发生', fontSize: 16, color: '#40362f' },
+  });
+});
+
+test('practice page footer preserves rich text, font size, and color', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  update.footerCopy.brand = { richText: '<strong>MYRIAD</strong><br/>SHE<script>alert(1)</script>', fontSize: 13, color: '#663124' };
+  update.footerCopy.line1 = { richText: '<em>看见真实经验</em>', fontSize: 18, color: '#5C493C' };
+  update.footerCopy.label = { richText: '此刻归安', fontSize: 12, color: '#8b6b58' };
+  update.footerCopy.line2 = { richText: '让一件小事发生', fontSize: 20, color: '#40362f' };
+
+  const result = await controller.updatePracticeContent(request, update);
+
+  assert.equal(result.footerCopy.brand.richText, '<strong>MYRIAD</strong><br/>SHE');
+  assert.equal(result.footerCopy.brand.fontSize, 13);
+  assert.equal(result.footerCopy.brand.color, '#663124');
+  assert.equal(result.footerCopy.line1.richText, '<em>看见真实经验</em>');
+  assert.equal(result.footerCopy.line1.fontSize, 18);
+  assert.equal(result.footerCopy.label.fontSize, 12);
+  assert.equal(result.footerCopy.line2.fontSize, 20);
 });
 
 test('orphan media listing rejects malformed pagination before storage access', async () => {
@@ -1056,6 +1219,49 @@ test('practice observation copy keeps text and line breaks while enforcing the f
   assert.equal(result.observationCopy.realityAction.richText, '现在开始');
 });
 
+test('reality stage copy preserves safe rich text, sizing, color, and layout', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  update.observationCopy.realityStages.situation.title = {
+    richText: '<strong>此刻，真实</strong><br/><span style="color:#663124;font-size:34px">发生了什么？</span><script>alert(1)</script>',
+    fontSize: 30,
+    color: '#40362f',
+  };
+  update.observationCopy.realityStages.need.align = 'center';
+  update.observationCopy.realityStages.need.spacing = 'roomy';
+
+  const result = await controller.updatePracticeContent(request, update);
+
+  assert.match(result.observationCopy.realityStages.situation.title.richText, /<strong>此刻，真实<\/strong><br\/>/);
+  assert.match(result.observationCopy.realityStages.situation.title.richText, /<span style="font-size:34px;color:#663124">发生了什么？<\/span>/);
+  assert.doesNotMatch(result.observationCopy.realityStages.situation.title.richText, /script|alert/);
+  assert.equal(result.observationCopy.realityStages.situation.title.fontSize, 30);
+  assert.equal(result.observationCopy.realityStages.situation.title.color, '#40362f');
+  assert.equal(result.observationCopy.realityStages.need.align, 'center');
+  assert.equal(result.observationCopy.realityStages.need.spacing, 'roomy');
+});
+
+test('reality stage copy fills legacy data and rejects unsupported layout values', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  delete (update.observationCopy as Record<string, unknown>).realityStages;
+
+  const result = await controller.updatePracticeContent(request, update);
+
+  assert.equal(result.observationCopy.realityStages.situation.stageLabel.richText, '底色');
+  assert.equal(result.observationCopy.realityStages.nextAction.title.richText, '接下来七天，你愿意做哪一件小事？');
+  assert.equal(result.observationCopy.realityStages.nextAction.nextLabel.richText, '私密保存这次观察');
+
+  const { controller: invalidController } = practiceHarness();
+  const invalid = practiceUpdate();
+  (invalid.observationCopy.realityStages.body as unknown as Record<string, unknown>).align = 'justify';
+  (invalid.observationCopy.realityStages.body as unknown as Record<string, unknown>).spacing = 'dense';
+  const fallback = await invalidController.updatePracticeContent(request, invalid);
+
+  assert.equal(fallback.observationCopy.realityStages.body.align, 'left');
+  assert.equal(fallback.observationCopy.realityStages.body.spacing, 'standard');
+});
+
 type SharedCopyResult = {
   sharedPracticeCopy: Record<string, { richText: string; fontSize: number; color: string }>;
 };
@@ -1092,6 +1298,18 @@ test('shared practice copy does not expose shopping bag copy settings', async ()
   const { controller } = practiceHarness();
   const result = await controller.practice();
   assert.equal(Object.keys(result.sharedPracticeCopy).some((key) => key.toLowerCase().includes('bag')), false);
+});
+
+test('shared practice keeps offline activities hidden by default', async () => {
+  const { controller } = practiceHarness();
+  const result = await controller.practice();
+  assert.equal(result.offlineActivitiesPublished, false);
+});
+
+test('shared practice exposes offline activities when the issue is explicitly published', async () => {
+  const { controller } = practiceHarness({ offlineActivitiesPublished: true });
+  const result = await controller.practice();
+  assert.equal(result.offlineActivitiesPublished, true);
 });
 
 test('practice page title preserves rich text, line breaks, font size, and color', async () => {

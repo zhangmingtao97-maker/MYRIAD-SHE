@@ -1,0 +1,27 @@
+<view class="restricted-stage" style="min-height: calc(100vh - {{statusBarHeight}}px - 44px - 120rpx - env(safe-area-inset-bottom));">
+  <view class="restricted-card" role="status" aria-live="polite">
+    <view class="restricted-accent" aria-hidden="true"></view>
+    <text class="restricted-eyebrow">TOGETHER / PAUSED</text>
+    <text class="restricted-title">一起谈谈权限已停用</text>
+    <text class="restricted-copy">你暂时不能查看或参与本期讨论。账号登录、观察、实践和商城不受影响。</text>
+
+    <view class="restricted-reason">
+      <text class="restricted-reason-label">停用原因</text>
+      <text wx:if="{{reason}}" class="restricted-reason-value">{{reason}}</text>
+      <text wx:else class="restricted-reason-value restricted-reason-empty">编辑团队未填写具体原因</text>
+    </view>
+
+    <text class="restricted-recovery">{{recoveryText}}</text>
+
+    <view class="restricted-actions">
+      <view class="restricted-button restricted-button-primary" role="button" aria-label="我要申诉" tabindex="0" bindtap="openAppeal">
+        <text>我要申诉</text><text class="restricted-button-arrow" aria-hidden="true">→</text>
+      </view>
+      <view class="restricted-button restricted-button-secondary" role="button" aria-label="联系客服" tabindex="0" bindtap="openSupport">联系客服</view>
+    </view>
+
+    <text wx:if="{{appealContact}}" class="restricted-contact-hint">申诉渠道：{{appealContact}}</text>
+    <text wx:else class="restricted-contact-hint">申诉渠道暂未配置，可先通过「联系客服」继续咨询。</text>
+    <text class="restricted-note">申诉时请说明账号昵称，并附上本页截图，方便编辑团队核对。其他功能仍可正常使用。</text>
+  </view>
+</view>

@@ -1,12 +1,122 @@
 import { ApiRequestError, apiErrorMessage, request } from '../../utils/request';
 import { isLifeCard, isPracticeContent, isPublishedIssue } from '../../utils/content';
-import type { LifeCard, PracticeContent, PublishedIssue } from '../../utils/content';
+import type { LifeCard, ObservationCopy, PracticeContent, PracticeCopyItem, PublishedIssue, RealityStageKey, RealityStageCopy } from '../../utils/content';
 import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation, ObservationMethod } from '../../utils/observation';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 import { cacheSeasonPaused, hasReadSeasonGuide, readSeasonPaused, saveSeasonPaused, subscribeSeasonPaused } from '../../utils/season-preference';
 
 const app = getApp<IAppOption>();
+
+const realityStageKeys: RealityStageKey[] = ['situation', 'body', 'need', 'nextAction'];
+
+const DEFAULT_OBSERVATION_COPY: ObservationCopy = {
+  metaLeft: { richText: '此刻归安', fontSize: 12, color: '#8b6b58' },
+  metaRight: { richText: 'PRIVATE PRACTICE', fontSize: 12, color: '#663124' },
+  introTitle: { richText: '先把正在发生的事，<br/>放在眼前。', fontSize: 28, color: '#663124' },
+  introDescription: { richText: '辨认感受、关系，以及此刻可以迈出的一步。两种路径都只提供观察，不替你作判断。', fontSize: 14, color: '#40362f' },
+  realityContext: { richText: '从经验出发', fontSize: 12, color: '#8b6b58' },
+  realityTitle: { richText: '从现实处境开始', fontSize: 22, color: '#663124' },
+  realityDescription: { richText: '沿着正在发生的事，理清感受、需要，以及此刻真正能做的一步。', fontSize: 14, color: '#40362f' },
+  realityAction: { richText: '开始观察', fontSize: 14, color: '#663124' },
+  seasonContext: { richText: '换一个观察角度', fontSize: 12, color: '#8b6b58' },
+  seasonTitle: { richText: '从四时气韵开始', fontSize: 22, color: '#663124' },
+  seasonDescription: { richText: '从生日对应的生命牌出发，回看真实经验，辨认一件事中的变化与自己的选择。', fontSize: 14, color: '#40362f' },
+  seasonGuide: { richText: '先了解四时气韵是什么', fontSize: 13, color: '#663124' },
+  seasonAction: { richText: '了解方法并开始', fontSize: 14, color: '#663124' },
+  privacyLabel: { richText: '仅自己可见', fontSize: 13, color: '#663124' },
+  privacyCopy: { richText: '所有观察默认私密。你可以修改、删除或随时停止。', fontSize: 12, color: '#76695f' },
+  realityStages: {
+    situation: {
+      stageLabel: { richText: '底色', fontSize: 11, color: '#663124' },
+      title: { richText: '此刻，真实发生了什么？', fontSize: 27, color: '#663124' },
+      description: { richText: '只写事实也可以，不急着解释。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '写下这一刻', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '例如：这周我反复答应了原本不想接下的事……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '继续', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left',
+      spacing: 'standard',
+    },
+    body: {
+      stageLabel: { richText: '此刻', fontSize: 11, color: '#663124' },
+      title: { richText: '你现在最明显的感受是什么？', fontSize: 27, color: '#663124' },
+      description: { richText: '可以是一种情绪、身体感受，或“暂时说不清”。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '或者，用自己的话写下', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '把最接近此刻的感受写下来……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '继续', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left',
+      spacing: 'standard',
+    },
+    need: {
+      stageLabel: { richText: '选择', fontSize: 11, color: '#663124' },
+      title: { richText: '此刻，你愿意把选择权放在哪里？', fontSize: 27, color: '#663124' },
+      description: { richText: '不是解决全部，只是辨认一个现在可以选择的方向。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '或者，用自己的话写下', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '例如：今天先不回复，明早再决定……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '继续', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left',
+      spacing: 'standard',
+    },
+    nextAction: {
+      stageLabel: { richText: '行动', fontSize: 11, color: '#663124' },
+      title: { richText: '接下来七天，你愿意做哪一件小事？', fontSize: 27, color: '#663124' },
+      description: { richText: '让它小到真的可以发生。', fontSize: 14, color: '#40362f' },
+      inputLabel: { richText: '写下这一件小事', fontSize: 12, color: '#8b6b58' },
+      placeholder: { richText: '例如：把那句话写下来，先不发送……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '私密保存这次观察', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left',
+      spacing: 'standard',
+    },
+  },
+};
+
+type RealityStageStep = { key: RealityStageKey; copy: PracticeCopyItem };
+
+function plainRichText(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(?:p|div|span|li|h[1-6])>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function readableTextColor(color: string) {
+  const hex = /^#[0-9a-f]{6}$/i.test(color) ? color.slice(1) : '663124';
+  const red = Number.parseInt(hex.slice(0, 2), 16);
+  const green = Number.parseInt(hex.slice(2, 4), 16);
+  const blue = Number.parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+  return luminance > 0.62 ? '#40362f' : '#fffaf4';
+}
+
+function realityStageView(copy: ObservationCopy, step: number) {
+  const index = Math.min(Math.max(step, 0), realityStageKeys.length - 1);
+  const key = realityStageKeys[index];
+  const stage = copy.realityStages[key];
+  return {
+    currentRealityStageKey: key,
+    currentRealityStage: stage,
+    currentRealityStagePlaceholder: plainRichText(stage.placeholder.richText),
+    currentRealityStageNextLabel: plainRichText(stage.nextLabel.richText),
+    currentRealityStagePreviousLabel: plainRichText(stage.previousLabel.richText),
+    currentRealityStageNextTextColor: readableTextColor(stage.nextLabel.color),
+    realitySteps: realityStageKeys.map((stageKey) => ({ key: stageKey, copy: copy.realityStages[stageKey].stageLabel })) as RealityStageStep[],
+  };
+}
 
 Page({
   data: {
@@ -22,7 +132,13 @@ Page({
     cardSourceOpen: false,
     phase: 'choose' as 'choose' | 'form' | 'done', selected: '' as ObservationMethod | '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', accountDeleted: false, saving: false, advancing: false, conflict: false, syncState: 'idle' as 'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'conflict', error: '',
     validationError: '',
-    realitySteps: [{ key: 'situation', label: '底色' }, { key: 'body', label: '此刻' }, { key: 'need', label: '选择' }, { key: 'nextAction', label: '行动' }],
+    realitySteps: realityStageView(DEFAULT_OBSERVATION_COPY, 0).realitySteps,
+    currentRealityStageKey: 'situation' as RealityStageKey,
+    currentRealityStage: DEFAULT_OBSERVATION_COPY.realityStages.situation as RealityStageCopy,
+    currentRealityStagePlaceholder: plainRichText(DEFAULT_OBSERVATION_COPY.realityStages.situation.placeholder.richText),
+    currentRealityStageNextLabel: plainRichText(DEFAULT_OBSERVATION_COPY.realityStages.situation.nextLabel.richText),
+    currentRealityStagePreviousLabel: plainRichText(DEFAULT_OBSERVATION_COPY.realityStages.situation.previousLabel.richText),
+    currentRealityStageNextTextColor: readableTextColor(DEFAULT_OBSERVATION_COPY.realityStages.situation.nextLabel.color),
     seasonStage: 0,
   restFirst: false,
   seasonStateOptions: [
@@ -44,13 +160,7 @@ Page({
   seasonLinkOptions: ['有共鸣', '部分有关', '与我的经验不同', '暂时说不清'],
   feelingOptions: ['紧绷', '疲惫', '不安', '有一点松动', '暂时说不清'],
     choiceOptions: ['先停一下', '说出边界', '寻求支持', '暂不决定'],
-    observationCopy: {
-      metaLeft: { richText: '此刻归安', fontSize: 12, color: '#8b6b58' }, metaRight: { richText: 'PRIVATE PRACTICE', fontSize: 12, color: '#663124' },
-      introTitle: { richText: '先把正在发生的事，<br/>放在眼前。', fontSize: 28, color: '#663124' }, introDescription: { richText: '辨认感受、关系，以及此刻可以迈出的一步。两种路径都只提供观察，不替你作判断。', fontSize: 14, color: '#40362f' },
-      realityContext: { richText: '从经验出发', fontSize: 12, color: '#8b6b58' }, realityTitle: { richText: '从现实处境开始', fontSize: 22, color: '#663124' }, realityDescription: { richText: '沿着正在发生的事，理清感受、需要，以及此刻真正能做的一步。', fontSize: 14, color: '#40362f' }, realityAction: { richText: '开始观察', fontSize: 14, color: '#663124' },
-      seasonContext: { richText: '换一个观察角度', fontSize: 12, color: '#8b6b58' }, seasonTitle: { richText: '从四时气韵开始', fontSize: 22, color: '#663124' }, seasonDescription: { richText: '从生日对应的生命牌出发，回看真实经验，辨认一件事中的变化与自己的选择。', fontSize: 14, color: '#40362f' }, seasonGuide: { richText: '先了解四时气韵是什么', fontSize: 13, color: '#663124' }, seasonAction: { richText: '了解方法并开始', fontSize: 14, color: '#663124' },
-      privacyLabel: { richText: '仅自己可见', fontSize: 13, color: '#663124' }, privacyCopy: { richText: '所有观察默认私密。你可以修改、删除或随时停止。', fontSize: 12, color: '#76695f' },
-    },
+    observationCopy: DEFAULT_OBSERVATION_COPY,
     methods: [
       { key: 'reality' as ObservationMethod, title: '从现实处境开始', description: '从正在发生的经验进入观察。' },
       { key: 'season' as ObservationMethod, title: '从四时气韵开始', description: '从生日、生命牌与季节变化进入观察。' },
@@ -161,7 +271,7 @@ Page({
     try {
       const content = await request<PracticeContent>('/content/practice');
       if (generation !== this.contentGeneration || !isPracticeContent(content)) return;
-      this.setData({ observationCopy: content.observationCopy });
+      this.setData({ observationCopy: content.observationCopy, ...realityStageView(content.observationCopy, this.data.step) });
     } catch {
       // Keep the bundled copy as a resilient fallback if public content is temporarily unavailable.
     }
@@ -188,7 +298,7 @@ Page({
     this.contextGeneration += 1;
     this.restoreGeneration += 1;
     this.draftRevision += 1;
-      this.setData({ accountDeleted: false, phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'idle', error: '', answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' } });
+      this.setData({ accountDeleted: false, phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'idle', error: '', answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0) });
   },
   showAccountDeleted() {
     if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
@@ -201,7 +311,7 @@ Page({
     this.contextGeneration += 1;
     this.restoreGeneration += 1;
     this.draftRevision += 1;
-    this.setData({ accountDeleted: true, phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'error', error: '此微信身份对应的云端账户已删除，请回到“我的”页面确认是否创建新账户。', answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' } });
+    this.setData({ accountDeleted: true, phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'error', error: '此微信身份对应的云端账户已删除，请回到“我的”页面确认是否创建新账户。', answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0) });
   },
   async loadIssueContext(issueCode: string) {
     const generation = ++this.contextGeneration;
@@ -256,6 +366,7 @@ Page({
         ? ['situation', 'body', 'need', 'nextAction']
         : ['birthDate', 'experience', 'season', 'sevenDayAction'];
       const firstEmpty = fields.findIndex((field) => !record.answers?.[field]);
+      const restoredStep = record.status === 'saved' ? 0 : (firstEmpty < 0 ? 3 : firstEmpty);
       this.setData({
         phase: 'form', selected: record.method, editingSaved: record.status === 'saved', observationId: record.id, revision: record.revision, clientDraftId: record.clientDraftId || record.id,
         issueCode: record.issueCode || '', issueLabel: record.issueLabel || '', issueQuestion: record.issueQuestion || '', issueLoading: false,
@@ -268,9 +379,10 @@ Page({
           } catch { return {}; }
         })(),
         restFirst: /^(这七天先不安排新的行动|先留一点时间)/.test(String(record.answers?.sevenDayAction || '')),
-        step: record.status === 'saved' ? 0 : (firstEmpty < 0 ? 3 : firstEmpty),
+        step: restoredStep,
         saving: false, conflict: false, syncState: 'saved', validationError: '',
         navTitle: record.method === 'reality' ? '从现实处境开始' : '四时气韵',
+        ...realityStageView(this.data.observationCopy, restoredStep),
       });
       wx.setNavigationBarTitle({ title: record.method === 'reality' ? '从现实处境开始' : '从四时气韵开始' });
       this.cloudRevision = record.revision;
@@ -304,7 +416,7 @@ Page({
     if (app.globalData.accountDeleted || !['reality', 'season'].includes(method) || this.data.issueLoading || this.data.phase !== 'choose') return;
     if (method === 'season') this.clearSeasonPaused();
     this.cloudRevision = 0;
-    this.setData({ selected: method, phase: 'form', editingSaved: false, step: 0, revision: 0, conflict: false, issueError: '', validationError: '', clientDraftId: this.createDraftId(), syncState: 'idle', navTitle: method === 'reality' ? '从现实处境开始' : '四时气韵' });
+    this.setData({ selected: method, phase: 'form', editingSaved: false, step: 0, revision: 0, conflict: false, issueError: '', validationError: '', clientDraftId: this.createDraftId(), syncState: 'idle', navTitle: method === 'reality' ? '从现实处境开始' : '四时气韵', ...realityStageView(this.data.observationCopy, 0) });
     wx.setNavigationBarTitle({ title: method === 'reality' ? '从现实处境开始' : '从四时气韵开始' });
   },
   syncSeasonPaused() {
@@ -555,7 +667,8 @@ Page({
       if (!this.isCurrentAccountOperation(operationGeneration, authGeneration)) return;
       const final = this.data.step === 3;
       if (await this.saveCloudDraft(final) && !final) {
-        this.setData({ step: this.data.step + 1, validationError: '' });
+        const nextStep = this.data.step + 1;
+        this.setData({ step: nextStep, validationError: '', ...realityStageView(this.data.observationCopy, nextStep) });
         wx.pageScrollTo({ scrollTop: 0, duration: 0 });
       }
     } finally {
@@ -564,7 +677,24 @@ Page({
       }
     }
   },
-  previous() { if (this.data.saving || this.data.advancing) return; if (this.data.selected === 'season' && this.data.step === 1 && this.data.seasonStage === 1) { this.setData({ seasonStage: 0, validationError: '' }); wx.pageScrollTo({ scrollTop: 0, duration: 0 }); return; } if (this.data.step > 0) { this.setData({ step: this.data.step - 1, seasonStage: this.data.selected === 'season' && this.data.step === 2 ? 1 : 0, validationError: '' }); wx.pageScrollTo({ scrollTop: 0, duration: 0 }); } },
+  previous() {
+    if (this.data.saving || this.data.advancing) return;
+    if (this.data.selected === 'season' && this.data.step === 1 && this.data.seasonStage === 1) {
+      this.setData({ seasonStage: 0, validationError: '' });
+      wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+      return;
+    }
+    if (this.data.step > 0) {
+      const previousStep = this.data.step - 1;
+      this.setData({
+        step: previousStep,
+        seasonStage: this.data.selected === 'season' && this.data.step === 2 ? 1 : 0,
+        validationError: '',
+        ...realityStageView(this.data.observationCopy, previousStep),
+      });
+      wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+    }
+  },
   async persistObservation(answers: Record<string, string>, status: 'draft' | 'saved'): Promise<CloudObservation> {
     if (app.globalData.accountDeleted) throw new Error('当前云端账户已删除');
     const operationGeneration = this.accountOperationGeneration;
@@ -691,6 +821,7 @@ Page({
             ? ['situation', 'body', 'need', 'nextAction']
             : ['birthDate', 'experience', 'season', 'sevenDayAction'];
           const firstEmpty = fields.findIndex((field) => !record.answers?.[field]);
+          const restoredStep = record.status === 'saved' ? 0 : (firstEmpty < 0 ? 3 : firstEmpty);
           this.setData({
             phase: 'form',
             editingSaved: record.status === 'saved',
@@ -700,12 +831,13 @@ Page({
             issueLabel: record.issueLabel || '',
             issueQuestion: record.issueQuestion || '',
             answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '', ...record.answers },
-            step: record.status === 'saved' ? 0 : (firstEmpty < 0 ? 3 : firstEmpty),
+            step: restoredStep,
             saving: false,
             conflict: false,
             syncState: 'saved',
             error: '',
             validationError: '',
+            ...realityStageView(this.data.observationCopy, restoredStep),
           });
           this.cloudRevision = record.revision;
         } catch (caught) {
@@ -796,7 +928,7 @@ Page({
     this.cloudRevision = 0;
     this.draftRevision += 1;
     this.restoreGeneration += 1;
-    this.setData({ phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', advancing: false, conflict: false, syncState: 'idle', error: '', validationError: '', navTitle: '此刻观察', seasonGuideOpen: false, answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' } });
+    this.setData({ phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', advancing: false, conflict: false, syncState: 'idle', error: '', validationError: '', navTitle: '此刻观察', seasonGuideOpen: false, answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0) });
     wx.setNavigationBarTitle({ title: '此刻观察' });
   },
   onShareAppMessage() {

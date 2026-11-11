@@ -19,7 +19,7 @@
       <rich-text wx:for="{{paragraphs}}" wx:key="index" class="shared-section-copy" nodes="{{item.richText}}" style="font-size: {{item.fontSize}}px; color: {{item.color}}"></rich-text>
       <view class="text-button shared-action" role="button" aria-label="{{onlineActionLabel}}" tabindex="0" bindtap="handleObservation"><rich-text nodes="{{copy.onlineAction.richText}}" style="font-size: {{copy.onlineAction.fontSize}}px; color: {{copy.onlineAction.color}}"></rich-text><text>→</text></view>
     </view>
-    <view class="shared-section offline-section">
+    <view wx:if="{{offlineActivitiesPublished}}" class="shared-section offline-section">
       <view class="shared-section-meta"><rich-text nodes="{{copy.offlineNumber.richText}}" style="font-size: {{copy.offlineNumber.fontSize}}px; color: {{copy.offlineNumber.color}}"></rich-text><rich-text nodes="{{copy.offlineContext.richText}}" style="font-size: {{copy.offlineContext.fontSize}}px; color: {{copy.offlineContext.color}}"></rich-text></view>
       <rich-text class="shared-section-title" nodes="{{copy.offlineTitle.richText}}" style="font-size: {{copy.offlineTitle.fontSize}}px; color: {{copy.offlineTitle.color}}"></rich-text>
       <rich-text class="shared-section-copy" nodes="{{copy.offlineCopy.richText}}" style="font-size: {{copy.offlineCopy.fontSize}}px; color: {{copy.offlineCopy.color}}"></rich-text>

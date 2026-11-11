@@ -5,6 +5,13 @@
     <view class="compose-control compose-more" style="top: {{statusBarHeight}}px" role="button" aria-label="草稿说明" tabindex="0" bindtap="handleMore">···</view>
   </view>
   <view class="compose-content">
+    <view wx:if="{{accessLoading}}" class="compose-access-state" role="status" aria-live="polite">正在确认一起谈谈权限…</view>
+    <view wx:elif="{{accessError}}" class="compose-access-state compose-access-error" role="alert">
+      <text>{{accessError}}</text>
+      <view class="compose-access-retry" role="button" aria-label="重新确认权限" tabindex="0" bindtap="retryAccess">重新确认</view>
+    </view>
+    <discussion-restricted id="discussion-restricted" wx:elif="{{restricted}}" reason="{{restrictionReason}}" recovery-text="{{restrictionMessage}}" appeal-contact="{{appealContact}}" support-contact="{{supportContact}}" status-bar-height="{{statusBarHeight}}" />
+    <block wx:else>
     <block wx:if="{{!previewOpen}}">
       <view class="compose-meta"><rich-text class="compose-number" nodes="{{copyHtml.number}}"></rich-text><rich-text nodes="{{copyHtml.composeTitle}}"></rich-text></view>
       <rich-text class="compose-heading" nodes="{{copyHtml.composeHeading}}"></rich-text>
@@ -65,6 +72,7 @@
         <view class="compose-preview-draft-action" role="button" aria-label="{{copy.composeDiscardAction}}" tabindex="0" bindtap="discardDraft"><rich-text class="compose-action-copy" nodes="{{copyHtml.composeDiscardAction}}"></rich-text></view>
       </view>
     </view>
+    </block>
   </view>
   <view class="compose-tabbar" role="tablist" aria-label="小程序底部导航">
     <view class="compose-tab selected" role="tab" aria-label="首页" aria-selected="true" tabindex="0" data-index="0" bindtap="switchTab"><view class="compose-tab-icon compose-home-icon"><view></view></view><text>首页</text></view>

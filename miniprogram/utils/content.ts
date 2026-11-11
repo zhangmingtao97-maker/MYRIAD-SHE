@@ -68,7 +68,28 @@ export interface PublicAudioTrack {
   actions?: PublicAudioAction[];
 }
 
+export interface PracticeCopyItem {
+  richText: string;
+  fontSize: number;
+  color: string;
+}
+
+export type RealityStageKey = 'situation' | 'body' | 'need' | 'nextAction';
+export type RealityStageCopyField = 'stageLabel' | 'title' | 'description' | 'inputLabel' | 'placeholder' | 'nextLabel' | 'previousLabel' | 'footer';
+
+export interface RealityStageCopy extends Record<RealityStageCopyField, PracticeCopyItem> {
+  align: 'left' | 'center' | 'right';
+  spacing: 'compact' | 'standard' | 'roomy';
+}
+
+export type ObservationCopyKey = 'metaLeft' | 'metaRight' | 'introTitle' | 'introDescription' | 'realityContext' | 'realityTitle' | 'realityDescription' | 'realityAction' | 'seasonContext' | 'seasonTitle' | 'seasonDescription' | 'seasonGuide' | 'seasonAction' | 'privacyLabel' | 'privacyCopy';
+
+export type ObservationCopy = Record<ObservationCopyKey, PracticeCopyItem> & {
+  realityStages: Record<RealityStageKey, RealityStageCopy>;
+};
+
 export interface PracticeContent {
+  offlineActivitiesPublished: boolean;
   title: string;
   titleRichText: string;
   titleFontSize: number;
@@ -83,8 +104,9 @@ export interface PracticeContent {
   metaRightRichText: string;
   metaRightFontSize: number;
   metaRightColor: string;
-  observationCopy: Record<string, { richText: string; fontSize: number; color: string }>;
-  sharedPracticeCopy: Record<string, { richText: string; fontSize: number; color: string }>;
+  observationCopy: ObservationCopy;
+  sharedPracticeCopy: Record<string, PracticeCopyItem>;
+  footerCopy: Record<'brand' | 'line1' | 'label' | 'line2', PracticeCopyItem>;
   entries: Array<{
     key: string; target?: string; title: string; description: string; enabled: boolean;
     contextRichText: string; contextFontSize: number; contextColor: string;
@@ -324,24 +346,44 @@ function isOptionalPublicMediaUrl(value: unknown) {
   return value === '' || isPublicMediaUrl(value);
 }
 
-function isCopyItem(value: unknown): value is { richText: string; fontSize: number; color: string } {
+function isCopyItem(value: unknown): value is PracticeCopyItem {
   return isRecord(value)
     && isBoundedText(value.richText, 2000, 1)
     && isPracticeFontSize(value.fontSize)
     && isPracticeColor(value.color);
 }
 
+const observationCopyKeys: ObservationCopyKey[] = [
+  'metaLeft', 'metaRight', 'introTitle', 'introDescription', 'realityContext', 'realityTitle', 'realityDescription', 'realityAction',
+  'seasonContext', 'seasonTitle', 'seasonDescription', 'seasonGuide', 'seasonAction', 'privacyLabel', 'privacyCopy',
+];
+const realityStageKeys: RealityStageKey[] = ['situation', 'body', 'need', 'nextAction'];
+const realityStageCopyFields: RealityStageCopyField[] = ['stageLabel', 'title', 'description', 'inputLabel', 'placeholder', 'nextLabel', 'previousLabel', 'footer'];
+
+function isRealityStageCopy(value: unknown): value is RealityStageCopy {
+  return isRecord(value)
+    && (value.align === 'left' || value.align === 'center' || value.align === 'right')
+    && (value.spacing === 'compact' || value.spacing === 'standard' || value.spacing === 'roomy')
+    && realityStageCopyFields.every((field) => isCopyItem(value[field]));
+}
+
+function isObservationCopy(value: unknown): value is ObservationCopy {
+  if (!isRecord(value) || !observationCopyKeys.every((key) => isCopyItem(value[key]))) return false;
+  const stages = value.realityStages;
+  return isRecord(stages) && realityStageKeys.every((key) => isRealityStageCopy(stages[key]));
+}
+
 export function isPracticeContent(value: unknown): value is PracticeContent {
-  if (!isRecord(value) || !isBoundedText(value.title, 80, 1) || !isBoundedText(value.titleRichText, 2000, 1)
+  if (!isRecord(value) || typeof value.offlineActivitiesPublished !== 'boolean'
+    || !isBoundedText(value.title, 80, 1) || !isBoundedText(value.titleRichText, 2000, 1)
     || !isPracticeFontSize(value.titleFontSize) || !isPracticeColor(value.titleColor)
     || !isBoundedText(value.intro, 240, 1)
     || !isBoundedText(value.introRichText, 2000, 1) || !isPracticeFontSize(value.introFontSize)
     || !isPracticeColor(value.introColor)
     || !isBoundedText(value.metaLeftRichText, 2000, 1) || !isPracticeFontSize(value.metaLeftFontSize) || !isPracticeColor(value.metaLeftColor)
     || !isBoundedText(value.metaRightRichText, 2000, 1) || !isPracticeFontSize(value.metaRightFontSize) || !isPracticeColor(value.metaRightColor)
-    || !isRecord(value.observationCopy) || !['metaLeft', 'metaRight', 'introTitle', 'introDescription', 'realityContext', 'realityTitle', 'realityDescription', 'realityAction', 'seasonContext', 'seasonTitle', 'seasonDescription', 'seasonGuide', 'seasonAction', 'privacyLabel', 'privacyCopy'].every((key) => Object.hasOwn(value.observationCopy as Record<string, unknown>, key))
-    || !Object.values(value.observationCopy).every((item) => isRecord(item)
-      && isBoundedText(item.richText, 2000, 1) && isPracticeFontSize(item.fontSize) && isPracticeColor(item.color))
+    || !isRecord(value.footerCopy) || !['brand', 'line1', 'label', 'line2'].every((key) => isCopyItem(value.footerCopy[key]))
+    || !isObservationCopy(value.observationCopy)
     || !isRecord(value.sharedPracticeCopy) || !['topbarTitle', 'metaLeft', 'metaRight', 'heroTitle', 'heroIntro', 'onlineNumber', 'onlineContext', 'onlineIssueLabel', 'onlineIssueTheme', 'onlineQuestion', 'onlineCopy', 'onlineAction', 'offlineNumber', 'offlineContext', 'offlineTitle', 'offlineCopy', 'noticeLabel', 'noticeCode', 'rule1Number', 'rule1Title', 'rule1Copy', 'rule2Number', 'rule2Title', 'rule2Copy', 'rule3Number', 'rule3Title', 'rule3Copy', 'rule4Number', 'rule4Title', 'rule4Copy', 'nextAction'].every((key) => Object.hasOwn(value.sharedPracticeCopy as Record<string, unknown>, key))
     || !Object.entries(value.sharedPracticeCopy).every(([key, item]) => {
       if (key === 'onlineParagraphs') return Array.isArray(item) && item.length <= 12 && item.every(isCopyItem);
