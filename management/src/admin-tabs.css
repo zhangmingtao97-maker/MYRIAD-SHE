@@ -1,0 +1,139 @@
+/* Shared capsule tab navigation for the management console. */
+.admin-segmented-tabs.admin-segmented-tabs {
+  display: flex;
+  position: relative;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: fit-content;
+  max-width: 100%;
+  gap: 3px;
+  margin: 0 0 16px;
+  padding: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #e4dbd1;
+  border-radius: 999px;
+  background: #fffdf9;
+  box-shadow: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-segmented-tabs.admin-segmented-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-segmented-tabs.admin-segmented-tabs > button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  min-height: 36px;
+  margin: 0;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #80685a;
+  box-shadow: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: .015em;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none;
+  transition:
+    color .16s ease,
+    background-color .16s ease,
+    box-shadow .16s ease;
+}
+
+.admin-segmented-tabs.admin-segmented-tabs > button:hover:not(:disabled):not([aria-selected="true"]) {
+  background: #f7eee7;
+  color: #5f493c;
+  box-shadow: none;
+  transform: none;
+}
+
+.admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"] {
+  background: #c44f39;
+  color: #ffffff;
+  box-shadow: 0 3px 9px rgb(113 47 34 / 18%);
+}
+
+.admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"]:hover:not(:disabled),
+.admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"]:active:not(:disabled) {
+  background: #b6422f;
+  color: #fff8ee;
+  box-shadow: 0 3px 9px rgb(113 47 34 / 18%);
+  transform: none;
+}
+
+.admin-segmented-tabs.admin-segmented-tabs > button:focus-visible {
+  outline: 2px solid #8e493c;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgb(142 73 60 / 14%);
+}
+
+.admin-segmented-tabs.admin-segmented-tabs > button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+/* The phone-preview switch keeps the same visual language at a smaller scale. */
+.admin-segmented-tabs.admin-segmented-tabs.admin-segmented-tabs--compact {
+  gap: 2px;
+  padding: 3px;
+}
+
+.admin-segmented-tabs.admin-segmented-tabs.admin-segmented-tabs--compact > button {
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* Content-specific placement only; all visual states stay shared. */
+.settings-tabs.admin-segmented-tabs {
+  max-width: calc(100% - 40px);
+  margin: 20px 20px 0;
+}
+
+.mine-settings-layout.mine-settings-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mine-editor-tabs.admin-segmented-tabs {
+  position: static;
+  top: auto;
+}
+
+.reality-stage-tabs.admin-segmented-tabs {
+  margin-bottom: 0;
+}
+
+.life-card-toolbar .life-card-months.admin-segmented-tabs {
+  flex: 0 1 auto;
+  width: fit-content;
+}
+
+.legal-history-tabs.admin-segmented-tabs {
+  margin: 20px 0 8px;
+}
+
+@media (max-width: 640px) {
+  .admin-segmented-tabs.admin-segmented-tabs > button {
+    min-height: 34px;
+    padding: 7px 15px;
+    font-size: 12.5px;
+  }
+
+  .settings-tabs.admin-segmented-tabs {
+    max-width: calc(100% - 32px);
+    margin: 14px 16px 0;
+  }
+}

@@ -10,6 +10,8 @@ import './admin-journal.css';
 import './admin-preview.css';
 import './admin-dashboard.css';
 import './admin-experience.css';
+import './admin-state-machine.css';
+import './admin-tabs.css';
 
 const brandFonts = document.createElement('style');
 brandFonts.textContent = `
@@ -31,4 +33,3 @@ brandFonts.textContent = `
 document.head.append(brandFonts);
 
 createApp(App).mount('#app');
-import './admin-state-machine.css';

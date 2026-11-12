@@ -840,6 +840,13 @@ const initialSystemSettings: SystemSettings = {
 };
 const systemSettings = ref<SystemSettings>({ ...initialSystemSettings });
 const systemSettingsOriginal = ref<SystemSettings>({ ...systemSettings.value });
+type SystemSettingsTab = 'general' | 'home-popup' | 'daily-objects-popup';
+const systemSettingsTabs = [
+  { id: 'general', label: '基础设置' },
+  { id: 'home-popup', label: '首页弹窗' },
+  { id: 'daily-objects-popup', label: '日常之物弹窗' },
+] as const;
+const systemSettingsTab = ref<SystemSettingsTab>('general');
 const brandPopupPreviewUrl = ref('');
 const dailyObjectsBrandPopupPreviewUrl = ref('');
 const brandPopupUploading = ref(false);
@@ -3612,6 +3619,24 @@ async function resetSystemSettings() {
     systemSettings.value.brand_popup_image ? dailyObjectMediaPreviewUrl(systemSettings.value.brand_popup_image, session) : '',
     systemSettings.value.daily_objects_brand_popup_image ? dailyObjectMediaPreviewUrl(systemSettings.value.daily_objects_brand_popup_image, session) : '',
   ]);
+}
+
+function handleSystemSettingsTabKeydown(event: KeyboardEvent) {
+  const tabs = systemSettingsTabs.map((tab) => tab.id);
+  const currentIndex = tabs.indexOf(systemSettingsTab.value);
+  if (currentIndex < 0) return;
+
+  let nextIndex = currentIndex;
+  if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+  else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  else if (event.key === 'Home') nextIndex = 0;
+  else if (event.key === 'End') nextIndex = tabs.length - 1;
+  else return;
+
+  event.preventDefault();
+  const nextTab = tabs[nextIndex];
+  systemSettingsTab.value = nextTab;
+  requestAnimationFrame(() => document.getElementById(`system-settings-tab-${nextTab}`)?.focus());
 }
 
 async function loadEmployees() {
@@ -7953,7 +7978,7 @@ onBeforeUnmount(() => {
               <input ref="homeBackgroundFileInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" @change="selectHomeBackgroundFile" />
             </section>
             <div v-if="activeContentSection === 'journal-story'" class="story-editor-tabs">
-              <div class="story-editor-tab-group" role="tablist" aria-label="人物故事编辑页面">
+              <div class="story-editor-tab-group admin-segmented-tabs" role="tablist" aria-label="人物故事编辑页面">
                 <button type="button" role="tab" :class="{ 'is-active': storyEditorTab === 'home' }" :aria-selected="storyEditorTab === 'home'" @click="setStoryEditorTab('home')">首页入口</button>
                 <button type="button" role="tab" :class="{ 'is-active': storyEditorTab === 'detail' }" :aria-selected="storyEditorTab === 'detail'" @click="setStoryEditorTab('detail')">详情页</button>
               </div>
@@ -8382,7 +8407,7 @@ onBeforeUnmount(() => {
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'observation'" id="practice-observation-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / OBSERVATION</p><h2>此刻观察</h2></div></div>
-        <div class="practice-entry-tabs" role="tablist" :aria-label="`此刻观察：首页入口或详情页`">
+        <div class="practice-entry-tabs admin-segmented-tabs" role="tablist" :aria-label="`此刻观察：首页入口或详情页`">
           <button type="button" role="tab" :class="{ active: practiceEntryTab('observation') === 'home' }" :aria-selected="practiceEntryTab('observation') === 'home'" @click="setPracticeEntryTab('observation', 'home')">首页入口</button>
           <button type="button" role="tab" :class="{ active: practiceEntryTab('observation') === 'detail' }" :aria-selected="practiceEntryTab('observation') === 'detail'" @click="setPracticeEntryTab('observation', 'detail')">详情页</button>
         </div>
@@ -8409,7 +8434,7 @@ onBeforeUnmount(() => {
             <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="此刻观察 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
           </form>
           <form v-else class="practice-form observation-detail-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
-            <div class="practice-entry-tabs observation-detail-tabs" role="tablist" aria-label="此刻观察详情页编辑范围">
+            <div class="practice-entry-tabs observation-detail-tabs admin-segmented-tabs" role="tablist" aria-label="此刻观察详情页编辑范围">
               <button type="button" role="tab" :class="{ active: observationDetailView === 'flat' }" :aria-selected="observationDetailView === 'flat'" @click="observationDetailView = 'flat'">基础文案</button>
               <button type="button" role="tab" :class="{ active: observationDetailView === 'reality' }" :aria-selected="observationDetailView === 'reality'" @click="observationDetailView = 'reality'">现实处境四页</button>
               <button type="button" role="tab" :class="{ active: observationDetailView === 'season' }" :aria-selected="observationDetailView === 'season'" @click="observationDetailView = 'season'">四时气韵入口页</button>
@@ -8425,7 +8450,7 @@ onBeforeUnmount(() => {
               </section>
             </div>
             <div v-else-if="observationDetailView === 'reality'" class="reality-stage-editor">
-              <div class="reality-stage-tabs" role="tablist" aria-label="现实处境四页阶段">
+              <div class="reality-stage-tabs admin-segmented-tabs" role="tablist" aria-label="现实处境四页阶段">
                 <button v-for="(stage, index) in realityStageDefinitions" :key="stage.key" type="button" role="tab" :class="{ active: activeRealityStage === stage.key }" :aria-selected="activeRealityStage === stage.key" @click="activeRealityStage = stage.key">0{{ index + 1 }} {{ stage.label }}</button>
               </div>
               <div class="reality-stage-controls">
@@ -8456,10 +8481,10 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div v-else-if="observationDetailView === 'season-stages'" class="reality-stage-editor season-stage-editor">
-              <div class="reality-stage-tabs" role="tablist" aria-label="四时气韵四页阶段">
+              <div class="reality-stage-tabs admin-segmented-tabs" role="tablist" aria-label="四时气韵四页阶段">
                 <button v-for="stage in seasonStageDefinitions" :key="stage.key" type="button" role="tab" :class="{ active: activeSeasonStage === stage.key }" :aria-selected="activeSeasonStage === stage.key" @click="activeSeasonStage = stage.key">{{ stage.index }} {{ stage.label }}</button>
               </div>
-              <div v-if="activeSeasonStage === 'now'" class="reality-stage-tabs season-stage-subtabs" role="tablist" aria-label="四时气韵此刻页内容">
+              <div v-if="activeSeasonStage === 'now'" class="reality-stage-tabs season-stage-subtabs admin-segmented-tabs" role="tablist" aria-label="四时气韵此刻页内容">
                 <button type="button" role="tab" :class="{ active: activeSeasonNowTab === 'recent' }" :aria-selected="activeSeasonNowTab === 'recent'" @click="activeSeasonNowTab = 'recent'">最近发生了什么</button>
                 <button type="button" role="tab" :class="{ active: activeSeasonNowTab === 'change' }" :aria-selected="activeSeasonNowTab === 'change'" @click="activeSeasonNowTab = 'change'">此刻的变化</button>
               </div>
@@ -8574,7 +8599,7 @@ onBeforeUnmount(() => {
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'shared-practice'" id="practice-shared-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / CONTENT / SHARED PRACTICE</p><h2>共同实践</h2></div></div>
-        <div class="practice-entry-tabs" role="tablist" :aria-label="`共同实践：首页入口或详情页`">
+        <div class="practice-entry-tabs admin-segmented-tabs" role="tablist" :aria-label="`共同实践：首页入口或详情页`">
           <button type="button" role="tab" :class="{ active: practiceEntryTab('shared-practice') === 'home' }" :aria-selected="practiceEntryTab('shared-practice') === 'home'" @click="setPracticeEntryTab('shared-practice', 'home')">首页入口</button>
           <button type="button" role="tab" :class="{ active: practiceEntryTab('shared-practice') === 'detail' }" :aria-selected="practiceEntryTab('shared-practice') === 'detail'" @click="setPracticeEntryTab('shared-practice', 'detail')">详情页</button>
         </div>
@@ -8684,7 +8709,7 @@ onBeforeUnmount(() => {
       </section>
       <section v-if="activeSection === 'practice' && activeContentSection === 'daily-objects'" id="practice-daily-objects-content" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">PRACTICE / DAILY OBJECTS</p><h2>日常之物</h2></div></div>
-        <div class="practice-entry-tabs" role="tablist" :aria-label="`日常之物：首页入口或详情页`">
+        <div class="practice-entry-tabs admin-segmented-tabs" role="tablist" :aria-label="`日常之物：首页入口或详情页`">
           <button type="button" role="tab" :class="{ active: practiceEntryTab('daily-objects') === 'home' }" :aria-selected="practiceEntryTab('daily-objects') === 'home'" @click="setPracticeEntryTab('daily-objects', 'home')">首页入口</button>
           <button type="button" role="tab" :class="{ active: practiceEntryTab('daily-objects') === 'detail' }" :aria-selected="practiceEntryTab('daily-objects') === 'detail'" @click="setPracticeEntryTab('daily-objects', 'detail')">详情页</button>
         </div>
@@ -8791,7 +8816,7 @@ onBeforeUnmount(() => {
           </aside>
           <form class="practice-form" @submit.prevent="saveMinePageContent" @focusin="focusMineField">
           <div class="mine-settings-layout">
-            <nav class="mine-editor-tabs" role="tablist" aria-label="我的页面设置模块" aria-orientation="vertical">
+            <nav class="mine-editor-tabs admin-segmented-tabs" role="tablist" aria-label="我的页面设置模块">
               <button id="mine-tab-intro" type="button" role="tab" class="mine-editor-tab" :class="{ active: minePageEditorTab === 'intro' }" :tabindex="minePageEditorTab === 'intro' ? 0 : -1" :aria-selected="minePageEditorTab === 'intro'" aria-controls="mine-panel-intro" @keydown="moveMinePageEditorTab" @click="minePageEditorTab = 'intro'">我的</button>
               <button id="mine-tab-observations" type="button" role="tab" class="mine-editor-tab" :class="{ active: minePageEditorTab === 'observations' }" :tabindex="minePageEditorTab === 'observations' ? 0 : -1" :aria-selected="minePageEditorTab === 'observations'" aria-controls="mine-panel-observations" @keydown="moveMinePageEditorTab" @click="minePageEditorTab = 'observations'">01. 我的观察</button>
               <button id="mine-tab-discussions" type="button" role="tab" class="mine-editor-tab" :class="{ active: minePageEditorTab === 'discussions' }" :tabindex="minePageEditorTab === 'discussions' ? 0 : -1" :aria-selected="minePageEditorTab === 'discussions'" aria-controls="mine-panel-discussions" @keydown="moveMinePageEditorTab" @click="minePageEditorTab = 'discussions'">02. 参与的讨论</button>
@@ -9148,7 +9173,7 @@ onBeforeUnmount(() => {
 </section>
 <section v-if="activeSection === 'life-cards'" id="life-card-copy" class="content-area">
   <div class="life-card-toolbar">
-    <div class="mine-editor-tabs life-card-months" role="tablist" aria-label="选择月份">
+    <div class="mine-editor-tabs life-card-months admin-segmented-tabs" role="tablist" aria-label="选择月份">
       <button v-for="month in 12" :key="month" type="button" role="tab" class="mine-editor-tab" :class="{ active: lifeCardMonth === month }" :aria-selected="lifeCardMonth === month" @click="selectLifeCardMonth(month)">{{ month }} 月</button>
     </div>
     <div class="life-card-io">
@@ -9191,12 +9216,32 @@ onBeforeUnmount(() => {
   <div class="section-heading"><div><p class="eyebrow">SYSTEM / SUPPORT</p><h2>系统设置</h2><p class="section-description">维护全站公告、联系支持渠道、申诉联系方式，以及首页与「日常之物」的品牌图弹窗。</p></div></div>
   <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
   <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-  <div class="settings-form settings-form--single">
-    <label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label>
-    <label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label>
-    <label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label>
+  <div class="settings-shell">
+    <div class="settings-tabs admin-segmented-tabs" role="tablist" aria-label="系统设置分类" @keydown="handleSystemSettingsTabKeydown">
+      <button
+        v-for="tab in systemSettingsTabs"
+        :id="`system-settings-tab-${tab.id}`"
+        :key="tab.id"
+        type="button"
+        role="tab"
+        class="settings-tab"
+        :aria-label="tab.label"
+        :aria-selected="systemSettingsTab === tab.id"
+        :aria-controls="tab.id === 'general' ? 'system-settings-general' : tab.id === 'home-popup' ? 'home-brand-popup-settings' : 'daily-objects-brand-popup-settings'"
+        :tabindex="systemSettingsTab === tab.id ? 0 : -1"
+        @click="systemSettingsTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+    <div class="settings-form settings-form--single">
+    <div v-show="systemSettingsTab === 'general'" id="system-settings-general" class="settings-tab-panel settings-basics-panel" role="tabpanel" aria-labelledby="system-settings-tab-general">
+      <label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label>
+      <label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label>
+      <label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label>
+    </div>
 
-    <section id="home-brand-popup-settings" class="brand-popup-settings" aria-labelledby="home-brand-popup-settings-title">
+    <section v-show="systemSettingsTab === 'home-popup'" id="home-brand-popup-settings" class="brand-popup-settings settings-tab-panel" role="tabpanel" aria-labelledby="system-settings-tab-home-popup">
       <div class="brand-popup-settings-heading">
         <div>
           <p class="eyebrow">HOME / LAUNCH EXPERIENCE</p>
@@ -9256,7 +9301,7 @@ onBeforeUnmount(() => {
       <p class="brand-popup-settings-note">首页弹窗只影响小程序默认首页；关闭开关或未上传图片时不会弹出。</p>
     </section>
 
-    <section id="daily-objects-brand-popup-settings" class="brand-popup-settings" aria-labelledby="daily-objects-brand-popup-settings-title">
+    <section v-show="systemSettingsTab === 'daily-objects-popup'" id="daily-objects-brand-popup-settings" class="brand-popup-settings settings-tab-panel" role="tabpanel" aria-labelledby="system-settings-tab-daily-objects-popup">
       <div class="brand-popup-settings-heading">
         <div>
           <p class="eyebrow">DAILY OBJECTS / LAUNCH EXPERIENCE</p>
@@ -9320,7 +9365,8 @@ onBeforeUnmount(() => {
       <button :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button>
       <button type="button" class="quiet" :disabled="settingsSaving || brandPopupUploading" @click="resetSystemSettings">撤销修改</button>
     </div>
-    <p v-else class="muted">当前账号仅可查看设置。</p>
+      <p v-else class="muted">当前账号仅可查看设置。</p>
+    </div>
   </div>
 </section>
 

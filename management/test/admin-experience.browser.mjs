@@ -962,21 +962,46 @@ try {
   assert.equal(await page.locator('.settings-switch-card').count(), 0, 'store settings must live on their own page');
   const brandPopupSettings = page.locator('#system-settings .brand-popup-settings');
   assert.equal(await brandPopupSettings.count(), 2, 'home and daily objects popups must be configured independently');
+  const settingsTabs = page.locator('#system-settings [role="tab"]');
+  assert.equal(await settingsTabs.count(), 3, 'system settings must expose three tabs');
+  const basicSettingsTab = page.getByRole('tab', { name: '基础设置', exact: true });
+  const homePopupTab = page.getByRole('tab', { name: '首页弹窗', exact: true });
+  const dailyObjectsPopupTab = page.getByRole('tab', { name: '日常之物弹窗', exact: true });
+  const basicSettingsPanel = page.locator('#system-settings-general');
   const homeBrandPopupSettings = page.locator('#home-brand-popup-settings');
   const dailyObjectsBrandPopupSettings = page.locator('#daily-objects-brand-popup-settings');
+  await page.waitForFunction(() => { const input = document.querySelector('#system-settings textarea[placeholder="可留空"]'); return input instanceof HTMLTextAreaElement && !input.disabled; });
+  assert.equal(await basicSettingsTab.getAttribute('aria-selected'), 'true');
+  assert.equal(await basicSettingsPanel.isVisible(), true, 'basic settings should be the initial tab');
+  assert.equal(await homeBrandPopupSettings.isVisible(), false, 'home popup settings should stay hidden on the basic tab');
+  assert.equal(await dailyObjectsBrandPopupSettings.isVisible(), false, 'daily objects settings should stay hidden on the basic tab');
+
+  await homePopupTab.click();
   await homeBrandPopupSettings.waitFor();
-  await dailyObjectsBrandPopupSettings.waitFor();
-  await page.waitForFunction(() => { const input = document.querySelector('#system-settings input[placeholder="用于无障碍朗读，可留空"]'); return input instanceof HTMLInputElement && !input.disabled; });
+  assert.equal(await homePopupTab.getAttribute('aria-selected'), 'true');
+  assert.equal(await homeBrandPopupSettings.isVisible(), true);
+  assert.equal(await basicSettingsPanel.isVisible(), false);
+  assert.equal(await dailyObjectsBrandPopupSettings.isVisible(), false);
   assert.equal(await homeBrandPopupSettings.getByRole('checkbox', { name: '开启首页品牌图弹窗', exact: true }).count(), 1);
   assert.equal(await homeBrandPopupSettings.getByRole('checkbox').count(), 2, 'home popup should expose enabled and closable controls');
   assert.equal(await homeBrandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
   assert.equal(await homeBrandPopupSettings.getByRole('combobox').inputValue(), 'daily');
   assert.equal(await homeBrandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
+
+  await dailyObjectsPopupTab.click();
+  await dailyObjectsBrandPopupSettings.waitFor();
+  assert.equal(await dailyObjectsPopupTab.getAttribute('aria-selected'), 'true');
+  assert.equal(await dailyObjectsBrandPopupSettings.isVisible(), true);
+  assert.equal(await homeBrandPopupSettings.isVisible(), false);
   assert.equal(await dailyObjectsBrandPopupSettings.getByRole('checkbox', { name: '开启日常之物品牌图弹窗', exact: true }).count(), 1);
   assert.equal(await dailyObjectsBrandPopupSettings.getByRole('checkbox').count(), 2, 'daily objects popup should expose enabled and closable controls');
   assert.equal(await dailyObjectsBrandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '8');
   assert.equal(await dailyObjectsBrandPopupSettings.getByRole('combobox').inputValue(), 'once');
   assert.equal(await dailyObjectsBrandPopupSettings.getByPlaceholder('填写日常之物弹窗图片说明，可留空').inputValue(), '日常之物品牌图测试说明');
+
+  await basicSettingsTab.click();
+  await basicSettingsPanel.waitFor();
+  assert.equal(await basicSettingsTab.getAttribute('aria-selected'), 'true');
   const notice = page.getByLabel('维护公告', { exact: true });
   await notice.fill('尚未保存的维护公告');
   await refreshChoice(false);

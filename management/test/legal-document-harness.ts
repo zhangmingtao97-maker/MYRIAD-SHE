@@ -3,6 +3,7 @@ import LegalDocumentManager from '../src/components/LegalDocumentManager.vue';
 import LegalHistoryPanel from '../src/components/LegalHistoryPanel.vue';
 import type { LegalContent, LegalKey } from '../src/legal-document';
 import '../src/style.css';
+import '../src/admin-tabs.css';
 
 createApp({
   setup() {

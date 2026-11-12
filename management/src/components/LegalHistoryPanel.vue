@@ -155,7 +155,7 @@ defineExpose({ reload });
     <div class="section-heading"><div><p class="eyebrow">PAGES / LEGAL / HISTORY</p><h2>历史版本</h2></div><button type="button" class="quiet" :disabled="activeState.loading" @click="reload">{{ activeState.loading ? '读取中…' : '刷新' }}</button></div>
     <p class="muted">用户协议和隐私政策的已发布版本，按发布时间倒序排列。这里只读取旧版正文，不会修改当前草稿。</p>
 
-    <div class="legal-history-tabs" role="tablist" aria-label="选择文档">
+    <div class="legal-history-tabs admin-segmented-tabs" role="tablist" aria-label="选择文档">
       <button
         v-for="key in documentKeys"
         :key="key"
@@ -167,7 +167,6 @@ defineExpose({ reload });
         @click="selectDocument(key)"
       >
         <span>{{ documentLabels[key] }}</span>
-        <small>{{ loaded[key] ? `${states[key].items.length} 个版本` : '读取中' }}</small>
       </button>
     </div>
 
@@ -213,11 +212,6 @@ defineExpose({ reload });
 </template>
 
 <style scoped>
-.legal-history-tabs { display: inline-flex; gap: 4px; max-width: 100%; margin: 20px 0 8px; padding: 4px; border: 1px solid #e4dbd1; border-radius: 14px; background: #f5eee5; }
-.legal-history-tab { display: flex; align-items: baseline; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #75675d; font: inherit; cursor: pointer; }
-.legal-history-tab:hover { background: #fffdf9; color: #663124; }
-.legal-history-tab.active { border-color: #d8cabb; background: #fffdf9; color: #40362f; font-weight: 600; box-shadow: 0 2px 8px rgb(64 54 47 / 7%); }
-.legal-history-tab small { color: #9b8b7d; font-size: 11px; font-weight: 400; }
 .legal-history-panel { min-height: 120px; }
 .legal-history-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid #eee3d7; flex-wrap: wrap; }
 .legal-history-info { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
@@ -248,8 +242,6 @@ defineExpose({ reload });
 .legal-history-pop-enter-from, .legal-history-pop-leave-to { opacity: 0; }
 .legal-history-pop-enter-from .legal-history-modal, .legal-history-pop-leave-to .legal-history-modal { opacity: 0; transform: translateY(10px) scale(.985); }
 @media (max-width: 640px) {
-  .legal-history-tabs { display: flex; width: 100%; }
-  .legal-history-tab { flex: 1; justify-content: center; padding: 8px 10px; }
   .legal-history-modal-backdrop { padding: 12px; }
   .legal-history-modal { max-height: calc(100vh - 24px); border-radius: 16px; }
   .legal-history-modal-head, .legal-history-modal-body, .legal-history-modal-foot { padding-left: 18px; padding-right: 18px; }
