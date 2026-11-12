@@ -117,6 +117,12 @@ button:disabled { opacity: .6; cursor: wait; }
 .settings-switch-control { display: inline-flex !important; flex: 0 0 auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #ded3c5; border-radius: 999px; background: #f8f4ee; color: #6e594a; font-size: 12px; line-height: 1; white-space: nowrap; cursor: pointer; }
 .settings-switch-control input { flex: 0 0 auto; width: 20px; height: 20px; margin: 0; accent-color: #663124; cursor: pointer; }
 .settings-switch-control input:disabled { cursor: not-allowed; }
+.settings-form--single { width: 100%; max-width: 920px; }
+.store-access-rule { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 22px; border: 1px solid #d8c8b8; background: #f7f1e8; }
+.store-access-rule > div { display: grid; gap: 7px; min-width: 0; }
+.store-access-rule h3 { margin: 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 19px; font-weight: 500; }
+.store-access-rule p:not(.eyebrow) { max-width: 620px; margin: 0; color: #78685b; font-size: 13px; line-height: 1.65; }
+.store-access-rule .eyebrow { margin: 0; }
 
 .section-description { max-width: 680px; margin: 10px 0 0; color: #78685b; font-size: 14px; line-height: 1.7; }
 .brand-popup-settings { display: grid; gap: 20px; padding: 22px; border: 1px solid #d8c8b8; background: #faf6ef; }
@@ -148,7 +154,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .brand-popup-closable-toggle { grid-column: 1 / -1; padding: 15px 16px; border: 1px solid #ded3c5; background: #fffdf9; }
 .brand-popup-settings-note { margin: 0; padding-top: 16px; border-top: 1px solid #ded3c5; color: #88786b; font-size: 12px; line-height: 1.6; }
 @media (max-width: 760px) {
-  .settings-switch-card, .brand-popup-master-row { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .settings-switch-card, .brand-popup-master-row, .store-access-rule { align-items: flex-start; flex-direction: column; gap: 16px; }
   .brand-popup-settings-grid { grid-template-columns: minmax(0, 1fr); }
   .brand-popup-media { max-width: 280px; }
   .brand-popup-fields { grid-template-columns: minmax(0, 1fr); }

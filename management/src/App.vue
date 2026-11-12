@@ -26,6 +26,7 @@ import StoryDetailPreview from './components/StoryDetailPreview.vue';
 import PracticeEntryEditor from './components/PracticeEntryEditor.vue';
 import PracticeSaveBar from './components/PracticeSaveBar.vue';
 import { practiceEntryFixedStyle, practiceEntryText } from './practiceEntry';
+import { normalizePracticeContentResponse } from './practice-content-defaults';
 import { createDefaultDiscussionContent } from './discussion-content';
 import { isSeasonStagesCopy, seasonActionCopyGroups, seasonCardCopyGroups, seasonChoiceCopyGroups, seasonNowChangeCopyGroups, seasonNowRecentCopyGroups, seasonStageDefinitions, seasonStagesFormatIssue } from './season-stages';
 import type { SeasonNowTab, SeasonStageKey, SeasonStagesCopy } from './season-stages';
@@ -1645,20 +1646,22 @@ const dashboardLoading = ref(false);
 const overviewUpdatedAt = ref('');
 const overviewSyncError = ref('');
 const currentPageRefreshing = ref(false);
-type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-restrictions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'status-machine' | 'employees' | 'life-cards' | 'life-card-views';
+type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-restrictions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'store-settings' | 'brand-popup-settings' | 'status-machine' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
 type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'legal-history' | 'privacy-page' | 'about-history';
 type PracticeSection = 'practice' | 'practice-directory' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
-const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-restrictions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'status-machine', 'employees', 'life-cards', 'life-card-views']);
+const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-restrictions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'store-settings', 'brand-popup-settings', 'status-machine', 'employees', 'life-cards', 'life-card-views']);
 const contentSectionKeys = new Set<ContentSection>(['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'legal-history', 'privacy-page', 'about-history'];
 const practiceSections: PracticeSection[] = ['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects'];
 const operationsSections = ['contributions', 'discussion-restrictions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
-const systemSections = ['settings', 'status-machine', 'employees'] as const;
+const settingsSections = ['settings', 'store-settings', 'brand-popup-settings'] as const;
+const systemSections = [...settingsSections, 'status-machine', 'employees'] as const;
 const lifeCardSections = ['life-cards', 'life-card-views'] as const;
 type OperationsSection = typeof operationsSections[number];
+type SettingsSection = typeof settingsSections[number];
 type SystemSection = typeof systemSections[number];
 type LifeCardSection = typeof lifeCardSections[number];
 const operationsSectionModules: Record<OperationsSection, AdminModuleId> = {
@@ -1671,6 +1674,9 @@ const operationsSectionModules: Record<OperationsSection, AdminModuleId> = {
 };
 function isOperationsSection(section: DashboardSection | string): section is OperationsSection {
   return (operationsSections as readonly string[]).includes(section);
+}
+function isSettingsSection(section: DashboardSection | string): section is SettingsSection {
+  return (settingsSections as readonly string[]).includes(section);
 }
 function isSystemSection(section: DashboardSection | string): section is SystemSection {
   return (systemSections as readonly string[]).includes(section);
@@ -1711,6 +1717,8 @@ const staffLandingCandidates: Array<{ section: DashboardSection; contentSection:
   { section: 'audit', contentSection: 'practice', module: 'audit' },
   { section: 'members', contentSection: 'practice', module: 'members' },
   { section: 'settings', contentSection: 'practice', module: 'settings' },
+  { section: 'store-settings', contentSection: 'practice', module: 'settings' },
+  { section: 'brand-popup-settings', contentSection: 'practice', module: 'settings' },
   { section: 'status-machine', contentSection: 'practice', module: 'settings' },
   { section: 'life-cards', contentSection: 'practice', module: 'life-cards' },
   { section: 'life-card-views', contentSection: 'practice', module: 'life-card-views' },
@@ -1738,7 +1746,7 @@ async function enterDashboardByPermissions() {
   await loadDashboard();
   if (landing.section === 'content' && landing.contentSection === 'media') await loadOrphanMedia(true);
   if (landing.section === 'members') await refreshMembers();
-  if (landing.section === 'settings') await loadSystemSettings();
+  if (isSettingsSection(landing.section)) await loadSystemSettings();
   if (landing.section === 'life-cards') await loadLifeCards();
   if (landing.section === 'life-card-views') await loadLifeCardViews();
   if (landing.section === 'contributions') await refreshDiscussionContributions();
@@ -1893,7 +1901,7 @@ function openSystemNavigation() {
   if (!onSystem) {
     const first = systemSections.find((section) => {
       if (section === 'employees') return isSuperAdmin.value;
-      return canAccessModule(section === 'status-machine' ? 'settings' : section);
+      return canAccessModule('settings');
     });
     if (first) activeSection.value = first;
   }
@@ -1912,7 +1920,11 @@ function openSystemSubsection(section: SystemSection) {
   journalNavigationExpanded.value = false;
   pageNavigationExpanded.value = false;
   lifeCardNavigationExpanded.value = false;
-  if (section === 'settings') void loadSystemSettings();
+  if (isSettingsSection(section)) {
+    settingsMessage.value = '';
+    settingsError.value = '';
+    void loadSystemSettings();
+  }
   if (section === 'employees') void loadEmployees();
 }
 function openLifeCardNavigation() {
@@ -2024,6 +2036,8 @@ const currentView = computed(() => {
     audit: { eyebrow: 'AUDIT LOG / 操作记录', title: '操作记录' },
     members: { eyebrow: 'MEMBERS / DIRECTORY', title: '会员列表' },
     settings: { eyebrow: 'SYSTEM / SETTINGS', title: '系统设置' },
+    'store-settings': { eyebrow: 'COMMERCE / STORE', title: '商城开放' },
+    'brand-popup-settings': { eyebrow: 'SYSTEM / LAUNCH EXPERIENCE', title: '启动品牌图' },
     'status-machine': { eyebrow: 'SYSTEM / MODULE STATES', title: '模块状态机' },
     employees: { eyebrow: 'SYSTEM / EMPLOYEES', title: '员工与权限' },
     'life-cards': { eyebrow: 'CONTENT / LIFE CARDS', title: '生命牌文案' },
@@ -2081,7 +2095,9 @@ const adminDestinations: AdminDestination[] = [
     ['life-cards', '生命牌文案', '按月份与日期编辑生命牌的说明和观察提示。'],
     ['life-card-views', '生命牌查看', '筛选生命牌的查看记录与使用情况。'],
   ] as const).map(([id, label, description]) => ({ id, label, description, group: '生命牌', keywords: 'life cards', section: id, module: id })),
-  { id: 'settings', label: '系统设置', group: '系统管理', description: '管理业务开关、维护提示与支持联系方式。', keywords: 'system settings', section: 'settings', module: 'settings' },
+  { id: 'settings', label: '系统设置', group: '系统管理', description: '管理维护公告与用户支持渠道。', keywords: 'system settings support maintenance', section: 'settings', module: 'settings' },
+  { id: 'store-settings', label: '商城开放', group: '系统管理', description: '独立控制商城是否对外营业，并查看目录入口联动规则。', keywords: 'store commerce shop settings', section: 'store-settings', module: 'settings' },
+  { id: 'brand-popup-settings', label: '启动品牌图', group: '系统管理', description: '配置小程序启动时的全屏品牌图与展示频次。', keywords: 'brand popup launch image settings', section: 'brand-popup-settings', module: 'settings' },
   { id: 'status-machine', label: '模块状态机', group: '系统管理', description: '观察各模块运行状态、维护窗口与最近变化。', keywords: 'system module states runtime', section: 'status-machine', module: 'settings' },
   { id: 'employees', label: '员工与权限', group: '系统管理', description: '管理员工账号、角色与模块授权。', keywords: 'admin employees permissions', section: 'employees', superOnly: true },
 ];
@@ -3525,7 +3541,8 @@ async function saveSystemSettings() {
   settingsMessage.value = '';
   settingsError.value = '';
   try {
-    if (!window.confirm('确认保存系统设置？变更会立即生效并记录到审计日志。')) return;
+    const saveLabel = activeSection.value === 'store-settings' ? '商城设置' : activeSection.value === 'brand-popup-settings' ? '品牌图设置' : '系统设置';
+    if (!window.confirm(`确认保存${saveLabel}？变更会立即生效并记录到审计日志。`)) return;
     const session = sessionGeneration;
     const response = await apiFetch(`${apiBase}/admin/system-settings`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify(systemSettings.value) });
     if (!response.ok) throw new Error(await responseMessage(response, '系统设置保存失败'));
@@ -3535,7 +3552,11 @@ async function saveSystemSettings() {
     systemSettings.value = normalized;
     systemSettingsOriginal.value = { ...normalized };
     brandPopupPreviewUrl.value = normalized.brand_popup_image ? await dailyObjectMediaPreviewUrl(normalized.brand_popup_image, session) : '';
-    settingsMessage.value = '系统设置已保存。启动品牌图会在默认首页下次打开时按展示频次出现；申诉联系方式留空时会自动使用联系支持渠道。';
+    settingsMessage.value = activeSection.value === 'store-settings'
+      ? '商城设置已保存。商城仍需与「实践目录 → 日常之物」入口同时开启，用户才能看到商品。'
+      : activeSection.value === 'brand-popup-settings'
+        ? '启动品牌图设置已保存，将在默认首页下次打开时按展示频次出现。'
+        : '系统设置已保存。申诉联系方式留空时会自动使用联系支持渠道。';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '系统设置保存失败'; }
   finally { settingsSaving.value = false; }
 }
@@ -4071,7 +4092,7 @@ async function loadDashboard() {
       }
     }
     if (canPractice && practiceResponse) {
-      const practiceResult = await practiceResponse.json();
+      const practiceResult = normalizePracticeContentResponse(await practiceResponse.json());
       if (!isPracticeContent(practiceResult)) throw new Error(practiceContentFormatError(practiceResult));
       if (practiceGeneration === practiceContentRequestGeneration && !practiceContentSaving.value && !practiceContentDirty.value) {
         practiceContent.value = practiceResult;
@@ -4159,7 +4180,7 @@ async function refreshCurrentPage() {
   const location = { section: activeSection.value, contentSection: activeContentSection.value };
   const dailyHome = location.section === 'practice' && location.contentSection === 'daily-objects'
     && practiceEntryTab('daily-objects') === 'home';
-  if (location.section === 'settings'
+  if (isSettingsSection(location.section)
     && JSON.stringify(systemSettings.value) !== JSON.stringify(systemSettingsOriginal.value)
     && !window.confirm('刷新会放弃尚未保存的系统设置修改，是否继续？')) return;
   if (location.section === 'practice' && canAccessModule('practice')
@@ -4201,7 +4222,7 @@ async function refreshCurrentPage() {
       await refreshAudit();
     } else if (location.section === 'members') {
       await refreshMembers();
-    } else if (location.section === 'settings') {
+    } else if (isSettingsSection(location.section)) {
       await loadSystemSettings();
     } else if (location.section === 'employees') {
       await loadEmployees();
@@ -4354,7 +4375,7 @@ async function savePracticeContent() {
       if (conflict?.code === 'practice_content_changed') practiceContentConflict.value = true;
     }
     if (!response.ok) throw new Error(await responseMessage(response, '实践内容保存失败'));
-    const updated = await response.json();
+    const updated = normalizePracticeContentResponse(await response.json());
     if (!isPracticeContent(updated)) throw new Error('服务器返回的实践页面配置无法确认');
     practiceContent.value = derivedCopy && updated.sharedPracticeCopy
       ? { ...updated, sharedPracticeCopy: { ...updated.sharedPracticeCopy, ...derivedCopy } }
@@ -4385,7 +4406,7 @@ async function publishPracticeContent() {
     const response = await apiFetch(`${apiBase}/content/practice/manage/publish`, { method: 'POST', headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` }, body: JSON.stringify({ editVersion: content.editVersion }) });
     if (handleAdminUnauthorized(response, session)) return; assertSession(session);
     if (!response.ok) throw new Error(await responseMessage(response, '实践内容发布失败'));
-    const published = await response.json();
+    const published = normalizePracticeContentResponse(await response.json());
     if (!isPracticeContent(published)) throw new Error('服务器返回的实践页面版本无法确认');
     practiceContent.value = published;
     practiceContentDirty.value = false; practiceContentConflict.value = false;
@@ -4407,7 +4428,7 @@ async function reloadPracticeContent(discardLocal: boolean | Event = false) {
     if (handleAdminUnauthorized(response, session)) return;
     assertSession(session);
     if (!response.ok) throw new Error(await responseMessage(response, '无法读取最新实践页面'));
-    const updated = await response.json();
+    const updated = normalizePracticeContentResponse(await response.json());
     if (!isPracticeContent(updated)) throw new Error('服务器返回的实践页面配置无法确认');
     if (generation !== practiceContentRequestGeneration) return;
     practiceContent.value = updated;
@@ -4707,7 +4728,7 @@ async function uploadBrandPopupImage(file: File) {
     if (!isMediaViewTarget(preview)) throw new Error('服务器未返回有效的品牌图预览地址');
     systemSettings.value = { ...systemSettings.value, brand_popup_image: target.objectKey };
     brandPopupPreviewUrl.value = preview.url;
-    settingsMessage.value = '启动品牌图已上传。请确认开关与展示设置，再点击「保存系统设置」后生效。';
+    settingsMessage.value = '启动品牌图已上传。请确认开关与展示设置，再点击「保存品牌图设置」后生效。';
   } catch (caught) {
     if (session === sessionGeneration && loggedIn.value) settingsError.value = caught instanceof Error ? caught.message : '品牌图上传失败。';
   } finally {
@@ -4717,11 +4738,11 @@ async function uploadBrandPopupImage(file: File) {
 
 function removeBrandPopupImage() {
   if (!isSuperAdmin.value || brandPopupUploading.value) return;
-  if (!window.confirm('移除品牌图会同时关闭启动品牌图。保存系统设置后生效，确认移除？')) return;
+  if (!window.confirm('移除品牌图会同时关闭启动品牌图。保存品牌图设置后生效，确认移除？')) return;
   systemSettings.value = { ...systemSettings.value, brand_popup_image: '', brand_popup_enabled: false };
   brandPopupPreviewUrl.value = '';
   settingsError.value = '';
-  settingsMessage.value = '品牌图已移除，启动品牌图已关闭；请点击「保存系统设置」后生效。';
+  settingsMessage.value = '品牌图已移除，启动品牌图已关闭；请点击「保存品牌图设置」后生效。';
 }
 
 function markDailyObjectsDirty() {
@@ -7417,6 +7438,8 @@ onBeforeUnmount(() => {
                 <button type="button" class="dashboard-tab" :class="{ active: isSystemSection(activeSection) }" :aria-label="sidebarCollapsed ? '系统管理' : undefined" :title="sidebarCollapsed ? '系统管理' : undefined" :aria-expanded="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" aria-controls="system-navigation" @click.stop="openSystemNavigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M8 14v6" /></svg><span>系统管理</span><svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg></button>
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" id="system-navigation" class="dashboard-subnav" aria-label="系统管理子菜单">
                   <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" @click="openSystemSubsection('settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button>
+                  <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'store-settings' }" :aria-current="activeSection === 'store-settings' ? 'page' : undefined" @click="openSystemSubsection('store-settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z" /><path d="M9 9V7a3 3 0 0 1 6 0v2" /></svg><span>商城开放</span></button>
+                  <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'brand-popup-settings' }" :aria-current="activeSection === 'brand-popup-settings' ? 'page' : undefined" @click="openSystemSubsection('brand-popup-settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1.5" /><circle cx="9" cy="10" r="1.5" /><path d="m5 17 4.5-4 3 2.5 2.5-2 4 3.5" /></svg><span>启动品牌图</span></button>
                   <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'status-machine' }" :aria-current="activeSection === 'status-machine' ? 'page' : undefined" @click="openSystemSubsection('status-machine')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.5 7.5l4.2 8.7M17.5 7.5l-4.2 8.7"/></svg><span>模块状态机</span></button>
                   <button v-if="isSuperAdmin" class="dashboard-subtab" :class="{ active: activeSection === 'employees' }" :aria-current="activeSection === 'employees' ? 'page' : undefined" @click="openSystemSubsection('employees')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>员工与权限</span></button>
                 </nav></Transition>
@@ -8236,7 +8259,7 @@ onBeforeUnmount(() => {
             <div class="directory-toolbar">
               <div class="directory-toolbar-copy">
                 <strong>目录顺序</strong>
-                <p class="muted">小程序按这个顺序编号 01、02、03…；新增的条目排在最后。「日常之物」开关只控制该目录入口是否开启，商城是否开放请在系统设置中单独配置。</p>
+                <p class="muted">小程序按这个顺序编号 01、02、03…；新增的条目排在最后。「日常之物」开关只控制该目录入口是否开启，商城是否开放请在「系统管理 → 商城开放」中单独配置。</p>
               </div>
               <div class="directory-toolbar-actions">
                 <select v-model="newPracticeEntryTarget" :disabled="practiceContentSaving || practiceContentConflict" aria-label="新增条目点进去打开哪一页">
@@ -8616,7 +8639,7 @@ onBeforeUnmount(() => {
             <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="日常之物 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
           </form>
           <form v-else class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent" @focusin="focusDailyField">
-          <section class="daily-shop-gate"><div><h3>开放设置</h3><p>「实践目录 → 日常之物」入口控制目录是否开启；「系统设置 → 商城开放」独立控制商城是否对外营业。两处都开启后才会展示商品。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置目录入口状态</button></section>
+          <section class="daily-shop-gate"><div><h3>开放设置</h3><p>「实践目录 → 日常之物」入口控制目录是否开启；「系统管理 → 商城开放」独立控制商城是否对外营业。两处都开启后才会展示商品。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置目录入口状态</button></section>
           <section class="observation-copy-group daily-landing-editor"><h3>未开放页</h3><p class="field-help full">目录入口或商城关闭时展示。文章标题、节选、配图与公众号链接未填写时，小程序会分别沿用首页人物故事中的对应内容。</p><div class="daily-objects-fields">
             <div class="daily-field" data-daily-field="landing"><label class="full">首屏标题<textarea v-model="dailyObjectsContent.landingTitle" rows="4" maxlength="500" @input="markDailyObjectsDirty"></textarea></label><label class="full">首屏说明<textarea v-model="dailyObjectsContent.landingIntro" rows="3" maxlength="500" @input="markDailyObjectsDirty"></textarea></label><label>开放状态<input v-model="dailyObjectsContent.landingStatus" maxlength="120" @input="markDailyObjectsDirty" /></label><label>品牌中文<input v-model="dailyObjectsContent.brandSubtitle" maxlength="80" @input="markDailyObjectsDirty" /></label></div>
             <div class="daily-field" data-daily-field="her-days"><label>栏目标题<input v-model="dailyObjectsContent.herDaysTitle" maxlength="80" @input="markDailyObjectsDirty" /></label><label>英文标识<input v-model="dailyObjectsContent.herDaysEnglish" maxlength="80" @input="markDailyObjectsDirty" /></label></div>
@@ -9097,21 +9120,57 @@ onBeforeUnmount(() => {
   </div>
 </section>
 <section v-if="activeSection === 'settings'" id="system-settings" class="content-area">
-  <div class="section-heading"><div><p class="eyebrow">BUSINESS SETTINGS</p><h2>系统设置</h2><p class="section-description">管理商城状态、启动体验与用户支持渠道。</p></div></div>
+  <div class="section-heading"><div><p class="eyebrow">SYSTEM / SUPPORT</p><h2>系统设置</h2><p class="section-description">维护全站公告、联系支持渠道，以及一起谈谈的申诉联系方式。</p></div></div>
   <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
   <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-  <div class="settings-form">
+  <div class="settings-form settings-form--single">
+    <label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label>
+    <label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label>
+    <label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label>
+    <div v-if="isSuperAdmin" class="topbar-actions">
+      <button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button>
+      <button type="button" class="quiet" :disabled="settingsSaving" @click="resetSystemSettings">撤销修改</button>
+    </div>
+    <p v-else class="muted">当前账号仅可查看设置。</p>
+  </div>
+</section>
+
+<section v-if="activeSection === 'store-settings'" id="store-settings-page" class="content-area">
+  <div class="section-heading"><div><p class="eyebrow">COMMERCE / STORE ACCESS</p><h2>商城开放</h2><p class="section-description">独立控制商城是否对外营业；该开关不会改变「实践目录 → 日常之物」的入口状态。</p></div></div>
+  <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
+  <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
+  <div class="settings-form settings-form--single">
     <section class="settings-switch-card" aria-labelledby="store-settings-title">
       <div class="settings-switch-card-copy">
         <h3 id="store-settings-title">商城开放</h3>
-        <p>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</p>
+        <p>商城总闸。此开关只控制商城是否开放；「实践目录 → 日常之物」入口关闭时，同样会展示未开放页面。</p>
       </div>
       <label class="settings-switch-control">
         <span>{{ systemSettings.store_enabled ? '已开启' : '已关闭' }}</span>
         <input v-model="systemSettings.store_enabled" type="checkbox" aria-label="商城开放" :disabled="settingsLoading || !isSuperAdmin" />
       </label>
     </section>
+    <section class="store-access-rule" aria-labelledby="store-access-rule-title">
+      <div>
+        <p class="eyebrow">ACCESS RULE</p>
+        <h3 id="store-access-rule-title">两处同时开启，用户才能看到商品</h3>
+        <p>「系统管理 → 商城开放」控制商城总闸；「实践目录 → 日常之物」控制目录入口。任意一处关闭，小程序都会展示未开放页面。</p>
+      </div>
+      <button type="button" class="quiet" @click="openDailyObjectsEntrySettings">前往实践目录</button>
+    </section>
+    <div v-if="isSuperAdmin" class="topbar-actions">
+      <button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存商城设置' }}</button>
+      <button type="button" class="quiet" :disabled="settingsSaving" @click="resetSystemSettings">撤销修改</button>
+    </div>
+    <p v-else class="muted">当前账号仅可查看设置。</p>
+  </div>
+</section>
 
+<section v-if="activeSection === 'brand-popup-settings'" id="brand-popup-settings-page" class="content-area">
+  <div class="section-heading"><div><p class="eyebrow">SYSTEM / LAUNCH EXPERIENCE</p><h2>启动品牌图</h2><p class="section-description">配置用户打开小程序默认首页时展示的全屏品牌图。</p></div></div>
+  <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
+  <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
+  <div class="settings-form settings-form--single">
     <section class="brand-popup-settings" aria-labelledby="brand-popup-settings-title">
       <div class="brand-popup-settings-heading">
         <div>
@@ -9143,7 +9202,7 @@ onBeforeUnmount(() => {
             <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage">{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换图片' : '上传品牌图' }}</button>
             <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage">移除</button>
           </div>
-          <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存系统设置后生效。</small>
+          <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存后生效。</small>
         </div>
 
         <div class="brand-popup-fields">
@@ -9171,12 +9230,8 @@ onBeforeUnmount(() => {
       </div>
       <p class="brand-popup-settings-note">品牌图在默认首页启动后加载。直接通过分享链接进入其他页面时不会打断当前内容。</p>
     </section>
-
-    <label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label>
-    <label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label>
-    <label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label>
     <div v-if="isSuperAdmin" class="topbar-actions">
-      <button :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button>
+      <button :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存品牌图设置' }}</button>
       <button type="button" class="quiet" :disabled="settingsSaving || brandPopupUploading" @click="resetSystemSettings">撤销修改</button>
     </div>
     <p v-else class="muted">当前账号仅可查看设置。</p>

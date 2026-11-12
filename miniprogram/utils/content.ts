@@ -699,7 +699,7 @@ export function isPracticeContent(value: unknown): value is PracticeContent {
     || !isPracticeColor(value.introColor)
     || !isBoundedText(value.metaLeftRichText, 2000, 1) || !isPracticeFontSize(value.metaLeftFontSize) || !isPracticeColor(value.metaLeftColor)
     || !isBoundedText(value.metaRightRichText, 2000, 1) || !isPracticeFontSize(value.metaRightFontSize) || !isPracticeColor(value.metaRightColor)
-    || !isRecord(value.footerCopy) || !['brand', 'line1', 'label', 'line2'].every((key) => isCopyItem(value.footerCopy[key]))
+    || !isRecord(value.footerCopy) || !['brand', 'line1', 'label', 'line2'].every((key) => isCopyItem((value.footerCopy as Record<string, unknown>)[key]))
     || !isObservationCopy(value.observationCopy)
     || !isRecord(value.sharedPracticeCopy) || !['topbarTitle', 'metaLeft', 'metaRight', 'heroTitle', 'heroIntro', 'onlineNumber', 'onlineContext', 'onlineIssueLabel', 'onlineIssueTheme', 'onlineQuestion', 'onlineCopy', 'onlineAction', 'offlineNumber', 'offlineContext', 'offlineTitle', 'offlineCopy', 'noticeLabel', 'noticeCode', 'rule1Number', 'rule1Title', 'rule1Copy', 'rule2Number', 'rule2Title', 'rule2Copy', 'rule3Number', 'rule3Title', 'rule3Copy', 'rule4Number', 'rule4Title', 'rule4Copy', 'nextAction'].every((key) => Object.hasOwn(value.sharedPracticeCopy as Record<string, unknown>, key))
     || !Object.entries(value.sharedPracticeCopy).every(([key, item]) => {

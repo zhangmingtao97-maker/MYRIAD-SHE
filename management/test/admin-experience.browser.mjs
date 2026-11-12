@@ -270,6 +270,7 @@ try {
   const errors = [];
   const requests = [];
   let failDaily = false;
+  let fixtureOmitRealityStages = false;
   let savedPracticePayload = null;
   let practiceCopyOfflinePublished = false;
   browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
@@ -335,7 +336,14 @@ try {
         Object.assign(practice, body, { editVersion: practice.editVersion + 1 });
         return send(practice);
       }
-      if (path === '/content/practice/manage') return send(practice);
+      if (path === '/content/practice/manage') {
+        if (fixtureOmitRealityStages) {
+          const legacyPractice = structuredClone(practice);
+          delete legacyPractice.observationCopy.realityStages;
+          return send(legacyPractice);
+        }
+        return send(practice);
+      }
       if (path === '/content/daily-objects/manage') return failDaily ? route.fulfill({ status: 500, json: { message: '测试：读取失败' } }) : send(daily);
       if (path === '/content/mine/manage') return send(mine);
       if (path === '/content/about/manage') return send(about);
@@ -487,7 +495,7 @@ try {
   const trigger = page.getByRole('button', { name: /快捷导航/ });
   await trigger.click();
   const menu = page.getByRole('dialog', { name: '快速前往' });
-  assert.equal(await menu.getByRole('option').count(), 31);
+  assert.equal(await menu.getByRole('option').count(), 33);
   assert.equal(await menu.getByRole('combobox').evaluate((el) => el === document.activeElement), true);
   await menu.getByRole('combobox').fill('no-such-page');
   await menu.getByText('没有找到相关页面').waitFor();
@@ -500,11 +508,11 @@ try {
   assert.equal(await trigger.evaluate((el) => el === document.activeElement), true);
   assert.equal(await page.evaluate(() => document.body.style.overflow), '');
 
-  const destinations = ['实践页面', '实践目录', '此刻观察', '共同实践', '日常之物', '期刊列表', '首页策展', '人物故事', '微声音', '本期讨论', '往期策展', '媒体库', '我的页面设置', '关于 MYRIAD SHE', '关于发布历史', '隐私政策', '用户协议', '历史版本', '会员列表', '一起谈谈内容', '一起谈谈权限', '用户举报', '观察记录管理', '隐私申请', '操作记录', '系统设置', '模块状态机', '生命牌文案', '生命牌查看', '员工与权限'];
+  const destinations = ['实践页面', '实践目录', '此刻观察', '共同实践', '日常之物', '期刊列表', '首页策展', '人物故事', '微声音', '本期讨论', '往期策展', '媒体库', '我的页面设置', '关于 MYRIAD SHE', '关于发布历史', '隐私政策', '用户协议', '历史版本', '会员列表', '一起谈谈内容', '一起谈谈权限', '用户举报', '观察记录管理', '隐私申请', '操作记录', '系统设置', '商城开放', '启动品牌图', '模块状态机', '生命牌文案', '生命牌查看', '员工与权限'];
   for (const label of destinations) {
     await navigate(label);
     await noOverflow(`desktop ${label}`);
-    if (['首页策展', '实践页面', '会员列表', '操作记录', '系统设置', '模块状态机', '员工与权限'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 首页策展: 'editor', 实践页面: 'practice', 会员列表: 'members', 操作记录: 'audit', 系统设置: 'settings', 模块状态机: 'module-states', 员工与权限: 'employees' })[label]}-desktop.png`), fullPage: true });
+    if (['首页策展', '实践页面', '会员列表', '操作记录', '系统设置', '商城开放', '启动品牌图', '模块状态机', '员工与权限'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 首页策展: 'editor', 实践页面: 'practice', 会员列表: 'members', 操作记录: 'audit', 系统设置: 'settings', 商城开放: 'store-settings', 启动品牌图: 'brand-popup', 模块状态机: 'module-states', 员工与权限: 'employees' })[label]}-desktop.png`), fullPage: true });
   }
   await navigate('实践页面');
   const practiceFooterEditor = page.locator('#practice-content .practice-footer-editor');
@@ -945,25 +953,31 @@ try {
     await page.waitForFunction(() => !document.querySelector('.admin-page-refresh[aria-busy="true"]'));
   }
   await navigate('系统设置');
-  const brandPopupSettings = page.locator('.brand-popup-settings');
-  const storeSettingsCard = page.locator('.settings-switch-card');
-  await brandPopupSettings.waitFor();
-  await storeSettingsCard.waitFor();
-  const [storeCardBox, brandCardBox] = await Promise.all([storeSettingsCard.boundingBox(), brandPopupSettings.boundingBox()]);
-  assert.ok(storeCardBox && brandCardBox, 'system setting cards should have measurable boxes');
-  assert.ok(storeCardBox.y + storeCardBox.height + 16 <= brandCardBox.y, 'store and brand settings must not visually overlap');
-  assert.equal(await page.getByRole('checkbox', { name: '商城开放', exact: true }).count(), 1);
-  assert.equal(await brandPopupSettings.getByRole('checkbox', { name: '开启启动品牌图', exact: true }).count(), 1);
-  assert.equal(await brandPopupSettings.getByRole('checkbox').count(), 2, 'brand popup should expose enabled and closable controls');
-  assert.equal(await brandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
-  assert.equal(await brandPopupSettings.getByRole('combobox').inputValue(), 'daily');
-  assert.equal(await brandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
+  assert.equal(await page.locator('.settings-switch-card').count(), 0, 'store settings must live on their own page');
+  assert.equal(await page.locator('.brand-popup-settings').count(), 0, 'brand popup settings must live on their own page');
   const notice = page.getByLabel('维护公告', { exact: true });
   await notice.fill('尚未保存的维护公告');
   await refreshChoice(false);
   assert.equal(await notice.inputValue(), '尚未保存的维护公告');
   await refreshChoice(true);
   assert.equal(await notice.inputValue(), '');
+  await navigate('商城开放');
+  const storeSettingsCard = page.locator('#store-settings-page .settings-switch-card');
+  await storeSettingsCard.waitFor();
+  await page.waitForFunction(() => { const input = document.querySelector('#store-settings-page input[aria-label="商城开放"]'); return input instanceof HTMLInputElement && !input.disabled; });
+  assert.equal(await page.getByRole('checkbox', { name: '商城开放', exact: true }).count(), 1);
+  assert.equal(await page.locator('.brand-popup-settings').count(), 0, 'store page must not render brand popup settings');
+  assert.equal(await page.getByText('两处同时开启，用户才能看到商品', { exact: true }).count(), 1);
+  await navigate('启动品牌图');
+  const brandPopupSettings = page.locator('#brand-popup-settings-page .brand-popup-settings');
+  await brandPopupSettings.waitFor();
+  await page.waitForFunction(() => { const input = document.querySelector('#brand-popup-settings-page input[placeholder="用于无障碍朗读，可留空"]'); return input instanceof HTMLInputElement && !input.disabled; });
+  assert.equal(await page.locator('.settings-switch-card').count(), 0, 'brand page must not render store settings');
+  assert.equal(await brandPopupSettings.getByRole('checkbox', { name: '开启启动品牌图', exact: true }).count(), 1);
+  assert.equal(await brandPopupSettings.getByRole('checkbox').count(), 2, 'brand popup should expose enabled and closable controls');
+  assert.equal(await brandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
+  assert.equal(await brandPopupSettings.getByRole('combobox').inputValue(), 'daily');
+  assert.equal(await brandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
   await navigate('生命牌文案');
   const cardTitle = page.locator('.life-card-form').getByLabel('标题', { exact: true });
   await cardTitle.fill('测试草稿标题');
@@ -1173,7 +1187,7 @@ try {
         await responsiveRestrictionDialog.getByRole('button', { name: '取消', exact: true }).click();
         await responsiveRestrictionDialog.waitFor({ state: 'detached' });
       }
-      if (width === 375 && ['会员列表', '实践页面', '操作记录', '模块状态机', '员工与权限', '关于 MYRIAD SHE', '生命牌文案', '系统设置'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 会员列表: 'members', 实践页面: 'practice', 操作记录: 'audit', 模块状态机: 'module-states', 员工与权限: 'employees', '关于 MYRIAD SHE': 'about', 生命牌文案: 'life-cards', 系统设置: 'settings' })[label]}-mobile.png`), fullPage: true });
+      if (width === 375 && ['会员列表', '实践页面', '操作记录', '模块状态机', '员工与权限', '关于 MYRIAD SHE', '生命牌文案', '系统设置', '商城开放', '启动品牌图'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 会员列表: 'members', 实践页面: 'practice', 操作记录: 'audit', 模块状态机: 'module-states', 员工与权限: 'employees', '关于 MYRIAD SHE': 'about', 生命牌文案: 'life-cards', 系统设置: 'settings', 商城开放: 'store-settings', 启动品牌图: 'brand-popup' })[label]}-mobile.png`), fullPage: true });
     }
   }
   await page.locator('.admin-notification-trigger').click();
@@ -1199,7 +1213,7 @@ try {
   await restricted.locator('#member-directory').waitFor();
   await restricted.keyboard.press('Control+k');
   const limitedMenu = restricted.getByRole('dialog', { name: '快速前往' });
-  assert.equal(await limitedMenu.getByRole('option').count(), 3);
+  assert.equal(await limitedMenu.getByRole('option').count(), 5, 'restricted users should see all settings subpages they can access');
   await limitedMenu.getByRole('combobox').fill('员工');
   assert.equal(await limitedMenu.getByRole('option').count(), 0);
   await limitedMenu.getByRole('combobox').fill('模块状态机');
@@ -1210,6 +1224,32 @@ try {
   assert.equal(await restricted.getByRole('button', { name: '调整状态', exact: true }).count(), 0, 'read-only staff must not see transition actions');
   assert.equal(await restricted.locator('#module-state-machine .module-readonly').count(), 4, 'read-only staff should see an explicit read-only label');
   await restricted.close();
+
+  // Older practice APIs may not include the reality-stage copy yet. The editor must fill defaults instead of blocking the page.
+  fixtureOmitRealityStages = true;
+  const legacyPracticePage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await prepare(legacyPracticePage, 'super_admin', ['practice']);
+  await legacyPracticePage.goto(url);
+  await legacyPracticePage.waitForFunction(() => document.querySelector('.dashboard-shell')?.getAttribute('aria-busy') !== 'true');
+  await legacyPracticePage.keyboard.press('Control+k');
+  const legacyMenu = legacyPracticePage.getByRole('dialog', { name: '快速前往' });
+  await legacyMenu.waitFor();
+  await legacyMenu.getByRole('combobox').fill('此刻观察');
+  await legacyMenu.getByRole('option').filter({ has: legacyPracticePage.getByText('此刻观察', { exact: true }) }).click();
+  await legacyPracticePage.locator('#practice-observation-content').waitFor();
+  const legacyRealityTab = legacyPracticePage.getByRole('tab', { name: '现实处境四页', exact: true });
+  await legacyRealityTab.click();
+  const legacyStageTabs = legacyPracticePage.getByRole('tablist', { name: '现实处境四页阶段', exact: true });
+  await legacyStageTabs.waitFor();
+  assert.equal(await legacyStageTabs.locator('button').count(), 4, 'legacy API should still expose all four reality stages');
+  for (let index = 0; index < 4; index += 1) {
+    await legacyStageTabs.locator('button').nth(index).click();
+    const stageKeys = ['situation', 'body', 'need', 'nextAction'];
+    assert.equal(await legacyPracticePage.locator(`#practice-observation-content [data-reality-field^="reality:${stageKeys[index]}:"]`).count(), 8, `legacy API stage ${stageKeys[index]} should be filled with eight editors`);
+  }
+  assert.equal(await legacyPracticePage.getByRole('alertdialog', { name: '操作未完成', exact: true }).count(), 0, 'legacy API should not block the practice editor');
+  fixtureOmitRealityStages = false;
+  await legacyPracticePage.close();
   assert.deepEqual(unknown, []);
   assert.deepEqual(errors, []);
   assert.equal(
@@ -1224,7 +1264,7 @@ try {
     true,
     'navigation and draft tests must not persist unrelated data',
   );
-  console.log('PASS: 31 authorized destinations, issue required-field validation and editable edition copy, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
+  console.log('PASS: 33 authorized destinations, legacy practice API normalization, issue required-field validation and editable edition copy, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
 } finally {
   await browser?.close();
   await server.close();
