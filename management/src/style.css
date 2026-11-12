@@ -103,19 +103,30 @@ button:disabled { opacity: .6; cursor: wait; }
 .member-detail-profile { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .member-detail-profile strong { color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 19px; font-weight: 600; }
 .employee-head { grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) minmax(170px, 1fr) minmax(170px, 1fr) minmax(100px, .6fr); }
-.settings-form { display: grid; gap: 20px; max-width: 820px; padding: 24px; background: rgba(255,253,249,.9); border: 1px solid #ded3c5; }
+.settings-form { display: grid; gap: 24px; max-width: 820px; padding: 24px; background: rgba(255,253,249,.9); border: 1px solid #ded3c5; }
 .settings-form > label { display: grid; gap: 8px; }
 .setting-toggle { display: flex !important; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid #ded3c5; }
 .setting-toggle span { display: grid; gap: 5px; }
 .setting-toggle strong { font-weight: 600; }
 .setting-toggle input { width: 20px; height: 20px; accent-color: #663124; }
 
+.settings-switch-card { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 22px; border: 1px solid #d8c8b8; border-left: 3px solid #663124; background: #fffdf9; box-shadow: 0 8px 22px rgba(77, 49, 34, .035); }
+.settings-switch-card-copy { display: grid; gap: 7px; min-width: 0; }
+.settings-switch-card-copy h3 { margin: 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 20px; font-weight: 500; }
+.settings-switch-card-copy p { max-width: 570px; margin: 0; color: #78685b; font-size: 13px; line-height: 1.65; }
+.settings-switch-control { display: inline-flex !important; flex: 0 0 auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #ded3c5; border-radius: 999px; background: #f8f4ee; color: #6e594a; font-size: 12px; line-height: 1; white-space: nowrap; cursor: pointer; }
+.settings-switch-control input { flex: 0 0 auto; width: 20px; height: 20px; margin: 0; accent-color: #663124; cursor: pointer; }
+.settings-switch-control input:disabled { cursor: not-allowed; }
+
 .section-description { max-width: 680px; margin: 10px 0 0; color: #78685b; font-size: 14px; line-height: 1.7; }
 .brand-popup-settings { display: grid; gap: 20px; padding: 22px; border: 1px solid #d8c8b8; background: #faf6ef; }
-.brand-popup-settings-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; padding-bottom: 18px; border-bottom: 1px solid #ded3c5; }
+.brand-popup-settings-heading { padding-bottom: 18px; border-bottom: 1px solid #ded3c5; }
 .brand-popup-settings-heading h3 { margin: 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 22px; font-weight: 500; }
 .brand-popup-settings-heading p:not(.eyebrow) { max-width: 510px; margin: 8px 0 0; color: #78685b; font-size: 13px; line-height: 1.65; }
-.brand-popup-master-toggle { flex: 0 0 220px; padding: 0; border-bottom: 0; }
+.brand-popup-master-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 18px; border: 1px solid #ded3c5; background: #fffdf9; }
+.brand-popup-master-row > span:first-child { display: grid; gap: 4px; min-width: 0; }
+.brand-popup-master-row strong { color: #40362f; font-size: 14px; font-weight: 600; }
+.brand-popup-master-row small { color: #88786b; font-size: 12px; line-height: 1.5; }
 .brand-popup-settings-grid { display: grid; grid-template-columns: minmax(190px, 230px) minmax(0, 1fr); align-items: start; gap: 24px; }
 .brand-popup-media { display: grid; gap: 10px; min-width: 0; }
 .brand-popup-preview-frame { display: grid; place-items: center; width: 100%; aspect-ratio: 9 / 16; overflow: hidden; border: 1px solid #d8c8b8; background: #eee5d8; }
@@ -137,8 +148,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .brand-popup-closable-toggle { grid-column: 1 / -1; padding: 15px 16px; border: 1px solid #ded3c5; background: #fffdf9; }
 .brand-popup-settings-note { margin: 0; padding-top: 16px; border-top: 1px solid #ded3c5; color: #88786b; font-size: 12px; line-height: 1.6; }
 @media (max-width: 760px) {
-  .brand-popup-settings-heading { flex-direction: column; gap: 16px; }
-  .brand-popup-master-toggle { width: 100%; flex-basis: auto; }
+  .settings-switch-card, .brand-popup-master-row { align-items: flex-start; flex-direction: column; gap: 16px; }
   .brand-popup-settings-grid { grid-template-columns: minmax(0, 1fr); }
   .brand-popup-media { max-width: 280px; }
   .brand-popup-fields { grid-template-columns: minmax(0, 1fr); }

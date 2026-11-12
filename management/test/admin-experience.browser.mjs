@@ -946,7 +946,14 @@ try {
   }
   await navigate('系统设置');
   const brandPopupSettings = page.locator('.brand-popup-settings');
+  const storeSettingsCard = page.locator('.settings-switch-card');
   await brandPopupSettings.waitFor();
+  await storeSettingsCard.waitFor();
+  const [storeCardBox, brandCardBox] = await Promise.all([storeSettingsCard.boundingBox(), brandPopupSettings.boundingBox()]);
+  assert.ok(storeCardBox && brandCardBox, 'system setting cards should have measurable boxes');
+  assert.ok(storeCardBox.y + storeCardBox.height + 16 <= brandCardBox.y, 'store and brand settings must not visually overlap');
+  assert.equal(await page.getByRole('checkbox', { name: '商城开放', exact: true }).count(), 1);
+  assert.equal(await brandPopupSettings.getByRole('checkbox', { name: '开启启动品牌图', exact: true }).count(), 1);
   assert.equal(await brandPopupSettings.getByRole('checkbox').count(), 2, 'brand popup should expose enabled and closable controls');
   assert.equal(await brandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
   assert.equal(await brandPopupSettings.getByRole('combobox').inputValue(), 'daily');
@@ -1166,7 +1173,7 @@ try {
         await responsiveRestrictionDialog.getByRole('button', { name: '取消', exact: true }).click();
         await responsiveRestrictionDialog.waitFor({ state: 'detached' });
       }
-      if (width === 375 && ['会员列表', '实践页面', '操作记录', '模块状态机', '员工与权限', '关于 MYRIAD SHE', '生命牌文案'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 会员列表: 'members', 实践页面: 'practice', 操作记录: 'audit', 模块状态机: 'module-states', 员工与权限: 'employees', '关于 MYRIAD SHE': 'about', 生命牌文案: 'life-cards' })[label]}-mobile.png`), fullPage: true });
+      if (width === 375 && ['会员列表', '实践页面', '操作记录', '模块状态机', '员工与权限', '关于 MYRIAD SHE', '生命牌文案', '系统设置'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 会员列表: 'members', 实践页面: 'practice', 操作记录: 'audit', 模块状态机: 'module-states', 员工与权限: 'employees', '关于 MYRIAD SHE': 'about', 生命牌文案: 'life-cards', 系统设置: 'settings' })[label]}-mobile.png`), fullPage: true });
     }
   }
   await page.locator('.admin-notification-trigger').click();

@@ -9101,10 +9101,16 @@ onBeforeUnmount(() => {
   <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
   <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
   <div class="settings-form">
-    <label class="setting-toggle">
-      <span><strong>商城开放</strong><small>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</small></span>
-      <input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" />
-    </label>
+    <section class="settings-switch-card" aria-labelledby="store-settings-title">
+      <div class="settings-switch-card-copy">
+        <h3 id="store-settings-title">商城开放</h3>
+        <p>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</p>
+      </div>
+      <label class="settings-switch-control">
+        <span>{{ systemSettings.store_enabled ? '已开启' : '已关闭' }}</span>
+        <input v-model="systemSettings.store_enabled" type="checkbox" aria-label="商城开放" :disabled="settingsLoading || !isSuperAdmin" />
+      </label>
+    </section>
 
     <section class="brand-popup-settings" aria-labelledby="brand-popup-settings-title">
       <div class="brand-popup-settings-heading">
@@ -9113,11 +9119,18 @@ onBeforeUnmount(() => {
           <h3 id="brand-popup-settings-title">启动品牌图</h3>
           <p>用户每次打开小程序默认首页时，以全屏品牌图呈现。图片会居中裁切并铺满整个屏幕。</p>
         </div>
-        <label class="setting-toggle brand-popup-master-toggle">
-          <span><strong>开启启动品牌图</strong><small>{{ systemSettings.brand_popup_image ? '开启后按下方频次展示' : '请先上传品牌图片' }}</small></span>
-          <input v-model="systemSettings.brand_popup_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.brand_popup_image || brandPopupUploading" />
-        </label>
       </div>
+
+      <label class="brand-popup-master-row">
+        <span>
+          <strong>开启启动品牌图</strong>
+          <small>{{ systemSettings.brand_popup_image ? '开启后按下方频次展示' : '请先上传品牌图片' }}</small>
+        </span>
+        <span class="settings-switch-control">
+          <span>{{ systemSettings.brand_popup_enabled ? '已开启' : '已关闭' }}</span>
+          <input v-model="systemSettings.brand_popup_enabled" type="checkbox" aria-label="开启启动品牌图" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.brand_popup_image || brandPopupUploading" />
+        </span>
+      </label>
 
       <div class="brand-popup-settings-grid">
         <div class="brand-popup-media">
