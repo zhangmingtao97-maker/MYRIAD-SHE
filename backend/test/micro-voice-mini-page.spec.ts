@@ -71,6 +71,11 @@ function homeHarness(payload: unknown = content()) {
       if (path.endsWith('/content')) return validators;
       if (path.endsWith('/rich-text')) return richText;
       if (path.endsWith('/micro-voice')) return microVoice;
+      if (path.endsWith('/brand-popup')) return {
+        fetchBrandPopup: async () => null,
+        markBrandPopupShown: () => undefined,
+        shouldShowBrandPopup: () => false,
+      };
       if (path.endsWith('/share')) return {};
       if (path.endsWith('/request')) return {
         request: async () => payload,

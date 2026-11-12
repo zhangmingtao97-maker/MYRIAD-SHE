@@ -1,0 +1,42 @@
+<view
+  wx:if="{{visible}}"
+  class="brand-launch-overlay"
+  role="dialog"
+  aria-modal="true"
+  aria-label="品牌启动画面"
+  catchtouchmove="noop"
+  catchtap="noop"
+>
+  <view class="brand-launch-stage">
+    <image
+      class="brand-launch-image"
+      src="{{imageUrl}}"
+      mode="aspectFill"
+      aria-label="{{altText || 'MYRIAD SHE 品牌图'}}"
+      bindload="onImageLoad"
+      binderror="onImageError"
+    />
+    <view class="brand-launch-footer">
+      <view
+        wx:if="{{closable}}"
+        class="brand-launch-action"
+        role="button"
+        aria-label="{{imageReady ? '关闭品牌图，将在 ' + remainingSeconds + ' 秒后自动关闭' : '正在加载品牌图'}}"
+        tabindex="0"
+        bindtap="close"
+      >
+        <text wx:if="{{imageReady}}">关闭 · {{remainingSeconds}}s</text>
+        <text wx:else>正在加载</text>
+      </view>
+      <view
+        wx:else
+        class="brand-launch-action brand-launch-action-readonly"
+        aria-label="{{imageReady ? remainingSeconds + ' 秒后进入' : '正在加载品牌图'}}"
+        aria-live="polite"
+      >
+        <text wx:if="{{imageReady}}">{{remainingSeconds}}s 后进入</text>
+        <text wx:else>正在加载</text>
+      </view>
+    </view>
+  </view>
+</view>

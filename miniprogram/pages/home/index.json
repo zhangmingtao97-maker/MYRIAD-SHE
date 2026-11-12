@@ -1,1 +1,7 @@
-{ "navigationStyle": "custom", "navigationBarTextStyle": "black" }
+{
+  "navigationStyle": "custom",
+  "navigationBarTextStyle": "black",
+  "usingComponents": {
+    "brand-launch-popup": "/components/brand-launch-popup/index"
+  }
+}

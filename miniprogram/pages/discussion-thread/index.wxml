@@ -1,48 +1,47 @@
 <view class="discussion-page">
   <view class="discussion-topbar" style="padding-top: {{statusBarHeight}}px">
     <view class="discussion-control discussion-back" style="top: {{statusBarHeight}}px" role="button" aria-label="返回" tabindex="0" bindtap="handleBack">‹</view>
-    <text class="discussion-nav-title">一段对话</text>
+    <rich-text class="discussion-nav-title" nodes="{{detail.navTitle.html}}"></rich-text>
     <view class="discussion-control discussion-more" style="top: {{statusBarHeight}}px" role="button" aria-label="更多讨论选项" tabindex="0" bindtap="handleMore">···</view>
   </view>
-  <view wx:if="{{loading}}" class="discussion-state" role="status" aria-live="polite">正在读取这段对话…</view>
+  <view wx:if="{{loading}}" class="discussion-state" role="status" aria-live="polite"><rich-text nodes="{{detail.loading.html}}"></rich-text></view>
   <discussion-restricted id="discussion-restricted" wx:elif="{{restricted}}" reason="{{restrictionReason}}" recovery-text="{{restrictionMessage}}" appeal-contact="{{appealContact}}" support-contact="{{supportContact}}" status-bar-height="{{statusBarHeight}}" />
-  <view wx:elif="{{error}}" class="discussion-state discussion-error" role="alert"><text>{{error}}</text><view class="discussion-retry" role="button" aria-label="重新读取这段对话" tabindex="0" bindtap="load">重新读取</view></view>
+  <view wx:elif="{{error}}" class="discussion-state discussion-error" role="alert"><text>{{error}}</text><view class="discussion-retry" role="button" aria-label="{{detail.retry.text}}" tabindex="0" bindtap="load"><rich-text nodes="{{detail.retry.html}}"></rich-text></view></view>
   <block wx:elif="{{thread}}">
     <view class="thread-intro">
-      <view class="discussion-meta"><rich-text class="discussion-number" nodes="{{numberHtml}}"></rich-text><text class="discussion-kicker">本期讨论 · 一段对话</text></view>
-      <view class="thread-title">从这一段经历，
-继续谈起。</view>
+      <view class="discussion-meta"><rich-text class="discussion-number" nodes="{{numberHtml}}"></rich-text><rich-text class="discussion-kicker" nodes="{{detail.kicker.html}}"></rich-text></view>
+      <rich-text class="thread-title" nodes="{{detail.title.html}}"></rich-text>
       <rich-text class="thread-lead" nodes="{{introHtml}}"></rich-text>
-      <view class="thread-note">新写的经历会进入运营后台，审核通过后才会公开。</view>
+      <rich-text class="thread-note" nodes="{{detail.note.html}}"></rich-text>
     </view>
     <view class="thread-origin">
-      <view class="discussion-thread-meta"><text class="discussion-author">{{thread.author}}</text><text class="discussion-example-label">{{thread.source === 'community' ? '读者分享' : '示例'}}</text><text wx:if="{{thread.featured}}" class="discussion-featured-label">精华</text></view>
+      <view class="discussion-thread-meta"><text class="discussion-author">{{thread.author}}</text><rich-text class="discussion-example-label" nodes="{{thread.sourceLabelHtml}}"></rich-text><rich-text wx:if="{{thread.featured}}" class="discussion-featured-label" nodes="{{detail.featuredLabel.html}}"></rich-text></view>
       <rich-text class="discussion-thread-body" nodes="{{thread.bodyHtml}}"></rich-text>
       <view class="thread-actions">
-        <view class="discussion-reply-action" role="button" aria-label="回应{{thread.author}}" tabindex="0" data-author="{{thread.author}}" data-contribution-id="{{thread.contributionId}}" bindtap="replyTo">回应{{thread.author}} <text>↗</text></view>
-        <view class="discussion-report" role="button" aria-label="{{reported ? '已举报' : '举报'}}{{thread.author}}" tabindex="0" bindtap="reportThread">{{reported ? '已举报' : '举报'}}</view>
+        <view class="discussion-reply-action" role="button" aria-label="{{thread.replyActionLabel}}" tabindex="0" data-author="{{thread.author}}" data-contribution-id="{{thread.contributionId}}" bindtap="replyTo"><rich-text class="discussion-reply-action-label" nodes="{{thread.replyActionHtml}}"></rich-text> <text>↗</text></view>
+        <view class="discussion-report" role="button" aria-label="{{reported ? detail.reportedAction.text : detail.reportAction.text}}{{thread.author}}" tabindex="0" bindtap="reportThread"><rich-text nodes="{{reported ? detail.reportedAction.html : detail.reportAction.html}}"></rich-text></view>
       </view>
     </view>
     <view wx:if="{{thread.replies.length || localReplies.length}}" class="thread-replies">
-      <view class="thread-section-title">接着这段经历</view>
+      <rich-text class="thread-section-title" nodes="{{detail.repliesTitle.html}}"></rich-text>
       <view wx:for="{{thread.replies}}" wx:key="id" class="thread-reply">
-        <view class="thread-reply-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">{{item.source === 'community' ? '读者分享' : '示例'}}</text></view>
-        <view class="thread-reply-to">回应 {{thread.author}} 的{{thread.source === 'community' ? '分享' : '示例'}}</view>
+        <view class="thread-reply-meta"><text class="discussion-author">{{item.author}}</text><rich-text class="discussion-example-label" nodes="{{item.sourceLabelHtml}}"></rich-text></view>
+        <rich-text class="thread-reply-to" nodes="{{thread.replyContextHtml}}"></rich-text>
         <rich-text class="thread-reply-body" nodes="{{item.bodyHtml}}"></rich-text>
         <view class="thread-actions">
-          <view class="discussion-reply-action" role="button" aria-label="回应{{item.author}}" tabindex="0" data-author="{{item.author}}" data-contribution-id="{{item.contributionId}}" bindtap="replyTo">回应{{item.author}} <text>↗</text></view>
-          <view class="discussion-report" role="button" aria-label="{{reported ? '已举报' : '举报'}}{{item.author}}" tabindex="0" bindtap="reportThread">{{reported ? '已举报' : '举报'}}</view>
+          <view class="discussion-reply-action" role="button" aria-label="{{item.replyActionLabel}}" tabindex="0" data-author="{{item.author}}" data-contribution-id="{{item.contributionId}}" bindtap="replyTo"><rich-text class="discussion-reply-action-label" nodes="{{item.replyActionHtml}}"></rich-text> <text>↗</text></view>
+          <view class="discussion-report" role="button" aria-label="{{reported ? detail.reportedAction.text : detail.reportAction.text}}{{item.author}}" tabindex="0" bindtap="reportThread"><rich-text nodes="{{reported ? detail.reportedAction.html : detail.reportAction.html}}"></rich-text></view>
         </view>
       </view>
       <view wx:for="{{localReplies}}" wx:for-item="reply" wx:key="id" class="thread-reply thread-reply-local">
-        <view class="thread-reply-meta"><text class="discussion-author">你</text><text class="discussion-example-label">本机</text></view>
-        <view class="thread-reply-to">回应 {{thread.author}} 的{{thread.source === 'community' ? '分享' : '示例'}}</view>
+        <view class="thread-reply-meta"><text class="discussion-author">你</text><rich-text class="discussion-example-label" nodes="{{reply.sourceLabelHtml}}"></rich-text></view>
+        <rich-text class="thread-reply-to" nodes="{{thread.replyContextHtml}}"></rich-text>
         <rich-text class="thread-reply-body" nodes="{{reply.bodyHtml}}"></rich-text>
       </view>
     </view>
     <view class="thread-footer">
-      <view class="thread-footer-primary" role="button" aria-label="接着谈谈" tabindex="0" bindtap="continueTalk">接着谈谈 <text>→</text></view>
-      <view class="thread-footer-secondary" role="button" aria-label="查看本期其他经历" tabindex="0" bindtap="viewOtherThreads">查看本期其他经历 <text>→</text></view>
+      <view class="thread-footer-primary" role="button" aria-label="{{detail.footerPrimary.text}}" tabindex="0" bindtap="continueTalk"><rich-text nodes="{{detail.footerPrimary.html}}"></rich-text> <text>→</text></view>
+      <view class="thread-footer-secondary" role="button" aria-label="{{detail.footerSecondary.text}}" tabindex="0" bindtap="viewOtherThreads"><rich-text nodes="{{detail.footerSecondary.html}}"></rich-text> <text>→</text></view>
     </view>
   </block>
   <view class="discussion-tabbar" role="tablist" aria-label="小程序底部导航">

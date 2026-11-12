@@ -387,3 +387,110 @@ test('only super admins can change the store master switch', async () => {
   );
   assert.equal(transactionStarted, false);
 });
+test('brand launch popup settings save validated media and display options', async () => {
+  const statements: Array<{ sql: string; values: unknown[] }> = [];
+  const client = {
+    query: async (sql: string, values: unknown[] = []) => {
+      statements.push({ sql, values });
+      return { rows: [] };
+    },
+  } as unknown as PoolClient;
+  const database = {
+    withTransaction: async (callback: (transactionClient: PoolClient) => Promise<unknown>) => callback(client),
+    query: async () => ({
+      rows: [
+        { key: 'brand_popup_enabled', value: true, updatedAt: '2026-11-12T00:00:00.000Z' },
+        { key: 'brand_popup_image', value: 'content/image/brand-launch.webp', updatedAt: '2026-11-12T00:00:00.000Z' },
+        { key: 'brand_popup_duration', value: 5, updatedAt: '2026-11-12T00:00:00.000Z' },
+        { key: 'brand_popup_frequency', value: 'daily', updatedAt: '2026-11-12T00:00:00.000Z' },
+        { key: 'brand_popup_alt', value: 'MYRIAD SHE 品牌图', updatedAt: '2026-11-12T00:00:00.000Z' },
+        { key: 'brand_popup_closable', value: true, updatedAt: '2026-11-12T00:00:00.000Z' },
+      ],
+    }),
+  } as unknown as DatabaseService;
+  const controller = new AdminManagementController(
+    database,
+    { record: async () => undefined } as unknown as AuditService,
+    {} as JwtService,
+    new ConfigService({}),
+  );
+  const adminRequest = { user: { sub: 'admin:owner', role: 'super_admin' } } as never;
+  const settings = {
+    brand_popup_enabled: true,
+    brand_popup_image: '  content/image/brand-launch.webp  ',
+    brand_popup_duration: 5,
+    brand_popup_frequency: 'daily',
+    brand_popup_alt: '  MYRIAD SHE 品牌图  ',
+    brand_popup_closable: true,
+  };
+
+  const result = await controller.saveSettings(settings, adminRequest);
+  assert.equal(result.brand_popup_enabled.value, true);
+  assert.equal(result.brand_popup_image.value, 'content/image/brand-launch.webp');
+  assert.equal(result.brand_popup_duration.value, 5);
+  assert.equal(result.brand_popup_frequency.value, 'daily');
+  assert.equal(result.brand_popup_alt.value, 'MYRIAD SHE 品牌图');
+  const inserts = statements.filter(({ sql }) => sql.includes('insert into system_settings'));
+  assert.deepEqual(inserts[0]?.values, ['brand_popup_enabled', JSON.stringify(true), 'admin:owner']);
+  assert.deepEqual(inserts[1]?.values, ['brand_popup_image', JSON.stringify('content/image/brand-launch.webp'), 'admin:owner']);
+
+  await assert.rejects(controller.saveSettings({ brand_popup_duration: 0 }, adminRequest), BadRequestException);
+  await assert.rejects(controller.saveSettings({ brand_popup_duration: 16 }, adminRequest), BadRequestException);
+  await assert.rejects(controller.saveSettings({ brand_popup_frequency: 'weekly' }, adminRequest), BadRequestException);
+  await assert.rejects(controller.saveSettings({ brand_popup_image: 'content/audio/brand.mp3' }, adminRequest), BadRequestException);
+  await assert.rejects(controller.saveSettings({ brand_popup_alt: 'x'.repeat(121) }, adminRequest), BadRequestException);
+  await assert.rejects(controller.saveSettings({ brand_popup_enabled: true, brand_popup_image: '' }, adminRequest), BadRequestException);
+});
+
+test('brand launch popup cannot stay enabled with an empty persisted image', async () => {
+  const client = {
+    query: async (sql: string) => {
+      if (sql.includes('select key, value from system_settings')) {
+        return { rows: [{ key: 'brand_popup_enabled', value: true }, { key: 'brand_popup_image', value: '' }] };
+      }
+      return { rows: [] };
+    },
+  } as unknown as PoolClient;
+  const database = {
+    withTransaction: async (callback: (transactionClient: PoolClient) => Promise<unknown>) => callback(client),
+  } as unknown as DatabaseService;
+  const controller = new AdminManagementController(
+    database,
+    { record: async () => undefined } as unknown as AuditService,
+    {} as JwtService,
+    new ConfigService({}),
+  );
+
+  await assert.rejects(
+    controller.saveSettings(
+      { brand_popup_duration: 4 },
+      { user: { sub: 'admin:owner', role: 'super_admin' } } as never,
+    ),
+    BadRequestException,
+  );
+});
+
+test('only super admins can change brand launch popup settings', async () => {
+  let transactionStarted = false;
+  const database = {
+    withTransaction: async () => {
+      transactionStarted = true;
+      return undefined;
+    },
+  } as unknown as DatabaseService;
+  const controller = new AdminManagementController(
+    database,
+    { record: async () => undefined } as unknown as AuditService,
+    {} as JwtService,
+    new ConfigService({}),
+  );
+
+  await assert.rejects(
+    controller.saveSettings(
+      { brand_popup_duration: 4 },
+      { user: { sub: 'admin:editor', role: 'content_editor' } } as never,
+    ),
+    ForbiddenException,
+  );
+  assert.equal(transactionStarted, false);
+});

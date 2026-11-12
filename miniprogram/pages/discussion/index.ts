@@ -1,7 +1,7 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { discussionRestrictionRecoveryText, isDiscussionRestrictionError, readDiscussionAccess } from '../../utils/discussion-access';
 import type { DiscussionAccessStatus } from '../../utils/discussion-access';
-import { isPublicDiscussion } from '../../utils/discussion-content';
+import { discussionThreadsForDisplay, hasCommunityDiscussion, isPublicDiscussion } from '../../utils/discussion-content';
 import type { DiscussionCopy, DiscussionThread, PublicDiscussion } from '../../utils/discussion-content';
 import { richTextHtml } from '../../utils/rich-text';
 import { discussionStorageKey, readLocalDiscussion } from '../../utils/discussion-storage';
@@ -29,7 +29,7 @@ const reportReasons = [
 ];
 
 Page({
-  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, copyHtml: {} as Partial<Record<keyof DiscussionCopy, string>>, threads: [] as DisplayThread[], myPosts: [] as DisplayLocalContribution[], draft: null as LocalDiscussionDraft | null, loading: true, error: '', restricted: false, restrictionReason: '', restrictionMessage: '', appealContact: '', supportContact: '', localPostCount: 0, reporting: false },
+  data: { statusBarHeight: 0, issueCode: '', issueLabel: '', content: null as PublicDiscussion['content'] | null, copyHtml: {} as Partial<Record<keyof DiscussionCopy, string>>, threads: [] as DisplayThread[], showExampleGuide: true, myPosts: [] as DisplayLocalContribution[], draft: null as LocalDiscussionDraft | null, loading: true, error: '', restricted: false, restrictionReason: '', restrictionMessage: '', appealContact: '', supportContact: '', localPostCount: 0, reporting: false },
   requestGeneration: 0,
   hasShown: false,
   reportedThreads: {} as Record<string, boolean>,
@@ -91,12 +91,15 @@ Page({
       const data = await request<PublicDiscussion>(path);
       if (generation !== this.requestGeneration) return;
       if (!isPublicDiscussion(data)) throw new Error('本期讨论内容格式无效');
+      const communityVisible = hasCommunityDiscussion(data.content.threads);
+      const visibleThreads = discussionThreadsForDisplay(data.content.threads);
       this.setData({
         issueCode: data.issueCode,
         issueLabel: data.issueLabel,
         content: data.content,
         copyHtml: discussionCopyHtml(data.content.copy, data.content.copyRichText),
-        threads: data.content.threads.map((thread) => ({
+        showExampleGuide: !communityVisible,
+        threads: visibleThreads.map((thread) => ({
           ...thread,
           bodyHtml: richTextHtml(thread.source !== 'community' && !thread.contributionId ? thread.bodyRichText : '', thread.body),
           reported: false,

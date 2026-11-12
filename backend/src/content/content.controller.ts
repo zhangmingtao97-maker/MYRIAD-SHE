@@ -2889,6 +2889,39 @@ export class ContentController {
     return this.readPracticeContent(issueCode, true);
   }
 
+  @Get('brand-popup')
+  @Header('Cache-Control', 'no-store')
+  async brandPopup() {
+    const result = await this.database.query<{ key: string; value: unknown }>(
+      `select key, value from system_settings where key = any($1::text[])`,
+      [['brand_popup_enabled', 'brand_popup_image', 'brand_popup_duration', 'brand_popup_frequency', 'brand_popup_alt', 'brand_popup_closable']],
+    );
+    const settings = Object.fromEntries(result.rows.map((row) => [row.key, row.value]));
+    const objectKey = typeof settings.brand_popup_image === 'string' ? settings.brand_popup_image.trim() : '';
+    if (settings.brand_popup_enabled !== true || !objectKey.startsWith('content/image/')) return { enabled: false };
+
+    let imageUrl = '';
+    try {
+      const metadata = await this.storage.objectMetadata(objectKey);
+      if (!this.isAllowedMediaObject(objectKey, metadata)) return { enabled: false };
+      imageUrl = (await this.storage.createDownloadUrl(objectKey)).url;
+    } catch {
+      return { enabled: false };
+    }
+    if (!imageUrl) return { enabled: false };
+
+    const configuredDuration = Number(settings.brand_popup_duration);
+    const frequency = settings.brand_popup_frequency;
+    return {
+      enabled: true,
+      imageUrl,
+      durationSeconds: Number.isInteger(configuredDuration) && configuredDuration >= 1 && configuredDuration <= 15 ? configuredDuration : 3,
+      frequency: frequency === 'daily' || frequency === 'once' ? frequency : 'every_launch',
+      altText: typeof settings.brand_popup_alt === 'string' ? settings.brand_popup_alt.trim().slice(0, 120) : '',
+      closable: settings.brand_popup_closable !== false,
+    };
+  }
+
   @Get('store-status')
   @Header('Cache-Control', 'no-store')
   async storeStatus() {

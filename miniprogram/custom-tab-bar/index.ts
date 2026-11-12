@@ -1,3 +1,7 @@
-Component({});
+Component({
+  data: {
+    brandPopupHidden: false,
+  },
+});
 
 export {};

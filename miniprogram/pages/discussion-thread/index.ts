@@ -1,14 +1,23 @@
 import { apiErrorMessage, request } from '../../utils/request';
 import { discussionRestrictionRecoveryText, isDiscussionRestrictionError, readDiscussionAccess } from '../../utils/discussion-access';
 import type { DiscussionAccessStatus } from '../../utils/discussion-access';
-import { isPublicDiscussion } from '../../utils/discussion-content';
-import type { DiscussionReply, PublicDiscussion } from '../../utils/discussion-content';
+import { discussionDetailCopyValue, isPublicDiscussion } from '../../utils/discussion-content';
+import type { DiscussionCopy, DiscussionDetailCopyKey, DiscussionReply, PublicDiscussion } from '../../utils/discussion-content';
 import { readLocalDiscussion } from '../../utils/discussion-storage';
 import type { LocalContribution } from '../../utils/discussion-storage';
-import { richTextHtml } from '../../utils/rich-text';
+import { escapeHtml, richTextHtml } from '../../utils/rich-text';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
-type ConversationReply = DiscussionReply & { bodyHtml: string };
+type DetailField = { text: string; html: string };
+interface DiscussionDetailView {
+  navTitle: DetailField; kicker: DetailField; title: DetailField; note: DetailField;
+  exampleLabel: DetailField; communityLabel: DetailField; featuredLabel: DetailField; localLabel: DetailField;
+  repliesTitle: DetailField; replyAction: DetailField; reportAction: DetailField; reportedAction: DetailField;
+  replyContextExample: DetailField; replyContextCommunity: DetailField;
+  footerPrimary: DetailField; footerSecondary: DetailField; moreTitle: DetailField; moreBody: DetailField;
+  loading: DetailField; retry: DetailField;
+}
+type ConversationReply = DiscussionReply & { bodyHtml: string; sourceLabel: string; sourceLabelHtml: string; replyActionLabel: string; replyActionHtml: string };
 interface ConversationThread {
   author: string;
   body: string;
@@ -18,8 +27,61 @@ interface ConversationThread {
   source?: 'editorial' | 'community';
   featured?: boolean;
   contributionId?: string;
+  sourceLabel: string;
+  sourceLabelHtml: string;
+  replyActionLabel: string;
+  replyActionHtml: string;
+  replyContextText: string;
+  replyContextHtml: string;
 }
-type DisplayLocalReply = LocalContribution & { bodyHtml: string };
+type DisplayLocalReply = LocalContribution & { bodyHtml: string; sourceLabel: string; sourceLabelHtml: string };
+
+function detailField(copy: Partial<DiscussionCopy> | undefined, richText: Partial<Record<keyof DiscussionCopy, string>> | undefined, key: DiscussionDetailCopyKey): DetailField {
+  const text = discussionDetailCopyValue(copy, key);
+  return { text, html: richTextHtml(richText?.[key], text) };
+}
+
+function buildDiscussionDetailView(copy?: Partial<DiscussionCopy>, richText?: Partial<Record<keyof DiscussionCopy, string>>): DiscussionDetailView {
+  return {
+    navTitle: detailField(copy, richText, 'detailNavTitle'),
+    kicker: detailField(copy, richText, 'detailKicker'),
+    title: detailField(copy, richText, 'detailTitle'),
+    note: detailField(copy, richText, 'detailNote'),
+    exampleLabel: detailField(copy, richText, 'exampleLabel'),
+    communityLabel: detailField(copy, richText, 'communityLabel'),
+    featuredLabel: detailField(copy, richText, 'featuredLabel'),
+    localLabel: detailField(copy, richText, 'localLabel'),
+    repliesTitle: detailField(copy, richText, 'repliesTitle'),
+    replyAction: detailField(copy, richText, 'replyAction'),
+    reportAction: detailField(copy, richText, 'reportAction'),
+    reportedAction: detailField(copy, richText, 'reportedAction'),
+    replyContextExample: detailField(copy, richText, 'replyContextExample'),
+    replyContextCommunity: detailField(copy, richText, 'replyContextCommunity'),
+    footerPrimary: detailField(copy, richText, 'footerPrimary'),
+    footerSecondary: detailField(copy, richText, 'footerSecondary'),
+    moreTitle: detailField(copy, richText, 'detailMoreTitle'),
+    moreBody: detailField(copy, richText, 'detailMoreBody'),
+    loading: detailField(copy, richText, 'detailLoading'),
+    retry: detailField(copy, richText, 'detailRetry'),
+  };
+}
+
+function appendAuthor(field: DetailField, author: string): DetailField {
+  if (field.html.includes('{author}') || field.text.includes('{author}')) {
+    return {
+      text: field.text.replace(/\{author\}/g, author),
+      html: field.html.replace(/\{author\}/g, escapeHtml(author)),
+    };
+  }
+  return { text: `${field.text}${author}`, html: `${field.html}${escapeHtml(author)}` };
+}
+
+function replaceAuthor(field: DetailField, author: string): DetailField {
+  return {
+    text: field.text.replace(/\{author\}/g, author),
+    html: field.html.replace(/\{author\}/g, escapeHtml(author)),
+  };
+}
 
 function trustedBodyHtml(item: { body: string; bodyRichText?: string; source?: 'editorial' | 'community'; contributionId?: string }) {
   return richTextHtml(item.source !== 'community' && !item.contributionId ? item.bodyRichText : '', item.body);
@@ -40,6 +102,7 @@ Page({
   data: {
     statusBarHeight: 0, issueCode: '', threadId: '', number: '', numberHtml: '',
     intro: '', introHtml: '', thread: null as ConversationThread | null, localReplies: [] as DisplayLocalReply[],
+    detail: buildDiscussionDetailView(),
     loading: true, error: '', restricted: false, restrictionReason: '', restrictionMessage: '', appealContact: '', supportContact: '', reported: false, reporting: false,
   },
   requestGeneration: 0,
@@ -65,7 +128,7 @@ Page({
       localReplies: readLocalDiscussion().contributions
         .filter((entry) => entry.issueCode === this.data.issueCode && entry.threadId === this.data.threadId)
         .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
-        .map((entry) => ({ ...entry, bodyHtml: richTextHtml('', entry.body) })),
+        .map((entry) => ({ ...entry, bodyHtml: richTextHtml('', entry.body), sourceLabel: this.data.detail.localLabel.text, sourceLabelHtml: this.data.detail.localLabel.html })),
     });
   },
   applyDiscussionRestriction(access: DiscussionAccessStatus) {
@@ -73,7 +136,7 @@ Page({
   },
   async load() {
     const generation = ++this.requestGeneration;
-    this.setData({ loading: true, error: '', restricted: false, restrictionReason: '', restrictionMessage: '', appealContact: '', supportContact: '', thread: null, localReplies: [] });
+    this.setData({ detail: buildDiscussionDetailView(), loading: true, error: '', restricted: false, restrictionReason: '', restrictionMessage: '', appealContact: '', supportContact: '', thread: null, localReplies: [] });
     try {
       const access = await readDiscussionAccess();
       if (generation !== this.requestGeneration) return;
@@ -98,20 +161,37 @@ Page({
       if (!isPublicDiscussion(data)) throw new Error('本期讨论内容格式无效');
       const thread = data.content.threads.find((entry) => entry.id === this.data.threadId);
       if (!thread) throw new Error('这段对话暂时无法读取');
+      const detail = buildDiscussionDetailView(data.content.copy, data.content.copyRichText);
+      const isCommunity = thread.source === 'community' || Boolean(thread.contributionId);
+      const sourceLabel = isCommunity ? detail.communityLabel : detail.exampleLabel;
+      const replyAction = appendAuthor(detail.replyAction, thread.author);
+      const replyContext = replaceAuthor(isCommunity ? detail.replyContextCommunity : detail.replyContextExample, thread.author);
       this.setData({
         number: data.content.copy.number,
         numberHtml: richTextHtml(data.content.copyRichText?.number, data.content.copy.number),
         intro: data.content.copy.intro,
         introHtml: richTextHtml(data.content.copyRichText?.intro, data.content.copy.intro),
+        detail,
         thread: {
           author: thread.author,
           body: thread.body,
           bodyRichText: thread.bodyRichText,
           bodyHtml: trustedBodyHtml(thread),
-          replies: thread.replies.map((reply) => ({ ...reply, bodyHtml: trustedBodyHtml(reply) })),
+          replies: thread.replies.map((reply) => {
+            const replyCommunity = reply.source === 'community' || Boolean(reply.contributionId);
+            const replyLabel = replyCommunity ? detail.communityLabel : detail.exampleLabel;
+            const action = appendAuthor(detail.replyAction, reply.author);
+            return { ...reply, bodyHtml: trustedBodyHtml(reply), sourceLabel: replyLabel.text, sourceLabelHtml: replyLabel.html, replyActionLabel: action.text, replyActionHtml: action.html };
+          }),
           source: thread.source,
           featured: thread.featured,
           contributionId: thread.contributionId,
+          sourceLabel: sourceLabel.text,
+          sourceLabelHtml: sourceLabel.html,
+          replyActionLabel: replyAction.text,
+          replyActionHtml: replyAction.html,
+          replyContextText: replyContext.text,
+          replyContextHtml: replyContext.html,
         },
         loading: false,
         error: '',
@@ -154,7 +234,7 @@ Page({
   },
   handleBack() { wx.navigateBack({ delta: 1, fail: () => wx.redirectTo({ url: `/pages/discussion/index?issueCode=${encodeURIComponent(this.data.issueCode)}` }) }); },
   handleMore() {
-    wx.showModal({ title: '讨论说明', content: '新经历会进入运营后台，审核通过后才会公开；举报会提交给编辑团队核实处理。', showCancel: false });
+    wx.showModal({ title: this.data.detail.moreTitle.text, content: this.data.detail.moreBody.text, showCancel: false });
   },
   replyTo(event: WechatMiniprogram.CustomEvent) {
     if (this.data.restricted) { this.showDiscussionRestriction(); return; }
@@ -221,14 +301,14 @@ Page({
   },
   onShareAppMessage() {
     return shareCard({
-      title: this.data.thread ? `${this.data.thread.author}｜一段对话` : '一段对话｜MYRIAD SHE',
+      title: this.data.thread ? `${this.data.thread.author}｜${this.data.detail.navTitle.text}` : `${this.data.detail.navTitle.text}｜MYRIAD SHE`,
       path: '/pages/discussion-thread/index',
       query: { issueCode: this.data.issueCode, threadId: this.data.threadId },
     });
   },
   onShareTimeline() {
     return shareTimelineCard({
-      title: this.data.thread ? `${this.data.thread.author}｜一段对话` : '一段对话｜MYRIAD SHE',
+      title: this.data.thread ? `${this.data.thread.author}｜${this.data.detail.navTitle.text}` : `${this.data.detail.navTitle.text}｜MYRIAD SHE`,
       query: { issueCode: this.data.issueCode, threadId: this.data.threadId },
     });
   },

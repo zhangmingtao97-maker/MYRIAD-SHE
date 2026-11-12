@@ -401,7 +401,17 @@ try {
       if (path === '/admin/discussion-reports') return send({ ...pageData(), summary: { pending: 0, handled: 0, dismissed: 0 } });
       if (path === '/admin/users') return send(pageData([member]));
       if (path === '/admin/users/member-1') return send({ ...member, openId: 'test-open-id', maskedUnionId: 'test-union-id', privacyRequests: [] });
-      if (path === '/admin/system-settings') return send({ store_enabled: { value: true }, maintenance_notice: { value: '' }, support_contact: { value: '联系小程序客服' } });
+      if (path === '/admin/system-settings') return send({
+        store_enabled: { value: true },
+        maintenance_notice: { value: '' },
+        support_contact: { value: '联系小程序客服' },
+        brand_popup_enabled: { value: false },
+        brand_popup_image: { value: '' },
+        brand_popup_duration: { value: 6 },
+        brand_popup_frequency: { value: 'daily' },
+        brand_popup_alt: { value: '品牌图测试说明' },
+        brand_popup_closable: { value: false },
+      });
       if (path === '/admin/module-states') return send(moduleStates);
       if (path === '/admin/employees') return send(employees);
       if (path === '/content/life-cards/manage') return send({ items: cards });
@@ -739,6 +749,39 @@ try {
   await editionInput.fill('');
   assert.equal(await issueMetaPreview.locator('.rich-text-suffix').count(), 0, 'an explicitly empty edition should be hidden from preview');
   await page.screenshot({ path: resolve(output, 'admin-home-introduction.png'), fullPage: true });
+  await navigate('本期讨论');
+  const discussionPanel = journalEditor.locator('details.discussion-editor-details');
+  await discussionPanel.waitFor();
+  if (!(await discussionPanel.evaluate((details) => details.open))) await discussionPanel.locator('summary').click();
+  const discussionDetailEditor = journalEditor.locator('.discussion-detail-copy');
+  await discussionDetailEditor.waitFor();
+  assert.equal(await discussionDetailEditor.locator('.rich-text-field').count(), 20, 'discussion detail page should expose all editable copy fields');
+  for (const label of [
+    '顶部导航标题', '详情页眉题', '详情页主标题', '标题下提示',
+    '示例来源标签', '读者分享标签', '精华标签', '本机发言标签',
+    '回应区标题', '回应按钮前缀', '举报按钮文字', '已举报文字',
+    '示例回应来源（用 {author}）', '读者回应来源（用 {author}）',
+    '页尾主按钮', '页尾次按钮', '更多说明弹窗标题', '更多说明弹窗正文',
+    '加载中文案', '重新读取文字',
+  ]) {
+    assert.equal(await discussionDetailEditor.getByRole('textbox', { name: label, exact: true }).count(), 1, `discussion detail field should exist: ${label}`);
+  }
+  const detailNavTitleInput = discussionDetailEditor.getByRole('textbox', { name: '顶部导航标题', exact: true });
+  const replyContextInput = discussionDetailEditor.getByRole('textbox', { name: '示例回应来源（用 {author}）', exact: true });
+  assert.equal((await detailNavTitleInput.innerText()).trim(), '一段对话');
+  assert.match(await replyContextInput.innerText(), /\{author\}/);
+  await detailNavTitleInput.fill('一段对话 · 她说');
+  const detailPreviewDisclosure = journalEditor.locator('details.issue-preview-disclosure').filter({ hasText: '一段对话详情页手机预览' });
+  await detailPreviewDisclosure.locator('summary').click();
+  const detailPreview = detailPreviewDisclosure.locator('.discussion-thread-phone-preview');
+  await detailPreview.waitFor();
+  assert.equal((await detailPreview.locator('header strong').innerText()).trim(), '一段对话 · 她说');
+  assert.match(await detailPreview.innerText(), /接着这段经历/);
+  assert.match(await detailPreview.innerText(), /查看本期其他经历/);
+  const detailPreviewBox = await detailPreview.boundingBox();
+  assert.ok(detailPreviewBox && detailPreviewBox.width <= 390, 'discussion detail preview should stay phone-sized inside the editor');
+  await page.screenshot({ path: resolve(output, 'admin-discussion-detail-editor.png'), fullPage: true });
+  await navigate('首页策展');
   await page.locator('.issue-module-picker button').filter({ hasText: '本期问题' }).click();
   const questionEyebrow = journalEditor.locator('[data-issue-module="question"]').getByRole('textbox', { name: '栏目眉题', exact: true });
   const questionIntroPreview = page.locator('.preview-question-intro');
@@ -792,6 +835,8 @@ try {
   const issueSaveRequest = page.waitForRequest((request) => request.method() === 'PATCH' && new URL(request.url()).pathname.endsWith('/content/issues/issue-1'));
   await journalEditor.getByRole('button', { name: '保存整份草稿', exact: true }).click();
   const issuePayload = (await issueSaveRequest).postDataJSON();
+  assert.equal(issuePayload.draftContent.discussion.copy.detailNavTitle, '一段对话 · 她说');
+  assert.match(issuePayload.draftContent.discussion.copyRichText.detailNavTitle, /一段对话 · 她说/);
   const sentIssueMeta = issuePayload.draftContent.sections.find((module) => module.type === 'issueMeta');
   assert.equal(sentIssueMeta.introduction, '每一种生活，都值得被认真看见');
   assert.equal(sentIssueMeta.edition, '', 'an explicitly empty edition must be saved instead of falling back to default copy');
@@ -900,6 +945,12 @@ try {
     await page.waitForFunction(() => !document.querySelector('.admin-page-refresh[aria-busy="true"]'));
   }
   await navigate('系统设置');
+  const brandPopupSettings = page.locator('.brand-popup-settings');
+  await brandPopupSettings.waitFor();
+  assert.equal(await brandPopupSettings.getByRole('checkbox').count(), 2, 'brand popup should expose enabled and closable controls');
+  assert.equal(await brandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
+  assert.equal(await brandPopupSettings.getByRole('combobox').inputValue(), 'daily');
+  assert.equal(await brandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
   const notice = page.getByLabel('维护公告', { exact: true });
   await notice.fill('尚未保存的维护公告');
   await refreshChoice(false);

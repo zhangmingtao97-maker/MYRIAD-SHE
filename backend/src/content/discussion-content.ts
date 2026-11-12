@@ -11,6 +11,12 @@ export interface DiscussionCopy {
   selfEyebrow: string; selfTitle: string; selfBody: string; selfAction: string;
   composeTitle: string; composeHeading: string; composeFieldLabel: string; composePlaceholder: string;
   composePreviewAction: string; composeSaveAction: string; composeDiscardAction: string;
+  detailNavTitle: string; detailKicker: string; detailTitle: string; detailNote: string;
+  exampleLabel: string; communityLabel: string; featuredLabel: string; localLabel: string;
+  repliesTitle: string; replyAction: string; reportAction: string; reportedAction: string;
+  replyContextExample: string; replyContextCommunity: string;
+  footerPrimary: string; footerSecondary: string; detailMoreTitle: string; detailMoreBody: string;
+  detailLoading: string; detailRetry: string;
 }
 export interface DiscussionContent { copy: DiscussionCopy; copyRichText?: Partial<Record<keyof DiscussionCopy, string>>; threads: DiscussionThread[] }
 
@@ -31,6 +37,16 @@ export function defaultDiscussionContent(): DiscussionContent {
       composeTitle: '写下你的经历', composeHeading: '从一件具体的事，\n开始说起。', composeFieldLabel: '你的经历',
       composePlaceholder: '最近发生了什么？你当时做了什么，又有什么感受？也可以写下与本期人物完全不同的经验。',
       composePreviewAction: '预览并提交审核', composeSaveAction: '确认提交审核', composeDiscardAction: '放弃草稿',
+      detailNavTitle: '一段对话', detailKicker: '本期讨论 · 一段对话',
+      detailTitle: '从这一段经历，\n继续谈起。',
+      detailNote: '新写的经历会进入运营后台，审核通过后才会公开。',
+      exampleLabel: '示例', communityLabel: '读者分享', featuredLabel: '精华', localLabel: '本机',
+      repliesTitle: '接着这段经历', replyAction: '回应', reportAction: '举报', reportedAction: '已举报',
+      replyContextExample: '回应 {author} 的示例', replyContextCommunity: '回应 {author} 的分享',
+      footerPrimary: '接着谈谈', footerSecondary: '查看本期其他经历',
+      detailMoreTitle: '讨论说明',
+      detailMoreBody: '新经历会进入运营后台，审核通过后才会公开；举报会提交给编辑团队核实处理。',
+      detailLoading: '正在读取这段对话…', detailRetry: '重新读取',
     },
     threads: [
       { id: 'lan', author: '岚', body: '赶了很久的项目终于交付了。这周下班，我还是把工作群点开了很多次。昨晚坐在餐桌旁，饭已经凉了，才发现没有人在等我回复。我知道今晚可以休息，却好像还在等下一个临时任务。', replies: [

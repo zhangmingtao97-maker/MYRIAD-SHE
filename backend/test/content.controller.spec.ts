@@ -24,10 +24,22 @@ test('discussion defaults reproduce the editorial example and reject unsafe or d
   assert.equal(defaults.copy.composeHeading, '从一件具体的事，\n开始说起。');
   assert.equal(defaults.copy.composePreviewAction, '预览并提交审核');
   assert.equal(defaults.copy.composeSaveAction, '确认提交审核');
+  assert.equal(defaults.copy.detailTitle, '从这一段经历，\n继续谈起。');
+  assert.equal(defaults.copy.replyContextExample, '回应 {author} 的示例');
   assert.equal(defaults.threads.length, 3);
   assert.equal(validateDiscussionContent(defaults).threads[0].replies.length, 2);
   const previousCopy = Object.fromEntries(Object.entries(defaults.copy).filter(([key]) => !key.startsWith('compose')));
   assert.equal(validateDiscussionContent({ ...defaults, copy: previousCopy }).copy.composeTitle, '写下你的经历');
+  const detailOnlyKeys = ['detailNavTitle', 'detailKicker', 'detailTitle', 'detailNote', 'exampleLabel', 'communityLabel', 'featuredLabel', 'localLabel', 'repliesTitle', 'replyAction', 'reportAction', 'reportedAction', 'replyContextExample', 'replyContextCommunity', 'footerPrimary', 'footerSecondary', 'detailMoreTitle', 'detailMoreBody', 'detailLoading', 'detailRetry'];
+  const previousDetailCopy = Object.fromEntries(Object.entries(defaults.copy).filter(([key]) => !detailOnlyKeys.includes(key)));
+  const legacyDetail = validateDiscussionContent({ ...defaults, copy: previousDetailCopy });
+  assert.equal(legacyDetail.copy.detailTitle, defaults.copy.detailTitle);
+  assert.equal(legacyDetail.copy.replyContextCommunity, defaults.copy.replyContextCommunity);
+  const richDetail = validateDiscussionContent({ ...defaults, copy: { ...defaults.copy, detailTitle: '富文本标题' }, copyRichText: {
+    detailTitle: '<span style="font-size: 28px; color: #663124">富文本标题</span><script>alert(1)</script>',
+  } });
+  assert.equal(richDetail.copy.detailTitle, '富文本标题');
+  assert.equal(richDetail.copyRichText?.detailTitle, '<span style="font-size:28px;color:#663124">富文本标题</span>');
   const legacy = validateDiscussionContent({ ...defaults, copy: {
     ...defaults.copy,
     prototypeNote: '原型演示 · 内容仅保存在本机，其他人无法看到。',
@@ -2597,4 +2609,97 @@ test('daily objects returns products once the store is open', async () => {
   const result = await controller.dailyObjects();
   assert.equal(result.products.length, 2);
   assert.equal(result.products[0].id, '01');
+});
+test('public brand popup is disabled when launch display is off', async () => {
+  const database = {
+    query: async () => ({ rows: [
+      { key: 'brand_popup_enabled', value: false },
+      { key: 'brand_popup_image', value: 'content/image/brand.webp' },
+    ] }),
+  } as unknown as DatabaseService;
+  const storage = {
+    objectMetadata: async () => { throw new Error('disabled popup must not inspect media'); },
+    createDownloadUrl: async () => { throw new Error('disabled popup must not sign media'); },
+  } as unknown as StorageService;
+  const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  assert.deepEqual(await controller.brandPopup(), { enabled: false });
+});
+
+test('public brand popup returns a signed image and display settings', async () => {
+  let signedKey = '';
+  const database = {
+    query: async () => ({ rows: [
+      { key: 'brand_popup_enabled', value: true },
+      { key: 'brand_popup_image', value: 'content/image/brand.webp' },
+      { key: 'brand_popup_duration', value: 6 },
+      { key: 'brand_popup_frequency', value: 'once' },
+      { key: 'brand_popup_alt', value: '  MYRIAD SHE 品牌图  ' },
+      { key: 'brand_popup_closable', value: false },
+    ] }),
+  } as unknown as DatabaseService;
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
+    createDownloadUrl: async (key: string) => { signedKey = key; return { url: 'https://storage.invalid/brand.webp', expiresIn: 3600 }; },
+  } as unknown as StorageService;
+  const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  assert.deepEqual(await controller.brandPopup(), {
+    enabled: true,
+    imageUrl: 'https://storage.invalid/brand.webp',
+    durationSeconds: 6,
+    frequency: 'once',
+    altText: 'MYRIAD SHE 品牌图',
+    closable: false,
+  });
+  assert.equal(signedKey, 'content/image/brand.webp');
+});
+
+test('public brand popup falls back to safe duration and frequency values', async () => {
+  const database = {
+    query: async () => ({ rows: [
+      { key: 'brand_popup_enabled', value: true },
+      { key: 'brand_popup_image', value: 'content/image/brand.webp' },
+      { key: 'brand_popup_duration', value: 99 },
+      { key: 'brand_popup_frequency', value: 'weekly' },
+    ] }),
+  } as unknown as DatabaseService;
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
+    createDownloadUrl: async () => ({ url: 'https://storage.invalid/brand.webp', expiresIn: 3600 }),
+  } as unknown as StorageService;
+  const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  assert.deepEqual(await controller.brandPopup(), {
+    enabled: true,
+    imageUrl: 'https://storage.invalid/brand.webp',
+    durationSeconds: 3,
+    frequency: 'every_launch',
+    altText: '',
+    closable: true,
+  });
+});
+
+test('public brand popup falls back safely and never signs invalid media', async () => {
+  let signed = false;
+  const database = {
+    query: async () => ({ rows: [
+      { key: 'brand_popup_enabled', value: true },
+      { key: 'brand_popup_image', value: 'content/image/brand.webp' },
+      { key: 'brand_popup_duration', value: 99 },
+      { key: 'brand_popup_frequency', value: 'weekly' },
+      { key: 'brand_popup_closable', value: true },
+    ] }),
+  } as unknown as DatabaseService;
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'application/octet-stream', contentLength: 128, lastModified: new Date() }),
+    createDownloadUrl: async () => { signed = true; return { url: 'https://storage.invalid/brand.webp', expiresIn: 3600 }; },
+  } as unknown as StorageService;
+  const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  assert.deepEqual(await controller.brandPopup(), { enabled: false });
+  assert.equal(signed, false);
 });

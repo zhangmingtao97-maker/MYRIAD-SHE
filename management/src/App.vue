@@ -799,8 +799,36 @@ const memberDetail = ref<MemberDetail | null>(null);
 const memberError = ref('');
 const memberLoading = ref(false);
 const memberPageSize = 50;
-const systemSettings = ref({ store_enabled: false, maintenance_notice: '', support_contact: '', discussion_appeal_contact: '' });
-const systemSettingsOriginal = ref({ ...systemSettings.value });
+type BrandPopupFrequency = 'every_launch' | 'daily' | 'once';
+type SystemSettings = {
+  store_enabled: boolean;
+  maintenance_notice: string;
+  support_contact: string;
+  discussion_appeal_contact: string;
+  brand_popup_enabled: boolean;
+  brand_popup_image: string;
+  brand_popup_duration: number;
+  brand_popup_frequency: BrandPopupFrequency;
+  brand_popup_alt: string;
+  brand_popup_closable: boolean;
+};
+const initialSystemSettings: SystemSettings = {
+  store_enabled: false,
+  maintenance_notice: '',
+  support_contact: '',
+  discussion_appeal_contact: '',
+  brand_popup_enabled: false,
+  brand_popup_image: '',
+  brand_popup_duration: 3,
+  brand_popup_frequency: 'every_launch',
+  brand_popup_alt: '',
+  brand_popup_closable: true,
+};
+const systemSettings = ref<SystemSettings>({ ...initialSystemSettings });
+const systemSettingsOriginal = ref<SystemSettings>({ ...systemSettings.value });
+const brandPopupPreviewUrl = ref('');
+const brandPopupUploading = ref(false);
+const brandPopupFileInput = ref<HTMLInputElement | null>(null);
 
 interface LifeCardRow { month: number; day: number; suit: string; rank: string; theme: string; title: string; summary: string; prompt: string; note: string; sourceNote: string }
 const lifeCards = ref<LifeCardRow[]>([]);
@@ -3449,21 +3477,45 @@ async function toggleMemberStatus(member: Member) {
   } catch (caught) { memberError.value = caught instanceof Error ? caught.message : '会员状态更新失败'; }
 }
 
+function settingValue(result: unknown, key: string) {
+  if (!result || typeof result !== 'object') return undefined;
+  const row = (result as Record<string, unknown>)[key];
+  return row && typeof row === 'object' ? (row as { value?: unknown }).value : undefined;
+}
+
+function normalizedSystemSettings(result: unknown): SystemSettings {
+  const duration = settingValue(result, 'brand_popup_duration');
+  const frequency = settingValue(result, 'brand_popup_frequency');
+  const image = settingValue(result, 'brand_popup_image');
+  const alt = settingValue(result, 'brand_popup_alt');
+  const notice = settingValue(result, 'maintenance_notice');
+  const support = settingValue(result, 'support_contact');
+  const appeal = settingValue(result, 'discussion_appeal_contact');
+  return {
+    store_enabled: settingValue(result, 'store_enabled') === true,
+    maintenance_notice: typeof notice === 'string' ? notice : '',
+    support_contact: typeof support === 'string' ? support : '',
+    discussion_appeal_contact: typeof appeal === 'string' ? appeal : '',
+    brand_popup_enabled: settingValue(result, 'brand_popup_enabled') === true,
+    brand_popup_image: typeof image === 'string' ? image.trim() : '',
+    brand_popup_duration: typeof duration === 'number' && Number.isInteger(duration) && duration >= 1 && duration <= 15 ? duration : 3,
+    brand_popup_frequency: frequency === 'daily' || frequency === 'once' ? frequency : 'every_launch',
+    brand_popup_alt: typeof alt === 'string' ? alt : '',
+    brand_popup_closable: settingValue(result, 'brand_popup_closable') !== false,
+  };
+}
+
 async function loadSystemSettings() {
   settingsLoading.value = true;
   settingsError.value = '';
   try {
+    const session = sessionGeneration;
     const response = await apiFetch(`${apiBase}/admin/system-settings`, { headers: adminHeaders() });
     if (!response.ok) throw new Error(await responseMessage(response, '无法读取系统设置'));
-    const result = await response.json();
-    const next = {
-      store_enabled: result.store_enabled?.value === true,
-      maintenance_notice: typeof result.maintenance_notice?.value === 'string' ? result.maintenance_notice.value : '',
-      support_contact: typeof result.support_contact?.value === 'string' ? result.support_contact.value : '',
-      discussion_appeal_contact: typeof result.discussion_appeal_contact?.value === 'string' ? result.discussion_appeal_contact.value : '',
-    };
+    const next = normalizedSystemSettings(await response.json());
     systemSettings.value = next;
     systemSettingsOriginal.value = { ...next };
+    brandPopupPreviewUrl.value = next.brand_popup_image ? await dailyObjectMediaPreviewUrl(next.brand_popup_image, session) : '';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '无法读取系统设置'; }
   finally { settingsLoading.value = false; }
 }
@@ -3474,15 +3526,27 @@ async function saveSystemSettings() {
   settingsError.value = '';
   try {
     if (!window.confirm('确认保存系统设置？变更会立即生效并记录到审计日志。')) return;
+    const session = sessionGeneration;
     const response = await apiFetch(`${apiBase}/admin/system-settings`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify(systemSettings.value) });
     if (!response.ok) throw new Error(await responseMessage(response, '系统设置保存失败'));
     const saved = await response.json();
-    if (typeof saved.store_enabled?.value !== 'boolean') throw new Error('服务器未返回商城开放状态');
-    systemSettings.value = { ...systemSettings.value, store_enabled: saved.store_enabled.value };
-    systemSettingsOriginal.value = { ...systemSettings.value };
-    settingsMessage.value = '系统设置已保存。申诉联系方式留空时会自动使用联系支持渠道；日常之物目录入口状态请在「实践目录」中单独设置。';
+    if (typeof settingValue(saved, 'store_enabled') !== 'boolean') throw new Error('服务器未返回商城开放状态');
+    const normalized = normalizedSystemSettings(saved);
+    systemSettings.value = normalized;
+    systemSettingsOriginal.value = { ...normalized };
+    brandPopupPreviewUrl.value = normalized.brand_popup_image ? await dailyObjectMediaPreviewUrl(normalized.brand_popup_image, session) : '';
+    settingsMessage.value = '系统设置已保存。启动品牌图会在默认首页下次打开时按展示频次出现；申诉联系方式留空时会自动使用联系支持渠道。';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '系统设置保存失败'; }
   finally { settingsSaving.value = false; }
+}
+async function resetSystemSettings() {
+  const session = sessionGeneration;
+  systemSettings.value = { ...systemSettingsOriginal.value };
+  settingsError.value = '';
+  settingsMessage.value = '';
+  brandPopupPreviewUrl.value = systemSettings.value.brand_popup_image
+    ? await dailyObjectMediaPreviewUrl(systemSettings.value.brand_popup_image, session)
+    : '';
 }
 
 async function loadEmployees() {
@@ -4593,6 +4657,71 @@ async function uploadDailyObjectImageFile(file: File, targetId: string) {
   } finally {
     if (session === sessionGeneration) dailyObjectUploadingId.value = '';
   }
+}
+
+function chooseBrandPopupImage() {
+  if (!isSuperAdmin.value || brandPopupUploading.value || settingsLoading.value) return;
+  brandPopupFileInput.value?.click();
+}
+
+function selectBrandPopupImage(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file || brandPopupUploading.value) return;
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    settingsError.value = '启动品牌图仅支持 JPG、PNG 或 WebP。';
+    return;
+  }
+  settingsError.value = '';
+  settingsMessage.value = '';
+  requestImageCrop(file, '编辑启动品牌图', (croppedFile) => { void uploadBrandPopupImage(croppedFile); });
+}
+
+async function uploadBrandPopupImage(file: File) {
+  if (!isSuperAdmin.value || brandPopupUploading.value) return;
+  const session = sessionGeneration;
+  brandPopupUploading.value = true;
+  settingsError.value = '';
+  settingsMessage.value = '';
+  try {
+    const response = await apiFetch(`${apiBase}/content/media/upload-url`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({ fileName: file.name, contentType: file.type, fileSize: file.size, kind: 'image' }),
+    });
+    if (handleAdminUnauthorized(response, session)) throw new Error('后台登录已过期，请重新登录。');
+    assertSession(session);
+    if (!response.ok) throw new Error(await responseMessage(response, '无法创建品牌图上传地址'));
+    const target = await response.json();
+    if (!isMediaUploadTarget(target)) throw new Error('服务器未返回有效的品牌图上传地址');
+    const uploadResponse = await apiFetch(target.uploadUrl, { method: 'PUT', headers: { 'content-type': file.type }, body: file }, mediaUploadTimeoutMs);
+    assertSession(session);
+    if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, '品牌图上传失败'));
+    const params = new URLSearchParams({ objectKey: target.objectKey });
+    const previewResponse = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
+    if (handleAdminUnauthorized(previewResponse, session)) throw new Error('后台登录已过期，请重新登录。');
+    assertSession(session);
+    if (!previewResponse.ok) throw new Error(await responseMessage(previewResponse, '品牌图已上传，但无法生成预览'));
+    const preview = await previewResponse.json();
+    if (!isMediaViewTarget(preview)) throw new Error('服务器未返回有效的品牌图预览地址');
+    systemSettings.value = { ...systemSettings.value, brand_popup_image: target.objectKey };
+    brandPopupPreviewUrl.value = preview.url;
+    settingsMessage.value = '启动品牌图已上传。请确认开关与展示设置，再点击「保存系统设置」后生效。';
+  } catch (caught) {
+    if (session === sessionGeneration && loggedIn.value) settingsError.value = caught instanceof Error ? caught.message : '品牌图上传失败。';
+  } finally {
+    if (session === sessionGeneration) brandPopupUploading.value = false;
+  }
+}
+
+function removeBrandPopupImage() {
+  if (!isSuperAdmin.value || brandPopupUploading.value) return;
+  if (!window.confirm('移除品牌图会同时关闭启动品牌图。保存系统设置后生效，确认移除？')) return;
+  systemSettings.value = { ...systemSettings.value, brand_popup_image: '', brand_popup_enabled: false };
+  brandPopupPreviewUrl.value = '';
+  settingsError.value = '';
+  settingsMessage.value = '品牌图已移除，启动品牌图已关闭；请点击「保存系统设置」后生效。';
 }
 
 function markDailyObjectsDirty() {
@@ -7788,6 +7917,35 @@ onBeforeUnmount(() => {
                 <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeSaveAction" :rich-text="discussionCopyRichText('composeSaveAction')" label="预览页确认提交按钮文字" @update:rich-text="setDiscussionCopyRichText('composeSaveAction', $event)" /></div>
                 <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.composeDiscardAction" :rich-text="discussionCopyRichText('composeDiscardAction')" label="放弃操作文字" @update:rich-text="setDiscussionCopyRichText('composeDiscardAction', $event)" /></div>
               </div>
+              <section class="discussion-detail-copy">
+                <div class="discussion-detail-copy-heading">
+                  <div><p class="eyebrow">THREAD DETAIL</p><h4>一段对话详情页</h4></div>
+                  <small>小程序 pages/discussion-thread</small>
+                </div>
+                <p class="field-help">配置首页进入“查看这段对话”后的导航、标题、来源标签、互动按钮、说明和页尾文字。回应来源文案中可使用 {author} 占位符；未填写时会自动使用小程序内置默认文案。</p>
+                <div class="discussion-copy-grid">
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailNavTitle" :rich-text="discussionCopyRichText('detailNavTitle')" label="顶部导航标题" @update:rich-text="setDiscussionCopyRichText('detailNavTitle', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailKicker" :rich-text="discussionCopyRichText('detailKicker')" label="详情页眉题" @update:rich-text="setDiscussionCopyRichText('detailKicker', $event)" /></div>
+                  <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailTitle" :rich-text="discussionCopyRichText('detailTitle')" label="详情页主标题" @update:rich-text="setDiscussionCopyRichText('detailTitle', $event)" /></div>
+                  <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailNote" :rich-text="discussionCopyRichText('detailNote')" label="标题下提示" @update:rich-text="setDiscussionCopyRichText('detailNote', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.exampleLabel" :rich-text="discussionCopyRichText('exampleLabel')" label="示例来源标签" @update:rich-text="setDiscussionCopyRichText('exampleLabel', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.communityLabel" :rich-text="discussionCopyRichText('communityLabel')" label="读者分享标签" @update:rich-text="setDiscussionCopyRichText('communityLabel', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.featuredLabel" :rich-text="discussionCopyRichText('featuredLabel')" label="精华标签" @update:rich-text="setDiscussionCopyRichText('featuredLabel', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.localLabel" :rich-text="discussionCopyRichText('localLabel')" label="本机发言标签" @update:rich-text="setDiscussionCopyRichText('localLabel', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.repliesTitle" :rich-text="discussionCopyRichText('repliesTitle')" label="回应区标题" @update:rich-text="setDiscussionCopyRichText('repliesTitle', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.replyAction" :rich-text="discussionCopyRichText('replyAction')" label="回应按钮前缀" @update:rich-text="setDiscussionCopyRichText('replyAction', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.reportAction" :rich-text="discussionCopyRichText('reportAction')" label="举报按钮文字" @update:rich-text="setDiscussionCopyRichText('reportAction', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.reportedAction" :rich-text="discussionCopyRichText('reportedAction')" label="已举报文字" @update:rich-text="setDiscussionCopyRichText('reportedAction', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.replyContextExample" :rich-text="discussionCopyRichText('replyContextExample')" label="示例回应来源（用 {author}）" @update:rich-text="setDiscussionCopyRichText('replyContextExample', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.replyContextCommunity" :rich-text="discussionCopyRichText('replyContextCommunity')" label="读者回应来源（用 {author}）" @update:rich-text="setDiscussionCopyRichText('replyContextCommunity', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.footerPrimary" :rich-text="discussionCopyRichText('footerPrimary')" label="页尾主按钮" @update:rich-text="setDiscussionCopyRichText('footerPrimary', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.footerSecondary" :rich-text="discussionCopyRichText('footerSecondary')" label="页尾次按钮" @update:rich-text="setDiscussionCopyRichText('footerSecondary', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailMoreTitle" :rich-text="discussionCopyRichText('detailMoreTitle')" label="更多说明弹窗标题" @update:rich-text="setDiscussionCopyRichText('detailMoreTitle', $event)" /></div>
+                  <div class="discussion-field-wide"><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailMoreBody" :rich-text="discussionCopyRichText('detailMoreBody')" label="更多说明弹窗正文" @update:rich-text="setDiscussionCopyRichText('detailMoreBody', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailLoading" :rich-text="discussionCopyRichText('detailLoading')" label="加载中文案" @update:rich-text="setDiscussionCopyRichText('detailLoading', $event)" /></div>
+                  <div><JournalRichTextField v-model="issueForm.draftContent.discussion.copy.detailRetry" :rich-text="discussionCopyRichText('detailRetry')" label="重新读取文字" @update:rich-text="setDiscussionCopyRichText('detailRetry', $event)" /></div>
+                </div>
+              </section>
               <div class="discussion-thread-toolbar"><h4>读者经历与回应</h4><button type="button" class="quiet" :disabled="issueForm.draftContent.discussion.threads.length >= 20" @click="addDiscussionThread">＋ 添加示例经历</button></div>
               <article v-for="(thread, threadIndex) in issueForm.draftContent.discussion.threads" :key="thread.id" class="discussion-thread-editor">
                 <header><strong>{{ String(threadIndex + 1).padStart(2, '0') }} · 示例经历</strong><button type="button" class="quiet" :disabled="threadIndex === 0" aria-label="上移示例经历" @click="moveDiscussionThread(threadIndex, -1)">↑</button><button type="button" class="quiet" :disabled="threadIndex === issueForm.draftContent.discussion.threads.length - 1" aria-label="下移示例经历" @click="moveDiscussionThread(threadIndex, 1)">↓</button><button type="button" class="quiet danger" @click="removeDiscussionThread(threadIndex)">删除经历</button></header>
@@ -7811,6 +7969,34 @@ onBeforeUnmount(() => {
                     <div class="discussion-phone-link"><RichTextView inline :text="discussionCopyText('writeAction')" :rich-text="discussionCopyRichText('writeAction')" /> <span>↗</span></div>
                     <section v-for="thread in issueForm.draftContent.discussion.threads" :key="thread.id"><small>{{ thread.author }}　示例</small><RichTextView :text="thread.body" :rich-text="thread.bodyRichText || ''" /><article v-for="reply in thread.replies" :key="reply.id"><small>{{ reply.author }} · 示例</small><RichTextView :text="reply.body" :rich-text="reply.bodyRichText || ''" /></article></section>
                     <section><small><RichTextView inline :text="discussionCopyText('selfEyebrow')" :rich-text="discussionCopyRichText('selfEyebrow')" /></small><h3><RichTextView inline :text="discussionCopyText('selfTitle')" :rich-text="discussionCopyRichText('selfTitle')" /></h3><p><RichTextView inline :text="discussionCopyText('selfBody')" :rich-text="discussionCopyRichText('selfBody')" /></p></section>
+                  </div>
+                </div>
+              </details>
+              <details class="issue-preview-disclosure discussion-live-preview">
+                <summary><span>一段对话详情页手机预览</span><span>使用第一条示例经历</span></summary>
+                <div class="discussion-phone-preview discussion-thread-phone-preview">
+                  <header><span>‹</span><strong><RichTextView inline :text="discussionCopyText('detailNavTitle')" :rich-text="discussionCopyRichText('detailNavTitle')" /></strong><span>···</span></header>
+                  <div class="discussion-phone-body">
+                    <small><RichTextView inline :text="discussionCopyText('number')" :rich-text="discussionCopyRichText('number')" />　<RichTextView inline :text="discussionCopyText('detailKicker')" :rich-text="discussionCopyRichText('detailKicker')" /></small>
+                    <h3><RichTextView inline :text="discussionCopyText('detailTitle')" :rich-text="discussionCopyRichText('detailTitle')" /></h3>
+                    <p><RichTextView inline :text="discussionCopyText('intro')" :rich-text="discussionCopyRichText('intro')" /></p>
+                    <p class="discussion-thread-preview-note"><RichTextView inline :text="discussionCopyText('detailNote')" :rich-text="discussionCopyRichText('detailNote')" /></p>
+                    <section v-if="issueForm.draftContent.discussion.threads[0]" class="discussion-thread-preview-origin">
+                      <small><strong>{{ issueForm.draftContent.discussion.threads[0].author }}</strong>　<RichTextView inline :text="discussionCopyText('exampleLabel')" :rich-text="discussionCopyRichText('exampleLabel')" /></small>
+                      <RichTextView :text="issueForm.draftContent.discussion.threads[0].body" :rich-text="issueForm.draftContent.discussion.threads[0].bodyRichText || ''" />
+                      <div class="discussion-thread-preview-actions">
+                        <span><RichTextView inline :text="discussionCopyText('replyAction')" :rich-text="discussionCopyRichText('replyAction')" /> {{ issueForm.draftContent.discussion.threads[0].author }} ↗</span>
+                        <span><RichTextView inline :text="discussionCopyText('reportAction')" :rich-text="discussionCopyRichText('reportAction')" /></span>
+                      </div>
+                    </section>
+                    <section v-if="issueForm.draftContent.discussion.threads[0]" class="discussion-thread-preview-replies">
+                      <h4><RichTextView inline :text="discussionCopyText('repliesTitle')" :rich-text="discussionCopyRichText('repliesTitle')" /></h4>
+                      <article v-for="reply in issueForm.draftContent.discussion.threads[0].replies.slice(0, 2)" :key="reply.id">
+                        <small><strong>{{ reply.author }}</strong>　<RichTextView inline :text="discussionCopyText('exampleLabel')" :rich-text="discussionCopyRichText('exampleLabel')" /></small>
+                        <RichTextView :text="reply.body" :rich-text="reply.bodyRichText || ''" />
+                      </article>
+                    </section>
+                    <div class="discussion-thread-preview-footer"><span><RichTextView inline :text="discussionCopyText('footerPrimary')" :rich-text="discussionCopyRichText('footerPrimary')" /> <small>→</small></span><span><RichTextView inline :text="discussionCopyText('footerSecondary')" :rich-text="discussionCopyRichText('footerSecondary')" /> <small>→</small></span></div>
                   </div>
                 </div>
               </details>
@@ -8911,10 +9097,78 @@ onBeforeUnmount(() => {
   </div>
 </section>
 <section v-if="activeSection === 'settings'" id="system-settings" class="content-area">
-        <div class="section-heading"><div><p class="eyebrow">BUSINESS SETTINGS</p><h2>系统设置</h2></div></div>
-        <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p><p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-        <div class="settings-form"><label class="setting-toggle"><span><strong>商城开放</strong><small>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</small></span><input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" /></label><label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label><label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label><label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label><div v-if="isSuperAdmin" class="topbar-actions"><button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button><button class="quiet" :disabled="settingsSaving" @click="systemSettings = { ...systemSettingsOriginal }; settingsError = ''">撤销修改</button></div><p v-else class="muted">当前账号仅可查看设置。</p></div>
-      </section>
+  <div class="section-heading"><div><p class="eyebrow">BUSINESS SETTINGS</p><h2>系统设置</h2><p class="section-description">管理商城状态、启动体验与用户支持渠道。</p></div></div>
+  <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
+  <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
+  <div class="settings-form">
+    <label class="setting-toggle">
+      <span><strong>商城开放</strong><small>商城总闸。此开关只控制商城是否开放，不会改变「实践目录 → 日常之物」入口状态；目录入口关闭时同样会展示未开放页面。</small></span>
+      <input v-model="systemSettings.store_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin" />
+    </label>
+
+    <section class="brand-popup-settings" aria-labelledby="brand-popup-settings-title">
+      <div class="brand-popup-settings-heading">
+        <div>
+          <p class="eyebrow">LAUNCH EXPERIENCE</p>
+          <h3 id="brand-popup-settings-title">启动品牌图</h3>
+          <p>用户每次打开小程序默认首页时，以全屏品牌图呈现。图片会居中裁切并铺满整个屏幕。</p>
+        </div>
+        <label class="setting-toggle brand-popup-master-toggle">
+          <span><strong>开启启动品牌图</strong><small>{{ systemSettings.brand_popup_image ? '开启后按下方频次展示' : '请先上传品牌图片' }}</small></span>
+          <input v-model="systemSettings.brand_popup_enabled" type="checkbox" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.brand_popup_image || brandPopupUploading" />
+        </label>
+      </div>
+
+      <div class="brand-popup-settings-grid">
+        <div class="brand-popup-media">
+          <div class="brand-popup-preview-frame">
+            <img v-if="brandPopupPreviewUrl" :src="brandPopupPreviewUrl" alt="启动品牌图预览" />
+            <div v-else class="brand-popup-preview-empty"><span>尚未上传品牌图</span><small>建议使用 9:16 竖版图片，重要文字请放在画面中央</small></div>
+          </div>
+          <input ref="brandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage" />
+          <div class="brand-popup-media-actions">
+            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage">{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换图片' : '上传品牌图' }}</button>
+            <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage">移除</button>
+          </div>
+          <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存系统设置后生效。</small>
+        </div>
+
+        <div class="brand-popup-fields">
+          <label>展示时长
+            <span class="brand-popup-number-field"><input v-model.number="systemSettings.brand_popup_duration" type="number" min="1" max="15" step="1" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" /><span>秒</span></span>
+            <small>可设置 1–15 秒，到时自动关闭。</small>
+          </label>
+          <label>展示频次
+            <select v-model="systemSettings.brand_popup_frequency" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading">
+              <option value="every_launch">每次启动</option>
+              <option value="daily">每天一次</option>
+              <option value="once">仅展示一次</option>
+            </select>
+            <small>频次记录在当前用户的微信本地缓存中。</small>
+          </label>
+          <label class="brand-popup-alt-field">图片说明
+            <input v-model="systemSettings.brand_popup_alt" maxlength="120" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" placeholder="用于无障碍朗读，可留空" />
+            <small>{{ systemSettings.brand_popup_alt.length }}/120 字</small>
+          </label>
+          <label class="setting-toggle brand-popup-closable-toggle">
+            <span><strong>允许手动关闭</strong><small>关闭后，品牌图仅会在倒计时结束时消失。</small></span>
+            <input v-model="systemSettings.brand_popup_closable" type="checkbox" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" />
+          </label>
+        </div>
+      </div>
+      <p class="brand-popup-settings-note">品牌图在默认首页启动后加载。直接通过分享链接进入其他页面时不会打断当前内容。</p>
+    </section>
+
+    <label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label>
+    <label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label>
+    <label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label>
+    <div v-if="isSuperAdmin" class="topbar-actions">
+      <button :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button>
+      <button type="button" class="quiet" :disabled="settingsSaving || brandPopupUploading" @click="resetSystemSettings">撤销修改</button>
+    </div>
+    <p v-else class="muted">当前账号仅可查看设置。</p>
+  </div>
+</section>
       <ModuleStateMachine
         v-if="activeSection === 'status-machine'"
         ref="moduleStateMachine"

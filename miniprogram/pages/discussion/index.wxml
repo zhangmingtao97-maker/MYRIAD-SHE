@@ -20,10 +20,10 @@
       <view wx:if="{{draft}}" class="discussion-draft" role="button" aria-label="继续未完成的草稿" tabindex="0" bindtap="continueDraft"><text>继续未完成的草稿</text><text class="discussion-draft-arrow" aria-hidden="true">→</text></view>
     </view>
     <view class="discussion-voices">
-      <view class="discussion-section-heading"><rich-text class="discussion-section-title" nodes="{{copyHtml.voicesTitle}}"></rich-text><rich-text class="discussion-example-badge" nodes="{{copyHtml.exampleBadge}}"></rich-text></view>
-      <rich-text class="discussion-example-note" nodes="{{copyHtml.exampleNotice}}"></rich-text>
+      <view class="discussion-section-heading"><rich-text class="discussion-section-title" nodes="{{copyHtml.voicesTitle}}"></rich-text><rich-text wx:if="{{showExampleGuide}}" class="discussion-example-badge" nodes="{{copyHtml.exampleBadge}}"></rich-text></view>
+      <rich-text wx:if="{{showExampleGuide}}" class="discussion-example-note" nodes="{{copyHtml.exampleNotice}}"></rich-text>
       <view wx:for="{{threads}}" wx:key="id" class="discussion-thread">
-        <view class="discussion-thread-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">{{item.source === 'community' ? '读者分享' : '示例'}}</text><text wx:if="{{item.featured}}" class="discussion-featured-label">精华</text></view>
+        <view class="discussion-thread-meta"><text class="discussion-author">{{item.author}}</text><text class="discussion-example-label">{{item.source === 'community' || item.contributionId ? '读者分享' : '示例'}}</text><text wx:if="{{item.featured}}" class="discussion-featured-label">精华</text></view>
         <rich-text class="discussion-thread-body" nodes="{{item.bodyHtml}}"></rich-text>
         <view class="discussion-thread-actions"><view class="discussion-reply-action" role="button" aria-label="回复{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="replyToThread">回复{{item.author}} <text>↗</text></view><view class="discussion-report" role="button" aria-label="{{item.reported ? '已举报' : '举报'}}{{item.author}}" tabindex="0" data-thread-id="{{item.id}}" bindtap="reportThread">{{item.reported ? '已举报' : '举报'}}</view></view>
         <view wx:if="{{item.replies.length}}" class="discussion-expand" role="button" aria-label="查看{{item.author}}这段对话" tabindex="0" data-thread-id="{{item.id}}" bindtap="openConversation">查看这段对话<text>→</text></view>

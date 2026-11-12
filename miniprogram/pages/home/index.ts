@@ -4,6 +4,8 @@ import type { PublicHomeContent, PublicHomeModule } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 import { buildMicroVoice } from '../../utils/micro-voice';
 import { richTextHtml, richTextWithSuffixHtml } from '../../utils/rich-text';
+import { fetchBrandPopup, markBrandPopupShown, shouldShowBrandPopup } from '../../utils/brand-popup';
+import type { BrandPopupConfig } from '../../utils/brand-popup';
 
 type HomeIssue = NonNullable<PublicHomeContent['issue']>;
 type HomeContentsDestination = 'story' | 'audio' | 'observation' | 'discussion';
@@ -241,8 +243,9 @@ function buildIssueHeader(modules: PublicHomeModule[], issue: HomeIssue) {
 }
 
 Page({
-  data: { loading: true, statusBarHeight: 0, homeIntroduction: DEFAULT_HOME_INTRODUCTION, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
+  data: { loading: true, statusBarHeight: 0, brandPopup: null as BrandPopupConfig | null, homeIntroduction: DEFAULT_HOME_INTRODUCTION, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
   requestGeneration: 0,
+  brandPopupGeneration: 0,
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   audioContextModuleId: '',
   activeVideoId: '',
@@ -256,21 +259,49 @@ Page({
     enableShareMenu();
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadContent();
+    void this.loadBrandPopup();
   },
   onShow() {
     if (!this.data.loading) void this.loadContent();
+  },
+  onReady() {
+    if (this.data.brandPopup) this.setBrandTabBarHidden(true);
   },
   onHide() {
     // Public content is ordinary view data. Invalidate a hidden-page read so
     // an older response cannot repaint on return.
     this.requestGeneration += 1;
+    this.brandPopupGeneration += 1;
+    if (this.data.brandPopup) this.setData({ brandPopup: null });
+    this.setBrandTabBarHidden(false);
     if (this.data.loading) this.setData({ loading: false });
     this.stopVideoPlayback();
     this.stopAudioPlayback();
   },
   onUnload() {
+    this.brandPopupGeneration += 1;
+    this.setBrandTabBarHidden(false);
     this.stopVideoPlayback();
     this.stopAudioPlayback(false);
+  },
+  async loadBrandPopup() {
+    const generation = ++this.brandPopupGeneration;
+    const popup = await fetchBrandPopup();
+    if (generation !== this.brandPopupGeneration || !popup || !shouldShowBrandPopup(popup.frequency)) return;
+    this.setBrandTabBarHidden(true);
+    this.setData({ brandPopup: popup });
+  },
+  setBrandTabBarHidden(hidden: boolean) {
+    const getTabBar = (this as unknown as { getTabBar?: () => { setData?: (data: { brandPopupHidden: boolean }) => void } | undefined }).getTabBar;
+    const tabBar = getTabBar?.call(this);
+    tabBar?.setData?.({ brandPopupHidden: hidden });
+  },
+  onBrandPopupClose() {
+    this.setData({ brandPopup: null });
+    this.setBrandTabBarHidden(false);
+  },
+  onBrandPopupShown() {
+    if (this.data.brandPopup) markBrandPopupShown(this.data.brandPopup.frequency);
   },
   async loadContent() {
     const generation = ++this.requestGeneration;

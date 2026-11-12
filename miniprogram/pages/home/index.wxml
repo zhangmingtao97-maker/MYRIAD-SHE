@@ -139,4 +139,14 @@
   <view wx:if="{{!hasModules}}" class="editorial-section module-brandFooter"><view class="footer-signature"><view class="footer-brand">MYRIAD SHE</view><view class="footer-title">我有我的时节</view><view class="footer-copy">记录真实的女性经验，也为看见之后的生活留下一条可行的路。</view><view class="footer-flower" aria-hidden="true"><view></view><view></view><view></view><view></view></view></view></view>
   </view>
 
+  <brand-launch-popup
+    wx:if="{{brandPopup}}"
+    visible="{{true}}"
+    image-url="{{brandPopup.imageUrl}}"
+    duration-seconds="{{brandPopup.durationSeconds}}"
+    alt-text="{{brandPopup.altText}}"
+    closable="{{brandPopup.closable}}"
+    bind:shown="onBrandPopupShown"
+    bind:close="onBrandPopupClose"
+  />
 </view>
