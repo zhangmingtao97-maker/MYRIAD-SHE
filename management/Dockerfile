@@ -8,6 +8,7 @@ WORKDIR /app
 COPY management/ .
 COPY miniprogram/AppleGaramond.ttf /miniprogram/AppleGaramond.ttf
 COPY miniprogram/SourceHanSerifCN-Regular.otf /miniprogram/SourceHanSerifCN-Regular.otf
+COPY miniprogram/utils/content.ts /miniprogram/utils/content.ts
 EXPOSE 61022
 CMD ["npm", "run", "dev"]
 
@@ -22,6 +23,7 @@ ENV VITE_MEDIA_UPLOAD_TIMEOUT_MS=${VITE_MEDIA_UPLOAD_TIMEOUT_MS}
 COPY management/ .
 COPY miniprogram/AppleGaramond.ttf /miniprogram/AppleGaramond.ttf
 COPY miniprogram/SourceHanSerifCN-Regular.otf /miniprogram/SourceHanSerifCN-Regular.otf
+COPY miniprogram/utils/content.ts /miniprogram/utils/content.ts
 RUN npm run build
 
 FROM nginx:alpine AS production
