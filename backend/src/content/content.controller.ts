@@ -3304,7 +3304,36 @@ export class ContentController {
   async managePractice() {
     const published = await this.readPracticeContent();
     const draft = await this.database.query<{ content: Record<string, unknown>; editVersion: number }>(`select content, edit_version as "editVersion" from admin_content_drafts where content_key = 'practice'`);
-    return draft.rows[0] ? { ...draft.rows[0].content, editVersion: draft.rows[0].editVersion, draft: true } : { ...published, draft: false };
+    if (!draft.rows[0]) return { ...published, draft: false };
+    // Older saved drafts can predate newly added fields. Merge them over the published
+    // shape and normalize nested copy so a partial legacy draft cannot break the workspace.
+    const saved = draft.rows[0].content && typeof draft.rows[0].content === 'object' && !Array.isArray(draft.rows[0].content)
+      ? draft.rows[0].content
+      : {};
+    const merged = { ...published, ...saved };
+    return {
+      ...merged,
+      observationCopy: sanitizeObservationCopy({
+        ...(published.observationCopy as Record<string, unknown>),
+        ...(saved.observationCopy && typeof saved.observationCopy === 'object' && !Array.isArray(saved.observationCopy)
+          ? saved.observationCopy as Record<string, unknown>
+          : {}),
+      }),
+      sharedPracticeCopy: normalizeSharedPracticeCopy({
+        ...(published.sharedPracticeCopy as Record<string, unknown>),
+        ...(saved.sharedPracticeCopy && typeof saved.sharedPracticeCopy === 'object' && !Array.isArray(saved.sharedPracticeCopy)
+          ? saved.sharedPracticeCopy as Record<string, unknown>
+          : {}),
+      }),
+      footerCopy: sanitizePracticeFooterCopy({
+        ...(published.footerCopy as Record<string, unknown>),
+        ...(saved.footerCopy && typeof saved.footerCopy === 'object' && !Array.isArray(saved.footerCopy)
+          ? saved.footerCopy as Record<string, unknown>
+          : {}),
+      }),
+      editVersion: draft.rows[0].editVersion,
+      draft: true,
+    };
   }
 
   /** 读取某期的共同实践文案（未单独保存时回退到全局默认值）。 */

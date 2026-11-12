@@ -2649,6 +2649,22 @@ function isPracticeContent(raw: unknown): raw is PracticeContent {
 function practiceContentFormatError(raw: unknown) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return '实践页面配置格式无效：API 返回内容不是对象。';
   const value = raw as Record<string, unknown>;
+  const footerLabels: Record<string, string> = { brand: '页尾品牌', line1: '页尾主文案一', label: '页尾小标题', line2: '页尾主文案二' };
+  if (!value.footerCopy || typeof value.footerCopy !== 'object' || Array.isArray(value.footerCopy)) {
+    return '实践页面配置格式无效：API 尚未返回页尾文案，请确认 API 已更新并刷新页面。';
+  }
+  const footer = value.footerCopy as Record<string, unknown>;
+  const missingFooter = Object.keys(footerLabels).filter((key) => !Object.hasOwn(footer, key));
+  if (missingFooter.length) return `实践页面配置格式无效：页尾文案缺少“${footerLabels[missingFooter[0]]}”，请刷新后重试。`;
+  const invalidFooter = Object.keys(footerLabels).find((key) => {
+    const item = footer[key];
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return true;
+    const copy = item as Record<string, unknown>;
+    return typeof copy.richText !== 'string' || copy.richText.length < 1 || copy.richText.length > 2000
+      || typeof copy.fontSize !== 'number' || !Number.isSafeInteger(copy.fontSize) || copy.fontSize < 10 || copy.fontSize > 48
+      || typeof copy.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(copy.color);
+  });
+  if (invalidFooter) return `实践页面配置格式无效：页尾文案“${footerLabels[invalidFooter]}”的文字、字号或颜色无效，请刷新后重试。`;
   if (!value.sharedPracticeCopy || typeof value.sharedPracticeCopy !== 'object' || Array.isArray(value.sharedPracticeCopy)) {
     return '实践页面配置格式无效：API 尚未返回共同实践文案，请确认 API 已更新并刷新页面。';
   }

@@ -236,7 +236,7 @@ function harness(input: { referenced?: boolean; failIntentAudit?: boolean; failC
   return { controller, events, committedAuditActions, signedTokens, referenceSqls };
 }
 
-function practiceHarness(options: { offlineActivitiesPublished?: boolean } = {}) {
+function practiceHarness(options: { offlineActivitiesPublished?: boolean; draftContent?: Record<string, unknown>; draftEditVersion?: number } = {}) {
   const events: string[] = [];
   const issueCode = 'issue-02';
   const issuePracticeCopy = {
@@ -339,6 +339,13 @@ function practiceHarness(options: { offlineActivitiesPublished?: boolean } = {})
   } as unknown as PoolClient;
   const database = {
     query: async (sql: string) => {
+      if (sql.includes("from admin_content_drafts where content_key = 'practice'")) {
+        return {
+          rows: options.draftContent
+            ? [{ content: options.draftContent, editVersion: options.draftEditVersion ?? 1 }]
+            : [],
+        };
+      }
       if (sql.includes('content_practice_page')) return { rows: [{ ...page }] };
       if (sql.includes('content_practice_entries')) return { rows: entries.map((entry) => ({ ...entry })) };
       throw new Error(`Unexpected practice query: ${sql}`);
@@ -849,6 +856,20 @@ test('practice page footer falls back to the published defaults when old data ha
     label: { richText: '此刻归安', fontSize: 11, color: '#5c493c' },
     line2: { richText: '让一件小事发生', fontSize: 16, color: '#40362f' },
   });
+});
+
+test('admin practice refresh normalizes a legacy draft without footer copy', async () => {
+  const draft = practiceUpdate();
+  const draftContent = { ...draft } as Record<string, unknown>;
+  delete draftContent.footerCopy;
+  const { controller } = practiceHarness({ draftContent, draftEditVersion: 30 });
+
+  const result = await controller.managePractice();
+
+  assert.equal(result.draft, true);
+  assert.equal(result.editVersion, 30);
+  assert.equal(result.entries.length, 3);
+  assert.deepEqual(result.footerCopy, draft.footerCopy);
 });
 
 test('practice page footer preserves rich text, font size, and color', async () => {
