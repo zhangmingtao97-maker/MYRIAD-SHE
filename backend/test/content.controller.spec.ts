@@ -405,6 +405,85 @@ function practiceUpdate() {
     align: 'left' as 'left' | 'center' | 'right',
     spacing: 'standard' as 'compact' | 'standard' | 'roomy',
   });
+  const seasonIntroCopy = () => ({
+    navTitle: { richText: '四时气韵', fontSize: 15, color: '#4a3f38' },
+    metaLeft: { richText: '四时气韵', fontSize: 11, color: '#8b6b58' },
+    metaRight: { richText: '从生命牌开始', fontSize: 11, color: '#7b5a45' },
+    heroTitle: { richText: '从一个生日，<br/>开启一次观察。', fontSize: 29, color: '#4a3f38' },
+    heroDescription: { richText: '按生日找到对应的生命牌，借它的主题回看一件真实的事，再辨认其中的变化与自己的选择。', fontSize: 14, color: '#4a3f38' },
+    guideTitle: { richText: '生命牌与四时气韵是什么？', fontSize: 16, color: '#4a3f38' },
+    guideRequired: { richText: '必读', fontSize: 10, color: '#663124' },
+    guideRead: { richText: '已读', fontSize: 10, color: '#8b6b58' },
+    guideParagraphOne: { richText: '生命牌来自一种以生日对应纸牌的传统符号体系。在这里，MYRIAD SHE 把其中的主题转成观察问题，再借“生、长、收、藏”辨认一件具体的事正在怎样变化。', fontSize: 13, color: '#5b4c42' },
+    guideParagraphTwo: { richText: '生日只用于查表。牌义不决定你是谁，也不能替你判断此刻的状态。你可以保留不同的经验与解释。', fontSize: 13, color: '#5b4c42' },
+    guideSteps: { richText: '底色 → 此刻 → 选择 → 行动', fontSize: 12, color: '#7b5a45' },
+    guideGateNote: { richText: '开始前，请先阅读以上说明并确认了解。', fontSize: 11, color: '#7b5a45' },
+    guideConfirm: { richText: '我已了解，开始选择生日', fontSize: 14, color: '#fffaf4' },
+    birthdayLabel: { richText: '你的公历生日', fontSize: 13, color: '#4a3f38' },
+    monthLabel: { richText: '月', fontSize: 11, color: '#8b6b58' },
+    dayLabel: { richText: '日', fontSize: 11, color: '#8b6b58' },
+    monthPlaceholder: { richText: '选择月份', fontSize: 15, color: '#a1907f' },
+    dayPlaceholder: { richText: '选择日期', fontSize: 15, color: '#a1907f' },
+    birthdayNote: { richText: '只需月与日。同一天生日对应同一张生命牌。', fontSize: 11, color: '#8b6b58' },
+    rememberTitle: { richText: '在这台设备记住生日', fontSize: 13, color: '#4a3f38' },
+    rememberNote: { richText: '下次可直接继续观察；随时可以清除。', fontSize: 11, color: '#8b6b58' },
+    primaryAction: { richText: '查看我的生命牌', fontSize: 15, color: '#fffaf4' },
+    primaryLockedAction: { richText: '请先阅读并确认了解', fontSize: 15, color: '#fffaf4' },
+    realityAction: { richText: '从现实处境开始', fontSize: 14, color: '#4a3f38' },
+    skipAction: { richText: '暂不使用四时气韵', fontSize: 13, color: '#8b6b58' },
+    align: 'left' as 'left' | 'center' | 'right',
+    spacing: 'standard' as 'compact' | 'standard' | 'roomy',
+  });
+  const seasonCopyKeys = <Key extends string>(keys: readonly Key[], prefix: string) => Object.fromEntries(keys.map((key) => [
+    key,
+    { richText: `${prefix}-${key}`, fontSize: 14, color: '#5c493c' },
+  ])) as Record<Key, { richText: string; fontSize: number; color: string }>;
+  const seasonStagesCopy = () => ({
+    card: {
+      ...seasonCopyKeys(['stageLabel', 'birthdayLabel', 'emptyLabel', 'chooseBirthday', 'changeBirthday', 'eyebrow', 'themePrefix', 'footnote', 'noteLabel', 'sourceToggle', 'nextLabel', 'previousLabel', 'footer'], '底色'),
+      align: 'left' as 'left' | 'center' | 'right',
+      spacing: 'standard' as 'compact' | 'standard' | 'roomy',
+    },
+    now: {
+      align: 'left' as 'left' | 'center' | 'right',
+      spacing: 'standard' as 'compact' | 'standard' | 'roomy',
+      recent: {
+        ...seasonCopyKeys(['stepLabel', 'titleLine1', 'titleLine2', 'description', 'experienceLabel', 'experiencePlaceholder', 'relationLabel', 'noteLabel', 'optionalLabel', 'notePlaceholder', 'nextLabel', 'previousLabel'], '此刻最近'),
+        relations: [
+          { key: 'resonates' as const, label: { richText: '有共鸣', fontSize: 12, color: '#40362f' } },
+          { key: 'partial' as const, label: { richText: '部分有关', fontSize: 12, color: '#40362f' } },
+          { key: 'different' as const, label: { richText: '与我的经验不同', fontSize: 12, color: '#40362f' } },
+          { key: 'unclear' as const, label: { richText: '暂时说不清', fontSize: 12, color: '#40362f' } },
+        ],
+      },
+      change: {
+        ...seasonCopyKeys(['stepLabel', 'titleLine1', 'titleLine2', 'description', 'insightLabel', 'optionalLabel', 'insightPlaceholder', 'footer', 'nextLabel', 'previousLabel'], '此刻变化'),
+        states: [
+          { key: '生' as const, label: { richText: '正在开始', fontSize: 14, color: '#40362f' }, hint: { richText: '什么正在开始？', fontSize: 12, color: '#8b6b58' } },
+          { key: '长' as const, label: { richText: '继续培育', fontSize: 14, color: '#40362f' }, hint: { richText: '什么值得继续培育？', fontSize: 12, color: '#8b6b58' } },
+          { key: '收' as const, label: { richText: '完成与取舍', fontSize: 14, color: '#40362f' }, hint: { richText: '什么需要完成或收束？', fontSize: 12, color: '#8b6b58' } },
+          { key: '藏' as const, label: { richText: '暂停与保存', fontSize: 14, color: '#40362f' }, hint: { richText: '什么需要暂停与保存？', fontSize: 12, color: '#8b6b58' } },
+          { key: '暂时说不清' as const, label: { richText: '暂时说不清', fontSize: 14, color: '#40362f' }, hint: { richText: '也可以不急着归类。', fontSize: 12, color: '#8b6b58' } },
+        ],
+      },
+    },
+    choice: {
+      ...seasonCopyKeys(['stepLabel', 'titleLine1', 'titleLine2', 'leadLine1', 'leadLine2', 'keepLabel', 'keepPlaceholder', 'rejectLabel', 'optionalLabel', 'rejectPlaceholder', 'nextLabel', 'previousLabel', 'footer'], '选择'),
+      align: 'left' as 'left' | 'center' | 'right',
+      spacing: 'standard' as 'compact' | 'standard' | 'roomy',
+    },
+    action: {
+      ...seasonCopyKeys(['stepLabel', 'titleLine1', 'titleLine2', 'leadLine1', 'leadLine2', 'actionLabel', 'actionPlaceholder', 'restLabel', 'previewLabel', 'previewEmpty', 'footer', 'nextLabel', 'previousLabel'], '行动'),
+      align: 'left' as 'left' | 'center' | 'right',
+      spacing: 'standard' as 'compact' | 'standard' | 'roomy',
+    },
+  });
+  const observationRecordCopy = () => ({
+    ...seasonCopyKeys(['navTitle', 'methodReality', 'methodSeason', 'statusDraft', 'statusSaved', 'stageBase', 'stageNow', 'stageChoice', 'stageAction', 'seasonActionTail', 'experienceLabel', 'changeLabel', 'keepLabel', 'keepLabelOptional', 'stageRejectLabel', 'perspectiveLabel', 'perspectiveNote', 'perspectiveEmpty', 'editAction', 'againAction', 'deleteAction', 'deletingAction', 'emptyValue', 'seasonCardSubtitle'], '观察记录'),
+    align: 'left' as 'left' | 'center' | 'right',
+    spacing: 'standard' as 'compact' | 'standard' | 'roomy',
+  });
+
   return {
     editVersion: 1,
     title: '实践',
@@ -429,6 +508,9 @@ function practiceUpdate() {
         need: realityStage('选择', '此刻，你愿意把选择权放在哪里？', '不是解决全部，只是辨认一个现在可以选择的方向。', '或者，用自己的话写下', '例如：今天先不回复，明早再决定……'),
         nextAction: realityStage('行动', '接下来七天，你愿意做哪一件小事？', '让它小到真的可以发生。', '写下这一件小事', '例如：把那句话写下来，先不发送……', '私密保存这次观察'),
       },
+      seasonIntro: seasonIntroCopy(),
+      seasonStages: seasonStagesCopy(),
+      record: observationRecordCopy(),
     },
     sharedPracticeCopy: Object.fromEntries(sharedCopyKeys.map((key) => [key, { richText: key, fontSize: 12, color: '#40362f' }])),
     footerCopy: {
@@ -1260,6 +1342,222 @@ test('reality stage copy fills legacy data and rejects unsupported layout values
 
   assert.equal(fallback.observationCopy.realityStages.body.align, 'left');
   assert.equal(fallback.observationCopy.realityStages.body.spacing, 'standard');
+});
+
+test('season intro copy preserves rich text, sizing, color, and page layout', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  update.observationCopy.seasonIntro.heroTitle = {
+    richText: '<strong>从一个生日，</strong><br/><span style="font-size:34px;color:#663124">开启一次观察。</span><script>alert(1)</script>',
+    fontSize: 30,
+    color: '#40362f',
+  };
+  update.observationCopy.seasonIntro.guideParagraphOne = {
+    richText: '<em>生命牌</em>来自一种以生日对应纸牌的传统符号体系。',
+    fontSize: 12,
+    color: '#663124',
+  };
+  update.observationCopy.seasonIntro.align = 'center';
+  update.observationCopy.seasonIntro.spacing = 'roomy';
+
+  const result = await controller.updatePracticeContent(request, update);
+
+  assert.match(result.observationCopy.seasonIntro.heroTitle.richText, /<strong>从一个生日，<\/strong><br\/>/);
+  assert.match(result.observationCopy.seasonIntro.heroTitle.richText, /<span style="font-size:34px;color:#663124">开启一次观察。<\/span>/);
+  assert.doesNotMatch(result.observationCopy.seasonIntro.heroTitle.richText, /script|alert/);
+  assert.match(result.observationCopy.seasonIntro.guideParagraphOne.richText, /<em>生命牌<\/em>/);
+  assert.equal(result.observationCopy.seasonIntro.heroTitle.fontSize, 30);
+  assert.equal(result.observationCopy.seasonIntro.heroTitle.color, '#40362f');
+  assert.equal(result.observationCopy.seasonIntro.guideParagraphOne.color, '#663124');
+  assert.equal(result.observationCopy.seasonIntro.align, 'center');
+  assert.equal(result.observationCopy.seasonIntro.spacing, 'roomy');
+});
+
+test('season intro copy fills legacy data and rejects unsupported layout values', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  delete (update.observationCopy as Record<string, unknown>).seasonIntro;
+
+  const result = await controller.updatePracticeContent(request, update);
+
+  assert.equal(result.observationCopy.seasonIntro.navTitle.richText, '四时气韵');
+  assert.equal(result.observationCopy.seasonIntro.heroTitle.richText, '从一个生日，<br/>开启一次观察。');
+  assert.equal(result.observationCopy.seasonIntro.primaryAction.richText, '查看我的生命牌');
+  assert.equal(result.observationCopy.seasonIntro.align, 'left');
+  assert.equal(result.observationCopy.seasonIntro.spacing, 'standard');
+
+  const { controller: invalidController } = practiceHarness();
+  const invalid = practiceUpdate();
+  (invalid.observationCopy.seasonIntro as unknown as Record<string, unknown>).align = 'justify';
+  (invalid.observationCopy.seasonIntro as unknown as Record<string, unknown>).spacing = 'dense';
+  const fallback = await invalidController.updatePracticeContent(request, invalid);
+
+  assert.equal(fallback.observationCopy.seasonIntro.align, 'left');
+  assert.equal(fallback.observationCopy.seasonIntro.spacing, 'standard');
+});
+
+test('season stages preserve rich copy, typography, layout, and fixed option order', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  const seasonStages = update.observationCopy.seasonStages;
+  seasonStages.card.stageLabel = {
+    richText: '<strong>新的底色</strong><br/><span style="color:#663124;font-size:34px">阶段名</span><script>alert(1)</script>',
+    fontSize: 32,
+    color: '#123456',
+  };
+  seasonStages.card.align = 'center';
+  seasonStages.card.spacing = 'roomy';
+  seasonStages.now.align = 'right';
+  seasonStages.now.spacing = 'compact';
+  seasonStages.choice.align = 'center';
+  seasonStages.choice.spacing = 'standard';
+  seasonStages.action.align = 'left';
+  seasonStages.action.spacing = 'roomy';
+
+  const relations = seasonStages.now.recent.relations;
+  relations[0] = { ...relations[0], key: '有共鸣' as never };
+  relations[1] = {
+    ...relations[1],
+    label: { richText: '<em>部分有关</em><script>alert(1)</script>', fontSize: 16, color: '#663124' },
+  };
+  seasonStages.now.recent.relations = [relations[3], relations[0], relations[2], relations[1]];
+  seasonStages.now.change.states = [...seasonStages.now.change.states].reverse();
+  seasonStages.now.change.states[0].label = { richText: '<strong>暂时说不清</strong>', fontSize: 18, color: '#7b5a45' };
+  seasonStages.now.change.states[0].hint = { richText: '<em>也可以不急着归类。</em><script>alert(1)</script>', fontSize: 13, color: '#40362f' };
+
+  const result = await controller.updatePracticeContent(request, update);
+  const saved = result.observationCopy.seasonStages;
+
+  assert.match(saved.card.stageLabel.richText, /<strong>新的底色<\/strong><br\/>/);
+  assert.match(saved.card.stageLabel.richText, /<span style="font-size:34px;color:#663124">阶段名<\/span>/);
+  assert.doesNotMatch(saved.card.stageLabel.richText, /script|alert/);
+  assert.equal(saved.card.stageLabel.fontSize, 32);
+  assert.equal(saved.card.stageLabel.color, '#123456');
+  assert.equal(saved.card.align, 'center');
+  assert.equal(saved.card.spacing, 'roomy');
+  assert.equal(saved.now.align, 'right');
+  assert.equal(saved.now.spacing, 'compact');
+  assert.equal(saved.choice.align, 'center');
+  assert.equal(saved.choice.spacing, 'standard');
+  assert.equal(saved.action.align, 'left');
+  assert.equal(saved.action.spacing, 'roomy');
+  assert.deepEqual(saved.now.recent.relations.map((option) => option.key), ['resonates', 'partial', 'different', 'unclear']);
+  assert.equal(saved.now.recent.relations[1].label.richText, '<em>部分有关</em>');
+  assert.equal(saved.now.recent.relations[1].label.fontSize, 16);
+  assert.equal(saved.now.recent.relations[1].label.color, '#663124');
+  assert.deepEqual(saved.now.change.states.map((option) => option.key), ['生', '长', '收', '藏', '暂时说不清']);
+  assert.equal(saved.now.change.states[4].label.richText, '<strong>暂时说不清</strong>');
+  assert.equal(saved.now.change.states[4].label.fontSize, 18);
+  assert.equal(saved.now.change.states[4].hint.richText, '<em>也可以不急着归类。</em>');
+  assert.equal(saved.now.change.states[4].hint.fontSize, 13);
+  assert.equal(saved.now.change.states[4].hint.color, '#40362f');
+});
+
+test('season stages fill legacy data with editable defaults', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  delete (update.observationCopy as Record<string, unknown>).seasonStages;
+
+  const result = await controller.updatePracticeContent(request, update);
+  const saved = result.observationCopy.seasonStages;
+
+  assert.equal(saved.card.stageLabel.richText, '按生日对应的生命牌');
+  assert.equal(saved.now.recent.titleLine1.richText, '最近，');
+  assert.equal(saved.now.change.description.richText, '借四时的变化，回看刚才的事。几种状态可以同时存在，也可以暂时说不清。');
+  assert.equal(saved.choice.titleLine1.richText, '哪些解释，');
+  assert.equal(saved.action.previewLabel.richText, '这次留下的');
+  assert.deepEqual(saved.now.recent.relations.map((option) => option.key), ['resonates', 'partial', 'different', 'unclear']);
+  assert.deepEqual(saved.now.change.states.map((option) => option.key), ['生', '长', '收', '藏', '暂时说不清']);
+  assert.equal(saved.card.align, 'left');
+  assert.equal(saved.card.spacing, 'standard');
+  assert.equal(saved.now.align, 'left');
+  assert.equal(saved.now.spacing, 'standard');
+  assert.equal(saved.choice.align, 'left');
+  assert.equal(saved.choice.spacing, 'standard');
+  assert.equal(saved.action.align, 'left');
+  assert.equal(saved.action.spacing, 'standard');
+});
+
+test('season stages reject unsupported layout values without losing contents', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  const seasonStages = update.observationCopy.seasonStages;
+  (seasonStages.card as unknown as Record<string, unknown>).align = 'justify';
+  (seasonStages.card as unknown as Record<string, unknown>).spacing = 'dense';
+  (seasonStages.now as unknown as Record<string, unknown>).align = 'stretch';
+  (seasonStages.now as unknown as Record<string, unknown>).spacing = 'wide';
+  (seasonStages.choice as unknown as Record<string, unknown>).align = 'middle';
+  (seasonStages.choice as unknown as Record<string, unknown>).spacing = 'tight';
+  (seasonStages.action as unknown as Record<string, unknown>).align = 'end';
+  (seasonStages.action as unknown as Record<string, unknown>).spacing = 'none';
+  seasonStages.action.titleLine1 = { richText: '仍然保留的行动标题', fontSize: 24, color: '#663124' };
+
+  const result = await controller.updatePracticeContent(request, update);
+  const saved = result.observationCopy.seasonStages;
+
+  assert.equal(saved.card.align, 'left');
+  assert.equal(saved.card.spacing, 'standard');
+  assert.equal(saved.now.align, 'left');
+  assert.equal(saved.now.spacing, 'standard');
+  assert.equal(saved.choice.align, 'left');
+  assert.equal(saved.choice.spacing, 'standard');
+  assert.equal(saved.action.align, 'left');
+  assert.equal(saved.action.spacing, 'standard');
+  assert.equal(saved.action.titleLine1.richText, '仍然保留的行动标题');
+  assert.equal(saved.action.titleLine1.fontSize, 24);
+  assert.equal(saved.action.titleLine1.color, '#663124');
+});
+
+test('observation record copy preserves rich text, typography, and layout', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  update.observationCopy.record.navTitle = {
+    richText: '<strong>我的观察</strong><br/><span style="color:#663124;font-size:30px">记录</span><script>alert(1)</script>',
+    fontSize: 20,
+    color: '#123456',
+  };
+  update.observationCopy.record.align = 'center';
+  update.observationCopy.record.spacing = 'roomy';
+
+  const result = await controller.updatePracticeContent(request, update);
+  const saved = result.observationCopy.record;
+
+  assert.match(saved.navTitle.richText, /<strong>我的观察<\/strong><br\/>/);
+  assert.match(saved.navTitle.richText, /<span style="font-size:30px;color:#663124">记录<\/span>/);
+  assert.doesNotMatch(saved.navTitle.richText, /script|alert/);
+  assert.equal(saved.navTitle.fontSize, 20);
+  assert.equal(saved.navTitle.color, '#123456');
+  assert.equal(saved.align, 'center');
+  assert.equal(saved.spacing, 'roomy');
+});
+
+test('observation record copy fills legacy data and rejects unsupported layout values', async () => {
+  const { controller } = practiceHarness();
+  const update = practiceUpdate();
+  delete (update.observationCopy as Record<string, unknown>).record;
+
+  const result = await controller.updatePracticeContent(request, update);
+  const saved = result.observationCopy.record;
+
+  assert.equal(saved.navTitle.richText, '观察记录');
+  assert.equal(saved.stageBase.richText, '01 · 底色');
+  assert.equal(saved.perspectiveNote.richText, '这份判断可以随时修改；你的经验始终拥有解释权。');
+  assert.equal(saved.editAction.richText, '修改这次观察');
+  assert.equal(saved.align, 'left');
+  assert.equal(saved.spacing, 'standard');
+
+  const { controller: invalidController } = practiceHarness();
+  const invalid = practiceUpdate();
+  (invalid.observationCopy.record as unknown as Record<string, unknown>).align = 'justify';
+  (invalid.observationCopy.record as unknown as Record<string, unknown>).spacing = 'dense';
+  invalid.observationCopy.record.navTitle = { richText: '仍然保留的导航标题', fontSize: 24, color: '#663124' };
+  const fallback = await invalidController.updatePracticeContent(request, invalid);
+
+  assert.equal(fallback.observationCopy.record.align, 'left');
+  assert.equal(fallback.observationCopy.record.spacing, 'standard');
+  assert.equal(fallback.observationCopy.record.navTitle.richText, '仍然保留的导航标题');
+  assert.equal(fallback.observationCopy.record.navTitle.fontSize, 24);
+  assert.equal(fallback.observationCopy.record.navTitle.color, '#663124');
 });
 
 type SharedCopyResult = {

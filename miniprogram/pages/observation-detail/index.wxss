@@ -13,6 +13,8 @@
 .stage:first-of-type { margin-top: 28rpx; }
 .stage-label { color: #8f4938; font-size: 22rpx; font-weight: 600; line-height: 1.5; letter-spacing: 1rpx; }
 .stage-label-tail { color: #8f4938; }
+.stage-label-row, .stage-key-row { display: flex; align-items: baseline; gap: 10rpx; }
+.stage-key-optional { color: #8f4938; }
 
 .stage-title {
   margin-top: 12rpx;
@@ -64,6 +66,21 @@
   font-size: 20rpx;
   line-height: 1.7;
 }
+
+.record-align-center { text-align: center; }
+.record-align-right { text-align: right; }
+.record-align-center .record-meta { justify-content: center; }
+.record-align-right .record-meta { justify-content: flex-end; }
+.record-align-center .stage-label-row,
+.record-align-center .stage-key-row { justify-content: center; }
+.record-align-right .stage-label-row,
+.record-align-right .stage-key-row { justify-content: flex-end; }
+.record-spacing-compact .stage { padding-top: 24rpx; padding-bottom: 18rpx; }
+.record-spacing-compact .stage-block { margin-top: 20rpx; }
+.record-spacing-compact .record-actions { margin-top: 16rpx; }
+.record-spacing-roomy .stage { padding-top: 44rpx; padding-bottom: 36rpx; }
+.record-spacing-roomy .stage-block { margin-top: 36rpx; }
+.record-spacing-roomy .record-actions { margin-top: 32rpx; }
 
 /* 问题来源 */
 .issue-context { margin: 26rpx 0 0; padding: 22rpx 0; border-top: 1rpx solid #cdbbae; }

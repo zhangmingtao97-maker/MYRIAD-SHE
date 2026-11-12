@@ -1,6 +1,6 @@
 import { ApiRequestError, apiErrorMessage, request } from '../../utils/request';
-import { isLifeCard, isPracticeContent, isPublishedIssue } from '../../utils/content';
-import type { LifeCard, ObservationCopy, PracticeContent, PracticeCopyItem, PublishedIssue, RealityStageKey, RealityStageCopy } from '../../utils/content';
+import { DEFAULT_OBSERVATION_RECORD_COPY, DEFAULT_SEASON_INTRO_COPY, DEFAULT_SEASON_STAGES_COPY, isLifeCard, isPracticeContent, isPublishedIssue } from '../../utils/content';
+import type { LifeCard, ObservationCopy, PracticeContent, PracticeCopyItem, PublishedIssue, RealityStageKey, RealityStageCopy, SeasonRelationKey, SeasonRelationOption, SeasonStateOption, SeasonStagesCopy } from '../../utils/content';
 import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation, ObservationMethod } from '../../utils/observation';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
@@ -26,6 +26,7 @@ const DEFAULT_OBSERVATION_COPY: ObservationCopy = {
   seasonAction: { richText: '了解方法并开始', fontSize: 14, color: '#663124' },
   privacyLabel: { richText: '仅自己可见', fontSize: 13, color: '#663124' },
   privacyCopy: { richText: '所有观察默认私密。你可以修改、删除或随时停止。', fontSize: 12, color: '#76695f' },
+  seasonStages: DEFAULT_SEASON_STAGES_COPY,
   realityStages: {
     situation: {
       stageLabel: { richText: '底色', fontSize: 11, color: '#663124' },
@@ -76,6 +77,8 @@ const DEFAULT_OBSERVATION_COPY: ObservationCopy = {
       spacing: 'standard',
     },
   },
+  seasonIntro: DEFAULT_SEASON_INTRO_COPY,
+  record: DEFAULT_OBSERVATION_RECORD_COPY,
 };
 
 type RealityStageStep = { key: RealityStageKey; copy: PracticeCopyItem };
@@ -101,6 +104,74 @@ function readableTextColor(color: string) {
   const blue = Number.parseInt(hex.slice(4, 6), 16);
   const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
   return luminance > 0.62 ? '#40362f' : '#fffaf4';
+}
+
+const seasonRelationLegacyLabels: Record<SeasonRelationKey, string> = {
+  resonates: '有共鸣',
+  partial: '部分有关',
+  different: '与我的经验不同',
+  unclear: '暂时说不清',
+};
+
+function seasonRelationKeyFromValue(value: string, options: SeasonRelationOption[]): SeasonRelationKey | '' {
+  if (options.some((option) => option.key === value)) return value as SeasonRelationKey;
+  const plain = plainRichText(value);
+  const matched = options.find((option) => plainRichText(option.label.richText) === plain);
+  if (matched) return matched.key;
+  return (Object.entries(seasonRelationLegacyLabels).find(([, label]) => label === plain)?.[0] || '') as SeasonRelationKey | '';
+}
+
+function seasonStageView(copy: ObservationCopy, step: number, seasonStage: number, states: string[], details: Record<string, string>) {
+  const stages = copy.seasonStages;
+  const seasonStateOptions = stages.now.change.states;
+  return {
+    seasonCard: stages.card,
+    seasonNow: stages.now,
+    seasonNowRecent: stages.now.recent,
+    seasonNowChange: stages.now.change,
+    seasonChoice: stages.choice,
+    seasonAction: stages.action,
+    seasonLinkOptions: stages.now.recent.relations.map((option) => ({
+      ...option,
+      labelText: plainRichText(option.label.richText),
+    })),
+    seasonStateOptions,
+    seasonStateView: seasonStateOptions.map((option) => ({
+      ...option,
+      labelText: plainRichText(option.label.richText),
+      hintText: plainRichText(option.hint.richText),
+      selected: states.indexOf(option.key) > -1,
+      isNote: option.key === '暂时说不清',
+      detail: details[option.key] || '',
+    })),
+    seasonExperiencePlaceholder: plainRichText(stages.now.recent.experiencePlaceholder.richText),
+    seasonNotePlaceholder: plainRichText(stages.now.recent.notePlaceholder.richText),
+    seasonInsightPlaceholder: plainRichText(stages.now.change.insightPlaceholder.richText),
+    seasonKeepPlaceholder: plainRichText(stages.choice.keepPlaceholder.richText),
+    seasonRejectPlaceholder: plainRichText(stages.choice.rejectPlaceholder.richText),
+    seasonActionPlaceholder: plainRichText(stages.action.actionPlaceholder.richText),
+    seasonPreviewEmptyText: plainRichText(stages.action.previewEmpty.richText),
+    ...seasonStageNavigationView(stages, step, seasonStage),
+  };
+}
+
+function seasonStageNavigationView(stages: SeasonStagesCopy, step: number, seasonStage: number) {
+  const stage = step <= 0 ? stages.card
+    : step === 1 ? (seasonStage === 1 ? stages.now.change : stages.now.recent)
+      : step === 2 ? stages.choice : stages.action;
+  const layout = step <= 0 ? stages.card
+    : step === 1 ? stages.now
+      : step === 2 ? stages.choice : stages.action;
+  return {
+    currentSeasonPreviousCopy: stage.previousLabel,
+    currentSeasonNextCopy: stage.nextLabel,
+    currentSeasonFooter: 'footer' in stage ? stage.footer : null,
+    currentSeasonPreviousLabel: plainRichText(stage.previousLabel.richText),
+    currentSeasonNextLabel: plainRichText(stage.nextLabel.richText),
+    currentSeasonNextTextColor: readableTextColor(stage.nextLabel.color),
+    currentSeasonAlign: layout.align,
+    currentSeasonSpacing: layout.spacing,
+  };
 }
 
 function realityStageView(copy: ObservationCopy, step: number) {
@@ -140,24 +211,10 @@ Page({
     currentRealityStagePreviousLabel: plainRichText(DEFAULT_OBSERVATION_COPY.realityStages.situation.previousLabel.richText),
     currentRealityStageNextTextColor: readableTextColor(DEFAULT_OBSERVATION_COPY.realityStages.situation.nextLabel.color),
     seasonStage: 0,
-  restFirst: false,
-  seasonStateOptions: [
-    { key: '生', label: '正在开始', hint: '什么正在开始？' },
-    { key: '长', label: '继续培育', hint: '什么值得继续培育？' },
-    { key: '收', label: '完成与取舍', hint: '什么需要完成、取舍或收束？' },
-    { key: '藏', label: '暂停与保存', hint: '什么需要暂停、休息与保存？' },
-    { key: '暂时说不清', label: '暂时说不清', hint: '' },
-  ],
-  seasonStates: [] as string[],
-  seasonStateView: [
-    { key: '生', label: '正在开始', hint: '什么正在开始？', selected: false, detail: '', isNote: false },
-    { key: '长', label: '继续培育', hint: '什么值得继续培育？', selected: false, detail: '', isNote: false },
-    { key: '收', label: '完成与取舍', hint: '什么需要完成、取舍或收束？', selected: false, detail: '', isNote: false },
-    { key: '藏', label: '暂停与保存', hint: '什么需要暂停、休息与保存？', selected: false, detail: '', isNote: false },
-    { key: '暂时说不清', label: '暂时说不清', hint: '', selected: false, detail: '', isNote: true },
-  ] as Array<{ key: string; label: string; hint: string; selected: boolean; detail: string; isNote: boolean }>,
-  seasonStateDetails: {} as Record<string, string>,
-  seasonLinkOptions: ['有共鸣', '部分有关', '与我的经验不同', '暂时说不清'],
+    restFirst: false,
+    seasonStates: [] as string[],
+    seasonStateDetails: {} as Record<string, string>,
+    ...seasonStageView(DEFAULT_OBSERVATION_COPY, 0, 0, [], {}),
   feelingOptions: ['紧绷', '疲惫', '不安', '有一点松动', '暂时说不清'],
     choiceOptions: ['先停一下', '说出边界', '寻求支持', '暂不决定'],
     observationCopy: DEFAULT_OBSERVATION_COPY,
@@ -271,7 +328,11 @@ Page({
     try {
       const content = await request<PracticeContent>('/content/practice');
       if (generation !== this.contentGeneration || !isPracticeContent(content)) return;
-      this.setData({ observationCopy: content.observationCopy, ...realityStageView(content.observationCopy, this.data.step) });
+      this.setData({
+        observationCopy: content.observationCopy,
+        ...realityStageView(content.observationCopy, this.data.step),
+        ...seasonStageView(content.observationCopy, this.data.step, this.data.seasonStage, this.data.seasonStates, this.data.seasonStateDetails),
+      });
     } catch {
       // Keep the bundled copy as a resilient fallback if public content is temporarily unavailable.
     }
@@ -298,7 +359,7 @@ Page({
     this.contextGeneration += 1;
     this.restoreGeneration += 1;
     this.draftRevision += 1;
-      this.setData({ accountDeleted: false, phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'idle', error: '', answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0) });
+      this.setData({ accountDeleted: false, phase: 'choose', selected: '', editingSaved: false, step: 0, seasonStage: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'idle', error: '', seasonStates: [], seasonStateDetails: {}, answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', seasonNote: '', seasonStates: '', seasonStatesDetail: '', seasonInsight: '', keepUnderstanding: '', rejectUnderstanding: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0), ...seasonStageView(this.data.observationCopy, 0, 0, [], {}) });
   },
   showAccountDeleted() {
     if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
@@ -311,7 +372,7 @@ Page({
     this.contextGeneration += 1;
     this.restoreGeneration += 1;
     this.draftRevision += 1;
-    this.setData({ accountDeleted: true, phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'error', error: '此微信身份对应的云端账户已删除，请回到“我的”页面确认是否创建新账户。', answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0) });
+    this.setData({ accountDeleted: true, phase: 'choose', selected: '', editingSaved: false, step: 0, seasonStage: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', issueCode: '', issueLabel: '', issueQuestion: '', issueLoading: false, issueError: '', saving: false, advancing: false, conflict: false, syncState: 'error', error: '此微信身份对应的云端账户已删除，请回到“我的”页面确认是否创建新账户。', seasonStates: [], seasonStateDetails: {}, answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', seasonNote: '', seasonStates: '', seasonStatesDetail: '', seasonInsight: '', keepUnderstanding: '', rejectUnderstanding: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0), ...seasonStageView(this.data.observationCopy, 0, 0, [], {}) });
   },
   async loadIssueContext(issueCode: string) {
     const generation = ++this.contextGeneration;
@@ -367,22 +428,37 @@ Page({
         : ['birthDate', 'experience', 'season', 'sevenDayAction'];
       const firstEmpty = fields.findIndex((field) => !record.answers?.[field]);
       const restoredStep = record.status === 'saved' ? 0 : (firstEmpty < 0 ? 3 : firstEmpty);
+      const validStateOptions = this.data.seasonStateOptions;
+      const restoredStates = String(record.answers?.seasonStates || '')
+        .split(',')
+        .filter((key) => validStateOptions.some((option) => option.key === key));
+      const restoredDetails = (() => {
+        try {
+          const parsed = JSON.parse(String(record.answers?.seasonStatesDetail || '{}'));
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+          return Object.fromEntries(Object.entries(parsed).filter(([key, value]) =>
+            validStateOptions.some((option) => option.key === key) && typeof value === 'string')) as Record<string, string>;
+        } catch { return {}; }
+      })();
+      const restoredSeason = seasonRelationKeyFromValue(
+        String(record.answers?.season || ''),
+        this.data.observationCopy.seasonStages.now.recent.relations,
+      );
+      const restoredSeasonStage = restoredStep === 1
+        && (restoredStates.length > 0 || Boolean(String(record.answers?.seasonInsight || '').trim())) ? 1 : 0;
       this.setData({
         phase: 'form', selected: record.method, editingSaved: record.status === 'saved', observationId: record.id, revision: record.revision, clientDraftId: record.clientDraftId || record.id,
         issueCode: record.issueCode || '', issueLabel: record.issueLabel || '', issueQuestion: record.issueQuestion || '', issueLoading: false,
-        answers: { ...this.data.answers, ...record.answers },
-        seasonStates: String(record.answers?.seasonStates || '').split(',').filter(Boolean),
-        seasonStateDetails: (() => {
-          try {
-            const parsed = JSON.parse(String(record.answers?.seasonStatesDetail || '{}'));
-            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, string> : {};
-          } catch { return {}; }
-        })(),
+        answers: { ...this.data.answers, ...record.answers, season: restoredSeason },
+        seasonStage: restoredSeasonStage,
+        seasonStates: restoredStates,
+        seasonStateDetails: restoredDetails,
         restFirst: /^(这七天先不安排新的行动|先留一点时间)/.test(String(record.answers?.sevenDayAction || '')),
         step: restoredStep,
         saving: false, conflict: false, syncState: 'saved', validationError: '',
         navTitle: record.method === 'reality' ? '从现实处境开始' : '四时气韵',
         ...realityStageView(this.data.observationCopy, restoredStep),
+        ...seasonStageView(this.data.observationCopy, restoredStep, restoredSeasonStage, restoredStates, restoredDetails),
       });
       wx.setNavigationBarTitle({ title: record.method === 'reality' ? '从现实处境开始' : '从四时气韵开始' });
       this.cloudRevision = record.revision;
@@ -416,7 +492,7 @@ Page({
     if (app.globalData.accountDeleted || !['reality', 'season'].includes(method) || this.data.issueLoading || this.data.phase !== 'choose') return;
     if (method === 'season') this.clearSeasonPaused();
     this.cloudRevision = 0;
-    this.setData({ selected: method, phase: 'form', editingSaved: false, step: 0, revision: 0, conflict: false, issueError: '', validationError: '', clientDraftId: this.createDraftId(), syncState: 'idle', navTitle: method === 'reality' ? '从现实处境开始' : '四时气韵', ...realityStageView(this.data.observationCopy, 0) });
+    this.setData({ selected: method, phase: 'form', editingSaved: false, step: 0, seasonStage: 0, revision: 0, conflict: false, issueError: '', validationError: '', clientDraftId: this.createDraftId(), syncState: 'idle', navTitle: method === 'reality' ? '从现实处境开始' : '四时气韵', ...realityStageView(this.data.observationCopy, 0), ...seasonStageView(this.data.observationCopy, 0, 0, this.data.seasonStates, this.data.seasonStateDetails) });
     wx.setNavigationBarTitle({ title: method === 'reality' ? '从现实处境开始' : '从四时气韵开始' });
   },
   syncSeasonPaused() {
@@ -463,8 +539,10 @@ Page({
       key: option.key,
       label: option.label,
       hint: option.hint,
+      labelText: plainRichText(option.label.richText),
+      hintText: plainRichText(option.hint.richText),
       selected: states.indexOf(option.key) > -1,
-      isNote: !option.hint,
+      isNote: option.key === '暂时说不清',
       detail: details[option.key] || '',
     }));
   },
@@ -532,7 +610,7 @@ Page({
   selectSeasonLink(event: WechatMiniprogram.TouchEvent) {
     if (app.globalData.accountDeleted || this.data.phase !== 'form' || this.data.saving || this.data.advancing) return;
     const value = String(event.currentTarget.dataset.value || '');
-    if (!this.data.seasonLinkOptions.includes(value)) return;
+    if (!this.data.seasonLinkOptions.some((option) => option.key === value)) return;
     const next = this.data.answers.season === value ? '' : value;
     this.draftRevision += 1;
     this.setData({ 'answers.season': next, syncState: this.data.conflict ? 'conflict' : 'pending', error: '', validationError: '' });
@@ -641,8 +719,8 @@ Page({
         // 进入「此刻的变化」子页，不推进步骤
         this.setData({
           seasonStage: 1,
-          seasonStateView: this.rebuildSeasonStateView(this.data.seasonStates, this.data.seasonStateDetails),
           validationError: '',
+          ...seasonStageView(this.data.observationCopy, 1, 1, this.data.seasonStates, this.data.seasonStateDetails),
         });
         wx.pageScrollTo({ scrollTop: 0, duration: 0 });
         return;
@@ -668,7 +746,12 @@ Page({
       const final = this.data.step === 3;
       if (await this.saveCloudDraft(final) && !final) {
         const nextStep = this.data.step + 1;
-        this.setData({ step: nextStep, validationError: '', ...realityStageView(this.data.observationCopy, nextStep) });
+        this.setData({
+          step: nextStep,
+          validationError: '',
+          ...realityStageView(this.data.observationCopy, nextStep),
+          ...seasonStageView(this.data.observationCopy, nextStep, this.data.seasonStage, this.data.seasonStates, this.data.seasonStateDetails),
+        });
         wx.pageScrollTo({ scrollTop: 0, duration: 0 });
       }
     } finally {
@@ -680,17 +763,19 @@ Page({
   previous() {
     if (this.data.saving || this.data.advancing) return;
     if (this.data.selected === 'season' && this.data.step === 1 && this.data.seasonStage === 1) {
-      this.setData({ seasonStage: 0, validationError: '' });
+      this.setData({ seasonStage: 0, validationError: '', ...seasonStageView(this.data.observationCopy, 1, 0, this.data.seasonStates, this.data.seasonStateDetails) });
       wx.pageScrollTo({ scrollTop: 0, duration: 0 });
       return;
     }
     if (this.data.step > 0) {
       const previousStep = this.data.step - 1;
+      const previousSeasonStage = this.data.selected === 'season' && this.data.step === 2 ? 1 : 0;
       this.setData({
         step: previousStep,
-        seasonStage: this.data.selected === 'season' && this.data.step === 2 ? 1 : 0,
+        seasonStage: previousSeasonStage,
         validationError: '',
         ...realityStageView(this.data.observationCopy, previousStep),
+        ...seasonStageView(this.data.observationCopy, previousStep, previousSeasonStage, this.data.seasonStates, this.data.seasonStateDetails),
       });
       wx.pageScrollTo({ scrollTop: 0, duration: 0 });
     }
@@ -928,7 +1013,7 @@ Page({
     this.cloudRevision = 0;
     this.draftRevision += 1;
     this.restoreGeneration += 1;
-    this.setData({ phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', advancing: false, conflict: false, syncState: 'idle', error: '', validationError: '', navTitle: '此刻观察', seasonGuideOpen: false, answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0) });
+    this.setData({ phase: 'choose', selected: '', editingSaved: false, step: 0, observationId: '', revision: 0, draftId: '', clientDraftId: '', advancing: false, conflict: false, syncState: 'idle', error: '', validationError: '', navTitle: '此刻观察', seasonGuideOpen: false, answers: { situation: '', body: '', need: '', nextAction: '', birthDate: '', experience: '', season: '', sevenDayAction: '' }, ...realityStageView(this.data.observationCopy, 0), ...seasonStageView(this.data.observationCopy, 0, 0, [], {}) });
     wx.setNavigationBarTitle({ title: '此刻观察' });
   },
   onShareAppMessage() {

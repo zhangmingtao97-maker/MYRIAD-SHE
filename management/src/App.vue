@@ -18,12 +18,19 @@ import AboutPagePreview from './components/AboutPagePreview.vue';
 import MinePagePreview from './components/MinePagePreview.vue';
 import CopyPagePreview from './components/CopyPagePreview.vue';
 import RealityStagesPreview from './components/RealityStagesPreview.vue';
+import SeasonIntroPreview from './components/SeasonIntroPreview.vue';
+import SeasonStagesPreview from './components/SeasonStagesPreview.vue';
+import ObservationRecordPreview from './components/ObservationRecordPreview.vue';
 import AudioPagePreview from './components/AudioPagePreview.vue';
 import StoryDetailPreview from './components/StoryDetailPreview.vue';
 import PracticeEntryEditor from './components/PracticeEntryEditor.vue';
 import PracticeSaveBar from './components/PracticeSaveBar.vue';
 import { practiceEntryFixedStyle, practiceEntryText } from './practiceEntry';
 import { createDefaultDiscussionContent } from './discussion-content';
+import { isSeasonStagesCopy, seasonActionCopyGroups, seasonCardCopyGroups, seasonChoiceCopyGroups, seasonNowChangeCopyGroups, seasonNowRecentCopyGroups, seasonStageDefinitions, seasonStagesFormatIssue } from './season-stages';
+import type { SeasonNowTab, SeasonStageKey, SeasonStagesCopy } from './season-stages';
+import { isObservationRecordCopy, observationRecordCopyGroups, observationRecordFormatIssue } from './observation-record';
+import type { ObservationRecordCopy } from './observation-record';
 import type { DiscussionContent, DiscussionCopy } from './discussion-content';
 import type { LegalContent, LegalKey } from './legal-document';
 import { isAdminLoginResult, isAdminNotificationPage, isAdminNotificationReadResult, isAdminUnreadCount, isAuditPage, isIssueDashboardConsistent, isManagedIssueList, isManagedMediaKey, isManagedObservationDetail, isManagedObservationPage, isMediaAudioPage, isMediaDeleteResult, isMediaOrphanPage, isMediaUploadTarget, isMediaViewTarget, isObservationLifecycle, isPrivacyProcessResult, isPrivacyRequestPage, isPublicHome, isReencryptResult, isRetryResult } from './api-shapes';
@@ -96,8 +103,16 @@ type RealityStageCopy = Record<RealityStageCopyKey, ObservationCopyItem> & {
   align: 'left' | 'center' | 'right';
   spacing: 'compact' | 'standard' | 'roomy';
 };
+type SeasonIntroCopyKey = 'navTitle' | 'metaLeft' | 'metaRight' | 'heroTitle' | 'heroDescription' | 'guideTitle' | 'guideRequired' | 'guideRead' | 'guideParagraphOne' | 'guideParagraphTwo' | 'guideSteps' | 'guideGateNote' | 'guideConfirm' | 'birthdayLabel' | 'monthLabel' | 'dayLabel' | 'monthPlaceholder' | 'dayPlaceholder' | 'birthdayNote' | 'rememberTitle' | 'rememberNote' | 'primaryAction' | 'primaryLockedAction' | 'realityAction' | 'skipAction';
+type SeasonIntroCopy = Record<SeasonIntroCopyKey, ObservationCopyItem> & {
+  align: 'left' | 'center' | 'right';
+  spacing: 'compact' | 'standard' | 'roomy';
+};
 type PracticeObservationCopy = Record<ObservationCopyKey, ObservationCopyItem> & {
   realityStages: Record<RealityStageKey, RealityStageCopy>;
+  seasonIntro: SeasonIntroCopy;
+  seasonStages: SeasonStagesCopy;
+  record: ObservationRecordCopy;
 };
 const realityStageDefinitions: Array<{ key: RealityStageKey; label: string }> = [
   { key: 'situation', label: '底色' },
@@ -114,6 +129,14 @@ const realityStageCopyFields: Array<{ key: RealityStageCopyKey; label: string }>
   { key: 'nextLabel', label: '下一步按钮' },
   { key: 'previousLabel', label: '上一步按钮' },
   { key: 'footer', label: '底部说明' },
+];
+const seasonIntroCopyGroups: Array<{ title: string; fields: Array<{ key: SeasonIntroCopyKey; label: string }> }> = [
+  { title: '导航与页眉', fields: [{ key: 'navTitle', label: '导航栏标题' }, { key: 'metaLeft', label: '左侧页眉' }, { key: 'metaRight', label: '右侧页眉' }] },
+  { title: '标题区', fields: [{ key: 'heroTitle', label: '主标题' }, { key: 'heroDescription', label: '主说明' }] },
+  { title: '方法说明', fields: [{ key: 'guideTitle', label: '说明标题' }, { key: 'guideRequired', label: '未读状态' }, { key: 'guideRead', label: '已读状态' }, { key: 'guideParagraphOne', label: '说明第一段' }, { key: 'guideParagraphTwo', label: '说明第二段' }, { key: 'guideSteps', label: '阶段路径' }, { key: 'guideGateNote', label: '确认前提示' }, { key: 'guideConfirm', label: '确认按钮' }] },
+  { title: '生日选择', fields: [{ key: 'birthdayLabel', label: '生日标题' }, { key: 'monthLabel', label: '月份标签' }, { key: 'dayLabel', label: '日期标签' }, { key: 'monthPlaceholder', label: '月份占位文案' }, { key: 'dayPlaceholder', label: '日期占位文案' }, { key: 'birthdayNote', label: '生日说明' }] },
+  { title: '记住生日', fields: [{ key: 'rememberTitle', label: '选项标题' }, { key: 'rememberNote', label: '选项说明' }] },
+  { title: '页面操作', fields: [{ key: 'primaryAction', label: '主按钮' }, { key: 'primaryLockedAction', label: '锁定主按钮' }, { key: 'realityAction', label: '现实处境按钮' }, { key: 'skipAction', label: '稍后使用按钮' }] },
 ];
 type SharedPracticeCopyKey = 'topbarTitle' | 'metaLeft' | 'metaRight' | 'heroTitle' | 'heroIntro' | 'onlineNumber' | 'onlineContext' | 'onlineIssueLabel' | 'onlineIssueTheme' | 'onlineQuestion' | 'onlineCopy' | 'onlineAction' | 'offlineNumber' | 'offlineContext' | 'offlineTitle' | 'offlineCopy' | 'noticeLabel' | 'noticeCode' | 'rule1Number' | 'rule1Title' | 'rule1Copy' | 'rule2Number' | 'rule2Title' | 'rule2Copy' | 'rule3Number' | 'rule3Title' | 'rule3Copy' | 'rule4Number' | 'rule4Title' | 'rule4Copy' | 'nextAction';
 type PracticeFooterCopyKey = 'brand' | 'line1' | 'label' | 'line2';
@@ -2511,6 +2534,13 @@ function isPracticeContent(raw: unknown): raw is PracticeContent {
       && ['left', 'center', 'right'].includes(String(record.align))
       && ['compact', 'standard', 'roomy'].includes(String(record.spacing));
   };
+  const isSeasonIntro = (copy: unknown) => {
+    if (!copy || typeof copy !== 'object' || Array.isArray(copy)) return false;
+    const record = copy as Record<string, unknown>;
+    return seasonIntroCopyGroups.flatMap((group) => group.fields).every((field) => isCopyItem(record[field.key]))
+      && ['left', 'center', 'right'].includes(String(record.align))
+      && ['compact', 'standard', 'roomy'].includes(String(record.spacing));
+  };
   const observation = value.observationCopy && typeof value.observationCopy === 'object' && !Array.isArray(value.observationCopy)
     ? value.observationCopy as Record<string, unknown>
     : null;
@@ -2534,6 +2564,9 @@ function isPracticeContent(raw: unknown): raw is PracticeContent {
     || !observationCopyGroups.flatMap((group) => group.fields).every((field) => isCopyItem(observation[field.key]))
     || !realityStages
     || !realityStageDefinitions.every((stage) => isRealityStage(realityStages[stage.key]))
+    || !isSeasonIntro(observation.seasonIntro)
+    || !isSeasonStagesCopy(observation.seasonStages)
+    || !isObservationRecordCopy(observation.record)
     || !value.sharedPracticeCopy || typeof value.sharedPracticeCopy !== 'object' || Array.isArray(value.sharedPracticeCopy)
     || !sharedPracticeCopyGroups.flatMap((group) => group.fields).every((field) => Object.hasOwn(value.sharedPracticeCopy as object, field.key))
 || !Object.entries(value.sharedPracticeCopy as Record<string, unknown>).every(([key, item]) => {
@@ -2607,6 +2640,26 @@ function practiceContentFormatError(raw: unknown) {
     if (!['left', 'center', 'right'].includes(String(record.align))) return `实践页面配置格式无效：现实处境“${stage.label}”阶段的对齐方式无效，请刷新后重试。`;
     if (!['compact', 'standard', 'roomy'].includes(String(record.spacing))) return `实践页面配置格式无效：现实处境“${stage.label}”阶段的间距无效，请刷新后重试。`;
   }
+  const seasonIntro = observation.seasonIntro;
+  if (!seasonIntro || typeof seasonIntro !== 'object' || Array.isArray(seasonIntro)) {
+    return '实践页面配置格式无效：API 尚未返回四时气韵入口页文案，请确认 API 已更新并刷新页面。';
+  }
+  const seasonRecord = seasonIntro as Record<string, unknown>;
+  const seasonMissing = seasonIntroCopyGroups.flatMap((group) => group.fields).filter((field) => !Object.hasOwn(seasonRecord, field.key));
+  if (seasonMissing.length) return `实践页面配置格式无效：四时气韵入口页缺少“${seasonMissing[0].label}”，请刷新后重试。`;
+  const invalidSeasonField = seasonIntroCopyGroups.flatMap((group) => group.fields).find((field) => {
+    const item = seasonRecord[field.key] as Record<string, unknown> | undefined;
+    return !item || typeof item.richText !== 'string' || !item.richText.length || item.richText.length > 2000
+      || typeof item.fontSize !== 'number' || !Number.isSafeInteger(item.fontSize) || item.fontSize < 10 || item.fontSize > 48
+      || typeof item.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.color);
+  });
+  if (invalidSeasonField) return `实践页面配置格式无效：四时气韵入口页的“${invalidSeasonField.label}”文字、字号或颜色无效，请刷新后重试。`;
+  if (!['left', 'center', 'right'].includes(String(seasonRecord.align))) return '实践页面配置格式无效：四时气韵入口页的对齐方式无效，请刷新后重试。';
+  if (!['compact', 'standard', 'roomy'].includes(String(seasonRecord.spacing))) return '实践页面配置格式无效：四时气韵入口页的间距无效，请刷新后重试。';
+  const seasonStagesIssue = seasonStagesFormatIssue(observation.seasonStages);
+  if (seasonStagesIssue) return `实践页面配置格式无效：${seasonStagesIssue}，请刷新后重试。`;
+  const observationRecordIssue = observationRecordFormatIssue(observation.record);
+  if (observationRecordIssue) return `实践页面配置格式无效：${observationRecordIssue}，请刷新后重试。`;
   const shared = value.sharedPracticeCopy as Record<string, unknown>;
   const invalid = sharedPracticeCopyGroups.flatMap((group) => group.fields).map((field) => field.key).find((key) => {
     const item = shared[key] as Record<string, unknown> | undefined;
@@ -2898,7 +2951,9 @@ const sharedPracticeExtraSections = computed(() => {
 // 此刻观察预览：每个文案字段对应一个区块。
 const activeObservationKey = ref('');
 const activeRealityStage = ref<RealityStageKey>('situation');
-const observationDetailView = ref<'flat' | 'reality'>('flat');
+const observationDetailView = ref<'flat' | 'reality' | 'season' | 'season-stages' | 'record'>('flat');
+const activeSeasonStage = ref<SeasonStageKey>('card');
+const activeSeasonNowTab = ref<SeasonNowTab>('recent');
 const observationDetailCopy = computed<Record<string, ObservationCopyItem>>(() => {
   const observation = practiceContent.value?.observationCopy;
   if (!observation) return {};
@@ -2906,16 +2961,33 @@ const observationDetailCopy = computed<Record<string, ObservationCopyItem>>(() =
     .map((field) => [field.key, observation[field.key]]));
 });
 const observationRealityCopy = computed(() => practiceContent.value?.observationCopy.realityStages || null);
+const observationSeasonCopy = computed(() => practiceContent.value?.observationCopy.seasonIntro || null);
+const observationSeasonStagesCopy = computed(() => practiceContent.value?.observationCopy.seasonStages || null);
+const observationRecordCopy = computed(() => practiceContent.value?.observationCopy.record || null);
 
 function revealObservationTarget(key: string, focus = false) {
   activeObservationKey.value = key;
   const realityPrefix = 'reality:';
+  const seasonPrefix = 'season:';
+  const seasonStagePrefix = 'season-stage:';
+  const recordPrefix = 'record:';
   if (key.startsWith(realityPrefix)) {
     const [, stage, field] = key.split(':');
     if (realityStageDefinitions.some((item) => item.key === stage)) {
       activeRealityStage.value = stage as RealityStageKey;
     }
     if (realityStageCopyFields.some((item) => item.key === field)) observationDetailView.value = 'reality';
+  } else if (key.startsWith(seasonStagePrefix)) {
+    const [, stage, view] = key.split(':');
+    if (seasonStageDefinitions.some((item) => item.key === stage)) {
+      activeSeasonStage.value = stage as SeasonStageKey;
+    }
+    if (view === 'recent' || view === 'change') activeSeasonNowTab.value = view;
+    observationDetailView.value = 'season-stages';
+  } else if (key.startsWith(seasonPrefix)) {
+    observationDetailView.value = 'season';
+  } else if (key.startsWith(recordPrefix)) {
+    observationDetailView.value = 'record';
   } else if (key) {
     observationDetailView.value = 'flat';
   }
@@ -2923,7 +2995,13 @@ function revealObservationTarget(key: string, focus = false) {
     const target = document.querySelector<HTMLElement>(
       key.startsWith(realityPrefix)
         ? `[data-reality-field="${key}"]`
-        : `[data-copy-field="${key}"]`,
+        : key.startsWith(seasonStagePrefix)
+          ? `[data-season-stage-field="${key}"]`
+          : key.startsWith(seasonPrefix)
+            ? `[data-season-field="${key}"]`
+            : key.startsWith(recordPrefix)
+              ? `[data-record-field="${key}"]`
+              : `[data-copy-field="${key}"]`,
     );
     if (!target) return;
     target.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -2939,13 +3017,23 @@ function pickObservationKey(key: string) {
 }
 
 function focusObservationField(event: FocusEvent) {
-  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-field], [data-reality-field]');
-  const key = holder?.dataset.realityField || holder?.dataset.copyField;
+  const holder = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-copy-field], [data-reality-field], [data-season-field], [data-season-stage-field], [data-record-field]');
+  const key = holder?.dataset.seasonStageField || holder?.dataset.realityField || holder?.dataset.seasonField
+    || holder?.dataset.recordField || holder?.dataset.copyField;
   if (!key) return;
-  if (holder?.dataset.realityField) {
+  if (holder?.dataset.seasonStageField) {
+    const [, stage, view] = key.split(':');
+    if (seasonStageDefinitions.some((item) => item.key === stage)) activeSeasonStage.value = stage as SeasonStageKey;
+    if (view === 'recent' || view === 'change') activeSeasonNowTab.value = view;
+    observationDetailView.value = 'season-stages';
+  } else if (holder?.dataset.realityField) {
     const stage = key.split(':')[1];
     if (realityStageDefinitions.some((item) => item.key === stage)) activeRealityStage.value = stage as RealityStageKey;
     observationDetailView.value = 'reality';
+  } else if (holder?.dataset.seasonField) {
+    observationDetailView.value = 'season';
+  } else if (holder?.dataset.recordField) {
+    observationDetailView.value = 'record';
   } else {
     observationDetailView.value = 'flat';
   }
@@ -4113,6 +4201,72 @@ async function savePracticeContent() {
     if (!missingField) continue;
     const fieldKey = `reality:${stage.key}:${missingField.key}`;
     presentAdminError(`现实处境“${stage.label}”阶段缺少“${missingField.label}”`, () => revealObservationTarget(fieldKey, true));
+    return;
+  }
+  const missingSeasonField = seasonIntroCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(content.observationCopy.seasonIntro[field.key].richText));
+  if (missingSeasonField) {
+    presentAdminError(`四时气韵入口页缺少“${missingSeasonField.label}”`, () => revealObservationTarget(`season:${missingSeasonField.key}`, true));
+    return;
+  }
+  const seasonStages = content.observationCopy.seasonStages;
+  const missingCardField = seasonCardCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(seasonStages.card[field.key].richText));
+  if (missingCardField) {
+    presentAdminError(`四时气韵“01 底色”缺少“${missingCardField.label}”`, () => revealObservationTarget(`season-stage:card:${missingCardField.key}`, true));
+    return;
+  }
+  const missingRecentField = seasonNowRecentCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(seasonStages.now.recent[field.key].richText));
+  if (missingRecentField) {
+    presentAdminError(`四时气韵“02 此刻 · 最近发生了什么”缺少“${missingRecentField.label}”`, () => revealObservationTarget(`season-stage:now:recent:${missingRecentField.key}`, true));
+    return;
+  }
+  const missingRelation = seasonStages.now.recent.relations
+    .find((option) => !hasRichTextContent(option.label.richText));
+  if (missingRelation) {
+    presentAdminError(`四时气韵“02 此刻 · 最近发生了什么”缺少“关系选项 ${missingRelation.key}”`, () => revealObservationTarget(`season-stage:now:recent:relations:${missingRelation.key}:label`, true));
+    return;
+  }
+  const missingChangeField = seasonNowChangeCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(seasonStages.now.change[field.key].richText));
+  if (missingChangeField) {
+    presentAdminError(`四时气韵“02 此刻 · 此刻的变化”缺少“${missingChangeField.label}”`, () => revealObservationTarget(`season-stage:now:change:${missingChangeField.key}`, true));
+    return;
+  }
+  for (const option of seasonStages.now.change.states) {
+    if (!hasRichTextContent(option.label.richText)) {
+      presentAdminError(`四时气韵“02 此刻 · 此刻的变化”缺少“状态${option.key}”`, () => revealObservationTarget(`season-stage:now:change:states:${option.key}:label`, true));
+      return;
+    }
+    if (!hasRichTextContent(option.hint.richText)) {
+      presentAdminError(`四时气韵“02 此刻 · 此刻的变化”缺少“状态${option.key}的说明”`, () => revealObservationTarget(`season-stage:now:change:states:${option.key}:hint`, true));
+      return;
+    }
+  }
+  const missingChoiceField = seasonChoiceCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(seasonStages.choice[field.key].richText));
+  if (missingChoiceField) {
+    presentAdminError(`四时气韵“03 选择”缺少“${missingChoiceField.label}”`, () => revealObservationTarget(`season-stage:choice:${missingChoiceField.key}`, true));
+    return;
+  }
+  const missingActionField = seasonActionCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(seasonStages.action[field.key].richText));
+  if (missingActionField) {
+    presentAdminError(`四时气韵“04 行动”缺少“${missingActionField.label}”`, () => revealObservationTarget(`season-stage:action:${missingActionField.key}`, true));
+    return;
+  }
+  const missingRecordField = observationRecordCopyGroups
+    .flatMap((group) => group.fields)
+    .find((field) => !hasRichTextContent(content.observationCopy.record[field.key].richText));
+  if (missingRecordField) {
+    presentAdminError(`观察记录页缺少“${missingRecordField.label}”`, () => revealObservationTarget(`record:${missingRecordField.key}`, true));
     return;
   }
   const derivedCopy = content.sharedPracticeCopy
@@ -7960,7 +8114,10 @@ onBeforeUnmount(() => {
           <aside class="preview-rail" aria-label="小程序此刻观察页预览">
             <PracticePagePreview v-if="practiceEntryTab('observation') === 'home'" :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
             <CopyPagePreview v-else-if="observationDetailView === 'flat'" title="此刻观察" subtitle="OBSERVATION" :groups="observationCopyGroups" :copy="observationDetailCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
-            <RealityStagesPreview v-else-if="observationRealityCopy" :copy="observationRealityCopy" :stage="activeRealityStage" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <RealityStagesPreview v-else-if="observationDetailView === 'reality' && observationRealityCopy" :copy="observationRealityCopy" :stage="activeRealityStage" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <SeasonIntroPreview v-else-if="observationDetailView === 'season' && observationSeasonCopy" :copy="observationSeasonCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <SeasonStagesPreview v-else-if="observationDetailView === 'season-stages' && observationSeasonStagesCopy" :copy="observationSeasonStagesCopy" :stage="activeSeasonStage" :now-tab="activeSeasonNowTab" :active-key="activeObservationKey" @pick="pickObservationKey" />
+            <ObservationRecordPreview v-else-if="observationDetailView === 'record' && observationRecordCopy" :copy="observationRecordCopy" :active-key="activeObservationKey" @pick="pickObservationKey" />
           </aside>
           <form v-if="practiceEntryTab('observation') === 'home'" class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusPracticeField">
             <div class="practice-entry-toolbar">
@@ -7978,6 +8135,9 @@ onBeforeUnmount(() => {
             <div class="practice-entry-tabs observation-detail-tabs" role="tablist" aria-label="此刻观察详情页编辑范围">
               <button type="button" role="tab" :class="{ active: observationDetailView === 'flat' }" :aria-selected="observationDetailView === 'flat'" @click="observationDetailView = 'flat'">基础文案</button>
               <button type="button" role="tab" :class="{ active: observationDetailView === 'reality' }" :aria-selected="observationDetailView === 'reality'" @click="observationDetailView = 'reality'">现实处境四页</button>
+              <button type="button" role="tab" :class="{ active: observationDetailView === 'season' }" :aria-selected="observationDetailView === 'season'" @click="observationDetailView = 'season'">四时气韵入口页</button>
+              <button type="button" role="tab" :class="{ active: observationDetailView === 'season-stages' }" :aria-selected="observationDetailView === 'season-stages'" @click="observationDetailView = 'season-stages'">四时气韵四页</button>
+              <button type="button" role="tab" :class="{ active: observationDetailView === 'record' }" :aria-selected="observationDetailView === 'record'" @click="observationDetailView = 'record'">观察记录页</button>
             </div>
             <div v-if="observationDetailView === 'flat'" class="observation-copy-groups">
               <section v-for="group in observationCopyGroups" :key="group.title" class="observation-copy-group">
@@ -7987,7 +8147,7 @@ onBeforeUnmount(() => {
                 </div>
               </section>
             </div>
-            <div v-else class="reality-stage-editor">
+            <div v-else-if="observationDetailView === 'reality'" class="reality-stage-editor">
               <div class="reality-stage-tabs" role="tablist" aria-label="现实处境四页阶段">
                 <button v-for="(stage, index) in realityStageDefinitions" :key="stage.key" type="button" role="tab" :class="{ active: activeRealityStage === stage.key }" :aria-selected="activeRealityStage === stage.key" @click="activeRealityStage = stage.key">0{{ index + 1 }} {{ stage.label }}</button>
               </div>
@@ -8000,6 +8160,121 @@ onBeforeUnmount(() => {
                   <h3>{{ realityStageDefinitions.find((stage) => stage.key === activeRealityStage)?.label }} · 页面内容</h3>
                   <div v-for="field in realityStageCopyFields" :key="field.key" :data-reality-field="`reality:${activeRealityStage}:${field.key}`" class="copy-field">
                     <RichTextEditor v-model="practiceContent.observationCopy.realityStages[activeRealityStage][field.key].richText" v-model:font-size="practiceContent.observationCopy.realityStages[activeRealityStage][field.key].fontSize" v-model:color="practiceContent.observationCopy.realityStages[activeRealityStage][field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+              </div>
+            </div>
+            <div v-else-if="observationDetailView === 'season'" class="reality-stage-editor">
+              <div class="reality-stage-controls">
+                <label>对齐方式<select v-model="practiceContent.observationCopy.seasonIntro.align" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option></select></label>
+                <label>内容间距<select v-model="practiceContent.observationCopy.seasonIntro.spacing" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="compact">紧凑</option><option value="standard">标准</option><option value="roomy">宽松</option></select></label>
+              </div>
+              <div class="observation-copy-groups">
+                <section v-for="group in seasonIntroCopyGroups" :key="group.title" class="observation-copy-group">
+                  <h3>{{ group.title }}</h3>
+                  <div v-for="field in group.fields" :key="field.key" :data-season-field="`season:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.seasonIntro[field.key].richText" v-model:font-size="practiceContent.observationCopy.seasonIntro[field.key].fontSize" v-model:color="practiceContent.observationCopy.seasonIntro[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+              </div>
+            </div>
+            <div v-else-if="observationDetailView === 'season-stages'" class="reality-stage-editor season-stage-editor">
+              <div class="reality-stage-tabs" role="tablist" aria-label="四时气韵四页阶段">
+                <button v-for="stage in seasonStageDefinitions" :key="stage.key" type="button" role="tab" :class="{ active: activeSeasonStage === stage.key }" :aria-selected="activeSeasonStage === stage.key" @click="activeSeasonStage = stage.key">{{ stage.index }} {{ stage.label }}</button>
+              </div>
+              <div v-if="activeSeasonStage === 'now'" class="reality-stage-tabs season-stage-subtabs" role="tablist" aria-label="四时气韵此刻页内容">
+                <button type="button" role="tab" :class="{ active: activeSeasonNowTab === 'recent' }" :aria-selected="activeSeasonNowTab === 'recent'" @click="activeSeasonNowTab = 'recent'">最近发生了什么</button>
+                <button type="button" role="tab" :class="{ active: activeSeasonNowTab === 'change' }" :aria-selected="activeSeasonNowTab === 'change'" @click="activeSeasonNowTab = 'change'">此刻的变化</button>
+              </div>
+              <div v-if="activeSeasonStage === 'card'" class="reality-stage-controls">
+                <label>对齐方式<select v-model="practiceContent.observationCopy.seasonStages.card.align" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option></select></label>
+                <label>内容间距<select v-model="practiceContent.observationCopy.seasonStages.card.spacing" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="compact">紧凑</option><option value="standard">标准</option><option value="roomy">宽松</option></select></label>
+              </div>
+              <div v-else-if="activeSeasonStage === 'now'" class="reality-stage-controls">
+                <label>对齐方式<select v-model="practiceContent.observationCopy.seasonStages.now.align" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option></select></label>
+                <label>内容间距<select v-model="practiceContent.observationCopy.seasonStages.now.spacing" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="compact">紧凑</option><option value="standard">标准</option><option value="roomy">宽松</option></select></label>
+              </div>
+              <div v-else-if="activeSeasonStage === 'choice'" class="reality-stage-controls">
+                <label>对齐方式<select v-model="practiceContent.observationCopy.seasonStages.choice.align" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option></select></label>
+                <label>内容间距<select v-model="practiceContent.observationCopy.seasonStages.choice.spacing" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="compact">紧凑</option><option value="standard">标准</option><option value="roomy">宽松</option></select></label>
+              </div>
+              <div v-else class="reality-stage-controls">
+                <label>对齐方式<select v-model="practiceContent.observationCopy.seasonStages.action.align" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option></select></label>
+                <label>内容间距<select v-model="practiceContent.observationCopy.seasonStages.action.spacing" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="compact">紧凑</option><option value="standard">标准</option><option value="roomy">宽松</option></select></label>
+              </div>
+
+              <div v-if="activeSeasonStage === 'card'" class="observation-copy-groups">
+                <section v-for="group in seasonCardCopyGroups" :key="group.title" class="observation-copy-group">
+                  <h3>{{ group.title }}</h3>
+                  <div v-for="field in group.fields" :key="field.key" :data-season-stage-field="`season-stage:card:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.seasonStages.card[field.key].richText" v-model:font-size="practiceContent.observationCopy.seasonStages.card[field.key].fontSize" v-model:color="practiceContent.observationCopy.seasonStages.card[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+              </div>
+
+              <div v-else-if="activeSeasonStage === 'now' && activeSeasonNowTab === 'recent'" class="observation-copy-groups">
+                <section v-for="group in seasonNowRecentCopyGroups" :key="group.title" class="observation-copy-group">
+                  <h3>{{ group.title }}</h3>
+                  <div v-for="field in group.fields" :key="field.key" :data-season-stage-field="`season-stage:now:recent:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.seasonStages.now.recent[field.key].richText" v-model:font-size="practiceContent.observationCopy.seasonStages.now.recent[field.key].fontSize" v-model:color="practiceContent.observationCopy.seasonStages.now.recent[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+                <section class="observation-copy-group">
+                  <h3>关系选项</h3>
+                  <div v-for="option in practiceContent.observationCopy.seasonStages.now.recent.relations" :key="option.key" :data-season-stage-field="`season-stage:now:recent:relations:${option.key}:label`" class="copy-field">
+                    <RichTextEditor v-model="option.label.richText" v-model:font-size="option.label.fontSize" v-model:color="option.label.color" :label="`关系选项 · ${option.key}`" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+              </div>
+
+              <div v-else-if="activeSeasonStage === 'now'" class="observation-copy-groups">
+                <section v-for="group in seasonNowChangeCopyGroups" :key="group.title" class="observation-copy-group">
+                  <h3>{{ group.title }}</h3>
+                  <div v-for="field in group.fields" :key="field.key" :data-season-stage-field="`season-stage:now:change:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.seasonStages.now.change[field.key].richText" v-model:font-size="practiceContent.observationCopy.seasonStages.now.change[field.key].fontSize" v-model:color="practiceContent.observationCopy.seasonStages.now.change[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+                <section class="observation-copy-group">
+                  <h3>状态选项</h3>
+                  <div v-for="option in practiceContent.observationCopy.seasonStages.now.change.states" :key="option.key" class="copy-field">
+                    <div :data-season-stage-field="`season-stage:now:change:states:${option.key}:label`">
+                      <RichTextEditor v-model="option.label.richText" v-model:font-size="option.label.fontSize" v-model:color="option.label.color" :label="`状态${option.key} · 标题`" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                    </div>
+                    <div :data-season-stage-field="`season-stage:now:change:states:${option.key}:hint`">
+                      <RichTextEditor v-model="option.hint.richText" v-model:font-size="option.hint.fontSize" v-model:color="option.hint.color" :label="`状态${option.key} · 说明`" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div v-else-if="activeSeasonStage === 'choice'" class="observation-copy-groups">
+                <section v-for="group in seasonChoiceCopyGroups" :key="group.title" class="observation-copy-group">
+                  <h3>{{ group.title }}</h3>
+                  <div v-for="field in group.fields" :key="field.key" :data-season-stage-field="`season-stage:choice:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.seasonStages.choice[field.key].richText" v-model:font-size="practiceContent.observationCopy.seasonStages.choice[field.key].fontSize" v-model:color="practiceContent.observationCopy.seasonStages.choice[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+              </div>
+
+              <div v-else class="observation-copy-groups">
+                <section v-for="group in seasonActionCopyGroups" :key="group.title" class="observation-copy-group">
+                  <h3>{{ group.title }}</h3>
+                  <div v-for="field in group.fields" :key="field.key" :data-season-stage-field="`season-stage:action:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.seasonStages.action[field.key].richText" v-model:font-size="practiceContent.observationCopy.seasonStages.action[field.key].fontSize" v-model:color="practiceContent.observationCopy.seasonStages.action[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
+                  </div>
+                </section>
+              </div>
+            </div>
+            <div v-else class="reality-stage-editor">
+              <div class="reality-stage-controls">
+                <label>对齐方式<select v-model="practiceContent.observationCopy.record.align" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option></select></label>
+                <label>内容间距<select v-model="practiceContent.observationCopy.record.spacing" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty"><option value="compact">紧凑</option><option value="standard">标准</option><option value="roomy">宽松</option></select></label>
+              </div>
+              <div class="observation-copy-groups">
+                <section v-for="group in observationRecordCopyGroups" :key="group.title" class="observation-copy-group">
+                  <h3>{{ group.title }}</h3>
+                  <div v-for="field in group.fields" :key="field.key" :data-record-field="`record:${field.key}`" class="copy-field">
+                    <RichTextEditor v-model="practiceContent.observationCopy.record[field.key].richText" v-model:font-size="practiceContent.observationCopy.record[field.key].fontSize" v-model:color="practiceContent.observationCopy.record[field.key].color" :label="field.label" :min-font-size="10" :max-font-size="48" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" />
                   </div>
                 </section>
               </div>

@@ -1,4 +1,6 @@
 import { apiErrorMessage, request } from '../../utils/request';
+import { DEFAULT_OBSERVATION_RECORD_COPY, isPracticeContent } from '../../utils/content';
+import type { ObservationRecordCopy, PracticeContent } from '../../utils/content';
 import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation } from '../../utils/observation';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
@@ -10,9 +12,26 @@ type CloudObservationWithCard = CloudObservation & { lifeCard?: LifeCardInfo | n
 
 const suitSymbol = (suit: string) => (suit === 'spade' ? '♠' : suit === 'heart' ? '♥' : suit === 'club' ? '♣' : '♦');
 
+function plainRichText(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(?:p|div|span|li|h[1-6])>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 Page({
   data: {
     record: null as CloudObservationWithCard | null,
+    recordCopy: DEFAULT_OBSERVATION_RECORD_COPY as ObservationRecordCopy,
+    recordAlign: 'left' as ObservationRecordCopy['align'],
+    recordSpacing: 'standard' as ObservationRecordCopy['spacing'],
     statusBarHeight: 0,
     recordId: '',
     recordDate: '',
@@ -26,6 +45,10 @@ Page({
     rejectText: '',          // 03 选择：不接受的
     actionText: '',          // 04 行动
     perspective: '',         // 你对此线索引的判断
+    emptyValueText: '未填写',
+    emptyValueStyle: '',
+    perspectiveEmpty: false,
+    perspectiveEmptyStyle: '',
     loading: true,
     accountDeleted: false,
     deleting: false,
@@ -74,11 +97,27 @@ Page({
       return;
     }
     this.setData({ loading: true, error: '' });
-    request<CloudObservationWithCard>(`/observations/${this.data.recordId}`).then((record) => {
+    const recordRequest = request<CloudObservationWithCard>(`/observations/${this.data.recordId}`);
+    const copyRequest = request<PracticeContent>('/content/practice', { header: { 'Cache-Control': 'no-cache' } })
+      .then((content) => {
+        if (!isPracticeContent(content)) throw new Error('实践内容格式无效');
+        return content.observationCopy.record;
+      })
+      .catch(() => DEFAULT_OBSERVATION_RECORD_COPY);
+    Promise.all([recordRequest, copyRequest]).then(([record, recordCopy]) => {
       if (generation !== this.requestGeneration) return;
       if (!isCloudObservation(record)) throw new Error('记录不存在');
       const recordDate = this.formatDate(record);
-      this.setData({ record, recordDate, loading: false, error: '', ...this.buildView(record) });
+      this.setData({
+        record,
+        recordDate,
+        recordCopy,
+        recordAlign: recordCopy.align,
+        recordSpacing: recordCopy.spacing,
+        loading: false,
+        error: '',
+        ...this.buildView(record, recordCopy),
+      });
     }).catch((caught) => {
       if (generation !== this.requestGeneration) return;
       if (app.globalData.accountDeleted) {
@@ -94,21 +133,27 @@ Page({
     return date && !Number.isNaN(date.getTime()) ? `${date.getMonth() + 1}月${date.getDate()}日` : '观察记录';
   },
   /** 把记录整理成设计稿需要的四段结构。 */
-  buildView(record: CloudObservationWithCard) {
+  buildView(record: CloudObservationWithCard, copy: ObservationRecordCopy) {
     const answers = (record.answers || {}) as Record<string, string>;
     const card = record.lifeCard;
     const isSeason = record.method === 'season';
+    const emptyValueText = plainRichText(copy.emptyValue.richText) || '未填写';
+    const emptyValueStyle = `font-size: ${copy.emptyValue.fontSize * 2}rpx; color: ${copy.emptyValue.color};`;
+    const perspectiveEmptyText = plainRichText(copy.perspectiveEmpty.richText) || '暂未作判断';
+    const perspectiveEmptyStyle = `font-size: ${copy.perspectiveEmpty.fontSize * 2}rpx; color: ${copy.perspectiveEmpty.color};`;
 
     // 01 底色
     let cardLine: string;
+    let cardSuffix = '';
     let cardTitle: string;
     let cardSubtitle = '';
     if (isSeason) {
-      cardLine = card ? `01 · 底色 · ${card.rank}${suitSymbol(card.suit)}` : '01 · 底色';
+      cardLine = plainRichText(copy.stageBase.richText);
+      cardSuffix = card ? `· ${card.rank}${suitSymbol(card.suit)}` : '';
       cardTitle = card ? card.title || '' : '';
-      cardSubtitle = '本次借用的品牌观察线索';
+      cardSubtitle = plainRichText(copy.seasonCardSubtitle.richText);
     } else {
-      cardLine = '01 · 底色';
+      cardLine = plainRichText(copy.stageBase.richText);
       cardTitle = (answers.situation || '').trim();
     }
 
@@ -124,9 +169,25 @@ Page({
     // 04 行动
     const actionText = isSeason ? (answers.sevenDayAction || '').trim() : (answers.nextAction || '').trim();
 
-    const perspective = (answers.perspective || '').trim() || '暂未作判断';
+    const perspectiveAnswer = (answers.perspective || '').trim();
+    const perspective = perspectiveAnswer || perspectiveEmptyText;
 
-    return { cardLine, cardTitle, cardSubtitle, experienceText, changeStates, keepText, rejectText, actionText, perspective };
+    return {
+      cardLine,
+      cardSuffix,
+      cardTitle,
+      cardSubtitle,
+      experienceText,
+      changeStates,
+      keepText,
+      rejectText,
+      actionText,
+      perspective,
+      emptyValueText,
+      emptyValueStyle,
+      perspectiveEmpty: !perspectiveAnswer,
+      perspectiveEmptyStyle,
+    };
   },
   handleBack() {
     const pages = getCurrentPages();

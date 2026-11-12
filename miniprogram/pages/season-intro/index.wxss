@@ -98,6 +98,9 @@ page { background: #e7dfd1; }
   line-height: 1.4;
 }
 .birth-value.is-placeholder { color: #a1907f; }
+.birth-value { display: flex; align-items: baseline; gap: 8rpx; }
+.birth-number { flex: 0 0 auto; color: #4a3f38; font-size: 30rpx; line-height: 1.4; }
+.birth-inline-copy { display: inline-flex; }
 .birth-note { margin-top: 22rpx; color: #8b6b58; font-size: 22rpx; line-height: 1.6; }
 
 /* 记住生日 */
@@ -145,6 +148,7 @@ page { background: #e7dfd1; }
   letter-spacing: .5rpx;
 }
 .season-guide-toggle:active { opacity: .68; }
+.season-guide-title { flex: 1; min-width: 0; }
 .guide-caret { flex: 0 0 auto; color: #663124; font-size: 52rpx; line-height: 1; }
 .season-guide-state {
   flex: 0 0 auto;
@@ -170,7 +174,7 @@ page { background: #e7dfd1; }
   font-size: 25rpx;
   line-height: 1.95;
   letter-spacing: 0;
-  text-align: left;
+  text-align: inherit;
 }
 .season-guide-steps {
   margin-top: 2rpx;
@@ -230,3 +234,49 @@ page { background: #e7dfd1; }
 .season-skip:active { opacity: .6; }
 
 .season-page [role="button"]:active { opacity: .72; }
+
+/* 整页排版由后台控制；按钮内部始终居中，避免可点击区域随文字偏移。 */
+.season-align-center .season-meta { justify-content: center; gap: 42rpx; }
+.season-align-right .season-meta { justify-content: flex-end; gap: 42rpx; }
+.season-align-center .season-hero,
+.season-align-center .season-lead,
+.season-align-center .season-guide-body,
+.season-align-center .season-form,
+.season-align-center .remember-copy,
+.season-align-center .birth-row { text-align: center; }
+.season-align-right .season-hero,
+.season-align-right .season-lead,
+.season-align-right .season-guide-body,
+.season-align-right .season-form,
+.season-align-right .remember-copy,
+.season-align-right .birth-row { text-align: right; }
+.season-align-center .remember-row { justify-content: center; }
+.season-align-right .remember-row { justify-content: flex-end; }
+.season-align-center .birth-value { justify-content: center; }
+.season-align-right .birth-value { justify-content: flex-end; }
+
+.season-spacing-compact .season-hero { margin-top: 28rpx; }
+.season-spacing-compact .season-lead { margin-top: 22rpx; }
+.season-spacing-compact .season-intro-guide { margin-top: 30rpx; padding-top: 14rpx; padding-bottom: 20rpx; }
+.season-spacing-compact .season-guide-body { gap: 10rpx; margin-top: 10rpx; }
+.season-spacing-compact .season-guide-gate { gap: 12rpx; padding-top: 16rpx; }
+.season-spacing-compact .season-form { margin-top: 26rpx; }
+.season-spacing-compact .birth-row { margin-top: 18rpx; }
+.season-spacing-compact .birth-note { margin-top: 14rpx; }
+.season-spacing-compact .remember-row { margin-top: 30rpx; }
+.season-spacing-compact .season-primary { margin-top: 24rpx; }
+.season-spacing-compact .season-secondary { margin-top: 30rpx; }
+.season-spacing-compact .season-skip { margin-top: 12rpx; }
+
+.season-spacing-roomy .season-hero { margin-top: 62rpx; }
+.season-spacing-roomy .season-lead { margin-top: 44rpx; }
+.season-spacing-roomy .season-intro-guide { margin-top: 62rpx; padding-top: 28rpx; padding-bottom: 38rpx; }
+.season-spacing-roomy .season-guide-body { gap: 24rpx; margin-top: 26rpx; }
+.season-spacing-roomy .season-guide-gate { gap: 24rpx; padding-top: 32rpx; }
+.season-spacing-roomy .season-form { margin-top: 54rpx; }
+.season-spacing-roomy .birth-row { margin-top: 34rpx; }
+.season-spacing-roomy .birth-note { margin-top: 30rpx; }
+.season-spacing-roomy .remember-row { margin-top: 58rpx; }
+.season-spacing-roomy .season-primary { margin-top: 48rpx; }
+.season-spacing-roomy .season-secondary { margin-top: 58rpx; }
+.season-spacing-roomy .season-skip { margin-top: 34rpx; }

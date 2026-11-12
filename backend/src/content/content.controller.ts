@@ -243,6 +243,174 @@ class RealityStagesCopyDto {
   @IsOptional() @IsObject() @ValidateNested() @Type(() => RealityStageCopyDto) nextAction?: RealityStageCopyDto;
 }
 
+class SeasonIntroCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) navTitle?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) metaLeft?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) metaRight?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) heroTitle?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) heroDescription?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideTitle?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideRequired?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideRead?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideParagraphOne?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideParagraphTwo?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideSteps?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideGateNote?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) guideConfirm?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) birthdayLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) monthLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) dayLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) monthPlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) dayPlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) birthdayNote?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) rememberTitle?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) rememberNote?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) primaryAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) primaryLockedAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) realityAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) skipAction?: ObservationCopyItemDto;
+  @IsOptional() @IsIn(['left', 'center', 'right']) align?: 'left' | 'center' | 'right';
+  @IsOptional() @IsIn(['compact', 'standard', 'roomy']) spacing?: 'compact' | 'standard' | 'roomy';
+}
+
+class SeasonRelationOptionDto {
+  @IsString() @IsIn(['resonates', 'partial', 'different', 'unclear']) key!: 'resonates' | 'partial' | 'different' | 'unclear';
+  @ValidateNested() @Type(() => ObservationCopyItemDto) label!: ObservationCopyItemDto;
+}
+
+class SeasonStateOptionDto {
+  @IsString() @IsIn(['生', '长', '收', '藏', '暂时说不清']) key!: '生' | '长' | '收' | '藏' | '暂时说不清';
+  @ValidateNested() @Type(() => ObservationCopyItemDto) label!: ObservationCopyItemDto;
+  @ValidateNested() @Type(() => ObservationCopyItemDto) hint!: ObservationCopyItemDto;
+}
+
+class SeasonCardCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stageLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) birthdayLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) emptyLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) chooseBirthday?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) changeBirthday?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) eyebrow?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) themePrefix?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) footnote?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) noteLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) sourceToggle?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) nextLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previousLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) footer?: ObservationCopyItemDto;
+  @IsOptional() @IsIn(['left', 'center', 'right']) align?: 'left' | 'center' | 'right';
+  @IsOptional() @IsIn(['compact', 'standard', 'roomy']) spacing?: 'compact' | 'standard' | 'roomy';
+}
+
+class SeasonNowRecentCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stepLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine1?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine2?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) description?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) experienceLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) experiencePlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) relationLabel?: ObservationCopyItemDto;
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(4) @ValidateNested({ each: true }) @Type(() => SeasonRelationOptionDto) relations?: SeasonRelationOptionDto[];
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) noteLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) optionalLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) notePlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) nextLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previousLabel?: ObservationCopyItemDto;
+}
+
+class SeasonNowChangeCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stepLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine1?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine2?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) description?: ObservationCopyItemDto;
+  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @ValidateNested({ each: true }) @Type(() => SeasonStateOptionDto) states?: SeasonStateOptionDto[];
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) insightLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) optionalLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) insightPlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) footer?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) nextLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previousLabel?: ObservationCopyItemDto;
+}
+
+class SeasonNowCopyDto {
+  @IsOptional() @IsIn(['left', 'center', 'right']) align?: 'left' | 'center' | 'right';
+  @IsOptional() @IsIn(['compact', 'standard', 'roomy']) spacing?: 'compact' | 'standard' | 'roomy';
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonNowRecentCopyDto) recent?: SeasonNowRecentCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonNowChangeCopyDto) change?: SeasonNowChangeCopyDto;
+}
+
+class SeasonChoiceCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stepLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine1?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine2?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) leadLine1?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) leadLine2?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) keepLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) keepPlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) rejectLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) optionalLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) rejectPlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) nextLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previousLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) footer?: ObservationCopyItemDto;
+  @IsOptional() @IsIn(['left', 'center', 'right']) align?: 'left' | 'center' | 'right';
+  @IsOptional() @IsIn(['compact', 'standard', 'roomy']) spacing?: 'compact' | 'standard' | 'roomy';
+}
+
+class SeasonActionCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stepLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine1?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) titleLine2?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) leadLine1?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) leadLine2?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) actionLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) actionPlaceholder?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) restLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previewLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previewEmpty?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) footer?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) nextLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) previousLabel?: ObservationCopyItemDto;
+  @IsOptional() @IsIn(['left', 'center', 'right']) align?: 'left' | 'center' | 'right';
+  @IsOptional() @IsIn(['compact', 'standard', 'roomy']) spacing?: 'compact' | 'standard' | 'roomy';
+}
+
+class SeasonStagesCopyDto {
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonCardCopyDto) card?: SeasonCardCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonNowCopyDto) now?: SeasonNowCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonChoiceCopyDto) choice?: SeasonChoiceCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonActionCopyDto) action?: SeasonActionCopyDto;
+}
+
+class ObservationRecordCopyDto {
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) navTitle?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) methodReality?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) methodSeason?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) statusDraft?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) statusSaved?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stageBase?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stageNow?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stageChoice?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stageAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) seasonActionTail?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) experienceLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) changeLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) keepLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) keepLabelOptional?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) stageRejectLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) perspectiveLabel?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) perspectiveNote?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) editAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) againAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) deleteAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) deletingAction?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) emptyValue?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) perspectiveEmpty?: ObservationCopyItemDto;
+  @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) seasonCardSubtitle?: ObservationCopyItemDto;
+  @IsOptional() @IsIn(['left', 'center', 'right']) align?: 'left' | 'center' | 'right';
+  @IsOptional() @IsIn(['compact', 'standard', 'roomy']) spacing?: 'compact' | 'standard' | 'roomy';
+}
+
 class PracticeFooterCopyDto {
   @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationCopyItemDto) brand?: ObservationCopyItemDto;
   @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationCopyItemDto) line1?: ObservationCopyItemDto;
@@ -267,6 +435,9 @@ class ObservationCopyDto {
   @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) privacyLabel?: ObservationCopyItemDto;
   @IsOptional() @ValidateNested() @Type(() => ObservationCopyItemDto) privacyCopy?: ObservationCopyItemDto;
   @IsOptional() @IsObject() @ValidateNested() @Type(() => RealityStagesCopyDto) realityStages?: RealityStagesCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonIntroCopyDto) seasonIntro?: SeasonIntroCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => SeasonStagesCopyDto) seasonStages?: SeasonStagesCopyDto;
+  @IsOptional() @IsObject() @ValidateNested() @Type(() => ObservationRecordCopyDto) record?: ObservationRecordCopyDto;
 }
 
 class SharedPracticeCopyDto {
@@ -504,6 +675,56 @@ function sanitizeMinePageContentFields<T extends Record<string, unknown>>(fields
 const realityStageKeys = ['situation', 'body', 'need', 'nextAction'] as const;
 type RealityStageKey = typeof realityStageKeys[number];
 type RealityStageSpacing = 'compact' | 'standard' | 'roomy';
+const seasonIntroCopyKeys = [
+  'navTitle', 'metaLeft', 'metaRight', 'heroTitle', 'heroDescription', 'guideTitle', 'guideRequired', 'guideRead',
+  'guideParagraphOne', 'guideParagraphTwo', 'guideSteps', 'guideGateNote', 'guideConfirm', 'birthdayLabel',
+  'monthLabel', 'dayLabel', 'monthPlaceholder', 'dayPlaceholder', 'birthdayNote', 'rememberTitle', 'rememberNote',
+  'primaryAction', 'primaryLockedAction', 'realityAction', 'skipAction',
+] as const;
+type SeasonIntroCopyKey = typeof seasonIntroCopyKeys[number];
+type SeasonIntroSpacing = 'compact' | 'standard' | 'roomy';
+const seasonCardCopyKeys = [
+  'stageLabel', 'birthdayLabel', 'emptyLabel', 'chooseBirthday', 'changeBirthday', 'eyebrow', 'themePrefix',
+  'footnote', 'noteLabel', 'sourceToggle', 'nextLabel', 'previousLabel', 'footer',
+] as const;
+type SeasonCardCopyKey = typeof seasonCardCopyKeys[number];
+const seasonNowRecentCopyKeys = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'description', 'experienceLabel', 'experiencePlaceholder',
+  'relationLabel', 'noteLabel', 'optionalLabel', 'notePlaceholder', 'nextLabel', 'previousLabel',
+] as const;
+type SeasonNowRecentCopyKey = typeof seasonNowRecentCopyKeys[number];
+const seasonNowChangeCopyKeys = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'description', 'insightLabel', 'optionalLabel',
+  'insightPlaceholder', 'footer', 'nextLabel', 'previousLabel',
+] as const;
+type SeasonNowChangeCopyKey = typeof seasonNowChangeCopyKeys[number];
+const seasonChoiceCopyKeys = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'leadLine1', 'leadLine2', 'keepLabel', 'keepPlaceholder',
+  'rejectLabel', 'optionalLabel', 'rejectPlaceholder', 'nextLabel', 'previousLabel', 'footer',
+] as const;
+type SeasonChoiceCopyKey = typeof seasonChoiceCopyKeys[number];
+const seasonActionCopyKeys = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'leadLine1', 'leadLine2', 'actionLabel', 'actionPlaceholder',
+  'restLabel', 'previewLabel', 'previewEmpty', 'footer', 'nextLabel', 'previousLabel',
+] as const;
+type SeasonActionCopyKey = typeof seasonActionCopyKeys[number];
+const seasonRelationKeys = ['resonates', 'partial', 'different', 'unclear'] as const;
+type SeasonRelationKey = typeof seasonRelationKeys[number];
+const seasonRelationLegacyLabels: Record<SeasonRelationKey, string> = {
+  resonates: '有共鸣',
+  partial: '部分有关',
+  different: '与我的经验不同',
+  unclear: '暂时说不清',
+};
+const seasonStateKeys = ['生', '长', '收', '藏', '暂时说不清'] as const;
+type SeasonStateKey = typeof seasonStateKeys[number];
+const observationRecordCopyKeys = [
+  'navTitle', 'methodReality', 'methodSeason', 'statusDraft', 'statusSaved', 'stageBase', 'stageNow', 'stageChoice',
+  'stageAction', 'seasonActionTail', 'experienceLabel', 'changeLabel', 'keepLabel', 'keepLabelOptional', 'stageRejectLabel',
+  'perspectiveLabel', 'perspectiveNote', 'perspectiveEmpty', 'editAction', 'againAction', 'deleteAction', 'deletingAction',
+  'emptyValue', 'seasonCardSubtitle',
+] as const;
+type ObservationRecordCopyKey = typeof observationRecordCopyKeys[number];
 const defaultObservationCopy = {
   metaLeft: { richText: '此刻归安', fontSize: 12, color: '#8b6b58' },
   metaRight: { richText: 'PRIVATE PRACTICE', fontSize: 12, color: '#663124' },
@@ -570,7 +791,160 @@ const defaultObservationCopy = {
       spacing: 'standard' as RealityStageSpacing,
     },
   },
-};
+  seasonIntro: {
+    navTitle: { richText: '四时气韵', fontSize: 15, color: '#4a3f38' },
+    metaLeft: { richText: '四时气韵', fontSize: 11, color: '#8b6b58' },
+    metaRight: { richText: '从生命牌开始', fontSize: 11, color: '#7b5a45' },
+    heroTitle: { richText: '从一个生日，<br/>开启一次观察。', fontSize: 29, color: '#4a3f38' },
+    heroDescription: { richText: '按生日找到对应的生命牌，借它的主题回看一件真实的事，再辨认其中的变化与自己的选择。', fontSize: 14, color: '#4a3f38' },
+    guideTitle: { richText: '生命牌与四时气韵是什么？', fontSize: 16, color: '#4a3f38' },
+    guideRequired: { richText: '必读', fontSize: 10, color: '#663124' },
+    guideRead: { richText: '已读', fontSize: 10, color: '#8b6b58' },
+    guideParagraphOne: { richText: '生命牌来自一种以生日对应纸牌的传统符号体系。在这里，MYRIAD SHE 把其中的主题转成观察问题，再借“生、长、收、藏”辨认一件具体的事正在怎样变化。', fontSize: 13, color: '#5b4c42' },
+    guideParagraphTwo: { richText: '生日只用于查表。牌义不决定你是谁，也不能替你判断此刻的状态。你可以保留不同的经验与解释。', fontSize: 13, color: '#5b4c42' },
+    guideSteps: { richText: '底色 → 此刻 → 选择 → 行动', fontSize: 12, color: '#7b5a45' },
+    guideGateNote: { richText: '开始前，请先阅读以上说明并确认了解。', fontSize: 11, color: '#7b5a45' },
+    guideConfirm: { richText: '我已了解，开始选择生日', fontSize: 14, color: '#fffaf4' },
+    birthdayLabel: { richText: '你的公历生日', fontSize: 13, color: '#4a3f38' },
+    monthLabel: { richText: '月', fontSize: 11, color: '#8b6b58' },
+    dayLabel: { richText: '日', fontSize: 11, color: '#8b6b58' },
+    monthPlaceholder: { richText: '选择月份', fontSize: 15, color: '#a1907f' },
+    dayPlaceholder: { richText: '选择日期', fontSize: 15, color: '#a1907f' },
+    birthdayNote: { richText: '只需月与日。同一天生日对应同一张生命牌。', fontSize: 11, color: '#8b6b58' },
+    rememberTitle: { richText: '在这台设备记住生日', fontSize: 13, color: '#4a3f38' },
+    rememberNote: { richText: '下次可直接继续观察；随时可以清除。', fontSize: 11, color: '#8b6b58' },
+    primaryAction: { richText: '查看我的生命牌', fontSize: 15, color: '#fffaf4' },
+    primaryLockedAction: { richText: '请先阅读并确认了解', fontSize: 15, color: '#fffaf4' },
+    realityAction: { richText: '从现实处境开始', fontSize: 14, color: '#4a3f38' },
+    skipAction: { richText: '暂不使用四时气韵', fontSize: 13, color: '#8b6b58' },
+    align: 'left' as const,
+    spacing: 'standard' as SeasonIntroSpacing,
+  },
+  seasonStages: {
+    card: {
+      stageLabel: { richText: '按生日对应的生命牌', fontSize: 11, color: '#8b6b58' },
+      birthdayLabel: { richText: '生日', fontSize: 11, color: '#8b6b58' },
+      emptyLabel: { richText: '还没有选择生日。', fontSize: 14, color: '#8b6b58' },
+      chooseBirthday: { richText: '选择生日', fontSize: 13, color: '#663124' },
+      changeBirthday: { richText: '修改生日', fontSize: 11, color: '#8b6b58' },
+      eyebrow: { richText: 'MYRIAD SHE · 底色观察', fontSize: 10, color: '#8b6b58' },
+      themePrefix: { richText: '可以留意 · ', fontSize: 12, color: '#7b5a45' },
+      footnote: { richText: '这是一个观察角度。哪些与你有关，由你的经验决定。', fontSize: 11, color: '#8b6b58' },
+      noteLabel: { richText: '传统线索 · 注', fontSize: 11, color: '#7b5a45' },
+      sourceToggle: { richText: '释义来源与使用说明', fontSize: 11, color: '#663124' },
+      nextLabel: { richText: '回到一件真实的事', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left' as const,
+      spacing: 'standard' as SeasonIntroSpacing,
+    },
+    now: {
+      align: 'left' as const,
+      spacing: 'standard' as SeasonIntroSpacing,
+      recent: {
+        stepLabel: { richText: '02 / 04 · 此刻', fontSize: 11, color: '#8b6b58' },
+        titleLine1: { richText: '最近，', fontSize: 28, color: '#663124' },
+        titleLine2: { richText: '发生了什么？', fontSize: 28, color: '#663124' },
+        description: { richText: '先从一件具体的事开始。它可以呼应前面的线索，也可以与你读到的完全不同。', fontSize: 14, color: '#40362f' },
+        experienceLabel: { richText: '这件事是怎样发生的？', fontSize: 12, color: '#8b6b58' },
+        experiencePlaceholder: { richText: '最近，在……的时候，发生了……', fontSize: 14, color: '#40362f' },
+        relationLabel: { richText: '前面的底色，与你的经验有关吗？', fontSize: 12, color: '#8b6b58' },
+        relations: [
+          { key: 'resonates' as const, label: { richText: '有共鸣', fontSize: 12, color: '#40362f' } },
+          { key: 'partial' as const, label: { richText: '部分有关', fontSize: 12, color: '#40362f' } },
+          { key: 'different' as const, label: { richText: '与我的经验不同', fontSize: 12, color: '#40362f' } },
+          { key: 'unclear' as const, label: { richText: '暂时说不清', fontSize: 12, color: '#40362f' } },
+        ],
+        noteLabel: { richText: '哪些有关，哪些不同？', fontSize: 12, color: '#8b6b58' },
+        optionalLabel: { richText: '选填', fontSize: 10, color: '#8b6b58' },
+        notePlaceholder: { richText: '用自己的话补充，也可以留空。', fontSize: 14, color: '#40362f' },
+        nextLabel: { richText: '看看这件事的变化', fontSize: 14, color: '#663124' },
+        previousLabel: { richText: '回看底色', fontSize: 14, color: '#663124' },
+      },
+      change: {
+        stepLabel: { richText: '02 / 04 · 此刻的变化', fontSize: 11, color: '#8b6b58' },
+        titleLine1: { richText: '这件事，', fontSize: 28, color: '#663124' },
+        titleLine2: { richText: '正在怎样变化？', fontSize: 28, color: '#663124' },
+        description: { richText: '借四时的变化，回看刚才的事。几种状态可以同时存在，也可以暂时说不清。', fontSize: 14, color: '#40362f' },
+        states: [
+          { key: '生' as const, label: { richText: '正在开始', fontSize: 14, color: '#40362f' }, hint: { richText: '什么正在开始？', fontSize: 12, color: '#8b6b58' } },
+          { key: '长' as const, label: { richText: '继续培育', fontSize: 14, color: '#40362f' }, hint: { richText: '什么值得继续培育？', fontSize: 12, color: '#8b6b58' } },
+          { key: '收' as const, label: { richText: '完成与取舍', fontSize: 14, color: '#40362f' }, hint: { richText: '什么需要完成、取舍或收束？', fontSize: 12, color: '#8b6b58' } },
+          { key: '藏' as const, label: { richText: '暂停与保存', fontSize: 14, color: '#40362f' }, hint: { richText: '什么需要暂停、休息与保存？', fontSize: 12, color: '#8b6b58' } },
+          { key: '暂时说不清' as const, label: { richText: '暂时说不清', fontSize: 14, color: '#40362f' }, hint: { richText: '也可以不急着归类。', fontSize: 12, color: '#8b6b58' } },
+        ],
+        insightLabel: { richText: '对这件事，你还看见了什么？', fontSize: 12, color: '#8b6b58' },
+        optionalLabel: { richText: '选填', fontSize: 10, color: '#8b6b58' },
+        insightPlaceholder: { richText: '例如：项目刚开始，但我已经需要给自己留出休息。', fontSize: 14, color: '#40362f' },
+        footer: { richText: '这里辨认的是一件事中的变化，不是为你确定一个季节身份。', fontSize: 11, color: '#76695f' },
+        nextLabel: { richText: '带着自己的理解继续', fontSize: 14, color: '#663124' },
+        previousLabel: { richText: '回到这件事', fontSize: 14, color: '#663124' },
+      },
+    },
+    choice: {
+      stepLabel: { richText: '03 / 04 · 选择', fontSize: 11, color: '#8b6b58' },
+      titleLine1: { richText: '哪些解释，', fontSize: 28, color: '#663124' },
+      titleLine2: { richText: '你愿意留下？', fontSize: 28, color: '#663124' },
+      leadLine1: { richText: '可以保留一个问题，拒绝一种解释，', fontSize: 14, color: '#40362f' },
+      leadLine2: { richText: '也可以用自己的方式重新理解这件事。', fontSize: 14, color: '#40362f' },
+      keepLabel: { richText: '我想保留的', fontSize: 12, color: '#916162' },
+      keepPlaceholder: { richText: '这次观察里，对我有用的是……', fontSize: 14, color: '#40362f' },
+      rejectLabel: { richText: '我不接受的，或另一种理解', fontSize: 12, color: '#916162' },
+      optionalLabel: { richText: '· 选填', fontSize: 10, color: '#916162' },
+      rejectPlaceholder: { richText: '我不认同……；对我来说，也可能是……', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '想想接下来的行动', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '回看变化', fontSize: 14, color: '#663124' },
+      footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+      align: 'left' as const,
+      spacing: 'standard' as SeasonIntroSpacing,
+    },
+    action: {
+      stepLabel: { richText: '04 / 04 · 行动', fontSize: 11, color: '#8b6b58' },
+      titleLine1: { richText: '接下来七天，', fontSize: 28, color: '#663124' },
+      titleLine2: { richText: '你愿意做什么？', fontSize: 28, color: '#663124' },
+      leadLine1: { richText: '选一个小到能够发生的行动。休息、等待、', fontSize: 14, color: '#40362f' },
+      leadLine2: { richText: '继续观察，也可以是此刻的选择。', fontSize: 14, color: '#40362f' },
+      actionLabel: { richText: '我愿意做的一个最小行动', fontSize: 12, color: '#916162' },
+      actionPlaceholder: { richText: '例如：本周找一个安静的晚上，把这事件重新读一次。', fontSize: 14, color: '#40362f' },
+      restLabel: { richText: '先留一点时间，不安排新行动', fontSize: 13, color: '#40362f' },
+      previewLabel: { richText: '这次留下的', fontSize: 11, color: '#8b6b58' },
+      previewEmpty: { richText: '还没有写下具体的事', fontSize: 14, color: '#a4937f' },
+      footer: { richText: '保存的是你写下的经验与判断，不会生成性格结论；以后可以修改或删除。', fontSize: 11, color: '#76695f' },
+      nextLabel: { richText: '保存这次观察', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '回看选择', fontSize: 14, color: '#663124' },
+      align: 'left' as const,
+      spacing: 'standard' as SeasonIntroSpacing,
+    },
+  },
+  record: {
+    navTitle: { richText: '观察记录', fontSize: 16, color: '#5c493c' },
+    methodReality: { richText: '现实处境', fontSize: 12, color: '#8f4938' },
+    methodSeason: { richText: '四时气韵', fontSize: 12, color: '#8f4938' },
+    statusDraft: { richText: '草稿', fontSize: 12, color: '#8b6b58' },
+    statusSaved: { richText: '此设备保存', fontSize: 12, color: '#8b6b58' },
+    stageBase: { richText: '01 · 底色', fontSize: 12, color: '#8f4938' },
+    stageNow: { richText: '02 · 此刻', fontSize: 12, color: '#8f4938' },
+    stageChoice: { richText: '03 · 选择', fontSize: 12, color: '#8f4938' },
+    stageAction: { richText: '04 · 行动', fontSize: 12, color: '#8f4938' },
+    seasonActionTail: { richText: '· 接下来七天', fontSize: 12, color: '#8f4938' },
+    experienceLabel: { richText: '我写下的经验', fontSize: 12, color: '#8f4938' },
+    changeLabel: { richText: '我辨认的变化', fontSize: 12, color: '#8f4938' },
+    keepLabel: { richText: '我想保留的', fontSize: 12, color: '#8f4938' },
+    keepLabelOptional: { richText: '· 选填', fontSize: 12, color: '#8f4938' },
+    stageRejectLabel: { richText: '我不接受的，或另一种理解', fontSize: 12, color: '#8f4938' },
+    perspectiveLabel: { richText: '你对此线索引的判断', fontSize: 12, color: '#8f4938' },
+    perspectiveNote: { richText: '这份判断可以随时修改；你的经验始终拥有解释权。', fontSize: 11, color: '#8b6b58' },
+    perspectiveEmpty: { richText: '暂未作判断', fontSize: 14, color: '#3f352e' },
+    editAction: { richText: '修改这次观察', fontSize: 14, color: '#fffaf4' },
+    againAction: { richText: '再次观察', fontSize: 14, color: '#fffaf4' },
+    deleteAction: { richText: '删除记录', fontSize: 14, color: '#fffaf4' },
+    deletingAction: { richText: '正在删除…', fontSize: 14, color: '#fffaf4' },
+    emptyValue: { richText: '未填写', fontSize: 13, color: '#a89a8c' },
+    seasonCardSubtitle: { richText: '本次借用的品牌观察线索', fontSize: 12, color: '#5c493c' },
+    align: 'left' as const,
+    spacing: 'standard' as SeasonIntroSpacing,
+  },
+} as const;
 
 type PracticeFooterCopyKey = 'brand' | 'line1' | 'label' | 'line2';
 type PracticeFooterCopy = Record<PracticeFooterCopyKey, { richText: string; fontSize: number; color: string }>;
@@ -608,8 +982,43 @@ type RealityStageCopyValue = Record<typeof realityStageCopyKeys[number], Observa
   align: 'left' | 'center' | 'right';
   spacing: RealityStageSpacing;
 };
+type SeasonIntroCopyValue = Record<SeasonIntroCopyKey, ObservationCopyItemValue> & {
+  align: 'left' | 'center' | 'right';
+  spacing: SeasonIntroSpacing;
+};
+type SeasonCopyAlignment = 'left' | 'center' | 'right';
+type SeasonCopySpacing = 'compact' | 'standard' | 'roomy';
+type SeasonLayoutCopyValue = {
+  align: SeasonCopyAlignment;
+  spacing: SeasonCopySpacing;
+};
+type SeasonRelationOptionValue = { key: SeasonRelationKey; label: ObservationCopyItemValue };
+type SeasonStateOptionValue = { key: SeasonStateKey; label: ObservationCopyItemValue; hint: ObservationCopyItemValue };
+type SeasonCardCopyValue = Record<SeasonCardCopyKey, ObservationCopyItemValue> & SeasonLayoutCopyValue;
+type SeasonNowRecentCopyValue = Record<SeasonNowRecentCopyKey, ObservationCopyItemValue> & {
+  relations: SeasonRelationOptionValue[];
+};
+type SeasonNowChangeCopyValue = Record<SeasonNowChangeCopyKey, ObservationCopyItemValue> & {
+  states: SeasonStateOptionValue[];
+};
+type SeasonChoiceCopyValue = Record<SeasonChoiceCopyKey, ObservationCopyItemValue> & SeasonLayoutCopyValue;
+type SeasonActionCopyValue = Record<SeasonActionCopyKey, ObservationCopyItemValue> & SeasonLayoutCopyValue;
+type SeasonNowCopyValue = SeasonLayoutCopyValue & {
+  recent: SeasonNowRecentCopyValue;
+  change: SeasonNowChangeCopyValue;
+};
+type SeasonStagesCopyValue = {
+  card: SeasonCardCopyValue;
+  now: SeasonNowCopyValue;
+  choice: SeasonChoiceCopyValue;
+  action: SeasonActionCopyValue;
+};
+type ObservationRecordCopyValue = Record<ObservationRecordCopyKey, ObservationCopyItemValue> & SeasonLayoutCopyValue;
 type ObservationCopyValue = Record<typeof observationCopyFlatKeys[number], ObservationCopyItemValue> & {
   realityStages: Record<RealityStageKey, RealityStageCopyValue>;
+  seasonIntro: SeasonIntroCopyValue;
+  seasonStages: SeasonStagesCopyValue;
+  record: ObservationRecordCopyValue;
 };
 
 function sanitizeObservationCopyItem(raw: unknown, fallback: ObservationCopyItemValue, label: string, stripFormatting: boolean) {
@@ -626,6 +1035,66 @@ function sanitizeObservationCopyItem(raw: unknown, fallback: ObservationCopyItem
     : fallback.fontSize;
   const color = typeof item.color === 'string' && /^#[0-9a-f]{6}$/i.test(item.color) ? item.color.toLowerCase() : fallback.color;
   return { richText, fontSize, color };
+}
+
+function sanitizeSeasonLayout(source: Record<string, unknown>, fallback: SeasonLayoutCopyValue): SeasonLayoutCopyValue {
+  const align = source.align === 'left' || source.align === 'center' || source.align === 'right'
+    ? source.align
+    : fallback.align;
+  const spacing = source.spacing === 'compact' || source.spacing === 'standard' || source.spacing === 'roomy'
+    ? source.spacing
+    : fallback.spacing;
+  return { align, spacing };
+}
+
+function sanitizeSeasonCopyFields<K extends string>(
+  source: Record<string, unknown>,
+  keys: readonly K[],
+  fallback: Record<K, ObservationCopyItemValue>,
+  label: string,
+): Record<K, ObservationCopyItemValue> {
+  return Object.fromEntries(keys.map((key) => [
+    key,
+    sanitizeObservationCopyItem(source[key], fallback[key], `${label}${key}`, false),
+  ])) as Record<K, ObservationCopyItemValue>;
+}
+
+function seasonRelationKeyFromLegacy(value: unknown): SeasonRelationKey | null {
+  if (typeof value !== 'string') return null;
+  const plain = value.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+  const legacy = Object.entries(seasonRelationLegacyLabels).find(([, label]) => label === plain);
+  return legacy ? legacy[0] as SeasonRelationKey : null;
+}
+
+function sanitizeSeasonRelations(raw: unknown, fallback: readonly SeasonRelationOptionValue[]): SeasonRelationOptionValue[] {
+  const source = Array.isArray(raw) ? raw : [];
+  return seasonRelationKeys.map((key) => {
+    const fallbackOption = fallback.find((option) => option.key === key) || fallback[0];
+    const matched = source.find((option) => {
+      if (!option || typeof option !== 'object' || Array.isArray(option)) return false;
+      const record = option as Record<string, unknown>;
+      return record.key === key || seasonRelationKeyFromLegacy(record.key) === key
+        || seasonRelationKeyFromLegacy(record.label) === key;
+    }) as Record<string, unknown> | undefined;
+    return {
+      key,
+      label: sanitizeObservationCopyItem(matched?.label, fallbackOption.label, `四时气韵关系${key}`, false),
+    };
+  });
+}
+
+function sanitizeSeasonStates(raw: unknown, fallback: readonly SeasonStateOptionValue[]): SeasonStateOptionValue[] {
+  const source = Array.isArray(raw) ? raw : [];
+  return seasonStateKeys.map((key) => {
+    const fallbackOption = fallback.find((option) => option.key === key) || fallback[0];
+    const matched = source.find((option) => option && typeof option === 'object' && !Array.isArray(option)
+      && (option as Record<string, unknown>).key === key) as Record<string, unknown> | undefined;
+    return {
+      key,
+      label: sanitizeObservationCopyItem(matched?.label, fallbackOption.label, `四时气韵状态${key}名称`, false),
+      hint: sanitizeObservationCopyItem(matched?.hint, fallbackOption.hint, `四时气韵状态${key}提示`, false),
+    };
+  });
 }
 
 function sanitizeObservationCopy(raw: unknown): ObservationCopyValue {
@@ -646,15 +1115,73 @@ function sanitizeObservationCopy(raw: unknown): ObservationCopyValue {
       fieldKey,
       sanitizeObservationCopyItem(stageSource[fieldKey], fallback[fieldKey], `现实处境${stageKey}${fieldKey}`, false),
     ]));
-    const align = stageSource.align === 'left' || stageSource.align === 'center' || stageSource.align === 'right'
-      ? stageSource.align
-      : fallback.align;
-    const spacing = stageSource.spacing === 'compact' || stageSource.spacing === 'standard' || stageSource.spacing === 'roomy'
-      ? stageSource.spacing
-      : fallback.spacing;
+    const { align, spacing } = sanitizeSeasonLayout(stageSource, fallback);
     return [stageKey, { ...copy, align, spacing }];
   }));
-  return { ...flat, realityStages } as ObservationCopyValue;
+  const seasonIntroSource = source.seasonIntro && typeof source.seasonIntro === 'object' && !Array.isArray(source.seasonIntro)
+    ? source.seasonIntro as Record<string, unknown>
+    : {};
+  const seasonIntroCopy = Object.fromEntries(seasonIntroCopyKeys.map((key) => [
+    key,
+    sanitizeObservationCopyItem(seasonIntroSource[key], defaultObservationCopy.seasonIntro[key], `四时气韵入口页${key}`, false),
+  ]));
+  const seasonIntroLayout = sanitizeSeasonLayout(seasonIntroSource, defaultObservationCopy.seasonIntro);
+  const seasonIntro = { ...seasonIntroCopy, ...seasonIntroLayout } as SeasonIntroCopyValue;
+
+  const rawSeasonStages = source.seasonStages && typeof source.seasonStages === 'object' && !Array.isArray(source.seasonStages)
+    ? source.seasonStages as Record<string, unknown>
+    : {};
+  const defaultSeasonStages = defaultObservationCopy.seasonStages;
+  const rawCard = rawSeasonStages.card && typeof rawSeasonStages.card === 'object' && !Array.isArray(rawSeasonStages.card)
+    ? rawSeasonStages.card as Record<string, unknown>
+    : {};
+  const card = {
+    ...sanitizeSeasonCopyFields(rawCard, seasonCardCopyKeys, defaultSeasonStages.card, '四时气韵底色'),
+    ...sanitizeSeasonLayout(rawCard, defaultSeasonStages.card),
+  } as SeasonCardCopyValue;
+
+  const rawNow = rawSeasonStages.now && typeof rawSeasonStages.now === 'object' && !Array.isArray(rawSeasonStages.now)
+    ? rawSeasonStages.now as Record<string, unknown>
+    : {};
+  const rawRecent = rawNow.recent && typeof rawNow.recent === 'object' && !Array.isArray(rawNow.recent)
+    ? rawNow.recent as Record<string, unknown>
+    : {};
+  const recent = {
+    ...sanitizeSeasonCopyFields(rawRecent, seasonNowRecentCopyKeys, defaultSeasonStages.now.recent, '四时气韵此刻最近'),
+    relations: sanitizeSeasonRelations(rawRecent.relations, defaultSeasonStages.now.recent.relations),
+  } as SeasonNowRecentCopyValue;
+  const rawChange = rawNow.change && typeof rawNow.change === 'object' && !Array.isArray(rawNow.change)
+    ? rawNow.change as Record<string, unknown>
+    : {};
+  const change = {
+    ...sanitizeSeasonCopyFields(rawChange, seasonNowChangeCopyKeys, defaultSeasonStages.now.change, '四时气韵此刻变化'),
+    states: sanitizeSeasonStates(rawChange.states, defaultSeasonStages.now.change.states),
+  } as SeasonNowChangeCopyValue;
+  const now = { ...sanitizeSeasonLayout(rawNow, defaultSeasonStages.now), recent, change } as SeasonNowCopyValue;
+
+  const rawChoice = rawSeasonStages.choice && typeof rawSeasonStages.choice === 'object' && !Array.isArray(rawSeasonStages.choice)
+    ? rawSeasonStages.choice as Record<string, unknown>
+    : {};
+  const choice = {
+    ...sanitizeSeasonCopyFields(rawChoice, seasonChoiceCopyKeys, defaultSeasonStages.choice, '四时气韵选择'),
+    ...sanitizeSeasonLayout(rawChoice, defaultSeasonStages.choice),
+  } as SeasonChoiceCopyValue;
+  const rawAction = rawSeasonStages.action && typeof rawSeasonStages.action === 'object' && !Array.isArray(rawSeasonStages.action)
+    ? rawSeasonStages.action as Record<string, unknown>
+    : {};
+  const action = {
+    ...sanitizeSeasonCopyFields(rawAction, seasonActionCopyKeys, defaultSeasonStages.action, '四时气韵行动'),
+    ...sanitizeSeasonLayout(rawAction, defaultSeasonStages.action),
+  } as SeasonActionCopyValue;
+  const seasonStages: SeasonStagesCopyValue = { card, now, choice, action };
+  const rawRecord = source.record && typeof source.record === 'object' && !Array.isArray(source.record)
+    ? source.record as Record<string, unknown>
+    : {};
+  const record = {
+    ...sanitizeSeasonCopyFields(rawRecord, observationRecordCopyKeys, defaultObservationCopy.record, '观察记录页'),
+    ...sanitizeSeasonLayout(rawRecord, defaultObservationCopy.record),
+  } as ObservationRecordCopyValue;
+  return { ...flat, realityStages, seasonIntro, seasonStages, record } as ObservationCopyValue;
 }
 
 const defaultSharedPracticeCopy = {

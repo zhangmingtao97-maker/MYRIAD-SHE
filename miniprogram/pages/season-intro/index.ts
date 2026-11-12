@@ -1,7 +1,41 @@
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 import { cacheSeasonPaused, hasReadSeasonGuide, markSeasonGuideRead, readSeasonPaused, saveSeasonPaused } from '../../utils/season-preference';
+import { DEFAULT_SEASON_INTRO_COPY, isPracticeContent } from '../../utils/content';
+import type { PracticeContent, SeasonIntroCopy, SeasonIntroCopyKey } from '../../utils/content';
+import { request } from '../../utils/request';
 const STORAGE_KEY = 'myriad_she_season_birthday';
 const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const seasonIntroCopyKeys: SeasonIntroCopyKey[] = [
+  'navTitle', 'metaLeft', 'metaRight', 'heroTitle', 'heroDescription', 'guideTitle', 'guideRequired', 'guideRead',
+  'guideParagraphOne', 'guideParagraphTwo', 'guideSteps', 'guideGateNote', 'guideConfirm', 'birthdayLabel',
+  'monthLabel', 'dayLabel', 'monthPlaceholder', 'dayPlaceholder', 'birthdayNote', 'rememberTitle', 'rememberNote',
+  'primaryAction', 'primaryLockedAction', 'realityAction', 'skipAction',
+];
+
+function plainRichText(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(?:p|div|span|li|h[1-6])>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function seasonIntroPlainText(copy: SeasonIntroCopy) {
+  return Object.fromEntries(seasonIntroCopyKeys.map((key) => [key, plainRichText(copy[key].richText)])) as Record<SeasonIntroCopyKey, string>;
+}
+
+function seasonGuideView(copy: SeasonIntroCopy, guideRead: boolean) {
+  return {
+    guideStateCopy: guideRead ? copy.guideRead : copy.guideRequired,
+    primaryActionCopy: guideRead ? copy.primaryAction : copy.primaryLockedAction,
+  };
+}
 
 function dayOptionsFor(month: number) {
   const total = month >= 1 && month <= 12 ? DAYS_IN_MONTH[month - 1] : 31;
@@ -21,11 +55,15 @@ Page({
     // 从观察入口进入时先完整展示方法说明，再允许选择生日继续。
     guideOpen: true,
     guideRead: false,
+    seasonIntro: DEFAULT_SEASON_INTRO_COPY,
+    seasonIntroText: seasonIntroPlainText(DEFAULT_SEASON_INTRO_COPY),
+    ...seasonGuideView(DEFAULT_SEASON_INTRO_COPY, false),
   },
   onLoad() {
     enableShareMenu();
+    void this.loadSeasonIntroCopy();
     const guideRead = hasReadSeasonGuide();
-    this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, guideRead, guideOpen: !guideRead });
+    this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, guideRead, guideOpen: !guideRead, ...seasonGuideView(DEFAULT_SEASON_INTRO_COPY, guideRead) });
     try {
       const saved = wx.getStorageSync(STORAGE_KEY);
       if (saved && typeof saved === 'object') {
@@ -44,6 +82,16 @@ Page({
       }
     } catch {
       // 读取失败时按未记住处理，不影响手动选择。
+    }
+  },
+  async loadSeasonIntroCopy() {
+    try {
+      const content = await request<PracticeContent>('/content/practice', { header: { 'Cache-Control': 'no-cache' } });
+      if (!isPracticeContent(content)) return;
+      const seasonIntro = content.observationCopy.seasonIntro;
+      this.setData({ seasonIntro, seasonIntroText: seasonIntroPlainText(seasonIntro), ...seasonGuideView(seasonIntro, this.data.guideRead) });
+    } catch {
+      // 接口暂时不可用时继续使用与页面一致的本地默认文案。
     }
   },
   onMonthChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
@@ -78,7 +126,7 @@ Page({
   },
   acknowledgeGuide() {
     markSeasonGuideRead();
-    this.setData({ guideRead: true, guideOpen: false });
+    this.setData({ guideRead: true, guideOpen: false, ...seasonGuideView(this.data.seasonIntro, true) });
     wx.showToast({ title: '已了解，可以开始选择生日', icon: 'none' });
   },
   persistBirthday() {

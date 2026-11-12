@@ -80,76 +80,81 @@
       </view>
     </block>
     <block wx:else>
-      <view wx:if="{{step === 0}}" class="step card-step">
-        <view class="card-meta">按生日对应的生命牌</view>
+      <view wx:if="{{step === 0}}" class="step card-step season-step align-{{seasonCard.align}} spacing-{{seasonCard.spacing}}">
+        <view class="card-meta" style="font-size: {{seasonCard.stageLabel.fontSize * 2}}rpx; color: {{seasonCard.stageLabel.color}};"><rich-text nodes="{{seasonCard.stageLabel.richText}}"></rich-text></view>
         <view wx:if="{{lifeCardLoading}}" class="muted">正在读取这一天的文案…</view>
         <view wx:elif="{{lifeCardError}}" class="error-text" role="alert">{{lifeCardError}}</view>
         <view wx:elif="{{!lifeCard}}" class="card-empty">
-          <view class="muted">还没有选择生日。</view>
-          <view class="card-edit card-edit-standalone" role="button" aria-label="选择生日" tabindex="0" bindtap="changeBirthday">选择生日</view>
+          <view class="muted" style="font-size: {{seasonCard.emptyLabel.fontSize * 2}}rpx; color: {{seasonCard.emptyLabel.color}};"><rich-text nodes="{{seasonCard.emptyLabel.richText}}"></rich-text></view>
+          <view class="card-edit card-edit-standalone" role="button" aria-label="{{seasonCard.chooseBirthday.richText}}" tabindex="0" bindtap="changeBirthday" style="font-size: {{seasonCard.chooseBirthday.fontSize * 2}}rpx; color: {{seasonCard.chooseBirthday.color}};"><rich-text nodes="{{seasonCard.chooseBirthday.richText}}"></rich-text></view>
         </view>
         <block wx:elif="{{lifeCard}}">
           <view class="card-row">
             <view class="card-face"><text class="card-rank">{{lifeCard.rank}}</text><text class="card-suit">{{lifeCard.suitSymbol}}</text></view>
             <view class="card-when">
-              <view class="card-date">{{lifeCard.month}} 月 {{lifeCard.day}} 日</view>
-              <view class="card-edit" role="button" aria-label="修改生日" tabindex="0" bindtap="changeBirthday">修改生日</view>
+              <view class="card-date" style="font-size: {{seasonCard.birthdayLabel.fontSize * 2}}rpx; color: {{seasonCard.birthdayLabel.color}};"><rich-text nodes="{{seasonCard.birthdayLabel.richText}}"></rich-text><text> · </text><text>{{lifeCard.month}} 月 {{lifeCard.day}} 日</text></view>
+              <view class="card-edit" role="button" aria-label="{{seasonCard.changeBirthday.richText}}" tabindex="0" bindtap="changeBirthday" style="font-size: {{seasonCard.changeBirthday.fontSize * 2}}rpx; color: {{seasonCard.changeBirthday.color}};"><rich-text nodes="{{seasonCard.changeBirthday.richText}}"></rich-text></view>
             </view>
           </view>
           <view class="card-rule" aria-hidden="true"></view>
-          <view class="card-eyebrow">MYRIAD SHE · 底色观察</view>
+          <view class="card-eyebrow" style="font-size: {{seasonCard.eyebrow.fontSize * 2}}rpx; color: {{seasonCard.eyebrow.color}};"><rich-text nodes="{{seasonCard.eyebrow.richText}}"></rich-text></view>
           <view class="card-title">{{lifeCard.title}}</view>
           <view class="card-summary">{{lifeCard.summary}}</view>
-          <view class="card-label">可以留意 · {{lifeCard.theme}}</view>
+          <view class="card-label" style="font-size: {{seasonCard.themePrefix.fontSize * 2}}rpx; color: {{seasonCard.themePrefix.color}};"><rich-text nodes="{{seasonCard.themePrefix.richText}}"></rich-text><text>{{lifeCard.theme}}</text></view>
           <view class="card-prompt">{{lifeCard.prompt}}</view>
-          <view class="card-footnote">这是一个观察角度。哪些与你有关，由你的经验决定。</view>
+          <view class="card-footnote" style="font-size: {{seasonCard.footnote.fontSize * 2}}rpx; color: {{seasonCard.footnote.color}};"><rich-text nodes="{{seasonCard.footnote.richText}}"></rich-text></view>
           <view class="card-rule card-rule-bottom" aria-hidden="true"></view>
-          <view class="card-note-label">传统线索 · 注</view>
+          <view class="card-note-label" style="font-size: {{seasonCard.noteLabel.fontSize * 2}}rpx; color: {{seasonCard.noteLabel.color}};"><rich-text nodes="{{seasonCard.noteLabel.richText}}"></rich-text></view>
           <view class="card-note">{{lifeCard.note}}</view>
-          <view class="card-source-toggle" role="button" aria-expanded="{{cardSourceOpen}}" tabindex="0" bindtap="toggleCardSource">
+          <view class="card-source-toggle" role="button" aria-expanded="{{cardSourceOpen}}" tabindex="0" bindtap="toggleCardSource" style="font-size: {{seasonCard.sourceToggle.fontSize * 2}}rpx; color: {{seasonCard.sourceToggle.color}};">
             <text class="guide-caret" aria-hidden="true">{{cardSourceOpen ? '▾' : '▸'}}</text>
-            <text>释义来源与使用说明</text>
+            <rich-text nodes="{{seasonCard.sourceToggle.richText}}"></rich-text>
           </view>
           <view wx:if="{{cardSourceOpen}}" class="card-source">
             <view wx:for="{{lifeCard.sourceParagraphs}}" wx:key="*this">{{item}}</view>
           </view>
         </block>
       </view>
-      <view wx:elif="{{step === 1 && seasonStage === 0}}" class="step season-step">
-        <view class="step-index">02 / 04 · 此刻</view>
-        <view class="season-headline"><text class="season-headline-line">最近，</text><text class="season-headline-line">发生了什么？</text></view>
-        <view class="season-lead">先从一件具体的事开始。它可以呼应前面的线索，也可以与你读到的完全不同。</view>
+      <view wx:elif="{{step === 1 && seasonStage === 0}}" class="step season-step align-{{seasonNow.align}} spacing-{{seasonNow.spacing}}">
+        <view class="step-index" style="font-size: {{seasonNowRecent.stepLabel.fontSize * 2}}rpx; color: {{seasonNowRecent.stepLabel.color}};"><rich-text nodes="{{seasonNowRecent.stepLabel.richText}}"></rich-text></view>
+        <view class="season-headline">
+          <view class="season-headline-line" style="font-size: {{seasonNowRecent.titleLine1.fontSize * 2}}rpx; color: {{seasonNowRecent.titleLine1.color}};"><rich-text nodes="{{seasonNowRecent.titleLine1.richText}}"></rich-text></view>
+          <view class="season-headline-line" style="font-size: {{seasonNowRecent.titleLine2.fontSize * 2}}rpx; color: {{seasonNowRecent.titleLine2.color}};"><rich-text nodes="{{seasonNowRecent.titleLine2.richText}}"></rich-text></view>
+        </view>
+        <view class="season-lead" style="font-size: {{seasonNowRecent.description.fontSize * 2}}rpx; color: {{seasonNowRecent.description.color}};"><rich-text nodes="{{seasonNowRecent.description.richText}}"></rich-text></view>
 
         <view class="season-field">
-          <view class="season-label">这件事是怎样发生的？</view>
-          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="experience" value="{{answers.experience}}" bindinput="handleInput" placeholder="最近，在……的时候，发生了……" />
+          <view class="season-label" style="font-size: {{seasonNowRecent.experienceLabel.fontSize * 2}}rpx; color: {{seasonNowRecent.experienceLabel.color}};"><rich-text nodes="{{seasonNowRecent.experienceLabel.richText}}"></rich-text></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="experience" value="{{answers.experience}}" bindinput="handleInput" placeholder="{{seasonExperiencePlaceholder}}" placeholder-style="color: {{seasonNowRecent.experiencePlaceholder.color}}; font-size: {{seasonNowRecent.experiencePlaceholder.fontSize * 2}}rpx;" />
         </view>
 
         <view class="season-field">
-          <view class="season-label">前面的底色，与你的经验有关吗？</view>
+          <view class="season-label" style="font-size: {{seasonNowRecent.relationLabel.fontSize * 2}}rpx; color: {{seasonNowRecent.relationLabel.color}};"><rich-text nodes="{{seasonNowRecent.relationLabel.richText}}"></rich-text></view>
           <view class="season-choices" aria-label="选择与底色的关系">
-            <view wx:for="{{seasonLinkOptions}}" wx:key="*this" class="season-choice {{answers.season === item ? 'selected' : ''}}" role="button" aria-pressed="{{answers.season === item}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-value="{{item}}" bindtap="selectSeasonLink">{{item}}</view>
+            <view wx:for="{{seasonLinkOptions}}" wx:key="key" class="season-choice {{answers.season === item.key ? 'selected' : ''}}" role="button" aria-label="{{item.labelText}}" aria-pressed="{{answers.season === item.key}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-value="{{item.key}}" bindtap="selectSeasonLink" style="font-size: {{item.label.fontSize * 2}}rpx; color: {{item.label.color}};"><rich-text nodes="{{item.label.richText}}"></rich-text></view>
           </view>
         </view>
 
         <view class="season-field">
-          <view class="season-label">哪些有关，哪些不同？<text class="season-optional">选填</text></view>
-          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="seasonNote" value="{{answers.seasonNote}}" bindinput="handleInput" placeholder="用自己的话补充，也可以留空。" />
+          <view class="season-label" style="font-size: {{seasonNowRecent.noteLabel.fontSize * 2}}rpx; color: {{seasonNowRecent.noteLabel.color}};"><rich-text nodes="{{seasonNowRecent.noteLabel.richText}}"></rich-text><view class="season-optional" style="font-size: {{seasonNowRecent.optionalLabel.fontSize * 2}}rpx; color: {{seasonNowRecent.optionalLabel.color}};"><rich-text nodes="{{seasonNowRecent.optionalLabel.richText}}"></rich-text></view></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="seasonNote" value="{{answers.seasonNote}}" bindinput="handleInput" placeholder="{{seasonNotePlaceholder}}" placeholder-style="color: {{seasonNowRecent.notePlaceholder.color}}; font-size: {{seasonNowRecent.notePlaceholder.fontSize * 2}}rpx;" />
         </view>
-
       </view>
-      <view wx:elif="{{step === 1 && seasonStage === 1}}" class="step season-step">
-        <view class="step-index">02 / 04 · 此刻的变化</view>
-        <view class="season-headline"><text class="season-headline-line">这件事，</text><text class="season-headline-line">正在怎样变化？</text></view>
-        <view class="season-lead">借四时的变化，回看刚才的事。几种状态可以同时存在，也可以暂时说不清。</view>
+      <view wx:elif="{{step === 1 && seasonStage === 1}}" class="step season-step align-{{seasonNow.align}} spacing-{{seasonNow.spacing}}">
+        <view class="step-index" style="font-size: {{seasonNowChange.stepLabel.fontSize * 2}}rpx; color: {{seasonNowChange.stepLabel.color}};"><rich-text nodes="{{seasonNowChange.stepLabel.richText}}"></rich-text></view>
+        <view class="season-headline">
+          <view class="season-headline-line" style="font-size: {{seasonNowChange.titleLine1.fontSize * 2}}rpx; color: {{seasonNowChange.titleLine1.color}};"><rich-text nodes="{{seasonNowChange.titleLine1.richText}}"></rich-text></view>
+          <view class="season-headline-line" style="font-size: {{seasonNowChange.titleLine2.fontSize * 2}}rpx; color: {{seasonNowChange.titleLine2.color}};"><rich-text nodes="{{seasonNowChange.titleLine2.richText}}"></rich-text></view>
+        </view>
+        <view class="season-lead" style="font-size: {{seasonNowChange.description.fontSize * 2}}rpx; color: {{seasonNowChange.description.color}};"><rich-text nodes="{{seasonNowChange.description.richText}}"></rich-text></view>
 
         <view class="season-state-list">
           <view wx:for="{{seasonStateView}}" wx:key="key" class="season-state {{item.selected ? 'open' : ''}} {{item.isNote ? 'season-state--note' : ''}}">
-            <view class="season-state-head" role="checkbox" aria-checked="{{item.selected}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-key="{{item.key}}" bindtap="toggleSeasonState">
+            <view class="season-state-head" role="checkbox" aria-label="{{item.labelText}} {{item.hintText}}" aria-checked="{{item.selected}}" aria-disabled="{{saving || advancing}}" tabindex="0" data-key="{{item.key}}" bindtap="toggleSeasonState">
               <text class="season-state-key">{{item.key}}</text>
               <view class="season-state-main">
-                <view class="season-state-label">{{item.label}}</view>
-                <view wx:if="{{item.hint}}" class="season-state-hint">{{item.hint}}</view>
+                <view class="season-state-label" style="font-size: {{item.label.fontSize * 2}}rpx; color: {{item.label.color}};"><rich-text nodes="{{item.label.richText}}"></rich-text></view>
+                <view wx:if="{{item.hintText}}" class="season-state-hint" style="font-size: {{item.hint.fontSize * 2}}rpx; color: {{item.hint.color}};"><rich-text nodes="{{item.hint.richText}}"></rich-text></view>
               </view>
               <text class="season-state-mark" aria-hidden="true">{{item.selected ? '✓' : '+'}}</text>
             </view>
@@ -157,69 +162,84 @@
         </view>
 
         <view class="season-field">
-          <view class="season-label season-label--soft">对这件事，你还看见了什么？<text class="season-optional">选填</text></view>
-          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="seasonInsight" value="{{answers.seasonInsight}}" bindinput="handleInput" placeholder="例如：项目刚开始，但我已经需要给自己留出休息。" />
+          <view class="season-label season-label--soft" style="font-size: {{seasonNowChange.insightLabel.fontSize * 2}}rpx; color: {{seasonNowChange.insightLabel.color}};"><rich-text nodes="{{seasonNowChange.insightLabel.richText}}"></rich-text><view class="season-optional" style="font-size: {{seasonNowChange.optionalLabel.fontSize * 2}}rpx; color: {{seasonNowChange.optionalLabel.color}};"><rich-text nodes="{{seasonNowChange.optionalLabel.richText}}"></rich-text></view></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="seasonInsight" value="{{answers.seasonInsight}}" bindinput="handleInput" placeholder="{{seasonInsightPlaceholder}}" placeholder-style="color: {{seasonNowChange.insightPlaceholder.color}}; font-size: {{seasonNowChange.insightPlaceholder.fontSize * 2}}rpx;" />
         </view>
 
-        <view class="season-footnote">这里辨认的是一件事中的变化，不是为你确定一个季节身份。</view>
+        <view class="season-footnote" style="font-size: {{seasonNowChange.footer.fontSize * 2}}rpx; color: {{seasonNowChange.footer.color}};"><rich-text nodes="{{seasonNowChange.footer.richText}}"></rich-text></view>
       </view>
       <view wx:elif="{{step === 1}}" class="step season-step">
         <view class="season-field"><view class="season-label">（正在载入）</view></view>
       </view>
-      <view wx:elif="{{step === 2}}" class="step season-step">
-        <view class="step-index">03 / 04 · 选择</view>
-        <view class="season-headline"><text class="season-headline-line">哪些解释，</text><text class="season-headline-line">你愿意留下？</text></view>
-        <view class="season-lead"><text class="season-lead-line">可以保留一个问题，拒绝一种解释，</text><text class="season-lead-line">也可以用自己的方式重新理解这件事。</text></view>
-
-        <view class="season-field">
-          <view class="season-label season-label--line">我想保留的</view>
-          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="keepUnderstanding" value="{{answers.keepUnderstanding}}" bindinput="handleInput" placeholder="这次观察里，对我有用的是……" />
+      <view wx:elif="{{step === 2}}" class="step season-step align-{{seasonChoice.align}} spacing-{{seasonChoice.spacing}}">
+        <view class="step-index" style="font-size: {{seasonChoice.stepLabel.fontSize * 2}}rpx; color: {{seasonChoice.stepLabel.color}};"><rich-text nodes="{{seasonChoice.stepLabel.richText}}"></rich-text></view>
+        <view class="season-headline">
+          <view class="season-headline-line" style="font-size: {{seasonChoice.titleLine1.fontSize * 2}}rpx; color: {{seasonChoice.titleLine1.color}};"><rich-text nodes="{{seasonChoice.titleLine1.richText}}"></rich-text></view>
+          <view class="season-headline-line" style="font-size: {{seasonChoice.titleLine2.fontSize * 2}}rpx; color: {{seasonChoice.titleLine2.color}};"><rich-text nodes="{{seasonChoice.titleLine2.richText}}"></rich-text></view>
+        </view>
+        <view class="season-lead">
+          <view class="season-lead-line" style="font-size: {{seasonChoice.leadLine1.fontSize * 2}}rpx; color: {{seasonChoice.leadLine1.color}};"><rich-text nodes="{{seasonChoice.leadLine1.richText}}"></rich-text></view>
+          <view class="season-lead-line" style="font-size: {{seasonChoice.leadLine2.fontSize * 2}}rpx; color: {{seasonChoice.leadLine2.color}};"><rich-text nodes="{{seasonChoice.leadLine2.richText}}"></rich-text></view>
         </view>
 
         <view class="season-field">
-          <view class="season-label season-label--line">我不接受的，或另一种理解<text class="season-optional">· 选填</text></view>
-          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="rejectUnderstanding" value="{{answers.rejectUnderstanding}}" bindinput="handleInput" placeholder="我不认同……；对我来说，也可能是……" />
+          <view class="season-label season-label--line" style="font-size: {{seasonChoice.keepLabel.fontSize * 2}}rpx; color: {{seasonChoice.keepLabel.color}};"><rich-text nodes="{{seasonChoice.keepLabel.richText}}"></rich-text></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="keepUnderstanding" value="{{answers.keepUnderstanding}}" bindinput="handleInput" placeholder="{{seasonKeepPlaceholder}}" placeholder-style="color: {{seasonChoice.keepPlaceholder.color}}; font-size: {{seasonChoice.keepPlaceholder.fontSize * 2}}rpx;" />
+        </view>
+
+        <view class="season-field">
+          <view class="season-label season-label--line" style="font-size: {{seasonChoice.rejectLabel.fontSize * 2}}rpx; color: {{seasonChoice.rejectLabel.color}};"><rich-text nodes="{{seasonChoice.rejectLabel.richText}}"></rich-text><view class="season-optional" style="font-size: {{seasonChoice.optionalLabel.fontSize * 2}}rpx; color: {{seasonChoice.optionalLabel.color}};"><rich-text nodes="{{seasonChoice.optionalLabel.richText}}"></rich-text></view></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing}}" maxlength="1000" data-field="rejectUnderstanding" value="{{answers.rejectUnderstanding}}" bindinput="handleInput" placeholder="{{seasonRejectPlaceholder}}" placeholder-style="color: {{seasonChoice.rejectPlaceholder.color}}; font-size: {{seasonChoice.rejectPlaceholder.fontSize * 2}}rpx;" />
         </view>
       </view>
-      <view wx:else class="step season-step">
-        <view class="step-index">04 / 04 · 行动</view>
-        <view class="season-headline"><text class="season-headline-line">接下来七天，</text><text class="season-headline-line">你愿意做什么？</text></view>
-        <view class="season-lead"><text class="season-lead-line">选一个小到能够发生的行动。休息、等待、</text><text class="season-lead-line">继续观察，也可以是此刻的选择。</text></view>
+      <view wx:else class="step season-step align-{{seasonAction.align}} spacing-{{seasonAction.spacing}}">
+        <view class="step-index" style="font-size: {{seasonAction.stepLabel.fontSize * 2}}rpx; color: {{seasonAction.stepLabel.color}};"><rich-text nodes="{{seasonAction.stepLabel.richText}}"></rich-text></view>
+        <view class="season-headline">
+          <view class="season-headline-line" style="font-size: {{seasonAction.titleLine1.fontSize * 2}}rpx; color: {{seasonAction.titleLine1.color}};"><rich-text nodes="{{seasonAction.titleLine1.richText}}"></rich-text></view>
+          <view class="season-headline-line" style="font-size: {{seasonAction.titleLine2.fontSize * 2}}rpx; color: {{seasonAction.titleLine2.color}};"><rich-text nodes="{{seasonAction.titleLine2.richText}}"></rich-text></view>
+        </view>
+        <view class="season-lead">
+          <view class="season-lead-line" style="font-size: {{seasonAction.leadLine1.fontSize * 2}}rpx; color: {{seasonAction.leadLine1.color}};"><rich-text nodes="{{seasonAction.leadLine1.richText}}"></rich-text></view>
+          <view class="season-lead-line" style="font-size: {{seasonAction.leadLine2.fontSize * 2}}rpx; color: {{seasonAction.leadLine2.color}};"><rich-text nodes="{{seasonAction.leadLine2.richText}}"></rich-text></view>
+        </view>
 
         <view class="season-field">
-          <view class="season-label season-label--tint">我愿意做的一个最小行动</view>
-          <textarea class="season-input-box" auto-height disabled="{{saving || advancing || restFirst}}" maxlength="1000" data-field="sevenDayAction" value="{{answers.sevenDayAction}}" bindinput="handleInput" placeholder="例如：本周找一个安静的晚上，把这事件重新读一次。" />
+          <view class="season-label season-label--tint" style="font-size: {{seasonAction.actionLabel.fontSize * 2}}rpx; color: {{seasonAction.actionLabel.color}};"><rich-text nodes="{{seasonAction.actionLabel.richText}}"></rich-text></view>
+          <textarea class="season-input-box" auto-height disabled="{{saving || advancing || restFirst}}" maxlength="1000" data-field="sevenDayAction" value="{{answers.sevenDayAction}}" bindinput="handleInput" placeholder="{{seasonActionPlaceholder}}" placeholder-style="color: {{seasonAction.actionPlaceholder.color}}; font-size: {{seasonAction.actionPlaceholder.fontSize * 2}}rpx;" />
         </view>
 
         <view class="rest-toggle {{restFirst ? 'active' : ''}}" role="checkbox" aria-checked="{{restFirst}}" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="toggleRestFirst">
-          <text>先留一点时间，不安排新行动</text>
+          <view class="rest-toggle-copy" style="font-size: {{seasonAction.restLabel.fontSize * 2}}rpx; color: {{seasonAction.restLabel.color}};"><rich-text nodes="{{seasonAction.restLabel.richText}}"></rich-text></view>
           <text class="rest-toggle-mark" aria-hidden="true">{{restFirst ? '✓' : ''}}</text>
         </view>
 
         <view wx:if="{{!answers.sevenDayAction}}" class="season-preview">
-          <view class="season-preview-label">这次留下的</view>
-          <view class="season-preview-value muted">还没有写下具体的事</view>
+          <view class="season-preview-label" style="font-size: {{seasonAction.previewLabel.fontSize * 2}}rpx; color: {{seasonAction.previewLabel.color}};"><rich-text nodes="{{seasonAction.previewLabel.richText}}"></rich-text></view>
+          <view class="season-preview-value muted" style="font-size: {{seasonAction.previewEmpty.fontSize * 2}}rpx; color: {{seasonAction.previewEmpty.color}};"><rich-text nodes="{{seasonAction.previewEmpty.richText}}"></rich-text></view>
         </view>
 
-        <view class="season-footnote">保存的是你写下的经验与判断，不会生成性格结论；以后可以修改或删除。</view>
+        <view class="season-footnote" style="font-size: {{seasonAction.footer.fontSize * 2}}rpx; color: {{seasonAction.footer.color}};"><rich-text nodes="{{seasonAction.footer.richText}}"></rich-text></view>
       </view>
     </block>
     <view wx:if="{{syncState === 'pending'}}" class="sync-status pending" role="status" aria-live="polite">有未同步的改动</view><view wx:elif="{{syncState === 'saving'}}" class="sync-status" role="status" aria-live="polite">正在保存到云端…</view><view wx:elif="{{syncState === 'conflict'}}" class="sync-status error" role="alert">云端草稿已在其他位置更新</view><view wx:elif="{{syncState === 'error'}}" class="sync-status error" role="alert">{{error || '云端保存失败，请重试'}}</view>
     <view wx:if="{{validationError}}" class="validation-error" role="alert">{{validationError}}</view>
-    <view class="actions">
-      <view wx:if="{{step > 0}}" class="button secondary" role="button" aria-label="{{selected === 'season' ? (step === 3 ? '回看选择' : (step === 2 ? '回看变化' : (step === 1 ? (seasonStage === 1 ? '回到这件事' : '回看底色') : '上一步'))) : currentRealityStagePreviousLabel}}" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="previous" style="{{selected === 'reality' ? 'color: ' + currentRealityStage.previousLabel.color + '; border-color: ' + currentRealityStage.previousLabel.color + ';' : ''}}">
+    <view class="actions season-actions align-{{currentSeasonAlign}}">
+      <view wx:if="{{step > 0}}" class="button secondary" role="button" aria-label="{{selected === 'season' ? currentSeasonPreviousLabel : currentRealityStagePreviousLabel}}" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="previous" style="{{selected === 'reality' ? 'color: ' + currentRealityStage.previousLabel.color + '; border-color: ' + currentRealityStage.previousLabel.color + ';' : 'color: ' + currentSeasonPreviousCopy.color + '; border-color: ' + currentSeasonPreviousCopy.color + ';'}}">
         <rich-text wx:if="{{selected === 'reality'}}" nodes="{{currentRealityStage.previousLabel.richText}}" style="font-size: {{currentRealityStage.previousLabel.fontSize * 2}}rpx;"></rich-text>
-        <text wx:else>{{selected === 'season' ? (step === 3 ? '回看选择' : (step === 2 ? '回看变化' : (step === 1 ? (seasonStage === 1 ? '回到这件事' : '回看底色') : '上一步'))) : '上一步'}}</text>
+        <rich-text wx:else nodes="{{currentSeasonPreviousCopy.richText}}" style="font-size: {{currentSeasonPreviousCopy.fontSize * 2}}rpx;"></rich-text>
       </view>
       <view wx:if="{{selected === 'reality'}}" class="button" role="button" aria-label="{{saving || advancing ? '同步中' : currentRealityStageNextLabel}}" aria-disabled="{{saving || advancing || issueLoading || conflict}}" tabindex="0" bindtap="next" style="background: {{currentRealityStage.nextLabel.color}}; color: {{currentRealityStageNextTextColor}};">
         <rich-text wx:if="{{!saving && !advancing}}" nodes="{{currentRealityStage.nextLabel.richText}}" style="font-size: {{currentRealityStage.nextLabel.fontSize * 2}}rpx;"></rich-text>
         <text wx:else>同步中…</text>
       </view>
-      <view wx:else class="button" role="button" aria-label="{{saving || advancing ? '同步中' : (step === 0 ? '回到一件真实的事' : (step === 1 ? (seasonStage === 1 ? '带着自己的理解继续' : '看看这件事的变化') : (step === 2 ? '想想接下来的行动' : (step === 3 ? '保存这次观察' : '下一步'))))}}" aria-disabled="{{saving || advancing || issueLoading || conflict}}" tabindex="0" bindtap="next">{{saving || advancing ? '同步中…' : (step === 0 ? '回到一件真实的事' : (step === 1 ? (seasonStage === 1 ? '带着自己的理解继续' : '看看这件事的变化') : (step === 2 ? '想想接下来的行动' : (step === 3 ? '保存这次观察' : '下一步'))))}}</view>
+      <view wx:else class="button" role="button" aria-label="{{saving || advancing ? '同步中' : currentSeasonNextLabel}}" aria-disabled="{{saving || advancing || issueLoading || conflict}}" tabindex="0" bindtap="next" style="background: {{currentSeasonNextCopy.color}}; color: {{currentSeasonNextTextColor}};">
+        <rich-text wx:if="{{!saving && !advancing}}" nodes="{{currentSeasonNextCopy.richText}}" style="font-size: {{currentSeasonNextCopy.fontSize * 2}}rpx;"></rich-text>
+        <text wx:else>同步中…</text>
+      </view>
     </view>
     <view wx:if="{{syncState === 'error'}}" class="actions retry-actions"><view class="button secondary" role="button" aria-label="重试保存" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="retrySave">重试保存</view></view><view wx:if="{{syncState === 'conflict'}}" class="actions conflict-actions"><view class="button secondary" role="button" aria-label="载入云端" aria-disabled="{{saving}}" tabindex="0" bindtap="loadCloudVersion">载入云端</view><view class="button destructive" role="button" aria-label="确认用本机覆盖" aria-disabled="{{saving}}" tabindex="0" bindtap="keepLocalVersion">{{saving ? '核对中…' : '确认用本机覆盖'}}</view></view><view wx:if="{{error}}" class="error-text" role="alert">{{error}}</view>
     <view wx:if="{{selected === 'reality'}}" class="draft-note reality-stage-footer align-{{currentRealityStage.align}}" style="font-size: {{currentRealityStage.footer.fontSize * 2}}rpx; color: {{currentRealityStage.footer.color}};"><rich-text nodes="{{currentRealityStage.footer.richText}}"></rich-text></view>
-    <view wx:else class="draft-note">{{editingSaved ? '修改会保存到这条观察记录。' : '可以暂时说不清，也可以留空继续。'}}</view>
+    <view wx:elif="{{selected === 'season' && currentSeasonFooter}}" class="draft-note season-draft-note align-{{currentSeasonAlign}}" style="font-size: {{currentSeasonFooter.fontSize * 2}}rpx; color: {{currentSeasonFooter.color}};"><rich-text nodes="{{currentSeasonFooter.richText}}"></rich-text></view>
   </view>
   <view wx:else class="complete"><view class="eyebrow">观察已保存</view><view class="title">给自己留了一处可以回来的地方。</view><view class="muted">这次观察已经保存到你的云端记录，仅自己可见。</view><view class="button" role="button" aria-label="查看本次记录" tabindex="0" bindtap="viewSavedRecord">查看本次记录</view><view class="button secondary" role="button" aria-label="再观察一次" tabindex="0" bindtap="restart">再观察一次</view></view>
   </view>

@@ -1,63 +1,86 @@
-<view class="page season-page">
+<view class="page season-page season-align-{{seasonIntro.align}} season-spacing-{{seasonIntro.spacing}}">
   <view class="season-topbar" style="padding-top: {{statusBarHeight}}px">
     <view class="season-nav-row">
       <view class="season-back" role="button" aria-label="返回上一级" tabindex="0" bindtap="handleBack">‹</view>
-      <view class="season-nav-title">四时气韵</view>
+      <rich-text class="season-nav-title" nodes="{{seasonIntro.navTitle.richText}}" style="font-size: {{seasonIntro.navTitle.fontSize * 2}}rpx; color: {{seasonIntro.navTitle.color}}"></rich-text>
       <view class="season-more" role="button" aria-label="展开说明" tabindex="0" bindtap="toggleGuide">···</view>
     </view>
   </view>
 
-  <view class="season-meta"><text>四时气韵</text><text>从生命牌开始</text></view>
+  <view class="season-meta">
+    <rich-text nodes="{{seasonIntro.metaLeft.richText}}" style="font-size: {{seasonIntro.metaLeft.fontSize * 2}}rpx; color: {{seasonIntro.metaLeft.color}}"></rich-text>
+    <rich-text nodes="{{seasonIntro.metaRight.richText}}" style="font-size: {{seasonIntro.metaRight.fontSize * 2}}rpx; color: {{seasonIntro.metaRight.color}}"></rich-text>
+  </view>
 
   <view class="season-hero">
-    <view class="season-headline"><text class="season-headline-line">从一个生日，</text><text class="season-headline-line">开启一次观察。</text></view>
-    <view class="season-lead">按生日找到对应的生命牌，借它的主题回看一件真实的事，再辨认其中的变化与自己的选择。</view>
+    <rich-text class="season-headline" nodes="{{seasonIntro.heroTitle.richText}}" style="font-size: {{seasonIntro.heroTitle.fontSize * 2}}rpx; color: {{seasonIntro.heroTitle.color}}"></rich-text>
+    <rich-text class="season-lead" nodes="{{seasonIntro.heroDescription.richText}}" style="font-size: {{seasonIntro.heroDescription.fontSize * 2}}rpx; color: {{seasonIntro.heroDescription.color}}"></rich-text>
   </view>
 
   <view class="season-intro-guide">
     <view class="season-guide-toggle" role="button" aria-expanded="{{guideOpen}}" tabindex="0" bindtap="toggleGuide">
       <text class="guide-caret" aria-hidden="true">{{guideOpen ? '▾' : '▸'}}</text>
-      <text>生命牌与四时气韵是什么？</text>
-      <text class="season-guide-state {{guideRead ? 'is-read' : ''}}">{{guideRead ? '已读' : '必读'}}</text>
+      <rich-text class="season-guide-title" nodes="{{seasonIntro.guideTitle.richText}}" style="font-size: {{seasonIntro.guideTitle.fontSize * 2}}rpx; color: {{seasonIntro.guideTitle.color}}"></rich-text>
+      <rich-text class="season-guide-state {{guideRead ? 'is-read' : ''}}" nodes="{{guideStateCopy.richText}}" style="font-size: {{guideStateCopy.fontSize * 2}}rpx; color: {{guideStateCopy.color}}"></rich-text>
     </view>
     <view wx:if="{{guideOpen}}" class="season-guide-body">
-      <view class="season-guide-paragraph">生命牌来自一种以生日对应纸牌的传统符号体系。在这里，MYRIAD SHE 把其中的主题转成观察问题，再借“生、长、收、藏”辨认一件具体的事正在怎样变化。</view>
-      <view class="season-guide-paragraph">生日只用于查表。牌义不决定你是谁，也不能替你判断此刻的状态。你可以保留不同的经验与解释。</view>
-      <view class="season-guide-steps">底色 → 此刻 → 选择 → 行动</view>
+      <rich-text class="season-guide-paragraph" nodes="{{seasonIntro.guideParagraphOne.richText}}" style="font-size: {{seasonIntro.guideParagraphOne.fontSize * 2}}rpx; color: {{seasonIntro.guideParagraphOne.color}}"></rich-text>
+      <rich-text class="season-guide-paragraph" nodes="{{seasonIntro.guideParagraphTwo.richText}}" style="font-size: {{seasonIntro.guideParagraphTwo.fontSize * 2}}rpx; color: {{seasonIntro.guideParagraphTwo.color}}"></rich-text>
+      <rich-text class="season-guide-steps" nodes="{{seasonIntro.guideSteps.richText}}" style="font-size: {{seasonIntro.guideSteps.fontSize * 2}}rpx; color: {{seasonIntro.guideSteps.color}}"></rich-text>
       <view wx:if="{{!guideRead}}" class="season-guide-gate">
-        <view class="season-guide-gate-note">开始前，请先阅读以上说明并确认了解。</view>
-        <view class="season-guide-confirm" role="button" aria-label="我已了解四时气韵，开始选择生日" tabindex="0" bindtap="acknowledgeGuide">我已了解，开始选择生日</view>
+        <rich-text class="season-guide-gate-note" nodes="{{seasonIntro.guideGateNote.richText}}" style="font-size: {{seasonIntro.guideGateNote.fontSize * 2}}rpx; color: {{seasonIntro.guideGateNote.color}}"></rich-text>
+        <view class="season-guide-confirm" role="button" aria-label="{{seasonIntroText.guideConfirm}}" tabindex="0" bindtap="acknowledgeGuide">
+          <rich-text nodes="{{seasonIntro.guideConfirm.richText}}" style="font-size: {{seasonIntro.guideConfirm.fontSize * 2}}rpx; color: {{seasonIntro.guideConfirm.color}}"></rich-text>
+        </view>
       </view>
     </view>
   </view>
 
   <view class="season-form {{guideRead ? '' : 'is-locked'}}">
-    <view class="season-label">你的公历生日</view>
+    <rich-text class="season-label" nodes="{{seasonIntro.birthdayLabel.richText}}" style="font-size: {{seasonIntro.birthdayLabel.fontSize * 2}}rpx; color: {{seasonIntro.birthdayLabel.color}}"></rich-text>
     <view class="birth-row">
       <picker class="birth-field" mode="selector" disabled="{{!guideRead}}" range="{{monthOptions}}" value="{{monthIndex}}" bindchange="onMonthChange">
-        <view class="birth-caption">月</view>
-        <view class="birth-value {{birthMonth ? '' : 'is-placeholder'}}">{{birthMonth ? birthMonth + ' 月' : '选择月份'}}</view>
+        <rich-text class="birth-caption" nodes="{{seasonIntro.monthLabel.richText}}" style="font-size: {{seasonIntro.monthLabel.fontSize * 2}}rpx; color: {{seasonIntro.monthLabel.color}}"></rich-text>
+        <view class="birth-value {{birthMonth ? '' : 'is-placeholder'}}">
+          <block wx:if="{{birthMonth}}">
+            <text class="birth-number">{{birthMonth}}</text>
+            <rich-text class="birth-inline-copy" nodes="{{seasonIntro.monthLabel.richText}}" style="font-size: {{seasonIntro.monthLabel.fontSize * 2}}rpx; color: {{seasonIntro.monthLabel.color}}"></rich-text>
+          </block>
+          <rich-text wx:else nodes="{{seasonIntro.monthPlaceholder.richText}}" style="font-size: {{seasonIntro.monthPlaceholder.fontSize * 2}}rpx; color: {{seasonIntro.monthPlaceholder.color}}"></rich-text>
+        </view>
       </picker>
       <picker class="birth-field" mode="selector" disabled="{{!guideRead}}" range="{{dayOptions}}" value="{{dayIndex}}" bindchange="onDayChange">
-        <view class="birth-caption">日</view>
-        <view class="birth-value {{birthDay ? '' : 'is-placeholder'}}">{{birthDay ? birthDay + ' 日' : '选择日期'}}</view>
+        <rich-text class="birth-caption" nodes="{{seasonIntro.dayLabel.richText}}" style="font-size: {{seasonIntro.dayLabel.fontSize * 2}}rpx; color: {{seasonIntro.dayLabel.color}}"></rich-text>
+        <view class="birth-value {{birthDay ? '' : 'is-placeholder'}}">
+          <block wx:if="{{birthDay}}">
+            <text class="birth-number">{{birthDay}}</text>
+            <rich-text class="birth-inline-copy" nodes="{{seasonIntro.dayLabel.richText}}" style="font-size: {{seasonIntro.dayLabel.fontSize * 2}}rpx; color: {{seasonIntro.dayLabel.color}}"></rich-text>
+          </block>
+          <rich-text wx:else nodes="{{seasonIntro.dayPlaceholder.richText}}" style="font-size: {{seasonIntro.dayPlaceholder.fontSize * 2}}rpx; color: {{seasonIntro.dayPlaceholder.color}}"></rich-text>
+        </view>
       </picker>
     </view>
-    <view class="birth-note">只需月与日。同一天生日对应同一张生命牌。</view>
+    <rich-text class="birth-note" nodes="{{seasonIntro.birthdayNote.richText}}" style="font-size: {{seasonIntro.birthdayNote.fontSize * 2}}rpx; color: {{seasonIntro.birthdayNote.color}}"></rich-text>
   </view>
 
   <view class="remember-row" role="button" aria-role="button" aria-pressed="{{remember}}" tabindex="0" bindtap="toggleRemember">
     <view class="remember-box {{remember ? 'is-checked' : ''}}" aria-hidden="true"></view>
     <view class="remember-copy">
-      <view class="remember-title">在这台设备记住生日</view>
-      <view class="remember-note">下次可直接继续观察；随时可以清除。</view>
+      <rich-text class="remember-title" nodes="{{seasonIntro.rememberTitle.richText}}" style="font-size: {{seasonIntro.rememberTitle.fontSize * 2}}rpx; color: {{seasonIntro.rememberTitle.color}}"></rich-text>
+      <rich-text class="remember-note" nodes="{{seasonIntro.rememberNote.richText}}" style="font-size: {{seasonIntro.rememberNote.fontSize * 2}}rpx; color: {{seasonIntro.rememberNote.color}}"></rich-text>
     </view>
   </view>
 
-  <view class="season-primary {{guideRead ? '' : 'is-locked'}}" role="button" aria-label="{{guideRead ? '查看我的生命牌' : '请先阅读并确认了解四时气韵'}}" aria-disabled="{{!guideRead}}" tabindex="0" bindtap="openLifeCard">{{guideRead ? '查看我的生命牌' : '请先阅读并确认了解'}}</view>
+  <view class="season-primary {{guideRead ? '' : 'is-locked'}}" role="button" aria-label="{{guideRead ? seasonIntroText.primaryAction : seasonIntroText.primaryLockedAction}}" aria-disabled="{{!guideRead}}" tabindex="0" bindtap="openLifeCard">
+    <rich-text nodes="{{primaryActionCopy.richText}}" style="font-size: {{primaryActionCopy.fontSize * 2}}rpx; color: {{primaryActionCopy.color}}"></rich-text>
+  </view>
 
-  <view class="season-secondary" role="button" aria-label="从现实处境开始" tabindex="0" bindtap="openReality">从现实处境开始</view>
-  <view class="season-skip" role="button" aria-label="暂不使用四时气韵" tabindex="0" bindtap="pauseSeason">暂不使用四时气韵</view>
+  <view class="season-secondary" role="button" aria-label="{{seasonIntroText.realityAction}}" tabindex="0" bindtap="openReality">
+    <rich-text nodes="{{seasonIntro.realityAction.richText}}" style="font-size: {{seasonIntro.realityAction.fontSize * 2}}rpx; color: {{seasonIntro.realityAction.color}}"></rich-text>
+  </view>
+  <view class="season-skip" role="button" aria-label="{{seasonIntroText.skipAction}}" tabindex="0" bindtap="pauseSeason">
+    <rich-text nodes="{{seasonIntro.skipAction.richText}}" style="font-size: {{seasonIntro.skipAction.fontSize * 2}}rpx; color: {{seasonIntro.skipAction.color}}"></rich-text>
+  </view>
 
   <app-tab-bar />
 </view>

@@ -163,6 +163,32 @@ textarea { min-height: 230rpx; }
 
 /* ---------- 四时气韵 · 02 此刻 ---------- */
 .season-step { display: block; }
+.season-step.align-center { text-align: center; }
+.season-step.align-right { text-align: right; }
+.season-step.align-center .season-input-box { text-align: center; }
+.season-step.align-right .season-input-box { text-align: right; }
+.season-step.align-center .season-choices { justify-content: center; }
+.season-step.align-right .season-choices { justify-content: flex-end; }
+.season-step.align-center .season-headline-line,
+.season-step.align-center .season-lead-line,
+.season-step.align-center .season-footnote,
+.season-step.align-center .draft-note,
+.season-step.align-center .rest-toggle-copy { text-align: center; }
+.season-step.align-right .season-headline-line,
+.season-step.align-right .season-lead-line,
+.season-step.align-right .season-footnote,
+.season-step.align-right .draft-note,
+.season-step.align-right .rest-toggle-copy { text-align: right; }
+.season-step.align-center .season-state-head { text-align: center; }
+.season-step.align-right .season-state-head { text-align: right; }
+.season-step.spacing-compact .season-field { margin-top: 38rpx; }
+.season-step.spacing-compact .season-headline { margin-top: 16rpx; }
+.season-step.spacing-compact .season-lead { margin-top: 20rpx; }
+.season-step.spacing-roomy .season-field { margin-top: 82rpx; }
+.season-step.spacing-roomy .season-headline { margin-top: 32rpx; }
+.season-step.spacing-roomy .season-lead { margin-top: 36rpx; }
+.season-actions.align-center { justify-content: center; }
+.season-actions.align-right { justify-content: flex-end; }
 .step-index {
   margin-top: 30rpx;
   color: #8b6b58;
@@ -193,7 +219,7 @@ textarea { min-height: 230rpx; }
   font-weight: 600;
   line-height: 1.7;
 }
-.season-optional { margin-left: 12rpx; color: #8b6b58; font-size: 21rpx; font-weight: 400; }
+.season-optional { display: inline-block; margin-left: 12rpx; color: #8b6b58; font-size: 21rpx; font-weight: 400; }
 .season-input {
   width: 100%;
   min-height: 236rpx;

@@ -13,6 +13,15 @@ await server.listen();
 let browser;
 try {
   const { createDefaultDiscussionContent } = await server.ssrLoadModule('/src/discussion-content.ts');
+  const {
+    seasonActionCopyGroups,
+    seasonCardCopyGroups,
+    seasonChoiceCopyGroups,
+    seasonNowChangeCopyGroups,
+    seasonNowRecentCopyGroups,
+    seasonRelationKeys,
+    seasonStateKeys,
+  } = await server.ssrLoadModule('/src/season-stages.ts');
   const discussion = createDefaultDiscussionContent();
   const timestamp = '2026-11-04T04:30:00Z';
   const auditFixtures = [
@@ -36,8 +45,37 @@ try {
     align,
     spacing,
   });
-  const practice = {
-    editVersion: 1, title: '实践', titleRichText: '实践', titleFontSize: 12, titleColor: '#8b6b58',
+  const stageFields = (groups) => Object.fromEntries(groups.flatMap((group) => group.fields).map((field) => [field.key, copy('让日常成为新的开始')]));
+  const seasonRelationLabels = { resonates: '有共鸣', partial: '部分有关', different: '与我的经验不同', unclear: '暂时说不清' };
+  const seasonStateCopy = {
+    生: { label: '正在开始', hint: '什么正在开始？' },
+    长: { label: '继续培育', hint: '什么值得继续培育？' },
+    收: { label: '完成与取舍', hint: '什么需要完成或收束？' },
+    藏: { label: '暂停与保存', hint: '什么需要暂停或保存？' },
+    暂时说不清: { label: '暂时说不清', hint: '也可以不急着归类。' },
+  };
+  const seasonStages = {
+    card: { ...stageFields(seasonCardCopyGroups), align: 'left', spacing: 'standard' },
+    now: {
+      align: 'left',
+      spacing: 'standard',
+      recent: {
+        ...stageFields(seasonNowRecentCopyGroups),
+        relations: seasonRelationKeys.map((key) => ({ key, label: copy(seasonRelationLabels[key]) })),
+      },
+      change: {
+        ...stageFields(seasonNowChangeCopyGroups),
+        states: seasonStateKeys.map((key) => ({
+          key,
+          label: copy(seasonStateCopy[key].label),
+          hint: copy(seasonStateCopy[key].hint),
+        })),
+      },
+    },
+    choice: { ...stageFields(seasonChoiceCopyGroups), align: 'left', spacing: 'standard' },
+    action: { ...stageFields(seasonActionCopyGroups), align: 'left', spacing: 'standard' },
+  };
+  const practice = {    editVersion: 1, title: '实践', titleRichText: '实践', titleFontSize: 12, titleColor: '#8b6b58',
     intro: '从此刻开始，和日常相遇', introRichText: '从此刻开始，和日常相遇', introFontSize: 32, introColor: '#40362f',
     metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58',
     observationCopy: {
@@ -47,6 +85,17 @@ try {
         body: realityStage('此刻', 'center', 'roomy'),
         need: realityStage('选择'),
         nextAction: realityStage('行动', 'right', 'compact'),
+      },
+      seasonIntro: {
+        ...copies('navTitle metaLeft metaRight heroTitle heroDescription guideTitle guideRequired guideRead guideParagraphOne guideParagraphTwo guideSteps guideGateNote guideConfirm birthdayLabel monthLabel dayLabel monthPlaceholder dayPlaceholder birthdayNote rememberTitle rememberNote primaryAction primaryLockedAction realityAction skipAction'),
+        align: 'center',
+        spacing: 'roomy',
+      },
+      seasonStages,
+      record: {
+        ...copies('navTitle methodReality methodSeason statusDraft statusSaved stageBase stageNow stageChoice stageAction seasonActionTail experienceLabel changeLabel keepLabel keepLabelOptional stageRejectLabel perspectiveLabel perspectiveNote perspectiveEmpty editAction againAction deleteAction deletingAction emptyValue seasonCardSubtitle'),
+        align: 'left',
+        spacing: 'standard',
       },
     },
     sharedPracticeCopy: copies('topbarTitle metaLeft metaRight heroTitle heroIntro onlineNumber onlineContext onlineIssueLabel onlineIssueTheme onlineQuestion onlineCopy onlineAction offlineNumber offlineContext offlineTitle offlineCopy noticeLabel noticeCode rule1Number rule1Title rule1Copy rule2Number rule2Title rule2Copy rule3Number rule3Title rule3Copy rule4Number rule4Title rule4Copy nextAction'),
@@ -221,6 +270,7 @@ try {
   const errors = [];
   const requests = [];
   let failDaily = false;
+  let savedPracticePayload = null;
   let practiceCopyOfflinePublished = false;
   browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
   async function prepare(page, role = 'super_admin', modules = permissions) {
@@ -280,6 +330,11 @@ try {
       }
       if (path === '/content/issues') return send(issueFixtures);
       if (path === '/content/issues/summary') return send(issueSummaryFixture());
+      if (path === '/content/practice/manage' && route.request().method() === 'PATCH') {
+        savedPracticePayload = body;
+        Object.assign(practice, body, { editVersion: practice.editVersion + 1 });
+        return send(practice);
+      }
       if (path === '/content/practice/manage') return send(practice);
       if (path === '/content/daily-objects/manage') return failDaily ? route.fulfill({ status: 500, json: { message: '测试：读取失败' } }) : send(daily);
       if (path === '/content/mine/manage') return send(mine);
@@ -887,6 +942,125 @@ try {
   await realityValidationDialog.getByRole('button', { name: '知道了', exact: true }).click();
   await page.waitForFunction(() => document.activeElement?.matches('[data-reality-field="reality:need:title"] .rich-text-canvas'));
   await needTitle.fill('此刻，你愿意把选择权放在哪里？');
+  const seasonTab = page.getByRole('tab', { name: '四时气韵入口页', exact: true });
+  await seasonTab.click();
+  assert.equal(await seasonTab.getAttribute('aria-selected'), 'true');
+  assert.equal(await page.locator('#practice-observation-content [data-season-field]').count(), 25, 'season intro editor should expose all 25 copy fields');
+  const seasonControls = page.locator('#practice-observation-content .reality-stage-controls select');
+  assert.equal(await seasonControls.nth(0).inputValue(), 'center');
+  assert.equal(await seasonControls.nth(1).inputValue(), 'roomy');
+  await page.locator('#practice-observation-content [data-preview-key="season:heroTitle"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-season-field="season:heroTitle"]')?.classList.contains('is-locating'));
+  const seasonHeroTitle = page.locator('[data-season-field="season:heroTitle"] .rich-text-canvas');
+  await seasonHeroTitle.fill('');
+  await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
+  const seasonValidationDialog = page.getByRole('alertdialog', { name: '操作未完成', exact: true });
+  await seasonValidationDialog.waitFor();
+  assert.equal((await seasonValidationDialog.locator('.admin-error-copy').innerText()).trim(), '四时气韵入口页缺少“主标题”');
+  await seasonValidationDialog.getByRole('button', { name: '知道了', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-season-field="season:heroTitle"] .rich-text-canvas'));
+  await seasonHeroTitle.fill('从一个生日，开启一次观察。');
+  const seasonStagesTab = page.getByRole('tab', { name: '四时气韵四页', exact: true });
+  await seasonStagesTab.click();
+  assert.equal(await seasonStagesTab.getAttribute('aria-selected'), 'true');
+  const seasonStageTabs = page.getByRole('tablist', { name: '四时气韵四页阶段', exact: true });
+  await seasonStageTabs.waitFor();
+  assert.equal(await seasonStageTabs.locator('button').count(), 4, 'season-stage editor should expose all four stages');
+  const seasonStageCounts = [];
+  await seasonStageTabs.getByRole('tab', { name: /01 底色/ }).click();
+  seasonStageCounts.push(await page.locator('[data-season-stage-field^="season-stage:card:"]').count());
+  await seasonStageTabs.getByRole('tab', { name: /02 此刻/ }).click();
+  const seasonNowTabs = page.getByRole('tablist', { name: '四时气韵此刻页内容', exact: true });
+  await seasonNowTabs.waitFor();
+  assert.equal(await seasonNowTabs.locator('button').count(), 2, 'now stage should expose both content tabs');
+  await seasonNowTabs.getByRole('tab', { name: '最近发生了什么', exact: true }).click();
+  seasonStageCounts.push(await page.locator('[data-season-stage-field^="season-stage:now:recent:"]').count());
+  await seasonNowTabs.getByRole('tab', { name: '此刻的变化', exact: true }).click();
+  seasonStageCounts.push(await page.locator('[data-season-stage-field^="season-stage:now:change:"]').count());
+  await seasonStageTabs.getByRole('tab', { name: /03 选择/ }).click();
+  seasonStageCounts.push(await page.locator('[data-season-stage-field^="season-stage:choice:"]').count());
+  await seasonStageTabs.getByRole('tab', { name: /04 行动/ }).click();
+  seasonStageCounts.push(await page.locator('[data-season-stage-field^="season-stage:action:"]').count());
+  assert.deepEqual(seasonStageCounts, [13, 16, 20, 13, 13], 'season-stage editor should expose every copy and option field');
+  assert.equal(seasonStageCounts.reduce((total, count) => total + count, 0), 75, 'season-stage editor should expose all 75 editable values');
+  await page.locator('.season-stages-preview [data-preview-key="season-stage:card:stageLabel"]').first().click();
+  await page.waitForFunction(() => document.querySelector('[role="tablist"][aria-label="四时气韵四页阶段"] button[aria-selected="true"]')?.textContent?.includes('01 底色'));
+  await page.waitForFunction(() => document.querySelector('[data-season-stage-field="season-stage:card:stageLabel"]')?.classList.contains('is-locating'));
+  const cardStageLabelField = page.locator('[data-season-stage-field="season-stage:card:stageLabel"]');
+  const cardStageLabel = cardStageLabelField.locator('.rich-text-canvas');
+  await cardStageLabel.fill('');
+  await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
+  const seasonStageValidationDialog = page.getByRole('alertdialog', { name: '操作未完成', exact: true });
+  await seasonStageValidationDialog.waitFor();
+  assert.equal((await seasonStageValidationDialog.locator('.admin-error-copy').innerText()).trim(), '四时气韵“01 底色”缺少“阶段名”');
+  await seasonStageValidationDialog.getByRole('button', { name: '知道了', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-season-stage-field="season-stage:card:stageLabel"] .rich-text-canvas'));
+  await cardStageLabel.fill('新的底色标题');
+  const seasonStageControls = page.locator('#practice-observation-content .reality-stage-controls select');
+  await seasonStageControls.nth(0).selectOption('center');
+  await seasonStageControls.nth(1).selectOption('roomy');
+  await cardStageLabel.focus();
+  await page.keyboard.press('Control+A');
+  await cardStageLabelField.getByLabel('文字字号', { exact: true }).selectOption('32');
+  await cardStageLabel.focus();
+  await page.keyboard.press('Control+A');
+  const seasonStageColor = cardStageLabelField.getByLabel('选择文字颜色', { exact: true });
+  await seasonStageColor.fill('#123456');
+  await seasonStageColor.dispatchEvent('change');
+  await seasonStageTabs.getByRole('tab', { name: /02 此刻/ }).click();
+  await seasonNowTabs.getByRole('tab', { name: '最近发生了什么', exact: true }).click();
+  const relationField = page.locator('[data-season-stage-field="season-stage:now:recent:relations:resonates:label"]');
+  await relationField.locator('.rich-text-canvas').fill('有共鸣的新说法');
+  await seasonNowTabs.getByRole('tab', { name: '此刻的变化', exact: true }).click();
+  const stateHintField = page.locator('[data-season-stage-field="season-stage:now:change:states:生:hint"]');
+  await stateHintField.locator('.rich-text-canvas').fill('新的状态说明');
+  const practiceSaveResponse = page.waitForResponse((response) => response.url().includes('/content/practice/manage') && response.request().method() === 'PATCH');
+  await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
+  await practiceSaveResponse;
+  await page.locator('#practice-observation-content .status-message').filter({ hasText: '实践内容已保存到云端。' }).waitFor();
+  assert.equal(savedPracticePayload.observationCopy.seasonStages.card.align, 'center');
+  assert.equal(savedPracticePayload.observationCopy.seasonStages.card.spacing, 'roomy');
+  assert.equal(savedPracticePayload.observationCopy.seasonStages.card.stageLabel.fontSize, 32);
+  assert.equal(savedPracticePayload.observationCopy.seasonStages.card.stageLabel.color, '#123456');
+  assert.match(savedPracticePayload.observationCopy.seasonStages.card.stageLabel.richText, /新的底色标题/);
+  assert.match(savedPracticePayload.observationCopy.seasonStages.now.recent.relations.find((item) => item.key === 'resonates').label.richText, /有共鸣的新说法/);
+  assert.match(savedPracticePayload.observationCopy.seasonStages.now.change.states.find((item) => item.key === '生').hint.richText, /新的状态说明/);
+  const recordTab = page.getByRole('tab', { name: '观察记录页', exact: true });
+  await recordTab.click();
+  assert.equal(await recordTab.getAttribute('aria-selected'), 'true');
+  assert.equal(await page.locator('#practice-observation-content [data-record-field]').count(), 24, 'observation record editor should expose all 24 copy fields');
+  await page.locator('.observation-record-preview [data-preview-key="record:navTitle"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-record-field="record:navTitle"]')?.classList.contains('is-locating'));
+  const recordNavTitleField = page.locator('[data-record-field="record:navTitle"]');
+  const recordNavTitle = recordNavTitleField.locator('.rich-text-canvas');
+  await recordNavTitle.fill('');
+  await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
+  const recordValidationDialog = page.getByRole('alertdialog', { name: '操作未完成', exact: true });
+  await recordValidationDialog.waitFor();
+  assert.equal((await recordValidationDialog.locator('.admin-error-copy').innerText()).trim(), '观察记录页缺少“导航栏标题”');
+  await recordValidationDialog.getByRole('button', { name: '知道了', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-record-field="record:navTitle"] .rich-text-canvas'));
+  await recordNavTitle.fill('我的观察记录');
+  await recordNavTitle.focus();
+  await page.keyboard.press('Control+A');
+  await recordNavTitleField.getByLabel('文字字号', { exact: true }).selectOption('20');
+  await recordNavTitle.focus();
+  await page.keyboard.press('Control+A');
+  const recordColor = recordNavTitleField.getByLabel('选择文字颜色', { exact: true });
+  await recordColor.fill('#654321');
+  await recordColor.dispatchEvent('change');
+  const recordControls = page.locator('#practice-observation-content .reality-stage-controls select');
+  await recordControls.nth(0).selectOption('center');
+  await recordControls.nth(1).selectOption('roomy');
+  const recordSaveResponse = page.waitForResponse((response) => response.url().includes('/content/practice/manage') && response.request().method() === 'PATCH');
+  await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
+  await recordSaveResponse;
+  await page.locator('#practice-observation-content .status-message').filter({ hasText: '实践内容已保存到云端。' }).waitFor();
+  assert.equal(savedPracticePayload.observationCopy.record.navTitle.fontSize, 20);
+  assert.equal(savedPracticePayload.observationCopy.record.navTitle.color, '#654321');
+  assert.match(savedPracticePayload.observationCopy.record.navTitle.richText, /我的观察记录/);
+  assert.equal(savedPracticePayload.observationCopy.record.align, 'center');
+  assert.equal(savedPracticePayload.observationCopy.record.spacing, 'roomy');
   await page.getByRole('tab', { name: '基础文案', exact: true }).click();
   const observationInput = page.locator('#practice-observation-content [data-copy-field="metaLeft"] .rich-text-canvas');
   await observationInput.waitFor();
@@ -985,6 +1159,7 @@ try {
       || (request.method === 'POST' && /^\/admin\/notifications\/(read-all|[0-9a-f-]{36}\/read)$/.test(request.path))
       || (request.method === 'POST' && request.path === '/admin/discussion-restrictions')
       || (request.method === 'PUT' && request.path === '/content/practice-copy/manage')
+      || (request.method === 'PATCH' && request.path === '/content/practice/manage')
       || (request.method === 'PATCH' && request.path === '/content/issues/issue-1')
       || (request.method === 'PATCH' && /^\/content\/issues\/(issue-1|issue-2)\/lifecycle$/.test(request.path))
       || (request.method === 'DELETE' && request.path === '/content/issues/issue-1')),

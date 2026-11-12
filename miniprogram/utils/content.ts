@@ -82,10 +82,245 @@ export interface RealityStageCopy extends Record<RealityStageCopyField, Practice
   spacing: 'compact' | 'standard' | 'roomy';
 }
 
+export type SeasonIntroCopyKey = 'navTitle' | 'metaLeft' | 'metaRight' | 'heroTitle' | 'heroDescription' | 'guideTitle' | 'guideRequired' | 'guideRead' | 'guideParagraphOne' | 'guideParagraphTwo' | 'guideSteps' | 'guideGateNote' | 'guideConfirm' | 'birthdayLabel' | 'monthLabel' | 'dayLabel' | 'monthPlaceholder' | 'dayPlaceholder' | 'birthdayNote' | 'rememberTitle' | 'rememberNote' | 'primaryAction' | 'primaryLockedAction' | 'realityAction' | 'skipAction';
+
+export interface SeasonIntroCopy extends Record<SeasonIntroCopyKey, PracticeCopyItem> {
+  align: 'left' | 'center' | 'right';
+  spacing: 'compact' | 'standard' | 'roomy';
+}
+
+export const DEFAULT_SEASON_INTRO_COPY: SeasonIntroCopy = {
+  navTitle: { richText: '四时气韵', fontSize: 15, color: '#4a3f38' },
+  metaLeft: { richText: '四时气韵', fontSize: 11, color: '#8b6b58' },
+  metaRight: { richText: '从生命牌开始', fontSize: 11, color: '#7b5a45' },
+  heroTitle: { richText: '从一个生日，<br/>开启一次观察。', fontSize: 29, color: '#4a3f38' },
+  heroDescription: { richText: '按生日找到对应的生命牌，借它的主题回看一件真实的事，再辨认其中的变化与自己的选择。', fontSize: 14, color: '#4a3f38' },
+  guideTitle: { richText: '生命牌与四时气韵是什么？', fontSize: 16, color: '#4a3f38' },
+  guideRequired: { richText: '必读', fontSize: 10, color: '#663124' },
+  guideRead: { richText: '已读', fontSize: 10, color: '#8b6b58' },
+  guideParagraphOne: { richText: '生命牌来自一种以生日对应纸牌的传统符号体系。在这里，MYRIAD SHE 把其中的主题转成观察问题，再借“生、长、收、藏”辨认一件具体的事正在怎样变化。', fontSize: 13, color: '#5b4c42' },
+  guideParagraphTwo: { richText: '生日只用于查表。牌义不决定你是谁，也不能替你判断此刻的状态。你可以保留不同的经验与解释。', fontSize: 13, color: '#5b4c42' },
+  guideSteps: { richText: '底色 → 此刻 → 选择 → 行动', fontSize: 12, color: '#7b5a45' },
+  guideGateNote: { richText: '开始前，请先阅读以上说明并确认了解。', fontSize: 11, color: '#7b5a45' },
+  guideConfirm: { richText: '我已了解，开始选择生日', fontSize: 14, color: '#fffaf4' },
+  birthdayLabel: { richText: '你的公历生日', fontSize: 13, color: '#4a3f38' },
+  monthLabel: { richText: '月', fontSize: 11, color: '#8b6b58' },
+  dayLabel: { richText: '日', fontSize: 11, color: '#8b6b58' },
+  monthPlaceholder: { richText: '选择月份', fontSize: 15, color: '#a1907f' },
+  dayPlaceholder: { richText: '选择日期', fontSize: 15, color: '#a1907f' },
+  birthdayNote: { richText: '只需月与日。同一天生日对应同一张生命牌。', fontSize: 11, color: '#8b6b58' },
+  rememberTitle: { richText: '在这台设备记住生日', fontSize: 13, color: '#4a3f38' },
+  rememberNote: { richText: '下次可直接继续观察；随时可以清除。', fontSize: 11, color: '#8b6b58' },
+  primaryAction: { richText: '查看我的生命牌', fontSize: 15, color: '#fffaf4' },
+  primaryLockedAction: { richText: '请先阅读并确认了解', fontSize: 15, color: '#fffaf4' },
+  realityAction: { richText: '从现实处境开始', fontSize: 14, color: '#4a3f38' },
+  skipAction: { richText: '暂不使用四时气韵', fontSize: 13, color: '#8b6b58' },
+  align: 'left',
+  spacing: 'standard',
+};
+
+export type SeasonRelationKey = 'resonates' | 'partial' | 'different' | 'unclear';
+export type SeasonStateKey = '生' | '长' | '收' | '藏' | '暂时说不清';
+export type SeasonCopyAlignment = 'left' | 'center' | 'right';
+export type SeasonCopySpacing = 'compact' | 'standard' | 'roomy';
+
+export interface SeasonRelationOption {
+  key: SeasonRelationKey;
+  label: PracticeCopyItem;
+}
+
+export interface SeasonStateOption {
+  key: SeasonStateKey;
+  label: PracticeCopyItem;
+  hint: PracticeCopyItem;
+}
+
+export type SeasonCardCopyKey = 'stageLabel' | 'birthdayLabel' | 'emptyLabel' | 'chooseBirthday' | 'changeBirthday' | 'eyebrow' | 'themePrefix' | 'footnote' | 'noteLabel' | 'sourceToggle' | 'nextLabel' | 'previousLabel' | 'footer';
+export type SeasonNowRecentCopyKey = 'stepLabel' | 'titleLine1' | 'titleLine2' | 'description' | 'experienceLabel' | 'experiencePlaceholder' | 'relationLabel' | 'noteLabel' | 'optionalLabel' | 'notePlaceholder' | 'nextLabel' | 'previousLabel';
+export type SeasonNowChangeCopyKey = 'stepLabel' | 'titleLine1' | 'titleLine2' | 'description' | 'insightLabel' | 'optionalLabel' | 'insightPlaceholder' | 'footer' | 'nextLabel' | 'previousLabel';
+export type SeasonChoiceCopyKey = 'stepLabel' | 'titleLine1' | 'titleLine2' | 'leadLine1' | 'leadLine2' | 'keepLabel' | 'keepPlaceholder' | 'rejectLabel' | 'optionalLabel' | 'rejectPlaceholder' | 'nextLabel' | 'previousLabel' | 'footer';
+export type SeasonActionCopyKey = 'stepLabel' | 'titleLine1' | 'titleLine2' | 'leadLine1' | 'leadLine2' | 'actionLabel' | 'actionPlaceholder' | 'restLabel' | 'previewLabel' | 'previewEmpty' | 'footer' | 'nextLabel' | 'previousLabel';
+
+interface SeasonLayoutCopy {
+  align: SeasonCopyAlignment;
+  spacing: SeasonCopySpacing;
+}
+
+export interface SeasonCardCopy extends Record<SeasonCardCopyKey, PracticeCopyItem>, SeasonLayoutCopy {}
+export interface SeasonNowRecentCopy extends Record<SeasonNowRecentCopyKey, PracticeCopyItem> { relations: SeasonRelationOption[]; }
+export interface SeasonNowChangeCopy extends Record<SeasonNowChangeCopyKey, PracticeCopyItem> { states: SeasonStateOption[]; }
+export interface SeasonNowCopy extends SeasonLayoutCopy { recent: SeasonNowRecentCopy; change: SeasonNowChangeCopy; }
+export interface SeasonChoiceCopy extends Record<SeasonChoiceCopyKey, PracticeCopyItem>, SeasonLayoutCopy {}
+export interface SeasonActionCopy extends Record<SeasonActionCopyKey, PracticeCopyItem>, SeasonLayoutCopy {}
+
+export interface SeasonStagesCopy {
+  card: SeasonCardCopy;
+  now: SeasonNowCopy;
+  choice: SeasonChoiceCopy;
+  action: SeasonActionCopy;
+}
+
+export type ObservationRecordCopyKey =
+  | 'navTitle'
+  | 'methodReality'
+  | 'methodSeason'
+  | 'statusDraft'
+  | 'statusSaved'
+  | 'stageBase'
+  | 'stageNow'
+  | 'stageChoice'
+  | 'stageAction'
+  | 'seasonActionTail'
+  | 'experienceLabel'
+  | 'changeLabel'
+  | 'keepLabel'
+  | 'keepLabelOptional'
+  | 'stageRejectLabel'
+  | 'perspectiveLabel'
+  | 'perspectiveNote'
+  | 'perspectiveEmpty'
+  | 'editAction'
+  | 'againAction'
+  | 'deleteAction'
+  | 'deletingAction'
+  | 'emptyValue'
+  | 'seasonCardSubtitle';
+
+export interface ObservationRecordCopy extends Record<ObservationRecordCopyKey, PracticeCopyItem>, SeasonLayoutCopy {}
+
+export const DEFAULT_SEASON_STAGES_COPY: SeasonStagesCopy = {
+  card: {
+    stageLabel: { richText: '按生日对应的生命牌', fontSize: 11, color: '#8b6b58' },
+    birthdayLabel: { richText: '生日', fontSize: 11, color: '#8b6b58' },
+    emptyLabel: { richText: '还没有选择生日。', fontSize: 14, color: '#8b6b58' },
+    chooseBirthday: { richText: '选择生日', fontSize: 13, color: '#663124' },
+    changeBirthday: { richText: '修改生日', fontSize: 11, color: '#8b6b58' },
+    eyebrow: { richText: 'MYRIAD SHE · 底色观察', fontSize: 10, color: '#8b6b58' },
+    themePrefix: { richText: '可以留意 · ', fontSize: 12, color: '#7b5a45' },
+    footnote: { richText: '这是一个观察角度。哪些与你有关，由你的经验决定。', fontSize: 11, color: '#8b6b58' },
+    noteLabel: { richText: '传统线索 · 注', fontSize: 11, color: '#7b5a45' },
+    sourceToggle: { richText: '释义来源与使用说明', fontSize: 11, color: '#663124' },
+    nextLabel: { richText: '回到一件真实的事', fontSize: 14, color: '#663124' },
+    previousLabel: { richText: '上一步', fontSize: 14, color: '#663124' },
+    footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+    align: 'left',
+    spacing: 'standard',
+  },
+  now: {
+    align: 'left',
+    spacing: 'standard',
+    recent: {
+      stepLabel: { richText: '02 / 04 · 此刻', fontSize: 11, color: '#8b6b58' },
+      titleLine1: { richText: '最近，', fontSize: 28, color: '#663124' },
+      titleLine2: { richText: '发生了什么？', fontSize: 28, color: '#663124' },
+      description: { richText: '先从一件具体的事开始。它可以呼应前面的线索，也可以与你读到的完全不同。', fontSize: 14, color: '#40362f' },
+      experienceLabel: { richText: '这件事是怎样发生的？', fontSize: 12, color: '#8b6b58' },
+      experiencePlaceholder: { richText: '最近，在……的时候，发生了……', fontSize: 14, color: '#40362f' },
+      relationLabel: { richText: '前面的底色，与你的经验有关吗？', fontSize: 12, color: '#8b6b58' },
+      relations: [
+        { key: 'resonates', label: { richText: '有共鸣', fontSize: 12, color: '#40362f' } },
+        { key: 'partial', label: { richText: '部分有关', fontSize: 12, color: '#40362f' } },
+        { key: 'different', label: { richText: '与我的经验不同', fontSize: 12, color: '#40362f' } },
+        { key: 'unclear', label: { richText: '暂时说不清', fontSize: 12, color: '#40362f' } },
+      ],
+      noteLabel: { richText: '哪些有关，哪些不同？', fontSize: 12, color: '#8b6b58' },
+      optionalLabel: { richText: '选填', fontSize: 10, color: '#8b6b58' },
+      notePlaceholder: { richText: '用自己的话补充，也可以留空。', fontSize: 14, color: '#40362f' },
+      nextLabel: { richText: '看看这件事的变化', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '回看底色', fontSize: 14, color: '#663124' },
+    },
+    change: {
+      stepLabel: { richText: '02 / 04 · 此刻的变化', fontSize: 11, color: '#8b6b58' },
+      titleLine1: { richText: '这件事，', fontSize: 28, color: '#663124' },
+      titleLine2: { richText: '正在怎样变化？', fontSize: 28, color: '#663124' },
+      description: { richText: '借四时的变化，回看刚才的事。几种状态可以同时存在，也可以暂时说不清。', fontSize: 14, color: '#40362f' },
+      states: [
+        { key: '生', label: { richText: '正在开始', fontSize: 14, color: '#40362f' }, hint: { richText: '什么正在开始？', fontSize: 12, color: '#8b6b58' } },
+        { key: '长', label: { richText: '继续培育', fontSize: 14, color: '#40362f' }, hint: { richText: '什么值得继续培育？', fontSize: 12, color: '#8b6b58' } },
+        { key: '收', label: { richText: '完成与取舍', fontSize: 14, color: '#40362f' }, hint: { richText: '什么需要完成、取舍或收束？', fontSize: 12, color: '#8b6b58' } },
+        { key: '藏', label: { richText: '暂停与保存', fontSize: 14, color: '#40362f' }, hint: { richText: '什么需要暂停、休息与保存？', fontSize: 12, color: '#8b6b58' } },
+        { key: '暂时说不清', label: { richText: '暂时说不清', fontSize: 14, color: '#40362f' }, hint: { richText: '也可以不急着归类。', fontSize: 12, color: '#8b6b58' } },
+      ],
+      insightLabel: { richText: '对这件事，你还看见了什么？', fontSize: 12, color: '#8b6b58' },
+      optionalLabel: { richText: '选填', fontSize: 10, color: '#8b6b58' },
+      insightPlaceholder: { richText: '例如：项目刚开始，但我已经需要给自己留出休息。', fontSize: 14, color: '#40362f' },
+      footer: { richText: '这里辨认的是一件事中的变化，不是为你确定一个季节身份。', fontSize: 11, color: '#76695f' },
+      nextLabel: { richText: '带着自己的理解继续', fontSize: 14, color: '#663124' },
+      previousLabel: { richText: '回到这件事', fontSize: 14, color: '#663124' },
+    },
+  },
+  choice: {
+    stepLabel: { richText: '03 / 04 · 选择', fontSize: 11, color: '#8b6b58' },
+    titleLine1: { richText: '哪些解释，', fontSize: 28, color: '#663124' },
+    titleLine2: { richText: '你愿意留下？', fontSize: 28, color: '#663124' },
+    leadLine1: { richText: '可以保留一个问题，拒绝一种解释，', fontSize: 14, color: '#40362f' },
+    leadLine2: { richText: '也可以用自己的方式重新理解这件事。', fontSize: 14, color: '#40362f' },
+    keepLabel: { richText: '我想保留的', fontSize: 12, color: '#916162' },
+    keepPlaceholder: { richText: '这次观察里，对我有用的是……', fontSize: 14, color: '#40362f' },
+    rejectLabel: { richText: '我不接受的，或另一种理解', fontSize: 12, color: '#916162' },
+    optionalLabel: { richText: '· 选填', fontSize: 10, color: '#916162' },
+    rejectPlaceholder: { richText: '我不认同……；对我来说，也可能是……', fontSize: 14, color: '#40362f' },
+    nextLabel: { richText: '想想接下来的行动', fontSize: 14, color: '#663124' },
+    previousLabel: { richText: '回看变化', fontSize: 14, color: '#663124' },
+    footer: { richText: '草稿仅自己可见；完成后仍可修改或删除。', fontSize: 11, color: '#76695f' },
+    align: 'left',
+    spacing: 'standard',
+  },
+  action: {
+    stepLabel: { richText: '04 / 04 · 行动', fontSize: 11, color: '#8b6b58' },
+    titleLine1: { richText: '接下来七天，', fontSize: 28, color: '#663124' },
+    titleLine2: { richText: '你愿意做什么？', fontSize: 28, color: '#663124' },
+    leadLine1: { richText: '选一个小到能够发生的行动。休息、等待、', fontSize: 14, color: '#40362f' },
+    leadLine2: { richText: '继续观察，也可以是此刻的选择。', fontSize: 14, color: '#40362f' },
+    actionLabel: { richText: '我愿意做的一个最小行动', fontSize: 12, color: '#916162' },
+    actionPlaceholder: { richText: '例如：本周找一个安静的晚上，把这事件重新读一次。', fontSize: 14, color: '#40362f' },
+    restLabel: { richText: '先留一点时间，不安排新行动', fontSize: 13, color: '#40362f' },
+    previewLabel: { richText: '这次留下的', fontSize: 11, color: '#8b6b58' },
+    previewEmpty: { richText: '还没有写下具体的事', fontSize: 14, color: '#a4937f' },
+    footer: { richText: '保存的是你写下的经验与判断，不会生成性格结论；以后可以修改或删除。', fontSize: 11, color: '#76695f' },
+    nextLabel: { richText: '保存这次观察', fontSize: 14, color: '#663124' },
+    previousLabel: { richText: '回看选择', fontSize: 14, color: '#663124' },
+    align: 'left',
+    spacing: 'standard',
+  },
+};
+
+export const DEFAULT_OBSERVATION_RECORD_COPY: ObservationRecordCopy = {
+  navTitle: { richText: '观察记录', fontSize: 16, color: '#5c493c' },
+  methodReality: { richText: '现实处境', fontSize: 12, color: '#8f4938' },
+  methodSeason: { richText: '四时气韵', fontSize: 12, color: '#8f4938' },
+  statusDraft: { richText: '草稿', fontSize: 12, color: '#8b6b58' },
+  statusSaved: { richText: '此设备保存', fontSize: 12, color: '#8b6b58' },
+  stageBase: { richText: '01 · 底色', fontSize: 12, color: '#8f4938' },
+  stageNow: { richText: '02 · 此刻', fontSize: 12, color: '#8f4938' },
+  stageChoice: { richText: '03 · 选择', fontSize: 12, color: '#8f4938' },
+  stageAction: { richText: '04 · 行动', fontSize: 12, color: '#8f4938' },
+  seasonActionTail: { richText: '· 接下来七天', fontSize: 12, color: '#8f4938' },
+  experienceLabel: { richText: '我写下的经验', fontSize: 12, color: '#8f4938' },
+  changeLabel: { richText: '我辨认的变化', fontSize: 12, color: '#8f4938' },
+  keepLabel: { richText: '我想保留的', fontSize: 12, color: '#8f4938' },
+  keepLabelOptional: { richText: '· 选填', fontSize: 12, color: '#8f4938' },
+  stageRejectLabel: { richText: '我不接受的，或另一种理解', fontSize: 12, color: '#8f4938' },
+  perspectiveLabel: { richText: '你对此线索引的判断', fontSize: 12, color: '#8f4938' },
+  perspectiveNote: { richText: '这份判断可以随时修改；你的经验始终拥有解释权。', fontSize: 11, color: '#8b6b58' },
+  perspectiveEmpty: { richText: '暂未作判断', fontSize: 14, color: '#3f352e' },
+  editAction: { richText: '修改这次观察', fontSize: 14, color: '#fffaf4' },
+  againAction: { richText: '再次观察', fontSize: 14, color: '#fffaf4' },
+  deleteAction: { richText: '删除记录', fontSize: 14, color: '#fffaf4' },
+  deletingAction: { richText: '正在删除…', fontSize: 14, color: '#fffaf4' },
+  emptyValue: { richText: '未填写', fontSize: 13, color: '#a89a8c' },
+  seasonCardSubtitle: { richText: '本次借用的品牌观察线索', fontSize: 12, color: '#5c493c' },
+  align: 'left',
+  spacing: 'standard',
+};
+
 export type ObservationCopyKey = 'metaLeft' | 'metaRight' | 'introTitle' | 'introDescription' | 'realityContext' | 'realityTitle' | 'realityDescription' | 'realityAction' | 'seasonContext' | 'seasonTitle' | 'seasonDescription' | 'seasonGuide' | 'seasonAction' | 'privacyLabel' | 'privacyCopy';
 
 export type ObservationCopy = Record<ObservationCopyKey, PracticeCopyItem> & {
   realityStages: Record<RealityStageKey, RealityStageCopy>;
+  seasonIntro: SeasonIntroCopy;
+  seasonStages: SeasonStagesCopy;
+  record: ObservationRecordCopy;
 };
 
 export interface PracticeContent {
@@ -359,6 +594,41 @@ const observationCopyKeys: ObservationCopyKey[] = [
 ];
 const realityStageKeys: RealityStageKey[] = ['situation', 'body', 'need', 'nextAction'];
 const realityStageCopyFields: RealityStageCopyField[] = ['stageLabel', 'title', 'description', 'inputLabel', 'placeholder', 'nextLabel', 'previousLabel', 'footer'];
+const seasonIntroCopyKeys: SeasonIntroCopyKey[] = [
+  'navTitle', 'metaLeft', 'metaRight', 'heroTitle', 'heroDescription', 'guideTitle', 'guideRequired', 'guideRead',
+  'guideParagraphOne', 'guideParagraphTwo', 'guideSteps', 'guideGateNote', 'guideConfirm', 'birthdayLabel',
+  'monthLabel', 'dayLabel', 'monthPlaceholder', 'dayPlaceholder', 'birthdayNote', 'rememberTitle', 'rememberNote',
+  'primaryAction', 'primaryLockedAction', 'realityAction', 'skipAction',
+];
+
+const seasonRelationKeys: SeasonRelationKey[] = ['resonates', 'partial', 'different', 'unclear'];
+const seasonStateKeys: SeasonStateKey[] = ['生', '长', '收', '藏', '暂时说不清'];
+const seasonCardCopyKeys: SeasonCardCopyKey[] = [
+  'stageLabel', 'birthdayLabel', 'emptyLabel', 'chooseBirthday', 'changeBirthday', 'eyebrow', 'themePrefix',
+  'footnote', 'noteLabel', 'sourceToggle', 'nextLabel', 'previousLabel', 'footer',
+];
+const seasonNowRecentCopyKeys: SeasonNowRecentCopyKey[] = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'description', 'experienceLabel', 'experiencePlaceholder',
+  'relationLabel', 'noteLabel', 'optionalLabel', 'notePlaceholder', 'nextLabel', 'previousLabel',
+];
+const seasonNowChangeCopyKeys: SeasonNowChangeCopyKey[] = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'description', 'insightLabel', 'optionalLabel',
+  'insightPlaceholder', 'footer', 'nextLabel', 'previousLabel',
+];
+const seasonChoiceCopyKeys: SeasonChoiceCopyKey[] = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'leadLine1', 'leadLine2', 'keepLabel', 'keepPlaceholder',
+  'rejectLabel', 'optionalLabel', 'rejectPlaceholder', 'nextLabel', 'previousLabel', 'footer',
+];
+const seasonActionCopyKeys: SeasonActionCopyKey[] = [
+  'stepLabel', 'titleLine1', 'titleLine2', 'leadLine1', 'leadLine2', 'actionLabel', 'actionPlaceholder',
+  'restLabel', 'previewLabel', 'previewEmpty', 'footer', 'nextLabel', 'previousLabel',
+];
+const observationRecordCopyKeys: ObservationRecordCopyKey[] = [
+  'navTitle', 'methodReality', 'methodSeason', 'statusDraft', 'statusSaved', 'stageBase', 'stageNow', 'stageChoice',
+  'stageAction', 'seasonActionTail', 'experienceLabel', 'changeLabel', 'keepLabel', 'keepLabelOptional', 'stageRejectLabel',
+  'perspectiveLabel', 'perspectiveNote', 'perspectiveEmpty', 'editAction', 'againAction', 'deleteAction', 'deletingAction',
+  'emptyValue', 'seasonCardSubtitle',
+];
 
 function isRealityStageCopy(value: unknown): value is RealityStageCopy {
   return isRecord(value)
@@ -367,10 +637,57 @@ function isRealityStageCopy(value: unknown): value is RealityStageCopy {
     && realityStageCopyFields.every((field) => isCopyItem(value[field]));
 }
 
+function isSeasonIntroCopy(value: unknown): value is SeasonIntroCopy {
+  return isRecord(value)
+    && (value.align === 'left' || value.align === 'center' || value.align === 'right')
+    && (value.spacing === 'compact' || value.spacing === 'standard' || value.spacing === 'roomy')
+    && seasonIntroCopyKeys.every((key) => isCopyItem(value[key]));
+}
+
+function isSeasonLayout(value: unknown): value is SeasonLayoutCopy {
+  return isRecord(value)
+    && (value.align === 'left' || value.align === 'center' || value.align === 'right')
+    && (value.spacing === 'compact' || value.spacing === 'standard' || value.spacing === 'roomy');
+}
+
+function isSeasonCopyFields(value: unknown, keys: readonly string[]): value is Record<string, PracticeCopyItem> {
+  return isRecord(value) && keys.every((key) => isCopyItem(value[key]));
+}
+
+function isObservationRecordCopy(value: unknown): value is ObservationRecordCopy {
+  return isSeasonLayout(value) && isSeasonCopyFields(value, observationRecordCopyKeys);
+}
+
+function isSeasonRelations(value: unknown): value is SeasonRelationOption[] {
+  return Array.isArray(value) && value.length === seasonRelationKeys.length
+    && value.every((option, index) => isRecord(option) && option.key === seasonRelationKeys[index] && isCopyItem(option.label));
+}
+
+function isSeasonStates(value: unknown): value is SeasonStateOption[] {
+  return Array.isArray(value) && value.length === seasonStateKeys.length
+    && value.every((option, index) => isRecord(option) && option.key === seasonStateKeys[index]
+      && isCopyItem(option.label) && isCopyItem(option.hint));
+}
+
+function isSeasonStagesCopy(value: unknown): value is SeasonStagesCopy {
+  if (!isRecord(value) || !isRecord(value.now)) return false;
+  const { card, now, choice, action } = value;
+  if (!isSeasonLayout(card) || !isSeasonCopyFields(card, seasonCardCopyKeys)) return false;
+  if (!isSeasonLayout(now) || !isRecord(now.recent) || !isRecord(now.change)) return false;
+  if (!isSeasonCopyFields(now.recent, seasonNowRecentCopyKeys) || !isSeasonRelations(now.recent.relations)) return false;
+  if (!isSeasonCopyFields(now.change, seasonNowChangeCopyKeys) || !isSeasonStates(now.change.states)) return false;
+  return isSeasonLayout(choice) && isSeasonCopyFields(choice, seasonChoiceCopyKeys)
+    && isSeasonLayout(action) && isSeasonCopyFields(action, seasonActionCopyKeys);
+}
+
 function isObservationCopy(value: unknown): value is ObservationCopy {
   if (!isRecord(value) || !observationCopyKeys.every((key) => isCopyItem(value[key]))) return false;
   const stages = value.realityStages;
-  return isRecord(stages) && realityStageKeys.every((key) => isRealityStageCopy(stages[key]));
+  return isRecord(stages)
+    && realityStageKeys.every((key) => isRealityStageCopy(stages[key]))
+    && isSeasonIntroCopy(value.seasonIntro)
+    && isSeasonStagesCopy(value.seasonStages)
+    && isObservationRecordCopy(value.record);
 }
 
 export function isPracticeContent(value: unknown): value is PracticeContent {
