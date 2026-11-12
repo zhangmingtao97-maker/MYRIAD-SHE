@@ -1646,18 +1646,18 @@ const dashboardLoading = ref(false);
 const overviewUpdatedAt = ref('');
 const overviewSyncError = ref('');
 const currentPageRefreshing = ref(false);
-type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-restrictions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'store-settings' | 'brand-popup-settings' | 'status-machine' | 'employees' | 'life-cards' | 'life-card-views';
+type DashboardSection = 'overview' | 'practice' | 'content' | 'observations' | 'contributions' | 'discussion-restrictions' | 'discussion-reports' | 'privacy' | 'audit' | 'members' | 'settings' | 'store-settings' | 'status-machine' | 'employees' | 'life-cards' | 'life-card-views';
 type JournalSection = 'journal-list' | 'journal-home' | 'journal-story' | 'journal-audio' | 'journal-discussion' | 'journal-archive';
 type PageSection = 'mine' | 'privacy-policy' | 'user-agreement' | 'legal-history' | 'privacy-page' | 'about-history';
 type PracticeSection = 'practice' | 'practice-directory' | 'observation' | 'shared-practice' | 'daily-objects';
 type ContentSection = JournalSection | PageSection | PracticeSection | 'media';
-const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-restrictions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'store-settings', 'brand-popup-settings', 'status-machine', 'employees', 'life-cards', 'life-card-views']);
+const dashboardSectionKeys = new Set<DashboardSection>(['overview', 'practice', 'content', 'observations', 'contributions', 'discussion-restrictions', 'discussion-reports', 'privacy', 'audit', 'members', 'settings', 'store-settings', 'status-machine', 'employees', 'life-cards', 'life-card-views']);
 const contentSectionKeys = new Set<ContentSection>(['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects', 'privacy-page', 'about-history', 'privacy-policy', 'user-agreement', 'legal-history', 'media', 'mine', 'journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive']);
 const journalSections: JournalSection[] = ['journal-list', 'journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'];
 const pageSections: PageSection[] = ['mine', 'privacy-policy', 'user-agreement', 'legal-history', 'privacy-page', 'about-history'];
 const practiceSections: PracticeSection[] = ['practice', 'practice-directory', 'observation', 'shared-practice', 'daily-objects'];
 const operationsSections = ['contributions', 'discussion-restrictions', 'discussion-reports', 'observations', 'privacy', 'audit'] as const;
-const settingsSections = ['settings', 'store-settings', 'brand-popup-settings'] as const;
+const settingsSections = ['settings', 'store-settings'] as const;
 const systemSections = [...settingsSections, 'status-machine', 'employees'] as const;
 const lifeCardSections = ['life-cards', 'life-card-views'] as const;
 type OperationsSection = typeof operationsSections[number];
@@ -1691,7 +1691,8 @@ function isPracticeSection(section: ContentSection | string): section is Practic
 function readDashboardLocation() {
   try {
     const raw = JSON.parse(localStorage.getItem('myriad_she_admin_location') || '{}') as Record<string, unknown>;
-    let section = dashboardSectionKeys.has(raw.section as DashboardSection) ? raw.section as DashboardSection : 'overview';
+    const storedSection = raw.section === 'brand-popup-settings' ? 'settings' : raw.section;
+    let section = dashboardSectionKeys.has(storedSection as DashboardSection) ? storedSection as DashboardSection : 'overview';
     const legacySection = raw.contentSection === 'issues' ? 'journal-list' : raw.contentSection;
     const contentSection = contentSectionKeys.has(legacySection as ContentSection) ? legacySection as ContentSection : 'practice';
     if (section === 'content' && isPracticeSection(contentSection)) section = 'practice';
@@ -1718,7 +1719,6 @@ const staffLandingCandidates: Array<{ section: DashboardSection; contentSection:
   { section: 'members', contentSection: 'practice', module: 'members' },
   { section: 'settings', contentSection: 'practice', module: 'settings' },
   { section: 'store-settings', contentSection: 'practice', module: 'settings' },
-  { section: 'brand-popup-settings', contentSection: 'practice', module: 'settings' },
   { section: 'status-machine', contentSection: 'practice', module: 'settings' },
   { section: 'life-cards', contentSection: 'practice', module: 'life-cards' },
   { section: 'life-card-views', contentSection: 'practice', module: 'life-card-views' },
@@ -2037,7 +2037,6 @@ const currentView = computed(() => {
     members: { eyebrow: 'MEMBERS / DIRECTORY', title: '会员列表' },
     settings: { eyebrow: 'SYSTEM / SETTINGS', title: '系统设置' },
     'store-settings': { eyebrow: 'COMMERCE / STORE', title: '商城开放' },
-    'brand-popup-settings': { eyebrow: 'SYSTEM / LAUNCH EXPERIENCE', title: '启动品牌图' },
     'status-machine': { eyebrow: 'SYSTEM / MODULE STATES', title: '模块状态机' },
     employees: { eyebrow: 'SYSTEM / EMPLOYEES', title: '员工与权限' },
     'life-cards': { eyebrow: 'CONTENT / LIFE CARDS', title: '生命牌文案' },
@@ -2095,9 +2094,8 @@ const adminDestinations: AdminDestination[] = [
     ['life-cards', '生命牌文案', '按月份与日期编辑生命牌的说明和观察提示。'],
     ['life-card-views', '生命牌查看', '筛选生命牌的查看记录与使用情况。'],
   ] as const).map(([id, label, description]) => ({ id, label, description, group: '生命牌', keywords: 'life cards', section: id, module: id })),
-  { id: 'settings', label: '系统设置', group: '系统管理', description: '管理维护公告与用户支持渠道。', keywords: 'system settings support maintenance', section: 'settings', module: 'settings' },
+  { id: 'settings', label: '系统设置', group: '系统管理', description: '管理维护公告、支持渠道与品牌图弹窗。', keywords: 'system settings support maintenance brand popup launch image', section: 'settings', module: 'settings' },
   { id: 'store-settings', label: '商城开放', group: '系统管理', description: '独立控制商城是否对外营业，并查看目录入口联动规则。', keywords: 'store commerce shop settings', section: 'store-settings', module: 'settings' },
-  { id: 'brand-popup-settings', label: '启动品牌图', group: '系统管理', description: '配置小程序启动时的全屏品牌图与展示频次。', keywords: 'brand popup launch image settings', section: 'brand-popup-settings', module: 'settings' },
   { id: 'status-machine', label: '模块状态机', group: '系统管理', description: '观察各模块运行状态、维护窗口与最近变化。', keywords: 'system module states runtime', section: 'status-machine', module: 'settings' },
   { id: 'employees', label: '员工与权限', group: '系统管理', description: '管理员工账号、角色与模块授权。', keywords: 'admin employees permissions', section: 'employees', superOnly: true },
 ];
@@ -3557,7 +3555,7 @@ async function saveSystemSettings() {
   settingsMessage.value = '';
   settingsError.value = '';
   try {
-    const saveLabel = activeSection.value === 'store-settings' ? '商城设置' : activeSection.value === 'brand-popup-settings' ? '品牌图设置' : '系统设置';
+    const saveLabel = activeSection.value === 'store-settings' ? '商城设置' : '系统设置';
     if (!window.confirm(`确认保存${saveLabel}？变更会立即生效并记录到审计日志。`)) return;
     const session = sessionGeneration;
     const response = await apiFetch(`${apiBase}/admin/system-settings`, { method: 'PATCH', headers: adminHeaders(true), body: JSON.stringify(systemSettings.value) });
@@ -3570,9 +3568,7 @@ async function saveSystemSettings() {
     brandPopupPreviewUrl.value = normalized.brand_popup_image ? await dailyObjectMediaPreviewUrl(normalized.brand_popup_image, session) : '';
     settingsMessage.value = activeSection.value === 'store-settings'
       ? '商城设置已保存。商城仍需与「实践目录 → 日常之物」入口同时开启，用户才能看到商品。'
-      : activeSection.value === 'brand-popup-settings'
-        ? '启动品牌图设置已保存，将在默认首页下次打开时按展示频次出现。'
-        : '系统设置已保存。申诉联系方式留空时会自动使用联系支持渠道。';
+      : '系统设置已保存。品牌图将在下次打开默认首页或进入「日常之物」时按频次出现。';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '系统设置保存失败'; }
   finally { settingsSaving.value = false; }
 }
@@ -4744,7 +4740,7 @@ async function uploadBrandPopupImage(file: File) {
     if (!isMediaViewTarget(preview)) throw new Error('服务器未返回有效的品牌图预览地址');
     systemSettings.value = { ...systemSettings.value, brand_popup_image: target.objectKey };
     brandPopupPreviewUrl.value = preview.url;
-    settingsMessage.value = '启动品牌图已上传。请确认开关与展示设置，再点击「保存品牌图设置」后生效。';
+    settingsMessage.value = '品牌图已上传。请确认开关与展示设置，再点击「保存系统设置」后生效。';
   } catch (caught) {
     if (session === sessionGeneration && loggedIn.value) settingsError.value = caught instanceof Error ? caught.message : '品牌图上传失败。';
   } finally {
@@ -4754,11 +4750,11 @@ async function uploadBrandPopupImage(file: File) {
 
 function removeBrandPopupImage() {
   if (!isSuperAdmin.value || brandPopupUploading.value) return;
-  if (!window.confirm('移除品牌图会同时关闭启动品牌图。保存品牌图设置后生效，确认移除？')) return;
+  if (!window.confirm('移除品牌图会同时关闭品牌图弹窗。保存系统设置后生效，确认移除？')) return;
   systemSettings.value = { ...systemSettings.value, brand_popup_image: '', brand_popup_enabled: false };
   brandPopupPreviewUrl.value = '';
   settingsError.value = '';
-  settingsMessage.value = '品牌图已移除，启动品牌图已关闭；请点击「保存品牌图设置」后生效。';
+  settingsMessage.value = '品牌图已移除，品牌图弹窗已关闭；请点击「保存系统设置」后生效。';
 }
 
 function markDailyObjectsDirty() {
@@ -7455,7 +7451,6 @@ onBeforeUnmount(() => {
                 <Transition name="subnav" @enter="enterSubnav" @after-enter="afterEnterSubnav" @leave="leaveSubnav" @after-leave="afterLeaveSubnav"><nav v-if="isSystemSection(activeSection) && systemNavigationExpanded && !sidebarCollapsed" id="system-navigation" class="dashboard-subnav" aria-label="系统管理子菜单">
                   <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'settings' }" :aria-current="activeSection === 'settings' ? 'page' : undefined" @click="openSystemSubsection('settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 21 17.5 19.5 20l-2.7-.6a7 7 0 0 1-1.2.7l-.8 2.4h-3l-.8-2.4-1.2-.7L7.1 20l-1.5-2.5L7 15a7 7 0 0 1 0-1.4l-1.4-2.5 1.5-2.5 2.7.6a7 7 0 0 1 1.2-.7l.8-2.4h3l.8 2.4 1.2.7 2.7-.6 1.5 2.5-1.4 2.5a7 7 0 0 1 0 1.4Z" /></svg><span>系统设置</span></button>
                   <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'store-settings' }" :aria-current="activeSection === 'store-settings' ? 'page' : undefined" @click="openSystemSubsection('store-settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z" /><path d="M9 9V7a3 3 0 0 1 6 0v2" /></svg><span>商城开放</span></button>
-                  <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'brand-popup-settings' }" :aria-current="activeSection === 'brand-popup-settings' ? 'page' : undefined" @click="openSystemSubsection('brand-popup-settings')"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1.5" /><circle cx="9" cy="10" r="1.5" /><path d="m5 17 4.5-4 3 2.5 2.5-2 4 3.5" /></svg><span>启动品牌图</span></button>
                   <button v-if="canAccessModule('settings')" class="dashboard-subtab" :class="{ active: activeSection === 'status-machine' }" :aria-current="activeSection === 'status-machine' ? 'page' : undefined" @click="openSystemSubsection('status-machine')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.5 7.5l4.2 8.7M17.5 7.5l-4.2 8.7"/></svg><span>模块状态机</span></button>
                   <button v-if="isSuperAdmin" class="dashboard-subtab" :class="{ active: activeSection === 'employees' }" :aria-current="activeSection === 'employees' ? 'page' : undefined" @click="openSystemSubsection('employees')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5.8m1.2 2.3a5.5 5.5 0 0 1 3.3 5.1" /></svg><span>员工与权限</span></button>
                 </nav></Transition>
@@ -9136,16 +9131,77 @@ onBeforeUnmount(() => {
   </div>
 </section>
 <section v-if="activeSection === 'settings'" id="system-settings" class="content-area">
-  <div class="section-heading"><div><p class="eyebrow">SYSTEM / SUPPORT</p><h2>系统设置</h2><p class="section-description">维护全站公告、联系支持渠道，以及一起谈谈的申诉联系方式。</p></div></div>
+  <div class="section-heading"><div><p class="eyebrow">SYSTEM / SUPPORT</p><h2>系统设置</h2><p class="section-description">维护全站公告、联系支持渠道、申诉联系方式，以及首页与「日常之物」的品牌图弹窗。</p></div></div>
   <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
   <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
   <div class="settings-form settings-form--single">
     <label>维护公告<textarea v-model="systemSettings.maintenance_notice" rows="3" maxlength="500" :disabled="settingsLoading || !isSuperAdmin" placeholder="可留空" /></label>
     <label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label>
     <label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label>
+
+    <section class="brand-popup-settings" aria-labelledby="brand-popup-settings-title">
+      <div class="brand-popup-settings-heading">
+        <div>
+          <p class="eyebrow">LAUNCH EXPERIENCE</p>
+          <h3 id="brand-popup-settings-title">品牌图弹窗</h3>
+          <p>打开小程序默认首页或进入「日常之物」时，以全屏品牌图呈现。图片会居中裁切并铺满整个屏幕。</p>
+        </div>
+      </div>
+
+      <label class="brand-popup-master-row">
+        <span>
+          <strong>开启品牌图弹窗</strong>
+          <small>{{ systemSettings.brand_popup_image ? '开启后按下方频次展示' : '请先上传品牌图片' }}</small>
+        </span>
+        <span class="settings-switch-control">
+          <span>{{ systemSettings.brand_popup_enabled ? '已开启' : '已关闭' }}</span>
+          <input v-model="systemSettings.brand_popup_enabled" type="checkbox" aria-label="开启品牌图弹窗" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.brand_popup_image || brandPopupUploading" />
+        </span>
+      </label>
+
+      <div class="brand-popup-settings-grid">
+        <div class="brand-popup-media">
+          <div class="brand-popup-preview-frame">
+            <img v-if="brandPopupPreviewUrl" :src="brandPopupPreviewUrl" alt="启动品牌图预览" />
+            <div v-else class="brand-popup-preview-empty"><span>尚未上传品牌图</span><small>建议使用 9:16 竖版图片，重要文字请放在画面中央</small></div>
+          </div>
+          <input ref="brandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage" />
+          <div class="brand-popup-media-actions">
+            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage">{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换图片' : '上传品牌图' }}</button>
+            <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage">移除</button>
+          </div>
+          <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存后生效。</small>
+        </div>
+
+        <div class="brand-popup-fields">
+          <label>展示时长
+            <span class="brand-popup-number-field"><input v-model.number="systemSettings.brand_popup_duration" type="number" min="1" max="15" step="1" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" /><span>秒</span></span>
+            <small>可设置 1–15 秒，到时自动关闭。</small>
+          </label>
+          <label>展示频次
+            <select v-model="systemSettings.brand_popup_frequency" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading">
+              <option value="every_launch">每次启动</option>
+              <option value="daily">每天一次</option>
+              <option value="once">仅展示一次</option>
+            </select>
+            <small>首页与「日常之物」分别独立计算展示频次。</small>
+          </label>
+          <label class="brand-popup-alt-field">图片说明
+            <input v-model="systemSettings.brand_popup_alt" maxlength="120" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" placeholder="用于无障碍朗读，可留空" />
+            <small>{{ systemSettings.brand_popup_alt.length }}/120 字</small>
+          </label>
+          <label class="setting-toggle brand-popup-closable-toggle">
+            <span><strong>允许手动关闭</strong><small>关闭后，品牌图仅会在倒计时结束时消失。</small></span>
+            <input v-model="systemSettings.brand_popup_closable" type="checkbox" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" />
+          </label>
+        </div>
+      </div>
+      <p class="brand-popup-settings-note">品牌图会在打开默认首页或进入「日常之物」时展示；两处分别计算频次。关闭开关或未上传图片时不会弹出。</p>
+    </section>
+
     <div v-if="isSuperAdmin" class="topbar-actions">
-      <button :disabled="settingsSaving || settingsLoading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button>
-      <button type="button" class="quiet" :disabled="settingsSaving" @click="resetSystemSettings">撤销修改</button>
+      <button :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button>
+      <button type="button" class="quiet" :disabled="settingsSaving || brandPopupUploading" @click="resetSystemSettings">撤销修改</button>
     </div>
     <p v-else class="muted">当前账号仅可查看设置。</p>
   </div>
@@ -9182,77 +9238,6 @@ onBeforeUnmount(() => {
   </div>
 </section>
 
-<section v-if="activeSection === 'brand-popup-settings'" id="brand-popup-settings-page" class="content-area">
-  <div class="section-heading"><div><p class="eyebrow">SYSTEM / LAUNCH EXPERIENCE</p><h2>启动品牌图</h2><p class="section-description">配置用户打开小程序默认首页时展示的全屏品牌图。</p></div></div>
-  <p v-if="settingsError" class="error" role="alert">{{ settingsError }}</p>
-  <p v-if="settingsMessage" class="status-message" role="status">{{ settingsMessage }}</p>
-  <div class="settings-form settings-form--single">
-    <section class="brand-popup-settings" aria-labelledby="brand-popup-settings-title">
-      <div class="brand-popup-settings-heading">
-        <div>
-          <p class="eyebrow">LAUNCH EXPERIENCE</p>
-          <h3 id="brand-popup-settings-title">启动品牌图</h3>
-          <p>用户每次打开小程序默认首页时，以全屏品牌图呈现。图片会居中裁切并铺满整个屏幕。</p>
-        </div>
-      </div>
-
-      <label class="brand-popup-master-row">
-        <span>
-          <strong>开启启动品牌图</strong>
-          <small>{{ systemSettings.brand_popup_image ? '开启后按下方频次展示' : '请先上传品牌图片' }}</small>
-        </span>
-        <span class="settings-switch-control">
-          <span>{{ systemSettings.brand_popup_enabled ? '已开启' : '已关闭' }}</span>
-          <input v-model="systemSettings.brand_popup_enabled" type="checkbox" aria-label="开启启动品牌图" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.brand_popup_image || brandPopupUploading" />
-        </span>
-      </label>
-
-      <div class="brand-popup-settings-grid">
-        <div class="brand-popup-media">
-          <div class="brand-popup-preview-frame">
-            <img v-if="brandPopupPreviewUrl" :src="brandPopupPreviewUrl" alt="启动品牌图预览" />
-            <div v-else class="brand-popup-preview-empty"><span>尚未上传品牌图</span><small>建议使用 9:16 竖版图片，重要文字请放在画面中央</small></div>
-          </div>
-          <input ref="brandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage" />
-          <div class="brand-popup-media-actions">
-            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage">{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换图片' : '上传品牌图' }}</button>
-            <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage">移除</button>
-          </div>
-          <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存后生效。</small>
-        </div>
-
-        <div class="brand-popup-fields">
-          <label>展示时长
-            <span class="brand-popup-number-field"><input v-model.number="systemSettings.brand_popup_duration" type="number" min="1" max="15" step="1" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" /><span>秒</span></span>
-            <small>可设置 1–15 秒，到时自动关闭。</small>
-          </label>
-          <label>展示频次
-            <select v-model="systemSettings.brand_popup_frequency" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading">
-              <option value="every_launch">每次启动</option>
-              <option value="daily">每天一次</option>
-              <option value="once">仅展示一次</option>
-            </select>
-            <small>频次记录在当前用户的微信本地缓存中。</small>
-          </label>
-          <label class="brand-popup-alt-field">图片说明
-            <input v-model="systemSettings.brand_popup_alt" maxlength="120" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" placeholder="用于无障碍朗读，可留空" />
-            <small>{{ systemSettings.brand_popup_alt.length }}/120 字</small>
-          </label>
-          <label class="setting-toggle brand-popup-closable-toggle">
-            <span><strong>允许手动关闭</strong><small>关闭后，品牌图仅会在倒计时结束时消失。</small></span>
-            <input v-model="systemSettings.brand_popup_closable" type="checkbox" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" />
-          </label>
-        </div>
-      </div>
-      <p class="brand-popup-settings-note">品牌图在默认首页启动后加载。直接通过分享链接进入其他页面时不会打断当前内容。</p>
-    </section>
-    <div v-if="isSuperAdmin" class="topbar-actions">
-      <button :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存品牌图设置' }}</button>
-      <button type="button" class="quiet" :disabled="settingsSaving || brandPopupUploading" @click="resetSystemSettings">撤销修改</button>
-    </div>
-    <p v-else class="muted">当前账号仅可查看设置。</p>
-  </div>
-</section>
       <ModuleStateMachine
         v-if="activeSection === 'status-machine'"
         ref="moduleStateMachine"

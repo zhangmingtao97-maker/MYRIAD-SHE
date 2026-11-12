@@ -495,7 +495,7 @@ try {
   const trigger = page.getByRole('button', { name: /快捷导航/ });
   await trigger.click();
   const menu = page.getByRole('dialog', { name: '快速前往' });
-  assert.equal(await menu.getByRole('option').count(), 33);
+  assert.equal(await menu.getByRole('option').count(), 32);
   assert.equal(await menu.getByRole('combobox').evaluate((el) => el === document.activeElement), true);
   await menu.getByRole('combobox').fill('no-such-page');
   await menu.getByText('没有找到相关页面').waitFor();
@@ -508,11 +508,11 @@ try {
   assert.equal(await trigger.evaluate((el) => el === document.activeElement), true);
   assert.equal(await page.evaluate(() => document.body.style.overflow), '');
 
-  const destinations = ['实践页面', '实践目录', '此刻观察', '共同实践', '日常之物', '期刊列表', '首页策展', '人物故事', '微声音', '本期讨论', '往期策展', '媒体库', '我的页面设置', '关于 MYRIAD SHE', '关于发布历史', '隐私政策', '用户协议', '历史版本', '会员列表', '一起谈谈内容', '一起谈谈权限', '用户举报', '观察记录管理', '隐私申请', '操作记录', '系统设置', '商城开放', '启动品牌图', '模块状态机', '生命牌文案', '生命牌查看', '员工与权限'];
+  const destinations = ['实践页面', '实践目录', '此刻观察', '共同实践', '日常之物', '期刊列表', '首页策展', '人物故事', '微声音', '本期讨论', '往期策展', '媒体库', '我的页面设置', '关于 MYRIAD SHE', '关于发布历史', '隐私政策', '用户协议', '历史版本', '会员列表', '一起谈谈内容', '一起谈谈权限', '用户举报', '观察记录管理', '隐私申请', '操作记录', '系统设置', '商城开放', '模块状态机', '生命牌文案', '生命牌查看', '员工与权限'];
   for (const label of destinations) {
     await navigate(label);
     await noOverflow(`desktop ${label}`);
-    if (['首页策展', '实践页面', '会员列表', '操作记录', '系统设置', '商城开放', '启动品牌图', '模块状态机', '员工与权限'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 首页策展: 'editor', 实践页面: 'practice', 会员列表: 'members', 操作记录: 'audit', 系统设置: 'settings', 商城开放: 'store-settings', 启动品牌图: 'brand-popup', 模块状态机: 'module-states', 员工与权限: 'employees' })[label]}-desktop.png`), fullPage: true });
+    if (['首页策展', '实践页面', '会员列表', '操作记录', '系统设置', '商城开放', '模块状态机', '员工与权限'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 首页策展: 'editor', 实践页面: 'practice', 会员列表: 'members', 操作记录: 'audit', 系统设置: 'settings', 商城开放: 'store-settings', 模块状态机: 'module-states', 员工与权限: 'employees' })[label]}-desktop.png`), fullPage: true });
   }
   await navigate('实践页面');
   const practiceFooterEditor = page.locator('#practice-content .practice-footer-editor');
@@ -954,7 +954,14 @@ try {
   }
   await navigate('系统设置');
   assert.equal(await page.locator('.settings-switch-card').count(), 0, 'store settings must live on their own page');
-  assert.equal(await page.locator('.brand-popup-settings').count(), 0, 'brand popup settings must live on their own page');
+  const brandPopupSettings = page.locator('#system-settings .brand-popup-settings');
+  await brandPopupSettings.waitFor();
+  await page.waitForFunction(() => { const input = document.querySelector('#system-settings input[placeholder="用于无障碍朗读，可留空"]'); return input instanceof HTMLInputElement && !input.disabled; });
+  assert.equal(await brandPopupSettings.getByRole('checkbox', { name: '开启品牌图弹窗', exact: true }).count(), 1);
+  assert.equal(await brandPopupSettings.getByRole('checkbox').count(), 2, 'brand popup should expose enabled and closable controls');
+  assert.equal(await brandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
+  assert.equal(await brandPopupSettings.getByRole('combobox').inputValue(), 'daily');
+  assert.equal(await brandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
   const notice = page.getByLabel('维护公告', { exact: true });
   await notice.fill('尚未保存的维护公告');
   await refreshChoice(false);
@@ -968,16 +975,6 @@ try {
   assert.equal(await page.getByRole('checkbox', { name: '商城开放', exact: true }).count(), 1);
   assert.equal(await page.locator('.brand-popup-settings').count(), 0, 'store page must not render brand popup settings');
   assert.equal(await page.getByText('两处同时开启，用户才能看到商品', { exact: true }).count(), 1);
-  await navigate('启动品牌图');
-  const brandPopupSettings = page.locator('#brand-popup-settings-page .brand-popup-settings');
-  await brandPopupSettings.waitFor();
-  await page.waitForFunction(() => { const input = document.querySelector('#brand-popup-settings-page input[placeholder="用于无障碍朗读，可留空"]'); return input instanceof HTMLInputElement && !input.disabled; });
-  assert.equal(await page.locator('.settings-switch-card').count(), 0, 'brand page must not render store settings');
-  assert.equal(await brandPopupSettings.getByRole('checkbox', { name: '开启启动品牌图', exact: true }).count(), 1);
-  assert.equal(await brandPopupSettings.getByRole('checkbox').count(), 2, 'brand popup should expose enabled and closable controls');
-  assert.equal(await brandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
-  assert.equal(await brandPopupSettings.getByRole('combobox').inputValue(), 'daily');
-  assert.equal(await brandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
   await navigate('生命牌文案');
   const cardTitle = page.locator('.life-card-form').getByLabel('标题', { exact: true });
   await cardTitle.fill('测试草稿标题');
@@ -1187,7 +1184,7 @@ try {
         await responsiveRestrictionDialog.getByRole('button', { name: '取消', exact: true }).click();
         await responsiveRestrictionDialog.waitFor({ state: 'detached' });
       }
-      if (width === 375 && ['会员列表', '实践页面', '操作记录', '模块状态机', '员工与权限', '关于 MYRIAD SHE', '生命牌文案', '系统设置', '商城开放', '启动品牌图'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 会员列表: 'members', 实践页面: 'practice', 操作记录: 'audit', 模块状态机: 'module-states', 员工与权限: 'employees', '关于 MYRIAD SHE': 'about', 生命牌文案: 'life-cards', 系统设置: 'settings', 商城开放: 'store-settings', 启动品牌图: 'brand-popup' })[label]}-mobile.png`), fullPage: true });
+      if (width === 375 && ['会员列表', '实践页面', '操作记录', '模块状态机', '员工与权限', '关于 MYRIAD SHE', '生命牌文案', '系统设置', '商城开放'].includes(label)) await page.screenshot({ path: resolve(output, `admin-${({ 会员列表: 'members', 实践页面: 'practice', 操作记录: 'audit', 模块状态机: 'module-states', 员工与权限: 'employees', '关于 MYRIAD SHE': 'about', 生命牌文案: 'life-cards', 系统设置: 'settings', 商城开放: 'store-settings' })[label]}-mobile.png`), fullPage: true });
     }
   }
   await page.locator('.admin-notification-trigger').click();
@@ -1213,7 +1210,7 @@ try {
   await restricted.locator('#member-directory').waitFor();
   await restricted.keyboard.press('Control+k');
   const limitedMenu = restricted.getByRole('dialog', { name: '快速前往' });
-  assert.equal(await limitedMenu.getByRole('option').count(), 5, 'restricted users should see all settings subpages they can access');
+  assert.equal(await limitedMenu.getByRole('option').count(), 4, 'restricted users should see all settings subpages they can access');
   await limitedMenu.getByRole('combobox').fill('员工');
   assert.equal(await limitedMenu.getByRole('option').count(), 0);
   await limitedMenu.getByRole('combobox').fill('模块状态机');
@@ -1264,7 +1261,7 @@ try {
     true,
     'navigation and draft tests must not persist unrelated data',
   );
-  console.log('PASS: 33 authorized destinations, legacy practice API normalization, issue required-field validation and editable edition copy, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
+  console.log('PASS: 32 authorized destinations, legacy practice API normalization, issue required-field validation and editable edition copy, module state filters/read-only transitions, discussion content/restriction views, aggregate summary counts, 3 responsive viewport sizes, notification interactions, editor drafts, refresh confirmation/failure, dialogs/focus/scroll, command search/keyboard/permissions, sidebar persistence and reduced motion.');
 } finally {
   await browser?.close();
   await server.close();

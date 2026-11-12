@@ -90,4 +90,15 @@
       <view class="shop-tab-icon shop-mine-icon"><view class="shop-mine-head"></view><view class="shop-mine-body"></view></view><text>我的</text>
     </view>
   </view>
+
+  <brand-launch-popup
+    wx:if="{{brandPopup}}"
+    visible="{{true}}"
+    image-url="{{brandPopup.imageUrl}}"
+    duration-seconds="{{brandPopup.durationSeconds}}"
+    alt-text="{{brandPopup.altText}}"
+    closable="{{brandPopup.closable}}"
+    bind:shown="onBrandPopupShown"
+    bind:close="onBrandPopupClose"
+  />
 </view>

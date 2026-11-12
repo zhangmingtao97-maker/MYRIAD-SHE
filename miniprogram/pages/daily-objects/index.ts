@@ -2,6 +2,8 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isDailyObjectsContent, isPracticeContent, isPublicHomeContent, isStoreStatus } from '../../utils/content';
 import type { DailyObjectsContent, PracticeContent, PublicHomeContent, StoreStatus } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { fetchBrandPopup, markBrandPopupShown, shouldShowBrandPopup } from '../../utils/brand-popup';
+import type { BrandPopupConfig } from '../../utils/brand-popup';
 
 const tabs = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
 type OfficialArticleRuntime = typeof wx & {
@@ -34,20 +36,42 @@ Page({
     error: '',
     accessAvailable: false,
     shopOpen: false,
+    brandPopup: null as BrandPopupConfig | null,
   },
   requestGeneration: 0,
+  brandPopupGeneration: 0,
   onLoad() {
     enableShareMenu();
     const windowInfo = wx.getWindowInfo();
     this.setData({ statusBarHeight: windowInfo.statusBarHeight, coverImageHeight: Math.round(windowInfo.windowWidth * 0.9) });
     void this.loadPreviewAccess();
+    void this.loadBrandPopup();
   },
   onShow() {
     if (!this.data.loading) void this.loadPreviewAccess();
   },
   onHide() {
     this.requestGeneration += 1;
+    this.brandPopupGeneration += 1;
     if (this.data.loading) this.setData({ loading: false });
+    if (this.data.brandPopup) this.setData({ brandPopup: null });
+  },
+  onUnload() {
+    this.requestGeneration += 1;
+    this.brandPopupGeneration += 1;
+    if (this.data.brandPopup) this.setData({ brandPopup: null });
+  },
+  async loadBrandPopup() {
+    const generation = ++this.brandPopupGeneration;
+    const popup = await fetchBrandPopup();
+    if (generation !== this.brandPopupGeneration || !popup || !shouldShowBrandPopup(popup.frequency, new Date(), 'daily-objects')) return;
+    this.setData({ brandPopup: popup });
+  },
+  onBrandPopupClose() {
+    this.setData({ brandPopup: null });
+  },
+  onBrandPopupShown() {
+    if (this.data.brandPopup) markBrandPopupShown(this.data.brandPopup.frequency, new Date(), 'daily-objects');
   },
   async loadPreviewAccess() {
     const generation = ++this.requestGeneration;
