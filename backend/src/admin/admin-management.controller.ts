@@ -12,11 +12,16 @@ import { parseDatabaseCount, parsePagination } from '../pagination';
 import { StorageService } from '../storage/storage.service';
 import { DataEncryptionService } from '../security/data-encryption.service';
 
-const settingKeys = ['store_enabled', 'maintenance_notice', 'support_contact', 'discussion_appeal_contact', 'brand_popup_enabled', 'brand_popup_image', 'brand_popup_duration', 'brand_popup_frequency', 'brand_popup_alt', 'brand_popup_closable'] as const;
+const settingKeys = ['store_enabled', 'maintenance_notice', 'support_contact', 'discussion_appeal_contact', 'brand_popup_enabled', 'brand_popup_image', 'brand_popup_duration', 'brand_popup_frequency', 'brand_popup_alt', 'brand_popup_closable', 'daily_objects_brand_popup_enabled', 'daily_objects_brand_popup_image', 'daily_objects_brand_popup_duration', 'daily_objects_brand_popup_frequency', 'daily_objects_brand_popup_alt', 'daily_objects_brand_popup_closable'] as const;
+const brandPopupSettingPrefixes = ['brand_popup_', 'daily_objects_brand_popup_'] as const;
 const brandPopupFrequencies = ['every_launch', 'daily', 'once'] as const;
 const roles = ['super_admin', 'content_editor', 'support_readonly'] as const;
 type AdminRole = typeof roles[number];
 type AdminRequest = Request & { user?: { sub: string; role: string } };
+
+function isBrandPopupSettingKey(key: string) {
+  return brandPopupSettingPrefixes.some((prefix) => key.startsWith(prefix));
+}
 
 function text(value: unknown, label: string, maximum: number) {
   if (typeof value !== 'string') throw new BadRequestException(`${label}无效`);
@@ -401,37 +406,40 @@ export class AdminManagementController {
     if (!entries.length || entries.some(([key]) => !settingKeys.includes(key as typeof settingKeys[number]))) throw new BadRequestException('设置项无效');
     const values: Record<string, unknown> = {};
     for (const [key, value] of entries) {
+      const popupPrefix = brandPopupSettingPrefixes.find((prefix) => key.startsWith(prefix));
+      const popupField = popupPrefix ? key.slice(popupPrefix.length) : '';
+      const popupLabel = popupPrefix === 'daily_objects_brand_popup_' ? '日常之物品牌图' : '首页品牌图';
       if (key === 'store_enabled') {
         if (typeof value !== 'boolean') throw new BadRequestException('商城开放状态无效');
         values[key] = value;
-      } else if (key === 'brand_popup_enabled') {
-        if (typeof value !== 'boolean') throw new BadRequestException('启动品牌图开关无效');
+      } else if (popupField === 'enabled') {
+        if (typeof value !== 'boolean') throw new BadRequestException(`${popupLabel}开关无效`);
         values[key] = value;
-      } else if (key === 'brand_popup_closable') {
-        if (typeof value !== 'boolean') throw new BadRequestException('启动品牌图关闭设置无效');
+      } else if (popupField === 'closable') {
+        if (typeof value !== 'boolean') throw new BadRequestException(`${popupLabel}关闭设置无效`);
         values[key] = value;
-      } else if (key === 'brand_popup_duration') {
+      } else if (popupField === 'duration') {
         if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 15) {
-          throw new BadRequestException('启动品牌图持续时间须为 1–15 秒的整数');
+          throw new BadRequestException(`${popupLabel}持续时间须为 1–15 秒的整数`);
         }
         values[key] = value;
-      } else if (key === 'brand_popup_frequency') {
+      } else if (popupField === 'frequency') {
         if (typeof value !== 'string' || !brandPopupFrequencies.includes(value as typeof brandPopupFrequencies[number])) {
-          throw new BadRequestException('启动品牌图展示频次无效');
+          throw new BadRequestException(`${popupLabel}展示频次无效`);
         }
         values[key] = value;
-      } else if (key === 'brand_popup_image') {
-        if (typeof value !== 'string' || value.trim().length > 512) throw new BadRequestException('启动品牌图路径无效');
+      } else if (popupField === 'image') {
+        if (typeof value !== 'string' || value.trim().length > 512) throw new BadRequestException(`${popupLabel}路径无效`);
         const objectKey = value.trim();
         const segments = objectKey.split('/');
         if (objectKey !== '' && (!objectKey.startsWith('content/image/')
           || /[\\\s\u0000-\u001F\u007F?#]/.test(objectKey)
           || !segments.every((segment) => segment.length > 0 && segment !== '.' && segment !== '..'))) {
-          throw new BadRequestException('启动品牌图须使用 content/image/ 下的受管图片');
+          throw new BadRequestException(`${popupLabel}须使用 content/image/ 下的受管图片`);
         }
         values[key] = objectKey;
-      } else if (key === 'brand_popup_alt') {
-        if (typeof value !== 'string' || value.trim().length > 120) throw new BadRequestException('启动品牌图说明长度无效');
+      } else if (popupField === 'alt') {
+        if (typeof value !== 'string' || value.trim().length > 120) throw new BadRequestException(`${popupLabel}说明长度无效`);
         values[key] = value.trim();
       } else {
         const label = key === 'maintenance_notice' ? '维护公告' : key === 'discussion_appeal_contact' ? '一起谈谈申诉联系方式' : '联系支持';
@@ -443,21 +451,31 @@ export class AdminManagementController {
     if (values.store_enabled !== undefined && request.user?.role !== 'super_admin') {
       throw new ForbiddenException('仅超级管理员可以修改商城开放状态');
     }
-    if (Object.keys(values).some((key) => key.startsWith('brand_popup_')) && request.user?.role !== 'super_admin') {
-      throw new ForbiddenException('仅超级管理员可以修改启动品牌图设置');
-    }
-    if (values.brand_popup_enabled === true && values.brand_popup_image === '') {
-      throw new BadRequestException('开启启动品牌图前请先上传品牌图片');
+    if (Object.keys(values).some(isBrandPopupSettingKey) && request.user?.role !== 'super_admin') {
+      throw new ForbiddenException('仅超级管理员可以修改品牌图弹窗设置');
     }
     await this.database.withTransaction(async (client) => {
+      const previousKeys = new Set(Object.keys(values));
+      for (const prefix of brandPopupSettingPrefixes) {
+        if (Object.keys(values).some((key) => key.startsWith(prefix))) {
+          previousKeys.add(`${prefix}enabled`);
+          previousKeys.add(`${prefix}image`);
+        }
+      }
       const previous = await client.query<{ key: string; value: unknown }>(
-        `select key, value from system_settings where key = any($1::text[])`, [Object.keys(values)],
+        `select key, value from system_settings where key = any($1::text[])`, [[...previousKeys]],
       );
       const previousValues = Object.fromEntries(previous.rows.map((row) => [row.key, row.value]));
-      const effectiveEnabled = values.brand_popup_enabled ?? previousValues.brand_popup_enabled;
-      const effectiveImage = values.brand_popup_image ?? previousValues.brand_popup_image;
-      if (effectiveEnabled === true && (typeof effectiveImage !== 'string' || effectiveImage.trim() === '')) {
-        throw new BadRequestException('开启启动品牌图前请先上传品牌图片');
+      for (const prefix of brandPopupSettingPrefixes) {
+        const enabledKey = `${prefix}enabled`;
+        const imageKey = `${prefix}image`;
+        if (!previousKeys.has(enabledKey) && !previousKeys.has(imageKey)) continue;
+        const effectiveEnabled = values[enabledKey] ?? previousValues[enabledKey];
+        const effectiveImage = values[imageKey] ?? previousValues[imageKey];
+        if (effectiveEnabled === true && (typeof effectiveImage !== 'string' || effectiveImage.trim() === '')) {
+          const label = prefix === 'daily_objects_brand_popup_' ? '日常之物品牌图' : '首页品牌图';
+          throw new BadRequestException(`开启${label}前请先上传品牌图片`);
+        }
       }
       for (const [key, value] of Object.entries(values)) {
         await client.query(`insert into system_settings (key, value, updated_by) values ($1, $2::jsonb, $3)

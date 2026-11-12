@@ -50,9 +50,10 @@ function normalizeBrandPopup(value: unknown): BrandPopupConfig | null {
   };
 }
 
-export async function fetchBrandPopup(): Promise<BrandPopupConfig | null> {
+export async function fetchBrandPopup(surface: BrandPopupSurface = 'home'): Promise<BrandPopupConfig | null> {
   try {
-    return normalizeBrandPopup(await request<unknown>('/content/brand-popup', { timeout: 5000 }));
+    const path = surface === 'daily-objects' ? '/content/brand-popup?surface=daily-objects' : '/content/brand-popup';
+    return normalizeBrandPopup(await request<unknown>(path, { timeout: 5000 }));
   } catch {
     return null;
   }

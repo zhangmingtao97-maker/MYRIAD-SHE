@@ -2891,14 +2891,26 @@ export class ContentController {
 
   @Get('brand-popup')
   @Header('Cache-Control', 'no-store')
-  async brandPopup() {
-    const result = await this.database.query<{ key: string; value: unknown }>(
-      `select key, value from system_settings where key = any($1::text[])`,
-      [['brand_popup_enabled', 'brand_popup_image', 'brand_popup_duration', 'brand_popup_frequency', 'brand_popup_alt', 'brand_popup_closable']],
-    );
-    const settings = Object.fromEntries(result.rows.map((row) => [row.key, row.value]));
-    const objectKey = typeof settings.brand_popup_image === 'string' ? settings.brand_popup_image.trim() : '';
-    if (settings.brand_popup_enabled !== true || !objectKey.startsWith('content/image/')) return { enabled: false };
+  async brandPopup(@Query('surface') surface?: string) {
+    const loadSettings = async (prefix: string) => {
+      const result = await this.database.query<{ key: string; value: unknown }>(
+        `select key, value from system_settings where key = any($1::text[])`,
+        [[`${prefix}enabled`, `${prefix}image`, `${prefix}duration`, `${prefix}frequency`, `${prefix}alt`, `${prefix}closable`]],
+      );
+      return Object.fromEntries(result.rows.map((row) => [row.key, row.value]));
+    };
+
+    let prefix = surface === 'daily-objects' ? 'daily_objects_brand_popup_' : 'brand_popup_';
+    let settings = await loadSettings(prefix);
+    // Existing daily-objects clients used the shared brand-popup keys. Keep that
+    // image as a fallback until the daily-objects popup has its own saved config.
+    if (surface === 'daily-objects' && Object.keys(settings).length === 0) {
+      prefix = 'brand_popup_';
+      settings = await loadSettings(prefix);
+    }
+
+    const objectKey = typeof settings[`${prefix}image`] === 'string' ? String(settings[`${prefix}image`]).trim() : '';
+    if (settings[`${prefix}enabled`] !== true || !objectKey.startsWith('content/image/')) return { enabled: false };
 
     let imageUrl = '';
     try {
@@ -2910,15 +2922,15 @@ export class ContentController {
     }
     if (!imageUrl) return { enabled: false };
 
-    const configuredDuration = Number(settings.brand_popup_duration);
-    const frequency = settings.brand_popup_frequency;
+    const configuredDuration = Number(settings[`${prefix}duration`]);
+    const frequency = settings[`${prefix}frequency`];
     return {
       enabled: true,
       imageUrl,
       durationSeconds: Number.isInteger(configuredDuration) && configuredDuration >= 1 && configuredDuration <= 15 ? configuredDuration : 3,
       frequency: frequency === 'daily' || frequency === 'once' ? frequency : 'every_launch',
-      altText: typeof settings.brand_popup_alt === 'string' ? settings.brand_popup_alt.trim().slice(0, 120) : '',
-      closable: settings.brand_popup_closable !== false,
+      altText: typeof settings[`${prefix}alt`] === 'string' ? String(settings[`${prefix}alt`]).trim().slice(0, 120) : '',
+      closable: settings[`${prefix}closable`] !== false,
     };
   }
 

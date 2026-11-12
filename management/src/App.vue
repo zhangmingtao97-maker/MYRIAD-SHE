@@ -801,6 +801,7 @@ const memberError = ref('');
 const memberLoading = ref(false);
 const memberPageSize = 50;
 type BrandPopupFrequency = 'every_launch' | 'daily' | 'once';
+type BrandPopupSurface = 'home' | 'daily-objects';
 type SystemSettings = {
   store_enabled: boolean;
   maintenance_notice: string;
@@ -812,6 +813,12 @@ type SystemSettings = {
   brand_popup_frequency: BrandPopupFrequency;
   brand_popup_alt: string;
   brand_popup_closable: boolean;
+  daily_objects_brand_popup_enabled: boolean;
+  daily_objects_brand_popup_image: string;
+  daily_objects_brand_popup_duration: number;
+  daily_objects_brand_popup_frequency: BrandPopupFrequency;
+  daily_objects_brand_popup_alt: string;
+  daily_objects_brand_popup_closable: boolean;
 };
 const initialSystemSettings: SystemSettings = {
   store_enabled: false,
@@ -824,12 +831,20 @@ const initialSystemSettings: SystemSettings = {
   brand_popup_frequency: 'every_launch',
   brand_popup_alt: '',
   brand_popup_closable: true,
+  daily_objects_brand_popup_enabled: false,
+  daily_objects_brand_popup_image: '',
+  daily_objects_brand_popup_duration: 3,
+  daily_objects_brand_popup_frequency: 'every_launch',
+  daily_objects_brand_popup_alt: '',
+  daily_objects_brand_popup_closable: true,
 };
 const systemSettings = ref<SystemSettings>({ ...initialSystemSettings });
 const systemSettingsOriginal = ref<SystemSettings>({ ...systemSettings.value });
 const brandPopupPreviewUrl = ref('');
+const dailyObjectsBrandPopupPreviewUrl = ref('');
 const brandPopupUploading = ref(false);
 const brandPopupFileInput = ref<HTMLInputElement | null>(null);
+const dailyObjectsBrandPopupFileInput = ref<HTMLInputElement | null>(null);
 
 interface LifeCardRow { month: number; day: number; suit: string; rank: string; theme: string; title: string; summary: string; prompt: string; note: string; sourceNote: string }
 const lifeCards = ref<LifeCardRow[]>([]);
@@ -3518,6 +3533,10 @@ function normalizedSystemSettings(result: unknown): SystemSettings {
   const frequency = settingValue(result, 'brand_popup_frequency');
   const image = settingValue(result, 'brand_popup_image');
   const alt = settingValue(result, 'brand_popup_alt');
+  const dailyDuration = settingValue(result, 'daily_objects_brand_popup_duration');
+  const dailyFrequency = settingValue(result, 'daily_objects_brand_popup_frequency');
+  const dailyImage = settingValue(result, 'daily_objects_brand_popup_image');
+  const dailyAlt = settingValue(result, 'daily_objects_brand_popup_alt');
   const notice = settingValue(result, 'maintenance_notice');
   const support = settingValue(result, 'support_contact');
   const appeal = settingValue(result, 'discussion_appeal_contact');
@@ -3532,6 +3551,12 @@ function normalizedSystemSettings(result: unknown): SystemSettings {
     brand_popup_frequency: frequency === 'daily' || frequency === 'once' ? frequency : 'every_launch',
     brand_popup_alt: typeof alt === 'string' ? alt : '',
     brand_popup_closable: settingValue(result, 'brand_popup_closable') !== false,
+    daily_objects_brand_popup_enabled: settingValue(result, 'daily_objects_brand_popup_enabled') === true,
+    daily_objects_brand_popup_image: typeof dailyImage === 'string' ? dailyImage.trim() : '',
+    daily_objects_brand_popup_duration: typeof dailyDuration === 'number' && Number.isInteger(dailyDuration) && dailyDuration >= 1 && dailyDuration <= 15 ? dailyDuration : 3,
+    daily_objects_brand_popup_frequency: dailyFrequency === 'daily' || dailyFrequency === 'once' ? dailyFrequency : 'every_launch',
+    daily_objects_brand_popup_alt: typeof dailyAlt === 'string' ? dailyAlt : '',
+    daily_objects_brand_popup_closable: settingValue(result, 'daily_objects_brand_popup_closable') !== false,
   };
 }
 
@@ -3545,7 +3570,10 @@ async function loadSystemSettings() {
     const next = normalizedSystemSettings(await response.json());
     systemSettings.value = next;
     systemSettingsOriginal.value = { ...next };
-    brandPopupPreviewUrl.value = next.brand_popup_image ? await dailyObjectMediaPreviewUrl(next.brand_popup_image, session) : '';
+    [brandPopupPreviewUrl.value, dailyObjectsBrandPopupPreviewUrl.value] = await Promise.all([
+      next.brand_popup_image ? dailyObjectMediaPreviewUrl(next.brand_popup_image, session) : '',
+      next.daily_objects_brand_popup_image ? dailyObjectMediaPreviewUrl(next.daily_objects_brand_popup_image, session) : '',
+    ]);
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '无法读取系统设置'; }
   finally { settingsLoading.value = false; }
 }
@@ -3565,10 +3593,13 @@ async function saveSystemSettings() {
     const normalized = normalizedSystemSettings(saved);
     systemSettings.value = normalized;
     systemSettingsOriginal.value = { ...normalized };
-    brandPopupPreviewUrl.value = normalized.brand_popup_image ? await dailyObjectMediaPreviewUrl(normalized.brand_popup_image, session) : '';
+    [brandPopupPreviewUrl.value, dailyObjectsBrandPopupPreviewUrl.value] = await Promise.all([
+      normalized.brand_popup_image ? dailyObjectMediaPreviewUrl(normalized.brand_popup_image, session) : '',
+      normalized.daily_objects_brand_popup_image ? dailyObjectMediaPreviewUrl(normalized.daily_objects_brand_popup_image, session) : '',
+    ]);
     settingsMessage.value = activeSection.value === 'store-settings'
       ? '商城设置已保存。商城仍需与「实践目录 → 日常之物」入口同时开启，用户才能看到商品。'
-      : '系统设置已保存。品牌图将在下次打开默认首页或进入「日常之物」时按频次出现。';
+      : '系统设置已保存。首页与「日常之物」品牌图会按各自开关和频次展示。';
   } catch (caught) { settingsError.value = caught instanceof Error ? caught.message : '系统设置保存失败'; }
   finally { settingsSaving.value = false; }
 }
@@ -3577,9 +3608,10 @@ async function resetSystemSettings() {
   systemSettings.value = { ...systemSettingsOriginal.value };
   settingsError.value = '';
   settingsMessage.value = '';
-  brandPopupPreviewUrl.value = systemSettings.value.brand_popup_image
-    ? await dailyObjectMediaPreviewUrl(systemSettings.value.brand_popup_image, session)
-    : '';
+  [brandPopupPreviewUrl.value, dailyObjectsBrandPopupPreviewUrl.value] = await Promise.all([
+    systemSettings.value.brand_popup_image ? dailyObjectMediaPreviewUrl(systemSettings.value.brand_popup_image, session) : '',
+    systemSettings.value.daily_objects_brand_popup_image ? dailyObjectMediaPreviewUrl(systemSettings.value.daily_objects_brand_popup_image, session) : '',
+  ]);
 }
 
 async function loadEmployees() {
@@ -4692,28 +4724,51 @@ async function uploadDailyObjectImageFile(file: File, targetId: string) {
   }
 }
 
-function chooseBrandPopupImage() {
-  if (!isSuperAdmin.value || brandPopupUploading.value || settingsLoading.value) return;
-  brandPopupFileInput.value?.click();
+function brandPopupLabel(surface: BrandPopupSurface) {
+  return surface === 'daily-objects' ? '日常之物品牌图' : '首页品牌图';
 }
 
-function selectBrandPopupImage(event: Event) {
+function setBrandPopupImage(surface: BrandPopupSurface, image: string) {
+  systemSettings.value = surface === 'daily-objects'
+    ? { ...systemSettings.value, daily_objects_brand_popup_image: image }
+    : { ...systemSettings.value, brand_popup_image: image };
+}
+
+function setBrandPopupEnabled(surface: BrandPopupSurface, enabled: boolean) {
+  systemSettings.value = surface === 'daily-objects'
+    ? { ...systemSettings.value, daily_objects_brand_popup_enabled: enabled }
+    : { ...systemSettings.value, brand_popup_enabled: enabled };
+}
+
+function setBrandPopupPreview(surface: BrandPopupSurface, url: string) {
+  if (surface === 'daily-objects') dailyObjectsBrandPopupPreviewUrl.value = url;
+  else brandPopupPreviewUrl.value = url;
+}
+
+function chooseBrandPopupImage(surface: BrandPopupSurface) {
+  if (!isSuperAdmin.value || brandPopupUploading.value || settingsLoading.value) return;
+  const input = surface === 'daily-objects' ? dailyObjectsBrandPopupFileInput.value : brandPopupFileInput.value;
+  input?.click();
+}
+
+function selectBrandPopupImage(event: Event, surface: BrandPopupSurface) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   input.value = '';
   if (!file || brandPopupUploading.value) return;
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    settingsError.value = '启动品牌图仅支持 JPG、PNG 或 WebP。';
+    settingsError.value = `${brandPopupLabel(surface)}仅支持 JPG、PNG 或 WebP。`;
     return;
   }
   settingsError.value = '';
   settingsMessage.value = '';
-  requestImageCrop(file, '编辑启动品牌图', (croppedFile) => { void uploadBrandPopupImage(croppedFile); });
+  requestImageCrop(file, `编辑${brandPopupLabel(surface)}`, (croppedFile) => { void uploadBrandPopupImage(croppedFile, surface); });
 }
 
-async function uploadBrandPopupImage(file: File) {
+async function uploadBrandPopupImage(file: File, surface: BrandPopupSurface) {
   if (!isSuperAdmin.value || brandPopupUploading.value) return;
   const session = sessionGeneration;
+  const label = brandPopupLabel(surface);
   brandPopupUploading.value = true;
   settingsError.value = '';
   settingsMessage.value = '';
@@ -4725,36 +4780,38 @@ async function uploadBrandPopupImage(file: File) {
     });
     if (handleAdminUnauthorized(response, session)) throw new Error('后台登录已过期，请重新登录。');
     assertSession(session);
-    if (!response.ok) throw new Error(await responseMessage(response, '无法创建品牌图上传地址'));
+    if (!response.ok) throw new Error(await responseMessage(response, `无法创建${label}上传地址`));
     const target = await response.json();
-    if (!isMediaUploadTarget(target)) throw new Error('服务器未返回有效的品牌图上传地址');
+    if (!isMediaUploadTarget(target)) throw new Error(`服务器未返回有效的${label}上传地址`);
     const uploadResponse = await apiFetch(target.uploadUrl, { method: 'PUT', headers: { 'content-type': file.type }, body: file }, mediaUploadTimeoutMs);
     assertSession(session);
-    if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, '品牌图上传失败'));
+    if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, `${label}上传失败`));
     const params = new URLSearchParams({ objectKey: target.objectKey });
     const previewResponse = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(previewResponse, session)) throw new Error('后台登录已过期，请重新登录。');
     assertSession(session);
-    if (!previewResponse.ok) throw new Error(await responseMessage(previewResponse, '品牌图已上传，但无法生成预览'));
+    if (!previewResponse.ok) throw new Error(await responseMessage(previewResponse, `${label}已上传，但无法生成预览`));
     const preview = await previewResponse.json();
-    if (!isMediaViewTarget(preview)) throw new Error('服务器未返回有效的品牌图预览地址');
-    systemSettings.value = { ...systemSettings.value, brand_popup_image: target.objectKey };
-    brandPopupPreviewUrl.value = preview.url;
-    settingsMessage.value = '品牌图已上传。请确认开关与展示设置，再点击「保存系统设置」后生效。';
+    if (!isMediaViewTarget(preview)) throw new Error(`服务器未返回有效的${label}预览地址`);
+    setBrandPopupImage(surface, target.objectKey);
+    setBrandPopupPreview(surface, preview.url);
+    settingsMessage.value = `${label}已上传。请确认开关与展示设置，再点击「保存系统设置」后生效。`;
   } catch (caught) {
-    if (session === sessionGeneration && loggedIn.value) settingsError.value = caught instanceof Error ? caught.message : '品牌图上传失败。';
+    if (session === sessionGeneration && loggedIn.value) settingsError.value = caught instanceof Error ? caught.message : `${label}上传失败。`;
   } finally {
     if (session === sessionGeneration) brandPopupUploading.value = false;
   }
 }
 
-function removeBrandPopupImage() {
+function removeBrandPopupImage(surface: BrandPopupSurface) {
   if (!isSuperAdmin.value || brandPopupUploading.value) return;
-  if (!window.confirm('移除品牌图会同时关闭品牌图弹窗。保存系统设置后生效，确认移除？')) return;
-  systemSettings.value = { ...systemSettings.value, brand_popup_image: '', brand_popup_enabled: false };
-  brandPopupPreviewUrl.value = '';
+  const label = brandPopupLabel(surface);
+  if (!window.confirm(`移除${label}会同时关闭对应的弹窗。保存系统设置后生效，确认移除？`)) return;
+  setBrandPopupImage(surface, '');
+  setBrandPopupEnabled(surface, false);
+  setBrandPopupPreview(surface, '');
   settingsError.value = '';
-  settingsMessage.value = '品牌图已移除，品牌图弹窗已关闭；请点击「保存系统设置」后生效。';
+  settingsMessage.value = `${label}已移除，对应弹窗已关闭；请点击「保存系统设置」后生效。`;
 }
 
 function markDailyObjectsDirty() {
@@ -9139,36 +9196,36 @@ onBeforeUnmount(() => {
     <label>联系支持<textarea v-model="systemSettings.support_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写客服渠道或邮箱" /></label>
     <label>一起谈谈申诉联系方式<textarea v-model="systemSettings.discussion_appeal_contact" rows="2" maxlength="200" :disabled="settingsLoading || !isSuperAdmin" placeholder="可填写申诉邮箱、微信号或其他渠道；留空时自动使用联系支持渠道" /></label>
 
-    <section class="brand-popup-settings" aria-labelledby="brand-popup-settings-title">
+    <section id="home-brand-popup-settings" class="brand-popup-settings" aria-labelledby="home-brand-popup-settings-title">
       <div class="brand-popup-settings-heading">
         <div>
-          <p class="eyebrow">LAUNCH EXPERIENCE</p>
-          <h3 id="brand-popup-settings-title">品牌图弹窗</h3>
-          <p>打开小程序默认首页或进入「日常之物」时，以全屏品牌图呈现。图片会居中裁切并铺满整个屏幕。</p>
+          <p class="eyebrow">HOME / LAUNCH EXPERIENCE</p>
+          <h3 id="home-brand-popup-settings-title">首页品牌图弹窗</h3>
+          <p>用户打开小程序默认首页时，以全屏品牌图呈现。图片会居中裁切并铺满整个屏幕。</p>
         </div>
       </div>
 
       <label class="brand-popup-master-row">
         <span>
-          <strong>开启品牌图弹窗</strong>
-          <small>{{ systemSettings.brand_popup_image ? '开启后按下方频次展示' : '请先上传品牌图片' }}</small>
+          <strong>开启首页品牌图弹窗</strong>
+          <small>{{ systemSettings.brand_popup_image ? '开启后按下方频次展示' : '请先上传首页品牌图片' }}</small>
         </span>
         <span class="settings-switch-control">
           <span>{{ systemSettings.brand_popup_enabled ? '已开启' : '已关闭' }}</span>
-          <input v-model="systemSettings.brand_popup_enabled" type="checkbox" aria-label="开启品牌图弹窗" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.brand_popup_image || brandPopupUploading" />
+          <input v-model="systemSettings.brand_popup_enabled" type="checkbox" aria-label="开启首页品牌图弹窗" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.brand_popup_image || brandPopupUploading" />
         </span>
       </label>
 
       <div class="brand-popup-settings-grid">
         <div class="brand-popup-media">
           <div class="brand-popup-preview-frame">
-            <img v-if="brandPopupPreviewUrl" :src="brandPopupPreviewUrl" alt="启动品牌图预览" />
-            <div v-else class="brand-popup-preview-empty"><span>尚未上传品牌图</span><small>建议使用 9:16 竖版图片，重要文字请放在画面中央</small></div>
+            <img v-if="brandPopupPreviewUrl" :src="brandPopupPreviewUrl" alt="首页品牌图预览" />
+            <div v-else class="brand-popup-preview-empty"><span>尚未上传首页品牌图</span><small>建议使用 9:16 竖版图片，重要文字请放在画面中央</small></div>
           </div>
-          <input ref="brandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage" />
+          <input ref="brandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage($event, 'home')" />
           <div class="brand-popup-media-actions">
-            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage">{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换图片' : '上传品牌图' }}</button>
-            <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage">移除</button>
+            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage('home')">{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换首页图片' : '上传首页品牌图' }}</button>
+            <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage('home')">移除</button>
           </div>
           <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存后生效。</small>
         </div>
@@ -9184,7 +9241,7 @@ onBeforeUnmount(() => {
               <option value="daily">每天一次</option>
               <option value="once">仅展示一次</option>
             </select>
-            <small>首页与「日常之物」分别独立计算展示频次。</small>
+            <small>仅计算首页弹窗的展示频次。</small>
           </label>
           <label class="brand-popup-alt-field">图片说明
             <input v-model="systemSettings.brand_popup_alt" maxlength="120" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" placeholder="用于无障碍朗读，可留空" />
@@ -9196,7 +9253,67 @@ onBeforeUnmount(() => {
           </label>
         </div>
       </div>
-      <p class="brand-popup-settings-note">品牌图会在打开默认首页或进入「日常之物」时展示；两处分别计算频次。关闭开关或未上传图片时不会弹出。</p>
+      <p class="brand-popup-settings-note">首页弹窗只影响小程序默认首页；关闭开关或未上传图片时不会弹出。</p>
+    </section>
+
+    <section id="daily-objects-brand-popup-settings" class="brand-popup-settings" aria-labelledby="daily-objects-brand-popup-settings-title">
+      <div class="brand-popup-settings-heading">
+        <div>
+          <p class="eyebrow">DAILY OBJECTS / LAUNCH EXPERIENCE</p>
+          <h3 id="daily-objects-brand-popup-settings-title">日常之物品牌图弹窗</h3>
+          <p>用户进入「日常之物」模块时，以全屏品牌图呈现，与首页弹窗分别配置。</p>
+        </div>
+      </div>
+
+      <label class="brand-popup-master-row">
+        <span>
+          <strong>开启日常之物品牌图弹窗</strong>
+          <small>{{ systemSettings.daily_objects_brand_popup_image ? '开启后按下方频次展示' : '请先上传日常之物品牌图片' }}</small>
+        </span>
+        <span class="settings-switch-control">
+          <span>{{ systemSettings.daily_objects_brand_popup_enabled ? '已开启' : '已关闭' }}</span>
+          <input v-model="systemSettings.daily_objects_brand_popup_enabled" type="checkbox" aria-label="开启日常之物品牌图弹窗" :disabled="settingsLoading || !isSuperAdmin || !systemSettings.daily_objects_brand_popup_image || brandPopupUploading" />
+        </span>
+      </label>
+
+      <div class="brand-popup-settings-grid">
+        <div class="brand-popup-media">
+          <div class="brand-popup-preview-frame">
+            <img v-if="dailyObjectsBrandPopupPreviewUrl" :src="dailyObjectsBrandPopupPreviewUrl" alt="日常之物品牌图预览" />
+            <div v-else class="brand-popup-preview-empty"><span>尚未上传日常之物品牌图</span><small>建议使用 9:16 竖版图片，重要文字请放在画面中央</small></div>
+          </div>
+          <input ref="dailyObjectsBrandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage($event, 'daily-objects')" />
+          <div class="brand-popup-media-actions">
+            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage('daily-objects')">{{ brandPopupUploading ? '上传中…' : dailyObjectsBrandPopupPreviewUrl ? '更换日常之物图片' : '上传日常之物品牌图' }}</button>
+            <button v-if="systemSettings.daily_objects_brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage('daily-objects')">移除</button>
+          </div>
+          <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存后生效。</small>
+        </div>
+
+        <div class="brand-popup-fields">
+          <label>展示时长
+            <span class="brand-popup-number-field"><input v-model.number="systemSettings.daily_objects_brand_popup_duration" type="number" min="1" max="15" step="1" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" /><span>秒</span></span>
+            <small>可设置 1–15 秒，到时自动关闭。</small>
+          </label>
+          <label>展示频次
+            <select v-model="systemSettings.daily_objects_brand_popup_frequency" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading">
+              <option value="every_launch">每次进入</option>
+              <option value="daily">每天一次</option>
+              <option value="once">仅展示一次</option>
+            </select>
+            <small>仅计算「日常之物」弹窗的展示频次。</small>
+          </label>
+          <label class="brand-popup-alt-field">图片说明
+            <input v-model="systemSettings.daily_objects_brand_popup_alt" maxlength="120" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" placeholder="填写日常之物弹窗图片说明，可留空" />
+            <small>{{ systemSettings.daily_objects_brand_popup_alt.length }}/120 字</small>
+          </label>
+          <label class="setting-toggle brand-popup-closable-toggle">
+            <span><strong>允许手动关闭</strong><small>关闭后，品牌图仅会在倒计时结束时消失。</small></span>
+            <input v-model="systemSettings.daily_objects_brand_popup_closable" type="checkbox" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" />
+          </label>
+        </div>
+      </div>
+      <p class="brand-popup-settings-note">日常之物弹窗只影响「日常之物」模块；关闭开关或未上传图片时不会弹出。</p>
     </section>
 
     <div v-if="isSuperAdmin" class="topbar-actions">

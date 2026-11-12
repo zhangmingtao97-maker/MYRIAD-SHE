@@ -63,7 +63,7 @@ Page({
   },
   async loadBrandPopup() {
     const generation = ++this.brandPopupGeneration;
-    const popup = await fetchBrandPopup();
+    const popup = await fetchBrandPopup('daily-objects');
     if (generation !== this.brandPopupGeneration || !popup || !shouldShowBrandPopup(popup.frequency, new Date(), 'daily-objects')) return;
     this.setData({ brandPopup: popup });
   },

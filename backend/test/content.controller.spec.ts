@@ -2677,6 +2677,78 @@ test('public brand popup returns a signed image and display settings', async () 
   assert.equal(signedKey, 'content/image/brand.webp');
 });
 
+test('daily objects brand popup uses its own image and display settings', async () => {
+  const queriedKeys: string[][] = [];
+  const database = {
+    query: async (_sql: string, values: unknown[]) => {
+      queriedKeys.push(values[0] as string[]);
+      return { rows: [
+        { key: 'daily_objects_brand_popup_enabled', value: true },
+        { key: 'daily_objects_brand_popup_image', value: 'content/image/daily-objects.webp' },
+        { key: 'daily_objects_brand_popup_duration', value: 9 },
+        { key: 'daily_objects_brand_popup_frequency', value: 'daily' },
+        { key: 'daily_objects_brand_popup_alt', value: '  日常之物品牌图  ' },
+        { key: 'daily_objects_brand_popup_closable', value: true },
+      ] };
+    },
+  } as unknown as DatabaseService;
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
+    createDownloadUrl: async () => ({ url: 'https://storage.invalid/daily-objects.webp', expiresIn: 3600 }),
+  } as unknown as StorageService;
+  const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  assert.deepEqual(await controller.brandPopup('daily-objects'), {
+    enabled: true,
+    imageUrl: 'https://storage.invalid/daily-objects.webp',
+    durationSeconds: 9,
+    frequency: 'daily',
+    altText: '日常之物品牌图',
+    closable: true,
+  });
+  assert.deepEqual(queriedKeys, [[
+    'daily_objects_brand_popup_enabled',
+    'daily_objects_brand_popup_image',
+    'daily_objects_brand_popup_duration',
+    'daily_objects_brand_popup_frequency',
+    'daily_objects_brand_popup_alt',
+    'daily_objects_brand_popup_closable',
+  ]]);
+});
+
+test('daily objects brand popup falls back to the legacy shared image until configured', async () => {
+  let queryCount = 0;
+  const database = {
+    query: async () => {
+      queryCount += 1;
+      return queryCount === 1 ? { rows: [] } : { rows: [
+        { key: 'brand_popup_enabled', value: true },
+        { key: 'brand_popup_image', value: 'content/image/home.webp' },
+        { key: 'brand_popup_duration', value: 5 },
+        { key: 'brand_popup_frequency', value: 'once' },
+        { key: 'brand_popup_alt', value: '首页品牌图' },
+      ] };
+    },
+  } as unknown as DatabaseService;
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
+    createDownloadUrl: async () => ({ url: 'https://storage.invalid/home.webp', expiresIn: 3600 }),
+  } as unknown as StorageService;
+  const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+
+  assert.deepEqual(await controller.brandPopup('daily-objects'), {
+    enabled: true,
+    imageUrl: 'https://storage.invalid/home.webp',
+    durationSeconds: 5,
+    frequency: 'once',
+    altText: '首页品牌图',
+    closable: true,
+  });
+  assert.equal(queryCount, 2);
+});
+
 test('public brand popup falls back to safe duration and frequency values', async () => {
   const database = {
     query: async () => ({ rows: [

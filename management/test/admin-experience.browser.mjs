@@ -419,6 +419,12 @@ try {
         brand_popup_frequency: { value: 'daily' },
         brand_popup_alt: { value: '品牌图测试说明' },
         brand_popup_closable: { value: false },
+        daily_objects_brand_popup_enabled: { value: false },
+        daily_objects_brand_popup_image: { value: '' },
+        daily_objects_brand_popup_duration: { value: 8 },
+        daily_objects_brand_popup_frequency: { value: 'once' },
+        daily_objects_brand_popup_alt: { value: '日常之物品牌图测试说明' },
+        daily_objects_brand_popup_closable: { value: true },
       });
       if (path === '/admin/module-states') return send(moduleStates);
       if (path === '/admin/employees') return send(employees);
@@ -955,13 +961,22 @@ try {
   await navigate('系统设置');
   assert.equal(await page.locator('.settings-switch-card').count(), 0, 'store settings must live on their own page');
   const brandPopupSettings = page.locator('#system-settings .brand-popup-settings');
-  await brandPopupSettings.waitFor();
+  assert.equal(await brandPopupSettings.count(), 2, 'home and daily objects popups must be configured independently');
+  const homeBrandPopupSettings = page.locator('#home-brand-popup-settings');
+  const dailyObjectsBrandPopupSettings = page.locator('#daily-objects-brand-popup-settings');
+  await homeBrandPopupSettings.waitFor();
+  await dailyObjectsBrandPopupSettings.waitFor();
   await page.waitForFunction(() => { const input = document.querySelector('#system-settings input[placeholder="用于无障碍朗读，可留空"]'); return input instanceof HTMLInputElement && !input.disabled; });
-  assert.equal(await brandPopupSettings.getByRole('checkbox', { name: '开启品牌图弹窗', exact: true }).count(), 1);
-  assert.equal(await brandPopupSettings.getByRole('checkbox').count(), 2, 'brand popup should expose enabled and closable controls');
-  assert.equal(await brandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
-  assert.equal(await brandPopupSettings.getByRole('combobox').inputValue(), 'daily');
-  assert.equal(await brandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
+  assert.equal(await homeBrandPopupSettings.getByRole('checkbox', { name: '开启首页品牌图弹窗', exact: true }).count(), 1);
+  assert.equal(await homeBrandPopupSettings.getByRole('checkbox').count(), 2, 'home popup should expose enabled and closable controls');
+  assert.equal(await homeBrandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '6');
+  assert.equal(await homeBrandPopupSettings.getByRole('combobox').inputValue(), 'daily');
+  assert.equal(await homeBrandPopupSettings.getByPlaceholder('用于无障碍朗读，可留空').inputValue(), '品牌图测试说明');
+  assert.equal(await dailyObjectsBrandPopupSettings.getByRole('checkbox', { name: '开启日常之物品牌图弹窗', exact: true }).count(), 1);
+  assert.equal(await dailyObjectsBrandPopupSettings.getByRole('checkbox').count(), 2, 'daily objects popup should expose enabled and closable controls');
+  assert.equal(await dailyObjectsBrandPopupSettings.locator('.brand-popup-number-field input').inputValue(), '8');
+  assert.equal(await dailyObjectsBrandPopupSettings.getByRole('combobox').inputValue(), 'once');
+  assert.equal(await dailyObjectsBrandPopupSettings.getByPlaceholder('填写日常之物弹窗图片说明，可留空').inputValue(), '日常之物品牌图测试说明');
   const notice = page.getByLabel('维护公告', { exact: true });
   await notice.fill('尚未保存的维护公告');
   await refreshChoice(false);
