@@ -722,7 +722,7 @@ try {
   assert.ok(removeButtonBoxes.every((box) => Math.abs(box.left - removeButtonBoxes[0].left) <= 1), 'remove buttons should align in the last grid column');
   await page.screenshot({ path: resolve(output, 'admin-micro-voice-actions.png'), fullPage: true });
   const audioPreview = page.locator('.journal-preview-rail');
-  await audioPreview.getByRole('button', { name: '详情页' }).click();
+  await page.getByRole('tablist', { name: '编辑页面', exact: true }).getByRole('tab', { name: '详情页', exact: true }).click();
   const previewActions = audioPreview.locator('.audio-preview-actions');
   await previewActions.locator('.audio-preview-action').filter({ hasText: '公众号' }).waitFor();
   assert.equal(await previewActions.getByText('继续了解', { exact: true }).count(), 0, 'action heading should be removed');
@@ -1126,7 +1126,7 @@ try {
   const practiceSaveResponse = page.waitForResponse((response) => response.url().includes('/content/practice/manage') && response.request().method() === 'PATCH');
   await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
   await practiceSaveResponse;
-  await page.locator('#practice-observation-content .status-message').filter({ hasText: '实践内容已保存到云端。' }).waitFor();
+  await page.locator('#practice-observation-content .status-message').filter({ hasText: '实践草稿已保存；发布后小程序才会更新。' }).waitFor();
   assert.equal(savedPracticePayload.observationCopy.seasonStages.card.align, 'center');
   assert.equal(savedPracticePayload.observationCopy.seasonStages.card.spacing, 'roomy');
   assert.equal(savedPracticePayload.observationCopy.seasonStages.card.stageLabel.fontSize, 32);
@@ -1164,7 +1164,7 @@ try {
   const recordSaveResponse = page.waitForResponse((response) => response.url().includes('/content/practice/manage') && response.request().method() === 'PATCH');
   await page.locator('#practice-observation-content .practice-savebar').getByRole('button', { name: '保存草稿', exact: true }).click();
   await recordSaveResponse;
-  await page.locator('#practice-observation-content .status-message').filter({ hasText: '实践内容已保存到云端。' }).waitFor();
+  await page.locator('#practice-observation-content .status-message').filter({ hasText: '实践草稿已保存；发布后小程序才会更新。' }).waitFor();
   assert.equal(savedPracticePayload.observationCopy.record.navTitle.fontSize, 20);
   assert.equal(savedPracticePayload.observationCopy.record.navTitle.color, '#654321');
   assert.match(savedPracticePayload.observationCopy.record.navTitle.richText, /我的观察记录/);

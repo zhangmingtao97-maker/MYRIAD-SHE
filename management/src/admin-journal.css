@@ -156,7 +156,7 @@
 }
 .issue-list-panel .issue-live-home > summary span {
   color: var(--faint);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10.5px;
 }
 .issue-list-panel .issue-live-home-body > strong { font-size: 12.5px; }
@@ -164,7 +164,7 @@
 .issue-list-panel .issue-live-home-body li { border-top-color: var(--line); }
 .issue-list-panel .issue-live-home-body li > span {
   color: var(--faint);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10.5px;
 }
 .issue-list-panel .issue-live-home-body li small { color: var(--muted); }
@@ -318,7 +318,7 @@
   align-items: baseline;
   gap: 8px;
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -.015em;
@@ -446,7 +446,7 @@
 .journal-derived-grid strong {
   overflow-wrap: anywhere;
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.55;
@@ -535,7 +535,7 @@
 .journal-background-copy h3 {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
@@ -612,7 +612,7 @@
 }
 .issue-module-picker button > small {
   color: var(--faint);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
 }
 .issue-module-picker button > span {
@@ -646,7 +646,7 @@
 }
 .journal-module-form .issue-module-card > header > span {
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 13px;
   font-weight: 600;
 }
@@ -663,7 +663,7 @@
 }
 .journal-empty-state strong {
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 16px;
   font-weight: 600;
 }
@@ -749,7 +749,7 @@
   border-radius: 6px;
   background: var(--surface-2);
   color: var(--muted);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
 }
 .issue-lifecycle-note,

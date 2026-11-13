@@ -11,9 +11,9 @@
   padding: 4px;
   overflow-x: auto;
   overflow-y: hidden;
-  border: 1px solid #e4dbd1;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: #fffdf9;
+  background: var(--surface-2);
   box-shadow: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -36,7 +36,7 @@
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #80685a;
+  color: var(--ink-2);
   box-shadow: none;
   font: inherit;
   font-size: 13px;
@@ -54,30 +54,30 @@
 }
 
 .admin-segmented-tabs.admin-segmented-tabs > button:hover:not(:disabled):not([aria-selected="true"]) {
-  background: #f7eee7;
-  color: #5f493c;
+  background: var(--accent-soft);
+  color: var(--accent);
   box-shadow: none;
   transform: none;
 }
 
 .admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"] {
-  background: #c44f39;
+  background: var(--accent);
   color: #ffffff;
-  box-shadow: 0 3px 9px rgb(113 47 34 / 18%);
+  box-shadow: 0 2px 6px rgb(71 27 18 / 12%);
 }
 
 .admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"]:hover:not(:disabled),
 .admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"]:active:not(:disabled) {
-  background: #b6422f;
-  color: #fff8ee;
-  box-shadow: 0 3px 9px rgb(113 47 34 / 18%);
+  background: var(--accent-strong);
+  color: #fff;
+  box-shadow: 0 2px 6px rgb(71 27 18 / 12%);
   transform: none;
 }
 
 .admin-segmented-tabs.admin-segmented-tabs > button:focus-visible {
-  outline: 2px solid #8e493c;
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
-  box-shadow: 0 0 0 3px rgb(142 73 60 / 14%);
+  box-shadow: var(--admin-focus);
 }
 
 .admin-segmented-tabs.admin-segmented-tabs > button:disabled {

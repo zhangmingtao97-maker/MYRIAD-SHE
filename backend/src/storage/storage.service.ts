@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CreateBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteObjectCommand, GetBucketPolicyCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, ListObjectsV2Command, PutBucketPolicyCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { parseIntegerConfig } from '../config/environment';
@@ -10,10 +10,13 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
   private readonly client: S3Client;
   private readonly presignClient: S3Client;
   private readonly bucket: string;
+  private readonly publicEndpointUrl: string;
+  private readonly publicImageCacheControl = 'public, max-age=31536000, immutable';
 
   constructor(private readonly config: ConfigService) {
     this.bucket = this.config.get('MINIO_BUCKET', 'myriad-she');
     const secure = this.config.get('MINIO_USE_SSL') === 'true';
+    this.publicEndpointUrl = this.publicEndpoint(secure);
     const clientOptions = {
       region: 'us-east-1',
       forcePathStyle: true,
@@ -22,7 +25,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       credentials: { accessKeyId: this.config.get('MINIO_ACCESS_KEY', ''), secretAccessKey: this.config.get('MINIO_SECRET_KEY', '') },
     };
     this.client = new S3Client({ ...clientOptions, endpoint: this.endpoint('MINIO_ENDPOINT', 'minio', 'MINIO_PORT', '9000', secure) });
-    this.presignClient = new S3Client({ ...clientOptions, endpoint: this.publicEndpoint(secure) });
+    this.presignClient = new S3Client({ ...clientOptions, endpoint: this.publicEndpointUrl });
   }
 
   private endpoint(hostKey: string, fallbackHost: string, portKey: string, fallbackPort: string, secure: boolean) {
@@ -53,6 +56,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       try {
         try { await this.client.send(new HeadBucketCommand({ Bucket: this.bucket })); }
         catch { await this.client.send(new CreateBucketCommand({ Bucket: this.bucket })); }
+        await this.ensurePublicImageReadPolicy();
         return;
       } catch (error) {
         lastError = error;
@@ -81,7 +85,13 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
   async createUploadUrl(fileName: string, contentType: string, kind: 'image' | 'audio' | 'video', fileSize: number) {
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-80);
     const objectKey = `content/${kind}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}-${safeName}`;
-    const command = new PutObjectCommand({ Bucket: this.bucket, Key: objectKey, ContentType: contentType, ContentLength: fileSize });
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: objectKey,
+      ContentType: contentType,
+      ContentLength: fileSize,
+      ...(kind === 'image' ? { CacheControl: this.publicImageCacheControl } : {}),
+    });
     const uploadUrl = await getSignedUrl(this.presignClient, command, { expiresIn: 600 });
     return { objectKey, uploadUrl, expiresIn: 600 };
   }
@@ -106,6 +116,38 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       CacheControl: 'private, max-age=0, no-cache',
     }));
     return objectKey;
+  }
+
+  createPublicUrl(objectKey: string) {
+    const encodedKey = objectKey.split('/').map((segment) => encodeURIComponent(segment)).join('/');
+    return `${this.publicEndpointUrl}/${encodeURIComponent(this.bucket)}/${encodedKey}`;
+  }
+
+  private async ensurePublicImageReadPolicy() {
+    let statements: unknown[] = [];
+    try {
+      const existing = await this.client.send(new GetBucketPolicyCommand({ Bucket: this.bucket }));
+      const parsed = existing.Policy ? JSON.parse(existing.Policy) as { Statement?: unknown | unknown[] } : null;
+      statements = Array.isArray(parsed?.Statement) ? parsed.Statement : parsed?.Statement ? [parsed.Statement] : [];
+    } catch {
+      // No policy yet is the normal first-run state.
+    }
+    const publicImageStatement = {
+      Sid: 'AllowPublicContentImageRead',
+      Effect: 'Allow',
+      Principal: { AWS: ['*'] },
+      Action: ['s3:GetObject'],
+      Resource: [`arn:aws:s3:::${this.bucket}/content/image/*`],
+    };
+    const alreadyConfigured = statements.some((statement) => {
+      if (!statement || typeof statement !== 'object') return false;
+      return (statement as { Sid?: unknown }).Sid === publicImageStatement.Sid;
+    });
+    if (alreadyConfigured) return;
+    await this.client.send(new PutBucketPolicyCommand({
+      Bucket: this.bucket,
+      Policy: JSON.stringify({ Version: '2012-10-17', Statement: [...statements, publicImageStatement] }),
+    }));
   }
 
   async createDownloadUrl(objectKey: string, expiresIn = 3600) {

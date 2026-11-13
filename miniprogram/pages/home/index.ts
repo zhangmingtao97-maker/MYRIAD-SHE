@@ -6,6 +6,9 @@ import { buildMicroVoice } from '../../utils/micro-voice';
 import { richTextHtml, richTextWithSuffixHtml } from '../../utils/rich-text';
 import { fetchBrandPopup, markBrandPopupShown, shouldShowBrandPopup } from '../../utils/brand-popup';
 import type { BrandPopupConfig } from '../../utils/brand-popup';
+import { createRecoverableAudio } from '../../utils/recoverable-audio';
+import { refreshAudioSource } from '../../utils/audio-source';
+import { homeContentSignature, mediaIdentity, retainMediaUrls } from '../../utils/home-update';
 
 type HomeIssue = NonNullable<PublicHomeContent['issue']>;
 type HomeContentsDestination = 'story' | 'audio' | 'observation' | 'discussion';
@@ -28,6 +31,13 @@ const emptyIssue: HomeIssue = {
 // 首页第一栏排成「当期策展 / ISSUE 02 / SEPTEMBER 2026 · 英文刊期标识」三行。
 const ISSUE_KICKER = '当期策展';
 const DEFAULT_HOME_INTRODUCTION = '记录女性的真实经历，也邀请你观察自己的生活';
+const HOME_CONTENT_CACHE_KEY = 'myriad_she_home_content_cache_v1';
+// Audio and video URLs are signed, so local page data may be reused for at most 45 minutes.
+const HOME_CONTENT_CACHE_TTL_MS = 45 * 60 * 1000;
+interface HomeContentCache {
+  savedAt: number;
+  data: PublicHomeContent;
+}
 const EDITION_TAGLINE = 'A CURATED EDITION';
 const emptyIssueHeader = {
   kicker: ISSUE_KICKER,
@@ -41,6 +51,31 @@ const englishMonthNames: Record<string, string> = {
   JAN: 'JANUARY', FEB: 'FEBRUARY', MAR: 'MARCH', APR: 'APRIL', MAY: 'MAY', JUN: 'JUNE',
   JUL: 'JULY', AUG: 'AUGUST', SEP: 'SEPTEMBER', SEPT: 'SEPTEMBER', OCT: 'OCTOBER', NOV: 'NOVEMBER', DEC: 'DECEMBER',
 };
+
+function readHomeContentCache(): PublicHomeContent | null {
+  try {
+    const cached = wx.getStorageSync(HOME_CONTENT_CACHE_KEY) as unknown;
+    if (!cached || typeof cached !== 'object' || Array.isArray(cached)) return null;
+    const { savedAt, data } = cached as Partial<HomeContentCache>;
+    if (typeof savedAt !== 'number' || !Number.isFinite(savedAt)) return null;
+    const age = Date.now() - savedAt;
+    if (age < 0 || age > HOME_CONTENT_CACHE_TTL_MS || !isPublicHomeContent(data)) {
+      if (age < 0 || age > HOME_CONTENT_CACHE_TTL_MS) wx.removeStorageSync(HOME_CONTENT_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveHomeContentCache(data: PublicHomeContent) {
+  try {
+    wx.setStorageSync(HOME_CONTENT_CACHE_KEY, { savedAt: Date.now(), data } satisfies HomeContentCache);
+  } catch {
+    // Storage pressure should never prevent the live page from rendering.
+  }
+}
 
 function formatAudioTime(seconds: number) {
   const totalSeconds = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -127,7 +162,6 @@ function presentHomeModules(modules: PublicHomeModule[], issue: HomeIssue) {
       ...module,
       tracks: preparedTracks,
       primaryTrack: preparedTracks[0],
-      secondaryTracks: preparedTracks.slice(1),
       displayTitle,
       displayTitleHtml: richTextHtml(module.titleRichText, displayTitle || '微声音'),
     });
@@ -243,11 +277,15 @@ function buildIssueHeader(modules: PublicHomeModule[], issue: HomeIssue) {
 }
 
 Page({
-  data: { loading: true, statusBarHeight: 0, brandPopup: null as BrandPopupConfig | null, homeIntroduction: DEFAULT_HOME_INTRODUCTION, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
+  data: { updateAvailable: false, refreshError: '', editorialRevealed: {} as Record<string, boolean>, imagesReady: {} as Record<string, boolean>, loading: true, contentVisible: false, statusBarHeight: 0, brandPopup: null as BrandPopupConfig | null, homeIntroduction: DEFAULT_HOME_INTRODUCTION, issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null as PublicHomeContent['microVoice'] | null, sections: [] as string[], modules: [] as PublicHomeModule[], contentsEntries: [] as HomeContentsEntry[], hasModules: false, error: '', bufferingAudioId: '', audioErrorId: '', audioPlaybackError: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 },
   requestGeneration: 0,
+  contentRequestInFlight: false,
+  currentContentSignature: '',
+  pendingHomeContent: null as PublicHomeContent | null,
   brandPopupGeneration: 0,
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   audioContextModuleId: '',
+  audioSession: null as ReturnType<typeof createRecoverableAudio> | null,
   activeVideoId: '',
   audioSeekRect: null as { left: number; width: number } | null,
   audioSeekTrackId: '',
@@ -255,22 +293,34 @@ Page({
   audioSeekResume: false,
   audioSeekPendingX: null as number | null,
   audioSeekEnded: false,
+  motionObserver: null as WechatMiniprogram.IntersectionObserver | null,
+  motionReady: false,
+  motionHidden: false,
   onLoad() {
     enableShareMenu();
+    const cached = readHomeContentCache();
+    if (cached) this.applyHomeContent(cached);
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadContent();
     void this.loadBrandPopup();
   },
   onShow() {
-    if (!this.data.loading) void this.loadContent();
+    this.motionHidden = false;
+    if (this.motionReady) this.observeEditorialModules();
+    if (!this.contentRequestInFlight) void this.loadContent();
   },
   onReady() {
+    this.motionReady = true;
+    this.observeEditorialModules();
     if (this.data.brandPopup) this.setBrandTabBarHidden(true);
   },
   onHide() {
+    this.motionHidden = true;
+    this.disconnectEditorialObserver();
     // Public content is ordinary view data. Invalidate a hidden-page read so
     // an older response cannot repaint on return.
     this.requestGeneration += 1;
+    this.contentRequestInFlight = false;
     this.brandPopupGeneration += 1;
     if (this.data.brandPopup) this.setData({ brandPopup: null });
     this.setBrandTabBarHidden(false);
@@ -279,6 +329,10 @@ Page({
     this.stopAudioPlayback();
   },
   onUnload() {
+    this.motionHidden = true;
+    this.disconnectEditorialObserver();
+    this.requestGeneration += 1;
+    this.contentRequestInFlight = false;
     this.brandPopupGeneration += 1;
     this.setBrandTabBarHidden(false);
     this.stopVideoPlayback();
@@ -303,26 +357,111 @@ Page({
   onBrandPopupShown() {
     if (this.data.brandPopup) markBrandPopupShown(this.data.brandPopup.frequency);
   },
-  async loadContent() {
-    const generation = ++this.requestGeneration;
+  applyHomeContent(data: PublicHomeContent) {
+    this.currentContentSignature = homeContentSignature(data);
+    const supported = new Set(['issueMeta', 'coverStory', 'cover', 'opener', 'story', 'storyAction', 'image', 'quote', 'audio', 'question', 'observationAction', 'sharedPracticeAction', 'contents', 'archive', 'brandFooter']);
+    const orderedModules = (data.modules || []).filter((module) => module.enabled && supported.has(module.type)).sort((left, right) => left.order - right.order);
+    const combinedModules = combineCoverAndOpener(orderedModules);
+    const issue = data.issue ? { ...data.issue } : emptyIssue;
+    const sameIssue = this.data.issue.code === issue.code;
+    if (sameIssue && mediaIdentity(issue.homeBackgroundUrl) === mediaIdentity(this.data.issue.homeBackgroundUrl)) issue.homeBackgroundUrl = this.data.issue.homeBackgroundUrl;
+    const modules = presentHomeModules(combinedModules, issue).map((module) => sameIssue ? retainMediaUrls(module, this.data.modules.find((old) => old.id === module.id)) : module);
+    const allTracks = (rows: typeof modules) => rows.flatMap((module) => Array.isArray(module.tracks) ? module.tracks as Array<Record<string, unknown>> : []);
+    const previousTracks = allTracks(this.data.modules);
+    const nextTracks = allTracks(modules);
+    if (this.data.activeAudioId) {
+      const previous = previousTracks.find((track) => track.playbackId === this.data.activeAudioId);
+      const next = nextTracks.find((track) => track.playbackId === this.data.activeAudioId);
+      if (!next || mediaIdentity(previous?.audioUrl) !== mediaIdentity(next.audioUrl)) this.stopAudioPlayback();
+    }
+    if (this.activeVideoId) {
+      const previous = previousTracks.find((track) => track.videoId === this.activeVideoId);
+      const next = nextTracks.find((track) => track.videoId === this.activeVideoId);
+      if (!next || mediaIdentity(previous?.videoUrl) !== mediaIdentity(next.videoUrl)) this.stopVideoPlayback();
+    }
+    const meta = orderedModules.find((module) => module.type === 'issueMeta');
+    const homeIntroduction = typeof meta?.introduction === 'string' ? meta.introduction.trim() : DEFAULT_HOME_INTRODUCTION;
+    // Preserve completed reveals during background refresh; a new issue starts fresh.
+    const editorialRevealed = sameIssue ? this.data.editorialRevealed : {};
+    const imagesReady: Record<string, boolean> = {};
+    modules.forEach((module) => {
+      const previous = this.data.modules.find((item) => item.id === module.id);
+      if (sameIssue && String(previous?.imageUrl || '').split('?')[0] === String(module.imageUrl || '').split('?')[0] && this.data.imagesReady[module.id]) imagesReady[module.id] = true;
+    });
+    // Patch changed rows in place; unchanged rows retain native image/layout state.
+    const coverUrl = sameIssue && mediaIdentity(data.coverUrl) === mediaIdentity(this.data.coverUrl) ? this.data.coverUrl : data.coverUrl;
+    const next: Record<string, unknown> = { ...data, coverUrl, issue, homeIntroduction, issueHeader: buildIssueHeader(modules, issue), editorialRevealed, imagesReady, contentsEntries: buildContentsEntries(modules, issue), hasModules: modules.length > 0, contentVisible: true, loading: false, error: '', refreshError: '', updateAvailable: false };
+    delete next.modules;
+    if (sameIssue && this.data.modules.length === modules.length && modules.every((module, index) => module.id === this.data.modules[index].id)) {
+      modules.forEach((module, index) => {
+        if (JSON.stringify(module) !== JSON.stringify(this.data.modules[index])) next[`modules[${index}]`] = module;
+      });
+    } else next.modules = modules;
+    this.setData(next, () => this.observeEditorialModules());
+  },
+  acceptHomeUpdate() {
+    const pending = this.pendingHomeContent;
+    if (!pending) return;
+    this.pendingHomeContent = null;
+    this.requestGeneration += 1;
+    this.contentRequestInFlight = false;
     this.stopVideoPlayback();
     this.stopAudioPlayback();
-    this.setData({ loading: true, error: '', issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false, audioSeeking: false });
+    this.applyHomeContent(pending);
+    saveHomeContentCache(pending);
+    wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+  },
+  disconnectEditorialObserver() {
+    this.motionObserver?.disconnect();
+    this.motionObserver = null;
+  },
+  observeEditorialModules() {
+    this.disconnectEditorialObserver();
+    if (!this.motionReady || this.motionHidden || !wx.createIntersectionObserver) return;
+    // Content stays visible without observer support; the observer only adds motion.
+    const observer = wx.createIntersectionObserver(this, { observeAll: true, thresholds: [0, 0.08] });
+    this.motionObserver = observer;
+    observer.relativeToViewport({ bottom: -40 }).observe('.editorial-reveal', (result) => {
+      if (this.motionObserver !== observer || result.intersectionRatio <= 0) return;
+      const key = String(result.dataset.motionKey || '');
+      if (!key || this.data.editorialRevealed[key]) return;
+      this.setData({ editorialRevealed: { ...this.data.editorialRevealed, [key]: true } });
+    });
+  },
+  onModuleImageLoad(event: WechatMiniprogram.CustomEvent) {
+    const { moduleId, source } = event.currentTarget.dataset;
+    const module = this.data.modules.find((item) => item.id === moduleId);
+    if (!module || module.imageUrl !== source || this.data.imagesReady[module.id]) return;
+    this.setData({ imagesReady: { ...this.data.imagesReady, [module.id]: true } });
+  },
+  async loadContent() {
+    if (this.contentRequestInFlight) return;
+    this.contentRequestInFlight = true;
+    const generation = ++this.requestGeneration;
+    // Keep cached or previously loaded content on screen while the network refresh runs.
+    this.setData({ loading: !this.data.contentVisible, error: '', refreshError: '' });
     try {
       const data = await request<PublicHomeContent>('/content/home');
       if (generation !== this.requestGeneration) return;
       if (!isPublicHomeContent(data)) throw new Error('首页内容格式无效');
-      const supported = new Set(['issueMeta', 'coverStory', 'cover', 'opener', 'story', 'storyAction', 'image', 'quote', 'audio', 'question', 'observationAction', 'sharedPracticeAction', 'contents', 'archive', 'brandFooter']);
-      const orderedModules = (data.modules || []).filter((module) => module.enabled && supported.has(module.type)).sort((left, right) => left.order - right.order);
-      const combinedModules = combineCoverAndOpener(orderedModules);
-      const issue = data.issue || emptyIssue;
-      const modules = presentHomeModules(combinedModules, issue);
-      const meta = orderedModules.find((module) => module.type === 'issueMeta');
-      const homeIntroduction = typeof meta?.introduction === 'string' ? meta.introduction.trim() : DEFAULT_HOME_INTRODUCTION;
-      this.setData({ ...data, issue, homeIntroduction, issueHeader: buildIssueHeader(modules, issue), modules, contentsEntries: buildContentsEntries(modules, issue), hasModules: modules.length > 0, loading: false });
+      if (this.data.contentVisible && data.issue?.code && data.issue.code !== this.data.issue.code) {
+        this.pendingHomeContent = data;
+        this.setData({ loading: false, updateAvailable: true });
+        return;
+      }
+      this.pendingHomeContent = null;
+      if (homeContentSignature(data) !== this.currentContentSignature) this.applyHomeContent(data);
+      else this.setData({ loading: false, updateAvailable: false, refreshError: '' });
+      saveHomeContentCache(data);
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
-      this.setData({ loading: false, error: apiErrorMessage(caught, '暂时无法连接云端内容'), issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false });
+      if (this.data.contentVisible) {
+        this.setData({ loading: false, error: '', refreshError: apiErrorMessage(caught, '暂未更新，当前内容仍可阅读') });
+        return;
+      }
+      this.setData({ loading: false, contentVisible: false, error: apiErrorMessage(caught, '暂时无法连接云端内容'), issue: emptyIssue, issueHeader: { ...emptyIssueHeader }, question: '', coverUrl: '', microVoice: null, sections: [], modules: [], contentsEntries: [], hasModules: false });
+    } finally {
+      if (generation === this.requestGeneration) this.contentRequestInFlight = false;
     }
   },
   scrollToSection(event: WechatMiniprogram.CustomEvent) {
@@ -391,8 +530,8 @@ Page({
     this.audioSeekPendingX = clientX;
     this.audioSeekEnded = false;
     if (this.audioSeekResume && this.audioContext) {
-      this.audioContext.pause();
-      this.setData({ playingAudioId: '' });
+      this.audioSession?.pause();
+      this.setData({ playingAudioId: '', bufferingAudioId: '' });
     }
     this.setData({ audioSeeking: true });
     this.createSelectorQuery().select(`#audio-seek-${moduleId}-${trackId}`).boundingClientRect((rect) => {
@@ -449,19 +588,18 @@ Page({
     this.audioSeekEnded = false;
     this.setData({ audioSeeking: false });
     if (resume && this.audioContext) {
-      this.audioContext.play();
-      this.setData({ playingAudioId: playbackId });
+      this.audioSession?.resume();
     }
   },
   openAudioIndex() {
-    wx.navigateTo({ url: '/pages/audio/index' });
+    wx.navigateTo({ url: `/pages/audio/index?issueCode=${encodeURIComponent(this.data.issue.code)}` });
   },
   openAudioDetail(event: WechatMiniprogram.CustomEvent) {
     const trackId = String(event.currentTarget.dataset.trackId || '');
     if (!trackId) return;
     this.stopVideoPlayback();
     this.stopAudioPlayback();
-    wx.navigateTo({ url: `/pages/audio/detail?id=${encodeURIComponent(trackId)}` });
+    wx.navigateTo({ url: `/pages/audio/detail?id=${encodeURIComponent(trackId)}&issueCode=${encodeURIComponent(this.data.issue.code)}` });
   },
   onHomeVideoPlay(event: WechatMiniprogram.CustomEvent) {
     const videoId = String(event.currentTarget.id || '');
@@ -499,47 +637,36 @@ Page({
       return;
     }
     this.stopVideoPlayback();
-    if (this.audioContext && this.audioContextModuleId === playbackId) {
-      if (this.data.playingAudioId === playbackId) {
-        this.audioContext.pause();
-        this.setData({ playingAudioId: '' });
-      } else {
-        if (this.data.audioDuration > 0 && this.data.audioCurrentTime >= this.data.audioDuration) {
-          this.audioContext.seek(0);
-          this.setData({ audioCurrentTime: 0, audioCurrentTimeLabel: '00:00', audioProgressPercent: 0 });
-        }
-        this.audioContext.play();
-        this.setData({ playingAudioId: playbackId });
+    if (this.audioSession && this.audioContextModuleId === playbackId) {
+      if (this.data.playingAudioId === playbackId || this.data.bufferingAudioId === playbackId) this.audioSession.pause();
+      else {
+        if (this.data.audioDuration > 0 && this.data.audioCurrentTime >= this.data.audioDuration) this.audioContext?.seek(0);
+        this.audioSession.resume();
       }
       return;
     }
     this.stopAudioPlayback();
-    const context = wx.createInnerAudioContext();
-    context.src = source;
-    context.onCanplay(() => this.syncAudioProgress(context, true));
-    context.onTimeUpdate(() => this.syncAudioProgress(context));
-    context.onEnded(() => {
-      if (this.audioContext !== context) return;
-      const duration = Math.max(0, Number(context.duration) || this.data.audioDuration);
-      this.setData({
-        playingAudioId: '',
-        audioCurrentTime: duration,
-        audioDuration: duration,
-        audioCurrentTimeLabel: formatAudioTime(duration),
-        audioDurationLabel: formatAudioTime(duration),
-        audioProgressPercent: duration > 0 ? 100 : 0,
-      });
-    });
-    context.onError(() => {
-      if (this.audioContext !== context) return;
-      this.stopAudioPlayback();
-      wx.showToast({ title: '音频播放失败，请稍后重试', icon: 'none' });
-    });
-    this.audioContext = context;
     this.audioContextModuleId = playbackId;
-    this.setData({ playingAudioId: playbackId, activeAudioId: playbackId, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 });
-    context.play();
+    this.setData({ activeAudioId: playbackId, audioPlaybackError: '', audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 });
+    this.audioSession = createRecoverableAudio({
+      source,
+      refreshSource: () => refreshAudioSource(this.data.issue.code, moduleId, trackId),
+      onContext: (context) => { this.audioContext = context; },
+      onProgress: (context, force) => this.syncAudioProgress(context, force),
+      onState: (state) => {
+        if (state === 'ended') {
+          const duration = this.data.audioDuration;
+          this.setData({ playingAudioId: '', bufferingAudioId: '', audioCurrentTime: duration, audioCurrentTimeLabel: formatAudioTime(duration), audioProgressPercent: duration > 0 ? 100 : 0 });
+        } else this.setData({
+          playingAudioId: state === 'playing' ? playbackId : '',
+          bufferingAudioId: state === 'buffering' ? playbackId : '',
+          audioErrorId: state === 'error' ? playbackId : '',
+          audioPlaybackError: state === 'error' ? '声音暂时无法播放，请再次轻触播放重试。' : '',
+        });
+      },
+    });
   },
+
   syncAudioProgress(context: WechatMiniprogram.InnerAudioContext, force = false) {
     if (this.audioContext !== context || this.audioSeekTrackId) return;
     const currentTime = Math.max(0, Number(context.currentTime) || 0);
@@ -560,13 +687,11 @@ Page({
     this.audioSeekResume = false;
     this.audioSeekPendingX = null;
     this.audioSeekEnded = false;
-    if (this.audioContext) {
-      this.audioContext.stop();
-      this.audioContext.destroy();
-      this.audioContext = null;
-    }
+    this.audioSession?.destroy();
+    this.audioSession = null;
+    this.audioContext = null;
     this.audioContextModuleId = '';
-    if (resetUi) this.setData({ playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 });
+    if (resetUi) this.setData({ bufferingAudioId: '', audioErrorId: '', audioPlaybackError: '', playingAudioId: '', activeAudioId: '', audioSeeking: false, audioCurrentTime: 0, audioDuration: 0, audioCurrentTimeLabel: '00:00', audioDurationLabel: '00:00', audioProgressPercent: 0 });
   },
   openStoryAction(event: WechatMiniprogram.CustomEvent) {
     const targetId = String(event.currentTarget.dataset.targetId || 'story');
@@ -596,7 +721,7 @@ Page({
         wx.showToast({ title: '微声音暂未开放', icon: 'none' });
         return;
       }
-      wx.navigateTo({ url: '/pages/audio/index' });
+      wx.navigateTo({ url: `/pages/audio/index?issueCode=${encodeURIComponent(this.data.issue.code)}` });
       return;
     }
     if (destination === 'observation') return this.startObservation();
@@ -618,7 +743,8 @@ Page({
   },
   onModuleImageError(event: WechatMiniprogram.CustomEvent) {
     const index = Number(event.currentTarget.dataset.index);
-    if (!Number.isInteger(index) || index < 0) return;
+    if (!Number.isInteger(index) || index < 0 || !this.data.modules[index]) return;
+    if (event.currentTarget.dataset.source && this.data.modules[index].imageUrl !== event.currentTarget.dataset.source) return;
     this.setData({ [`modules[${index}].imageUrl`]: '' });
   },
   onHomeBackgroundError() {

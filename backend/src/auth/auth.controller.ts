@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Header, Post, Req } from '@nestjs/common';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { Body, Controller, Get, Header, Post, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { IsString, MaxLength, MinLength, ValidateIf } from 'class-validator';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
+import { avatarMaxBytes, type AvatarFile } from '../storage/avatar-file';
 
 class AdminLoginDto {
   @IsString()
@@ -19,6 +21,24 @@ class WechatLoginDto {
   @MinLength(1)
   @MaxLength(256)
   code!: string;
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(256)
+  phoneCode?: string;
+}
+
+class WechatProfileDto {
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString()
+  @MaxLength(32)
+  nickname?: string;
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString()
+  @MaxLength(256)
+  phoneCode?: string;
 }
 
 class AdminWecomLoginDto {
@@ -58,6 +78,19 @@ export class AuthController {
   @Post('wechat/login')
   @Header('Cache-Control', 'no-store')
   wechatLogin(@Body() body: WechatLoginDto) {
-    return this.auth.wechatLogin(body.code);
+    return this.auth.wechatLogin(body.code, body.phoneCode);
+  }
+
+  @Post('wechat/profile/avatar')
+  @Header('Cache-Control', 'no-store')
+  @UseInterceptors(FileInterceptor('avatar', { limits: { fileSize: avatarMaxBytes, files: 1 } }))
+  wechatProfileAvatar(@Req() request: Request, @UploadedFile() file?: AvatarFile) {
+    return this.auth.wechatProfileAvatar(request.headers.authorization, file);
+  }
+
+  @Post('wechat/profile')
+  @Header('Cache-Control', 'no-store')
+  completeWechatProfile(@Req() request: Request, @Body() body: WechatProfileDto) {
+    return this.auth.completeWechatProfile(request.headers.authorization, body);
   }
 }

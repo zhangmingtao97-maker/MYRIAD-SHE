@@ -7,6 +7,10 @@
     </view>
   </view>
 
+  <view wx:if="{{documentKey === 'privacy-policy'}}" class="policy-state">
+    <text>微信提供的信息和接口授权范围，以微信平台展示的隐私保护指引为准。</text>
+    <button class="text-button" bindtap="openWechatPrivacyContract">查看《小程序用户隐私保护指引》</button>
+  </view>
   <view wx:if="{{loading}}" class="policy-state" role="status" aria-live="polite">正在读取{{label}}…</view>
   <view wx:elif="{{error}}" class="policy-state error-state" role="alert">
     <text>{{error}}</text>

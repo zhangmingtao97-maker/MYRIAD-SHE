@@ -47,7 +47,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'pick', key: string): void;
   (event: 'open-detail', trackId: string): void;
-  (event: 'switch-view', view: 'list' | 'detail'): void;
 }>();
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
@@ -83,12 +82,6 @@ const actionLabelRichText = (action: AudioPreviewAction) => text(action.labelRic
     :caption="issueCode || '02 · 微声音'"
     :active-key="activeKey"
   >
-    <template #head-actions>
-      <div class="audio-preview-switch admin-segmented-tabs admin-segmented-tabs--compact" role="tablist" aria-label="微声音预览页面">
-        <button type="button" :class="{ 'is-active': view === 'list' }" :aria-selected="view === 'list'" @click="emit('switch-view', 'list')">列表页</button>
-        <button type="button" :class="{ 'is-active': view === 'detail' }" :aria-selected="view === 'detail'" @click="emit('switch-view', 'detail')">详情页</button>
-      </div>
-    </template>
     <div class="audio-preview-topbar">
       <span class="audio-preview-back">‹</span>
       <span class="audio-preview-nav">微声音</span>

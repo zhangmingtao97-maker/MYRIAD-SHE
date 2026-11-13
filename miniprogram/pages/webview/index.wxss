@@ -1,6 +1,6 @@
-.webview-state { display: flex; min-height: 70vh; align-items: center; justify-content: center; flex-direction: column; gap: 24rpx; padding: 48rpx 36rpx; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; box-sizing: border-box; }
+.webview-state { display: flex; min-height: 70vh; align-items: center; justify-content: center; flex-direction: column; gap: 24rpx; padding: 48rpx 36rpx; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; box-sizing: border-box; }
 .webview-error { font-size: 28rpx; line-height: 1.8; text-align: center; }
-.webview-url { max-width: 100%; padding: 18rpx 24rpx; border: 1rpx solid rgba(92, 73, 60, .18); border-radius: 16rpx; color: #8a6755; font-family: Garamond, "Times New Roman", serif; font-size: 22rpx; line-height: 1.6; text-align: center; word-break: break-all; }
+.webview-url { max-width: 100%; padding: 18rpx 24rpx; border: 1rpx solid rgba(92, 73, 60, .18); border-radius: 16rpx; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; line-height: 1.6; text-align: center; word-break: break-all; }
 .webview-actions { display: flex; gap: 18rpx; margin-top: 8rpx; }
 .webview-action { padding: 16rpx 30rpx; border: 1rpx solid rgba(92, 73, 60, .36); border-radius: 999rpx; color: #663124; font-size: 25rpx; line-height: 1.4; }
 .webview-action-primary { background: #663124; border-color: #663124; color: #fffdf9; }

@@ -27,15 +27,25 @@
         ></video>
       </block>
       <block wx:else>
-        <view class="voice-audio-card {{playing ? 'is-playing' : ''}}">
+        <view class="voice-audio-card {{playing && !buffering ? 'is-playing' : ''}}">
           <view class="voice-audio-kicker">LISTEN / 声音</view>
           <view class="voice-audio-main">
-            <view class="voice-play" role="button" tabindex="0" aria-label="{{playing ? '暂停' : '播放'}}{{track.title}}" bindtap="toggleAudio">{{playing ? 'Ⅱ' : '▶'}}</view>
+            <view class="voice-play" role="button" tabindex="0" aria-label="{{buffering ? '取消等待' : playing ? '暂停' : '播放'}}{{track.title}}" bindtap="toggleAudio">
+              <view wx:if="{{buffering}}" class="voice-buffer-spinner" aria-hidden="true"></view>
+              <view wx:elif="{{playing}}" class="voice-play-bars" aria-hidden="true">
+                <view class="voice-play-bar"></view>
+                <view class="voice-play-bar"></view>
+                <view class="voice-play-bar"></view>
+                <view class="voice-play-bar"></view>
+              </view>
+              <text wx:else>▶</text>
+            </view>
             <view class="voice-audio-copy">
               <rich-text class="voice-audio-title" nodes="{{track.titleHtml}}"></rich-text>
               <rich-text wx:if="{{track.subtitleHtml}}" class="voice-audio-subtitle" nodes="{{track.subtitleHtml}}"></rich-text>
             </view>
           </view>
+          <view class="voice-playback-status" role="status" aria-live="polite">{{buffering ? '正在准备声音…' : playbackError || (playing ? '正在播放' : '轻触播放，慢慢听')}}<text wx:if="{{playbackError}}" class="voice-playback-retry" role="button" bindtap="toggleAudio">重试</text></view>
           <view class="voice-progress">
             <view class="voice-progress-track"><view class="voice-progress-fill" style="width: {{progress}}%"></view></view>
             <view class="voice-progress-times"><text>{{currentLabel}}</text><text>{{durationLabel}}</text></view>

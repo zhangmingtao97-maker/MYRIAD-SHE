@@ -1095,7 +1095,7 @@ test('home cache misses recheck Redis under the content lock', async () => {
   assert.deepEqual(events, ['lock:myriad-she-content-media']);
 });
 
-test('home cache hits sign media from the cached object keys for each response', async () => {
+test('home cache hits use stable public image URLs and freshly signed audio URLs', async () => {
   const cached = {
     issue: {
       code: 'issue-02', label: 'ISSUE 02', month: 'Sep 2026', theme: '松开', question: '最近有什么不想再握紧的？',
@@ -1109,6 +1109,10 @@ test('home cache hits sign media from the cached object keys for each response',
     },
     question: '最近有什么不想再握紧的？',
     sections: ['人物与档案', '实践与观察', '共同实践', '日常之物'],
+    modules: [{
+      id: 'module-cover', type: 'cover', order: 0, enabled: true,
+      imageObjectKey: 'content/image/2026-09/module-cover.webp',
+    }],
   };
   let signed = 0;
   const redis = { getJson: async () => cached } as unknown as RedisService;
@@ -1119,6 +1123,7 @@ test('home cache hits sign media from the cached object keys for each response',
       contentLength: 1,
     }),
     createDownloadUrl: async (key: string) => ({ url: `${key}?signature=${++signed}`, expiresIn: 3600 }),
+    createPublicUrl: (key: string) => `https://public.invalid/${key}`,
   } as unknown as StorageService;
   const database = {
     withSessionAdvisoryLock: async (_key: string, callback: (client: PoolClient) => Promise<unknown>) => {
@@ -1130,12 +1135,15 @@ test('home cache hits sign media from the cached object keys for each response',
   const first = await controller.home();
   const second = await controller.home();
 
-  assert.equal(first.coverUrl.endsWith('signature=1'), true);
-  assert.equal(first.microVoice.url.endsWith('signature=2'), true);
-  assert.equal(first.issue?.homeBackgroundUrl.endsWith('signature=3'), true);
-  assert.equal(second.coverUrl.endsWith('signature=4'), true);
-  assert.equal(second.microVoice.url.endsWith('signature=5'), true);
-  assert.equal(second.issue?.homeBackgroundUrl.endsWith('signature=6'), true);
+  assert.equal(first.coverUrl, 'https://public.invalid/content/image/2026-09/cover.webp');
+  assert.equal(first.issue?.homeBackgroundUrl, 'https://public.invalid/content/image/2026-09/background.webp');
+  assert.equal(first.microVoice.url.endsWith('signature=1'), true);
+  assert.equal(second.coverUrl, first.coverUrl);
+  assert.equal(second.issue?.homeBackgroundUrl, first.issue?.homeBackgroundUrl);
+  assert.equal(second.microVoice.url.endsWith('signature=2'), true);
+  assert.equal((first.modules[0] as unknown as { imageUrl: string }).imageUrl, 'https://public.invalid/content/image/2026-09/module-cover.webp');
+  assert.equal((second.modules[0] as unknown as { imageUrl: string }).imageUrl, 'https://public.invalid/content/image/2026-09/module-cover.webp');
+  assert.equal(signed, 2);
 });
 
 test('home cache entries created before background support remain readable', async () => {
@@ -2565,11 +2573,12 @@ test('daily objects legacy drafts replace blank required copy while preserving o
   assert.equal(managed.officialArticleUrl, '');
 });
 
-test('daily objects signs the article image even while products are withheld', async () => {
+test('daily objects uses a public article image even while products are withheld', async () => {
   const storage = {
     maxUploadBytes: () => 1024,
     objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 1, lastModified: new Date() }),
-    createDownloadUrl: async () => ({ url: 'https://storage.invalid/article.webp', expiresIn: 3600 }),
+    createPublicUrl: () => 'https://storage.invalid/article.webp',
+    createDownloadUrl: async () => { throw new Error('daily object images must not be signed'); },
   } as unknown as StorageService;
   const { controller } = storeGateHarness({ store: false, entry: true, content: { articleImage: 'content/image/article.webp' }, storage });
   const result = await controller.dailyObjects();
@@ -2625,6 +2634,23 @@ test('daily objects draft save and manage read preserve the landing-page configu
   assert.equal(managed.officialArticleButton, '前往公众号阅读完整文章');
 });
 
+test('daily objects serves product images through the public immutable URL path', async () => {
+  const products = [{
+    id: '01', name: '日常之物 01', english: 'daily-01', image: 'content/image/2026-11/product.webp',
+    price: '¥100.00', priceLabel: '含税', description: '说明', optionDetails: '', dailyUseDetails: '', deliveryDetails: '', enabled: true,
+  }];
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 1, lastModified: new Date() }),
+    createPublicUrl: (key: string) => `https://storage.invalid/${key}`,
+    createDownloadUrl: async () => { throw new Error('daily object images must not be signed'); },
+  } as unknown as StorageService;
+  const { controller } = storeGateHarness({ store: true, entry: true, products, storage });
+  const result = await controller.dailyObjects();
+
+  assert.equal(result.products[0].image, 'https://storage.invalid/content/image/2026-11/product.webp');
+});
+
 test('daily objects returns products once the store is open', async () => {
   const { controller } = storeGateHarness({ store: true, entry: true });
   const result = await controller.dailyObjects();
@@ -2647,8 +2673,8 @@ test('public brand popup is disabled when launch display is off', async () => {
   assert.deepEqual(await controller.brandPopup(), { enabled: false });
 });
 
-test('public brand popup returns a signed image and display settings', async () => {
-  let signedKey = '';
+test('public brand popup returns a public image and display settings', async () => {
+  let publicKey = '';
   const database = {
     query: async () => ({ rows: [
       { key: 'brand_popup_enabled', value: true },
@@ -2662,7 +2688,8 @@ test('public brand popup returns a signed image and display settings', async () 
   const storage = {
     maxUploadBytes: () => 1024,
     objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
-    createDownloadUrl: async (key: string) => { signedKey = key; return { url: 'https://storage.invalid/brand.webp', expiresIn: 3600 }; },
+    createPublicUrl: (key: string) => { publicKey = key; return 'https://storage.invalid/brand.webp'; },
+    createDownloadUrl: async () => { throw new Error('brand popup images must not be signed'); },
   } as unknown as StorageService;
   const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
 
@@ -2674,7 +2701,7 @@ test('public brand popup returns a signed image and display settings', async () 
     altText: 'MYRIAD SHE 品牌图',
     closable: false,
   });
-  assert.equal(signedKey, 'content/image/brand.webp');
+  assert.equal(publicKey, 'content/image/brand.webp');
 });
 
 test('daily objects brand popup uses its own image and display settings', async () => {
@@ -2695,7 +2722,8 @@ test('daily objects brand popup uses its own image and display settings', async 
   const storage = {
     maxUploadBytes: () => 1024,
     objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
-    createDownloadUrl: async () => ({ url: 'https://storage.invalid/daily-objects.webp', expiresIn: 3600 }),
+    createPublicUrl: () => 'https://storage.invalid/daily-objects.webp',
+    createDownloadUrl: async () => { throw new Error('daily object popup images must not be signed'); },
   } as unknown as StorageService;
   const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
 
@@ -2734,7 +2762,8 @@ test('daily objects brand popup falls back to the legacy shared image until conf
   const storage = {
     maxUploadBytes: () => 1024,
     objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
-    createDownloadUrl: async () => ({ url: 'https://storage.invalid/home.webp', expiresIn: 3600 }),
+    createPublicUrl: () => 'https://storage.invalid/home.webp',
+    createDownloadUrl: async () => { throw new Error('legacy popup images must not be signed'); },
   } as unknown as StorageService;
   const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
 
@@ -2761,7 +2790,8 @@ test('public brand popup falls back to safe duration and frequency values', asyn
   const storage = {
     maxUploadBytes: () => 1024,
     objectMetadata: async () => ({ contentType: 'image/webp', contentLength: 128, lastModified: new Date() }),
-    createDownloadUrl: async () => ({ url: 'https://storage.invalid/brand.webp', expiresIn: 3600 }),
+    createPublicUrl: () => 'https://storage.invalid/brand.webp',
+    createDownloadUrl: async () => { throw new Error('popup images must not be signed'); },
   } as unknown as StorageService;
   const controller = new ContentController(database, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
 

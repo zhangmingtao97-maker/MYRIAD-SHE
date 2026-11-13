@@ -1,15 +1,15 @@
 @import "../../app.wxss";
 
 page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
-.compose-page { min-height: 100vh; padding: 0 40rpx calc(152rpx + env(safe-area-inset-bottom)); box-sizing: border-box; background: #e7dfd1; color: #5c493c; font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", serif; }
+.compose-page { min-height: 100vh; padding: 0 40rpx calc(152rpx + env(safe-area-inset-bottom)); box-sizing: border-box; background: #e7dfd1; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .compose-topbar { position: sticky; z-index: 20; top: 0; display: flex; height: 44px; align-items: center; justify-content: center; margin: 0 -40rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; box-sizing: content-box; }
 .compose-nav-title { color: #5c493c; font-size: 32rpx; font-weight: 700; line-height: 1.4; }
 .compose-control { position: absolute; display: flex; width: 88rpx; height: 44px; align-items: center; justify-content: center; color: #5c493c; }
-.compose-back { left: 20rpx; padding-bottom: 5rpx; font-family: Georgia, serif; font-size: 56rpx; line-height: 1; }
-.compose-more { right: 20rpx; padding-bottom: 17rpx; font-family: Georgia, serif; font-size: 30rpx; }
+.compose-back { left: 20rpx; padding-bottom: 5rpx; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 56rpx; line-height: 1; }
+.compose-more { right: 20rpx; padding-bottom: 17rpx; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 30rpx; }
 .compose-content { padding-bottom: 8rpx; }
 .compose-meta { display: flex; align-items: baseline; gap: 54rpx; min-height: 32rpx; margin-top: 52rpx; color: #6b584a; font-size: 23rpx; line-height: 1.5; }
-.compose-number { color: #663124; font-family: Georgia, serif; }
+.compose-number { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .compose-heading { margin-top: 76rpx; color: #5c493c; font-size: 54rpx; font-weight: 700; line-height: 1.58; white-space: pre-line; }
 .compose-intro { margin-top: 48rpx; color: #5c493c; font-size: 30rpx; font-weight: 600; line-height: 1.8; }
 .compose-field-label { margin-top: 50rpx; padding-bottom: 22rpx; border-bottom: 1px solid rgba(92, 73, 60, .34); color: #663124; font-size: 25rpx; font-weight: 700; line-height: 1.6; }
@@ -17,7 +17,7 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .compose-placeholder { color: #6b584a; }
 .compose-input-wrap { position: relative; }
 .compose-input-placeholder { position: absolute; top: 28rpx; right: 0; left: 0; overflow: hidden; color: #6b584a; font-size: 30rpx; line-height: 1.8; word-break: break-all; pointer-events: none; }
-.compose-count { margin-top: 6rpx; color: #6b584a; font-family: Georgia, serif; font-size: 21rpx; line-height: 1.6; text-align: right; }
+.compose-count { margin-top: 6rpx; color: #6b584a; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 21rpx; line-height: 1.6; text-align: right; }
 .compose-notify { display: flex; align-items: center; justify-content: space-between; gap: 28rpx; padding: 24rpx 0 2rpx; color: #5c493c; }
 .compose-notify-copy { min-width: 0; }
 .compose-notify-title { font-size: 24rpx; font-weight: 600; line-height: 1.65; }
@@ -30,15 +30,15 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .compose-preview-copy { display: flex; min-width: 0; flex-direction: column; gap: 4rpx; }
 .compose-preview-label { color: #f5f0e8; font-size: 29rpx; font-weight: 700; line-height: 1.55; }
 .compose-preview-hint { color: rgba(245, 240, 232, .78); font-size: 21rpx; font-weight: 500; line-height: 1.55; letter-spacing: .01em; }
-.compose-arrow { flex: 0 0 auto; color: #f5f0e8; font-family: "MYRIAD Garamond", Georgia, serif; font-size: 40rpx; line-height: 1; }
+.compose-arrow { flex: 0 0 auto; color: #f5f0e8; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 40rpx; line-height: 1; }
 .compose-share-note { margin-top: 20rpx; color: #6b584a; font-size: 23rpx; font-weight: 500; line-height: 1.8; letter-spacing: .01em; }
 .compose-preview-mode { margin: 0 8rpx; color: #5C4958; font-weight: 500; animation: compose-preview-in .22s ease-out both; }
 .compose-preview-meta { display: flex; align-items: baseline; gap: 54rpx; min-height: 32rpx; margin-top: 52rpx; color: #5C4958; font-size: 23rpx; font-weight: 500; line-height: 1.5; }
-.compose-preview-number { color: #5C4958; font-family: "MYRIAD Garamond", Georgia, serif; }
+.compose-preview-number { color: #5C4958; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .compose-preview-title { margin-top: 62rpx; color: #5C4958; font-size: 54rpx; font-weight: 600; line-height: 1.58; white-space: pre-line; }
 .compose-preview-question { margin-top: 64rpx; color: #5C4958; font-size: 27rpx; font-weight: 600; line-height: 1.9; letter-spacing: .01em; }
 .compose-preview-local { margin-top: 40rpx; color: #5C4958; font-size: 22rpx; font-weight: 500; line-height: 1.8; }
-.compose-preview-heading { display: grid; grid-template-columns: 80rpx 1fr; margin-top: 62rpx; color: #5C4958; font-family: "MYRIAD Garamond", Georgia, serif; font-size: 22rpx; line-height: 1.6; letter-spacing: .08em; }
+.compose-preview-heading { display: grid; grid-template-columns: 80rpx 1fr; margin-top: 62rpx; color: #5C4958; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; line-height: 1.6; letter-spacing: .08em; }
 .compose-preview-heading-title, .compose-preview-heading-hint { color: #5C4958; font-size: 22rpx; font-weight: 600; line-height: 1.6; }
 .compose-preview-card { margin-top: 46rpx; padding-top: 38rpx; border-top: 1px solid #cdbbae; }
 .compose-preview-byline { display: flex; align-items: baseline; gap: 24rpx; color: #5C4958; font-size: 26rpx; line-height: 1.6; }
@@ -51,7 +51,7 @@ page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
 .compose-preview-confirm-text { color: #5C4958; font-size: 23rpx; line-height: 1.8; }
 .compose-preview-primary { display: flex; box-sizing: border-box; min-height: 98rpx; align-items: center; justify-content: space-between; gap: 16rpx; padding: 22rpx 28rpx; border: 1rpx solid #663124; border-radius: 2rpx; background: #663124; color: #f5f0e8; font-size: 27rpx; font-weight: 700; line-height: 1.85; }
 .compose-preview-primary.is-disabled { border-color: rgba(92, 73, 88, .3); background: rgba(92, 73, 88, .08); color: rgba(92, 73, 88, .55); box-shadow: none; }
-.compose-preview-primary-arrow { flex: 0 0 auto; color: inherit; font-family: "MYRIAD Garamond", Georgia, serif; font-size: 40rpx; line-height: 1; }
+.compose-preview-primary-arrow { flex: 0 0 auto; color: inherit; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 40rpx; line-height: 1; }
 .compose-preview-back { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; margin-top: 19rpx; padding: 8rpx 0; color: #5C4958; font-size: 26rpx; font-weight: 600; line-height: 1.7; }
 .compose-preview-draft-row { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; justify-content: space-between; gap: 10rpx; margin-top: 49rpx; color: #5C4958; font-size: 22rpx; font-weight: 500; line-height: 1.8; }
 .compose-preview-draft-action { display: flex; box-sizing: border-box; min-height: 76rpx; align-items: center; padding: 8rpx 0; }

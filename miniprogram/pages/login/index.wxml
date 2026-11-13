@@ -4,26 +4,27 @@
       <image class="brand-mark login-brand-mark" src="/assets/shop/brand-mark.svg" mode="aspectFit" aria-label="MYRIAD SHE 品牌标志"></image>
       <text class="login-brand-name">MYRIAD SHE</text>
     </view>
-    <view class="login-copy">
-      <view class="login-eyebrow">账户登录</view>
-      <view class="login-title">把正在经历的，<br />留在自己这里。</view>
-      <view class="login-description">首次使用将自动注册。登录后可同步观察与参与记录。</view>
+
+    <view class="login-step">
+      <view class="login-copy">
+        <view class="login-eyebrow">账户登录</view>
+        <view class="login-title">把正在经历的，<br />留在自己这里。</view>
+        <view class="login-description">授权手机号即可登录，同步观察与参与记录。头像和昵称可以登录后选填。</view>
+      </view>
+      <view class="login-rule" aria-hidden="true"></view>
+      <view class="login-actions">
+        <button wx:if="{{!privacyReady}}" class="login-button one-click-login-button" disabled>正在准备登录…</button>
+        <button wx:else class="login-button one-click-login-button" open-type="getPhoneNumber|agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgreePrivacyAuthorization" bindgetphonenumber="onGetPhoneNumber" disabled="{{loggingIn}}">{{loggingIn ? '正在登录…' : '手机号授权登录'}}</button>
+      </view>
+      <view wx:if="{{loginError}}" class="login-error" role="alert">{{loginError}}</view>
     </view>
-    <view class="login-rule" aria-hidden="true"></view>
-    <view class="login-actions">
-      <button class="login-button one-click-login-button" open-type="getPhoneNumber" bindgetphonenumber="onLoginWithPhone" disabled="{{loggingIn || !consentAgreed}}">{{loggingIn ? '正在登录…' : '一键登录'}}</button>
-    </view>
-    <view wx:if="{{error}}" class="login-error" role="alert">{{error}}</view>
   </view>
+
   <view class="login-consent">
-    <button wx:if="{{!consentAgreed}}" id="login-privacy-agree" class="consent-label" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgreePrivacyAuthorization" disabled="{{loggingIn}}" hover-class="consent-label-hover" aria-label="我已阅读并同意用户协议和隐私政策，未勾选">
-      <text class="consent-check" aria-hidden="true"></text><text>我已阅读并同意</text>
-    </button>
-    <button wx:else class="consent-label" bindtap="onWithdrawConsent" disabled="{{loggingIn}}" hover-class="consent-label-hover" aria-label="我已阅读并同意用户协议和隐私政策，已勾选，点击取消">
-      <text class="consent-check is-checked" aria-hidden="true">✓</text><text>我已阅读并同意</text>
-    </button>
+    <text>登录即表示同意</text>
     <text class="consent-policy-link" catchtap="openUserAgreement">《用户协议》</text><text>和</text>
     <text class="consent-policy-link" catchtap="openPrivacyPolicy">《隐私政策》</text>
-    <text wx:if="{{!consentAgreed}}" class="consent-hint">请先勾选</text>
+    <view class="wechat-privacy-notice">微信信息的收集与使用请阅读<text class="consent-policy-link" catchtap="openWechatPrivacyContract">{{privacyContractName}}</text></view>
   </view>
+
 </view>

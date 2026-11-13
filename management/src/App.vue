@@ -22,9 +22,15 @@ import SeasonIntroPreview from './components/SeasonIntroPreview.vue';
 import SeasonStagesPreview from './components/SeasonStagesPreview.vue';
 import ObservationRecordPreview from './components/ObservationRecordPreview.vue';
 import AudioPagePreview from './components/AudioPagePreview.vue';
+import EditorPageSwitch from './components/EditorPageSwitch.vue';
 import StoryDetailPreview from './components/StoryDetailPreview.vue';
 import PracticeEntryEditor from './components/PracticeEntryEditor.vue';
 import PracticeSaveBar from './components/PracticeSaveBar.vue';
+import PublicationStatus from './components/PublicationStatus.vue';
+import PublishedContentDialog from './components/PublishedContentDialog.vue';
+import MediaUploadStatus from './components/MediaUploadStatus.vue';
+import { useMediaUploads } from './composables/useMediaUploads';
+import { createAdminFetch, responseMessage, conciseResponseMessage } from './admin-api';
 import { practiceEntryFixedStyle, practiceEntryText } from './practiceEntry';
 import { normalizePracticeContentResponse } from './practice-content-defaults';
 import { createDefaultDiscussionContent } from './discussion-content';
@@ -466,6 +472,9 @@ const originalIssueStatus = ref('');
 const issueConflict = ref(false);
 const issueConflictResolved = ref('');
 const issueSaveMessage = ref('');
+const issueSavedAt = ref('');
+const practiceSavedAt = ref('');
+const publishedPreview = ref<'issue' | 'practice' | null>(null);
 const issueValidationMessage = ref('');
 const issueValidationDialogOpen = ref(false);
 type IssueFieldKey = 'code' | 'label' | 'month' | 'edition' | 'theme' | 'question';
@@ -628,7 +637,7 @@ watch(practiceCopyIssueCode, (code) => { if (code) void loadPracticeCopy(); });
 
 const issueDraftDirty = computed(() => JSON.stringify(issueForm.value) !== JSON.stringify(originalIssueForm.value));
 watch(issueDraftDirty, (dirty) => {
-  if (dirty) issueSaveMessage.value = '';
+  if (dirty) issueSaveMessage.value = ''; issueSavedAt.value = '';
 });
 const observations = ref<ManagedObservation[]>([]);
 const selectedObservation = ref<ManagedObservationDetail | null>(null);
@@ -1829,7 +1838,7 @@ async function openJournalSubsection(section: JournalSection | 'media') {
   journalNavigationExpanded.value = true;
   pageNavigationExpanded.value = false;
   lifeCardNavigationExpanded.value = false;
-  issueSaveMessage.value = '';
+  issueSaveMessage.value = ''; issueSavedAt.value = '';
   if (!editingIssueId.value && (journalSections as string[]).includes(section) && section !== 'journal-list') {
     const preferred = issues.value.find((issue) => issue.status === 'published') || issues.value[0];
     if (preferred) await editIssue(preferred);
@@ -2275,7 +2284,13 @@ const uploadedMediaKeys = ref<string[]>(readPendingCleanupKeys());
 const mediaCleanupTokens = ref<Record<string, string>>(readPendingCleanupTokens());
 type MediaCleanupCandidate = { objectKey: string; purpose: 'orphan' | 'temporary'; cleanupToken?: string };
 const uploading = ref(false);
+const { items: mediaUploadItems, dismiss: dismissMediaUpload, clear: clearMediaUploads, transfer: transferMedia } = useMediaUploads({
+  timeoutMs: mediaUploadTimeoutMs,
+  assertCurrent: assertSession,
+  isCurrent: (session) => session === sessionGeneration && loggedIn.value,
+});
 const loggedIn = computed(() => Boolean(token.value && sessionExpiresAt.value > Date.now()));
+watch(loggedIn, (active) => { if (!active) clearMediaUploads(); });
 let sessionExpiryTimer: ReturnType<typeof setTimeout> | null = null;
 let sessionGeneration = 0;
 let dashboardRequestGeneration = 0;
@@ -2492,7 +2507,7 @@ async function startNewIssue() {
   journalNavigationExpanded.value = true;
   pageNavigationExpanded.value = false;
   lifeCardNavigationExpanded.value = false;
-  issueSaveMessage.value = '';
+  issueSaveMessage.value = ''; issueSavedAt.value = '';
 }
 function seedIssueModulesFromForm() {
   if (editingIssueId.value) return;
@@ -2549,39 +2564,7 @@ function displayFileSize(value?: number) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function conciseResponseMessage(message: string) {
-  return message
-    .replace(/[（(]\s*(?:请求编号|request\s*id)\s*[:：]\s*[^）)]+\s*[）)]/gi, '')
-    .replace(/\s*(?:请求编号|request\s*id)\s*[:：]\s*[0-9a-z-]+\s*/gi, '')
-    .trim();
-}
-
-async function responseMessage(response: Response, fallback: string) {
-  try {
-    const body = await response.json() as { message?: string | string[] };
-    const raw = Array.isArray(body.message) ? body.message.join('；') : body.message;
-    if (typeof raw === 'string' && raw) {
-      const concise = conciseResponseMessage(raw);
-      if (concise) return concise;
-    }
-  } catch {
-    // Keep the caller's stable fallback when the response is not JSON.
-  }
-  return conciseResponseMessage(fallback);
-}
-
-async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = apiRequestTimeoutMs) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } catch (caught) {
-    if (caught instanceof Error && caught.name === 'AbortError') throw new Error('请求超时，请检查网络后重试。');
-    throw caught;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+const apiFetch = createAdminFetch(apiRequestTimeoutMs);
 
 function isPracticeContent(raw: unknown): raw is PracticeContent {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
@@ -3230,6 +3213,19 @@ function setStoryEditorTab(tab: 'home' | 'detail') {
   storyEditorTab.value = tab;
   activeStoryDetailKey.value = tab === 'detail' ? 'from-home' : '';
 }
+
+const journalPageOptions = computed(() => {
+  if (activeContentSection.value === 'journal-story') return [{ value: 'home', label: '首页入口' }, { value: 'detail', label: '详情页' }];
+  if (activeContentSection.value === 'journal-audio') return [{ value: 'list', label: '列表页' }, { value: 'detail', label: '详情页' }];
+  return [];
+});
+const journalPageView = computed({
+  get: () => activeContentSection.value === 'journal-story' ? storyEditorTab.value : audioPreviewView.value,
+  set: (value: string) => {
+    if (activeContentSection.value === 'journal-story' && (value === 'home' || value === 'detail')) setStoryEditorTab(value);
+    else if (activeContentSection.value === 'journal-audio' && (value === 'list' || value === 'detail')) setAudioPreviewView(value);
+  },
+});
 
 function pickStoryDetailKey(key: string) {
   activeStoryDetailKey.value = key;
@@ -4451,7 +4447,8 @@ async function savePracticeContent() {
       : updated;
     practiceContentDirty.value = false;
     practiceContentConflict.value = false;
-    practiceContentMessage.value = '实践内容已保存到云端。';
+    practiceSavedAt.value = new Date().toISOString();
+    practiceContentMessage.value = '实践草稿已保存；发布后小程序才会更新。';
   } catch (caught) {
     if (session === sessionGeneration && loggedIn.value) practiceContentError.value = caught instanceof Error ? caught.message : '实践内容保存失败，请重试。';
   } finally {
@@ -4723,9 +4720,7 @@ async function uploadDailyObjectImageFile(file: File, targetId: string) {
     if (!response.ok) throw new Error(await responseMessage(response, '无法创建图片上传地址'));
     const target = await response.json();
     if (!isMediaUploadTarget(target)) throw new Error('服务器未返回有效的图片上传地址');
-    const uploadResponse = await apiFetch(target.uploadUrl, { method: 'PUT', headers: { 'content-type': file.type }, body: file }, mediaUploadTimeoutMs);
-    assertSession(session);
-    if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, '图片上传失败'));
+    await transferMedia(file, target.uploadUrl, session);
     const params = new URLSearchParams({ objectKey: target.objectKey });
     const previewResponse = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(previewResponse, session)) throw new Error('后台登录已过期，请重新登录。');
@@ -4808,9 +4803,7 @@ async function uploadBrandPopupImage(file: File, surface: BrandPopupSurface) {
     if (!response.ok) throw new Error(await responseMessage(response, `无法创建${label}上传地址`));
     const target = await response.json();
     if (!isMediaUploadTarget(target)) throw new Error(`服务器未返回有效的${label}上传地址`);
-    const uploadResponse = await apiFetch(target.uploadUrl, { method: 'PUT', headers: { 'content-type': file.type }, body: file }, mediaUploadTimeoutMs);
-    assertSession(session);
-    if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, `${label}上传失败`));
+    await transferMedia(file, target.uploadUrl, session);
     const params = new URLSearchParams({ objectKey: target.objectKey });
     const previewResponse = await apiFetch(`${apiBase}/content/media/preview-url?${params}`, { headers: { Authorization: `Bearer ${token.value}` } });
     if (handleAdminUnauthorized(previewResponse, session)) throw new Error('后台登录已过期，请重新登录。');
@@ -5818,7 +5811,7 @@ function clearIssueForm() {
   originalIssueForm.value = cloneIssueForm(issueForm.value);
   issueConflict.value = false;
   issueConflictResolved.value = '';
-  issueSaveMessage.value = '';
+  issueSaveMessage.value = ''; issueSavedAt.value = '';
   issueValidationMessage.value = '';
   issueValidationDialogOpen.value = false;
   issueFieldErrors.value = {};
@@ -6298,7 +6291,7 @@ function addIssueModule(type: ManagedIssueModule['type']) {
 async function publishIssue() {
   if (!editingIssueId.value || uploading.value || issueConflict.value) return;
   error.value = '';
-  issueSaveMessage.value = '';
+  issueSaveMessage.value = ''; issueSavedAt.value = '';
   issueValidationMessage.value = '';
   issueValidationDialogOpen.value = false;
   seedIssueModulesFromForm();
@@ -6315,6 +6308,7 @@ async function publishIssue() {
     if (response.status === 409) issueConflict.value = true;
     if (!response.ok) throw new Error(await responseMessage(response, '发布期刊失败'));
     const result = await response.json();
+    if (!Number.isSafeInteger(result?.version) || result.version < 1) throw new Error('服务器未返回可确认的发布版本，请重新载入后核对线上内容。');
     issueSaveMessage.value = `已发布第 ${result.version} 个版本；本期所有模块已同时上线。`;
     issueConflict.value = false;
     issueFieldErrors.value = {};
@@ -6687,7 +6681,7 @@ async function editIssue(issue: ManagedIssue) {
   originalIssueForm.value = cloneIssueForm(issueForm.value);
   issueConflict.value = false;
   issueConflictResolved.value = '';
-  issueSaveMessage.value = '';
+  issueSaveMessage.value = ''; issueSavedAt.value = '';
   issueValidationMessage.value = '';
   issueValidationDialogOpen.value = false;
   issueFieldErrors.value = {};
@@ -6805,15 +6799,11 @@ async function uploadMedia(file: File, kind: 'image' | 'audio' | 'video', expect
   assertSession(expectedSession);
   if (!urlResponse.ok) throw new Error(await responseMessage(urlResponse, '无法创建媒体上传地址'));
   const target = await urlResponse.json();
-  if (!isMediaUploadTarget(target)) {
-    throw new Error('服务器未返回有效的临时媒体清理凭证');
-  }
+  if (!isMediaUploadTarget(target)) throw new Error('服务器未返回有效的临时媒体清理凭证');
   uploadedMediaKeys.value.push(target.objectKey);
   mediaCleanupTokens.value[target.objectKey] = target.cleanupToken;
   persistCleanupKeys();
-  const uploadResponse = await apiFetch(target.uploadUrl, { method: 'PUT', headers: { 'content-type': file.type }, body: file }, mediaUploadTimeoutMs);
-  assertSession(expectedSession);
-  if (!uploadResponse.ok) throw new Error(await responseMessage(uploadResponse, '媒体上传失败'));
+  await transferMedia(file, target.uploadUrl, expectedSession);
   return target.objectKey as string;
 }
 
@@ -7071,11 +7061,14 @@ async function saveIssue() {
     }
     if (!response.ok) throw new Error(await responseMessage(response, '保存期刊失败'));
     const savedIssue = await response.json().catch(() => null);
+    if (!savedIssue || typeof savedIssue.id !== 'string' || !savedIssue.id || savedIssue.code !== payload.code.trim() || !Number.isSafeInteger(savedIssue.editVersion) || savedIssue.editVersion < 1 || (editingIssueId.value && savedIssue.id !== editingIssueId.value)) {
+      throw new Error('服务器未返回可确认的保存结果，本地修改已保留。请重新载入后核对草稿。');
+    }
     if (savedIssue?.id) editingIssueId.value = savedIssue.id;
     if (Number.isSafeInteger(savedIssue?.editVersion) && savedIssue.editVersion > 0) editingIssueEditVersion.value = savedIssue.editVersion;
-    else if (savedIssue?.id) editingIssueEditVersion.value += 1;
     if (typeof savedIssue?.status === 'string' && ['draft', 'published', 'archived'].includes(savedIssue.status)) issueForm.value.status = savedIssue.status;
     saved = true;
+    issueSavedAt.value = new Date().toISOString();
     const savedKeys = [...issueDraftMediaKeys(issueForm.value.draftContent.sections), issueForm.value.homeBackgroundObjectKey].filter((key): key is string => Boolean(key));
     const unsavedUploadedKeys = uploadedMediaKeys.value.filter((key) => !savedKeys.includes(key));
     const obsoleteKeys = [...new Set([...unsavedUploadedKeys, originalMediaKeys.value.cover, originalMediaKeys.value.background].filter((key) => key && !savedKeys.includes(key) && !key.startsWith('content/audio/') && !key.startsWith('content/video/')))];
@@ -7097,7 +7090,7 @@ async function saveIssue() {
     issueValidationMessage.value = '';
     issueValidationDialogOpen.value = false;
     issueFieldErrors.value = {};
-    issueSaveMessage.value = '草稿已保存。期号、首页、人物、声音与往期入口共用这份草稿；本期讨论也可在讨论页单独保存/发布，整期发布时仍会一并写入期刊快照。';
+    issueSaveMessage.value = '草稿已保存，发布后小程序才会更新。期号、首页、人物、声音与往期入口共用这份草稿；本期讨论也可在讨论页单独保存/发布，整期发布时仍会一并写入期刊快照。';
     const cleanup = await cleanupMedia(candidates, session);
     assertSession(session);
     uploadedMediaKeys.value = cleanup.remaining.map((item) => item.objectKey);
@@ -7561,7 +7554,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </aside>
-        <div class="dashboard-workspace">
+        <div class="dashboard-workspace" :class="{ 'operations-workspace': isOperationsSection(activeSection), 'settings-workspace': isSettingsSection(activeSection) }">
           <header class="topbar">
             <div class="topbar-title" :key="currentView.title"><p class="eyebrow">MYRIAD SHE / {{ currentView.eyebrow }}</p><h1 tabindex="-1">{{ currentView.title }}</h1><p v-if="activeSection !== 'overview'" class="admin-page-description">{{ currentDestination?.description }}</p></div>
             <div class="topbar-actions">
@@ -7851,7 +7844,7 @@ onBeforeUnmount(() => {
                   <small>发布后本期所有模块一起上线，并自动归档上一期线上期刊。有未保存修改时需先保存草稿。</small>
                 </div>
               </section>
-              <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p>
+              <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p><PublicationStatus v-if="activeContentSection === 'journal-list'" :saved-at="issueSavedAt" :published-version="journalCurrentIssue?.publishedVersion" :can-view="Boolean(journalCurrentIssue?.publishedVersion)" @view="publishedPreview = 'issue'" />
               <p v-if="issueConflict" class="error" role="alert">{{ issueConflictResolved || '云端草稿已变化，请先载入最新版本核对后再保存。' }} <button type="button" class="quiet" :disabled="uploading" @click="rebaseIssueEdits">载入最新版本</button></p>
               <ol v-if="issueHistory.length" class="issue-history"><li v-for="item in issueHistory" :key="item.version"><details><summary>v{{ item.version }} · {{ displayDate(item.publishedAt) }} · {{ item.publishedBy || '系统' }}</summary><pre>{{ JSON.stringify(item.snapshot, null, 2) }}</pre></details></li></ol>
             </template>
@@ -7859,7 +7852,8 @@ onBeforeUnmount(() => {
         </div>
       </section>
       <section v-if="activeSection === 'content' && ['journal-home', 'journal-story', 'journal-audio', 'journal-discussion', 'journal-archive'].includes(activeContentSection)" id="journal-module-workspace" class="content-area">
-        <div class="journal-preview-layout" :class="{ 'has-preview': showJournalPreview }">
+        <EditorPageSwitch v-if="editingIssueId && journalPageOptions.length" id="journal-page-switch" v-model="journalPageView" :options="journalPageOptions" panel-id="journal-page-panel" />
+        <div id="journal-page-panel" class="journal-preview-layout" :class="{ 'has-preview': showJournalPreview }" :role="journalPageOptions.length ? 'tabpanel' : undefined" :aria-labelledby="journalPageOptions.length ? `journal-page-switch-${journalPageView}` : undefined">
           <aside v-if="showJournalPreview" class="journal-preview-rail" aria-label="小程序预览">
             <template v-if="activeContentSection === 'journal-audio'">
               <AudioPagePreview
@@ -7875,7 +7869,6 @@ onBeforeUnmount(() => {
                 :media-urls="audioPreviewMediaUrls"
                 @pick="pickAudioKey"
                 @open-detail="openAudioTrackDetail"
-                @switch-view="setAudioPreviewView"
               />
             </template>
             <template v-else-if="activeContentSection === 'journal-story' && storyEditorTab === 'detail'">
@@ -7977,17 +7970,13 @@ onBeforeUnmount(() => {
               <p v-if="homeBackgroundError" class="error" role="alert">{{ homeBackgroundError }}</p>
               <input ref="homeBackgroundFileInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" @change="selectHomeBackgroundFile" />
             </section>
-            <div v-if="activeContentSection === 'journal-story'" class="story-editor-tabs">
-              <div class="story-editor-tab-group admin-segmented-tabs" role="tablist" aria-label="人物故事编辑页面">
-                <button type="button" role="tab" :class="{ 'is-active': storyEditorTab === 'home' }" :aria-selected="storyEditorTab === 'home'" @click="setStoryEditorTab('home')">首页入口</button>
-                <button type="button" role="tab" :class="{ 'is-active': storyEditorTab === 'detail' }" :aria-selected="storyEditorTab === 'detail'" @click="setStoryEditorTab('detail')">详情页</button>
-              </div>
+            <div v-if="activeContentSection === 'journal-story'" class="story-editor-guidance">
               <p class="field-help">{{ storyEditorTab === 'home' ? '首页那张人物纪实卡片：图片、引言与图上两行说明。' : '点进卡片后的独立页面：图片说明、文章来源、正文两段、结尾引言与公众号链接保存后一起生效。' }}</p>
             </div>
             <div v-if="activeContentSection !== 'journal-discussion' && (activeContentSection !== 'journal-story' || storyEditorTab === 'home')" class="journal-module-toolbar-wrap">
               <div class="issue-module-toolbar"><h3>{{ journalModuleWorkspaceTitle }}</h3><select v-if="journalAddableModuleTypes.length" aria-label="新增栏目类型" @change="(event) => { const target = event.target as HTMLSelectElement; if (target.value) { addIssueModule(target.value as ManagedIssueModule['type']); target.value = ''; } }"><option value="">＋ 新增栏目</option><option v-for="type in journalAddableModuleTypes" :key="type" :value="type">{{ issueModuleTypeLabel(type) }}</option></select></div>
               <p class="field-help">选择一个栏目进行编辑；启用、排序与删除只改这份草稿。保存会写入整期，发布也会整期一起生效。</p>
-              <nav class="issue-module-picker" aria-label="选择要编辑的栏目"><button v-for="(module, index) in issueForm.draftContent.sections" v-show="isIssueModuleVisibleInJournalSection(module)" :key="module.id" type="button" :class="{ active: selectedIssueModuleId === module.id }" :aria-pressed="selectedIssueModuleId === module.id" @click="selectedIssueModuleId = module.id"><small>{{ String(index + 1).padStart(2, '0') }}</small><span>{{ issueModuleLabel(module) }}</span><em :class="{ 'is-hidden': !module.enabled }">{{ module.enabled ? '显示' : '隐藏' }}</em></button></nav>
+              <TransitionGroup name="editorial-order" tag="nav" class="issue-module-picker" aria-label="选择要编辑的栏目"><button v-for="(module, index) in issueForm.draftContent.sections" v-show="isIssueModuleVisibleInJournalSection(module)" :key="module.id" type="button" :class="{ active: selectedIssueModuleId === module.id }" :aria-pressed="selectedIssueModuleId === module.id" @click="selectedIssueModuleId = module.id"><small>{{ String(index + 1).padStart(2, '0') }}</small><span>{{ issueModuleLabel(module) }}</span><em :class="{ 'is-hidden': !module.enabled }">{{ module.enabled ? '显示' : '隐藏' }}</em></button></TransitionGroup>
               <p v-if="!issueForm.draftContent.sections.some(isIssueModuleVisibleInJournalSection)" class="field-help">这个模块还没有栏目。到「首页策展」新增对应栏目后再回来编辑。</p>
             </div>
             <details v-if="activeContentSection === 'journal-discussion'" class="issue-module-details discussion-editor-details" open>
@@ -8164,7 +8153,6 @@ onBeforeUnmount(() => {
               <div v-else-if="module.type !== 'issueMeta' && module.type !== 'audio'" class="journal-issue-field" :data-issue-field="module.type === 'question' ? 'question' : undefined" :class="{ 'is-invalid': module.type === 'question' && issueFieldErrors.question }"><div><JournalRichTextField :model-value="issueModuleString(module, 'title')" :rich-text="issueModuleString(module, 'titleRichText')" :label="module.type === 'question' ? '本期问题' : '标题 / 引言'" :invalid="module.type === 'question' ? Boolean(issueFieldErrors.question) : false" :error="module.type === 'question' ? issueFieldErrors.question || '' : ''" @update:model-value="setIssueModuleString(module, 'title', $event)" @update:rich-text="setIssueModuleString(module, 'titleRichText', $event)" /></div></div>
               <div v-if="module.type === 'issueMeta' || module.type === 'coverStory' || module.type === 'story' || module.type === 'question'"><div><JournalRichTextField :model-value="issueModuleString(module, 'eyebrow')" :rich-text="issueModuleString(module, 'eyebrowRichText')" label="栏目眉题" @update:model-value="setIssueModuleString(module, 'eyebrow', $event)" @update:rich-text="setIssueModuleString(module, 'eyebrowRichText', $event)" /></div></div>
               <div v-if="module.type === 'story'" class="form-grid"><div><JournalRichTextField :model-value="issueModuleString(module, 'captionLeft')" :rich-text="issueModuleString(module, 'captionLeftRichText')" label="图片左侧说明" @update:model-value="setIssueModuleString(module, 'captionLeft', $event)" @update:rich-text="setIssueModuleString(module, 'captionLeftRichText', $event)" /></div><div><JournalRichTextField :model-value="issueModuleString(module, 'captionRight')" :rich-text="issueModuleString(module, 'captionRightRichText')" label="图片右侧说明" @update:model-value="setIssueModuleString(module, 'captionRight', $event)" @update:rich-text="setIssueModuleString(module, 'captionRightRichText', $event)" /></div></div>
-              <button v-if="module.type === 'story'" type="button" class="quiet story-card-detail-link" @click="setStoryEditorTab('detail')">编辑详情页正文 →</button>
               <div v-if="module.type === 'storyAction'" class="form-grid"><label>跳转目标栏目<input :value="String(module.targetId || 'story')" maxlength="64" @input="setIssueModuleText(module, 'targetId', $event)" /></label></div>
               <div v-if="module.type === 'issueMeta'"><div><JournalRichTextField :model-value="issueModuleString(module, 'month')" :rich-text="issueModuleString(module, 'monthRichText')" label="月份文字" @update:model-value="setIssueModuleString(module, 'month', $event)" @update:rich-text="setIssueModuleString(module, 'monthRichText', $event)" /></div></div>
               <div v-if="module.body !== undefined || ['coverStory','opener','story','question','observationAction','sharedPracticeAction','brandFooter'].includes(module.type)"><div><JournalRichTextField :model-value="issueModuleString(module, 'body')" :rich-text="issueModuleString(module, 'bodyRichText')" label="正文 / 说明" @update:model-value="setIssueModuleString(module, 'body', $event)" @update:rich-text="setIssueModuleString(module, 'bodyRichText', $event)" /></div></div>
@@ -8197,16 +8185,23 @@ onBeforeUnmount(() => {
                     <div class="audio-field-wide" :data-audio-field="`track:${track.id}:transcript`"><JournalRichTextField :model-value="issueAudioTrackString(track, 'transcript')" :rich-text="track.transcriptRichText || ''" label="音频文字稿" @update:model-value="setIssueAudioTrackPlainText(track, 'transcript', $event)" @update:rich-text="setIssueAudioTrackRichText(track, 'transcript', $event)" /></div>
                   </div>
                   <details class="issue-module-details issue-audio-actions-editor" :data-audio-field="`track:${track.id}:actions`" open>
-                    <summary>详情页操作模块 · 可添加多个分享或跳转（{{ (track.actions || []).length }}/{{ maxIssueAudioActions }}）</summary>
-                    <p class="field-help">这些按钮会显示在微声音正文下方，并可按顺序添加多个。小程序页面须以 /pages/ 开头；网站须为 HTTPS；分享会打开微信分享面板。</p>
-                    <div v-for="(action, actionIndex) in (track.actions || [])" :key="action.id" class="issue-audio-action-row">
-                      <label>操作类型<select :value="action.kind" :disabled="uploading" @change="setIssueAudioActionKind(action, $event)"><option value="page">小程序页面</option><option value="web">网站</option><option value="share">分享给朋友</option></select></label>
-                      <div><JournalRichTextField :model-value="action.label" :rich-text="action.labelRichText || ''" label="按钮文字" @update:model-value="setIssueAudioActionLabel(action, $event)" @update:rich-text="setIssueAudioActionLabelRichText(action, $event)" /></div>
-                      <label v-if="action.kind === 'page'">小程序页面路径<input list="issue-module-page-presets" :value="action.path || ''" maxlength="512" placeholder="/pages/story-detail/index?id=story" @input="setIssueAudioActionText(action, 'path', $event)" /></label>
-                      <label v-if="action.kind === 'web'">网站链接（HTTPS）<input type="url" :value="action.url || ''" maxlength="2048" placeholder="https://example.com/article" @input="setIssueAudioActionText(action, 'url', $event)" /></label>
-                      <button type="button" class="quiet danger" :disabled="uploading" :aria-label="`移除操作模块 ${action.label || actionIndex + 1}`" @click="removeIssueAudioAction(track, actionIndex)">移除</button>
+                    <summary><span>详情页操作</span><span class="issue-audio-action-count">{{ (track.actions || []).length }} / {{ maxIssueAudioActions }}</span></summary>
+                    <div class="issue-audio-actions-body">
+                      <p class="field-help">按钮将按添加顺序显示在微声音正文下方，可用于分享或跳转。</p>
+                      <div v-for="(action, actionIndex) in (track.actions || [])" :key="action.id" class="issue-audio-action-row">
+                        <strong class="issue-audio-action-title">操作 {{ String(actionIndex + 1).padStart(2, '0') }}</strong>
+                        <button type="button" class="quiet danger issue-audio-action-remove" :disabled="uploading" :aria-label="`移除操作模块 ${action.label || actionIndex + 1}`" @click="removeIssueAudioAction(track, actionIndex)">移除</button>
+                        <div class="issue-audio-action-settings">
+                          <label>操作类型<select :value="action.kind" :disabled="uploading" @change="setIssueAudioActionKind(action, $event)"><option value="page">小程序页面</option><option value="web">网站</option><option value="share">分享给朋友</option></select></label>
+                          <label v-if="action.kind === 'page'">小程序页面路径<input list="issue-module-page-presets" :value="action.path || ''" maxlength="512" placeholder="/pages/story-detail/index?id=story" :disabled="uploading" @input="setIssueAudioActionText(action, 'path', $event)" /></label>
+                          <label v-else-if="action.kind === 'web'">网站链接（HTTPS）<input type="url" :value="action.url || ''" maxlength="2048" placeholder="https://example.com/article" :disabled="uploading" @input="setIssueAudioActionText(action, 'url', $event)" /></label>
+                          <p v-else class="issue-audio-action-hint">点击后打开微信分享面板，无需填写跳转地址。</p>
+                        </div>
+                        <div class="issue-audio-action-label"><JournalRichTextField :model-value="action.label" :rich-text="action.labelRichText || ''" label="按钮文字" :disabled="uploading" @update:model-value="setIssueAudioActionLabel(action, $event)" @update:rich-text="setIssueAudioActionLabelRichText(action, $event)" /></div>
+                      </div>
+                      <button v-if="(track.actions || []).length < maxIssueAudioActions" type="button" class="quiet issue-audio-action-add" :disabled="uploading" @click="addIssueAudioAction(track)">＋ 添加操作模块</button>
+                      <p v-else class="field-help">已添加 {{ maxIssueAudioActions }} 个操作，达到数量上限。</p>
                     </div>
-                    <button v-if="(track.actions || []).length < maxIssueAudioActions" type="button" class="quiet" :disabled="uploading" @click="addIssueAudioAction(track)">＋ 添加操作模块</button>
                   </details>
                 </article>
                 <button v-if="issueAudioTracks(module).length < maxIssueAudioTracks" type="button" class="secondary" :disabled="uploading" @click="addIssueAudioTrack(module)">＋ 添加微声音</button>
@@ -8246,7 +8241,7 @@ onBeforeUnmount(() => {
             <p v-if="issueConflict" class="error" role="alert">草稿已被其他管理员修改；本地内容已保留，请载入最新版本后核对。 <button type="button" class="quiet" :disabled="uploading" @click="rebaseIssueEdits">载入最新版本</button></p>
             <p v-if="issueSaveMessage" class="status-message" role="status">{{ issueSaveMessage }}</p>
             <footer class="journal-savebar" :class="{ 'is-dirty': issueDraftDirty }">
-              <div class="journal-savebar-copy"><strong>{{ issueDraftDirty ? '有未保存的修改' : '已与云端同步' }}</strong><small>整份期刊草稿 · 保存会同时写入期号、首页、人物、声音、讨论与往期入口</small></div>
+              <div class="journal-savebar-copy"><strong>{{ uploading ? '正在处理，请稍候…' : issueDraftDirty ? '有未保存的修改' : '草稿已与云端同步' }}</strong><small>整份期刊草稿 · 保存会同时写入期号、首页、人物、声音、讨论与往期入口</small><PublicationStatus :saved-at="issueSavedAt" :published-version="journalCurrentIssue?.publishedVersion" :can-view="Boolean(journalCurrentIssue?.publishedVersion)" @view="publishedPreview = 'issue'" /><small>保存草稿后，需确认发布整期才会更新小程序。</small></div>
               <div class="form-actions"><button type="submit" :disabled="uploading || issueConflict">{{ uploading ? '保存中…' : '保存整份草稿' }}</button><button type="button" class="quiet" :disabled="uploading || issueConflict || issueDraftDirty" @click="publishIssue">确认发布整期</button></div>
             </footer>
           </template>
@@ -8326,7 +8321,7 @@ onBeforeUnmount(() => {
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
           <PracticeSaveBar
-            :dirty="practiceContentDirty"
+            :saved-at="practiceSavedAt" :has-draft="Boolean(practiceContent.draft)" :can-view="true" @view="publishedPreview = 'practice'" :dirty="practiceContentDirty"
             :conflict="practiceContentConflict"
             :saving="practiceContentSaving"
             label="实践页面 · 标题、页眉、说明与页尾"
@@ -8363,7 +8358,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || practiceContent.entries.length >= 100" @click="addPracticeEntry()">＋ 新增目录</button>
               </div>
             </div>
-            <ol class="practice-directory-list">
+            <TransitionGroup name="editorial-order" tag="ol" class="practice-directory-list">
               <li v-for="(entry, index) in practiceContent.entries" :key="entry.key" class="practice-directory-row">
                 <span class="practice-directory-index">{{ String(index + 1).padStart(2, '0') }}</span>
                 <span class="practice-directory-copy">
@@ -8388,12 +8383,12 @@ onBeforeUnmount(() => {
                   <button type="button" class="practice-entry-delete" :disabled="practiceContentSaving || practiceContentConflict" @click="removePracticeEntry(entry)">删除</button>
                 </span>
               </li>
-            </ol>
+            </TransitionGroup>
             <p v-if="practiceContentConflict" class="error" role="alert">实践页面已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
             <PracticeSaveBar
-              :dirty="practiceContentDirty"
+              :saved-at="practiceSavedAt" :has-draft="Boolean(practiceContent.draft)" :can-view="true" @view="publishedPreview = 'practice'" :dirty="practiceContentDirty"
               :conflict="practiceContentConflict"
               :saving="practiceContentSaving"
               label="实践目录 · 顺序、入口与状态"
@@ -8431,7 +8426,7 @@ onBeforeUnmount(() => {
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-            <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="此刻观察 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
+            <PracticeSaveBar :saved-at="practiceSavedAt" :has-draft="Boolean(practiceContent.draft)" :can-view="true" @view="publishedPreview = 'practice'" :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="此刻观察 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
           </form>
           <form v-else class="practice-form observation-detail-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
             <div class="practice-entry-tabs observation-detail-tabs admin-segmented-tabs" role="tablist" aria-label="此刻观察详情页编辑范围">
@@ -8586,7 +8581,7 @@ onBeforeUnmount(() => {
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
             <PracticeSaveBar
-              :dirty="practiceContentDirty"
+              :saved-at="practiceSavedAt" :has-draft="Boolean(practiceContent.draft)" :can-view="true" @view="publishedPreview = 'practice'" :dirty="practiceContentDirty"
               :conflict="practiceContentConflict"
               :saving="practiceContentSaving"
               label="此刻观察 · 详情页"
@@ -8619,7 +8614,7 @@ onBeforeUnmount(() => {
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-            <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="共同实践 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
+            <PracticeSaveBar :saved-at="practiceSavedAt" :has-draft="Boolean(practiceContent.draft)" :can-view="true" @view="publishedPreview = 'practice'" :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="共同实践 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
           </form>
           <form v-else class="practice-form" @submit.prevent="savePracticeContent" @focusin="focusObservationField">
         <div class="practice-copy-panel">
@@ -8696,7 +8691,7 @@ onBeforeUnmount(() => {
           <div class="observation-copy-groups"><section v-for="group in sharedPracticeCopyGroups" :key="group.title" class="observation-copy-group"><h3>{{ group.title }}</h3><div v-for="field in group.fields" :key="field.key" class="copy-field" :data-copy-field="field.key"><RichTextEditor v-model="practiceContent.sharedPracticeCopy[field.key].richText" v-model:font-size="practiceContent.sharedPracticeCopy[field.key].fontSize" v-model:color="practiceContent.sharedPracticeCopy[field.key].color" :label="field.label" :disabled="practiceContentSaving || practiceContentConflict" @change="markPracticeContentDirty" /></div></section></div>
           <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p><p v-if="practiceContentDirty && !practiceContentSaving" class="muted" role="status">有未保存的修改。</p><p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p><p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
           <PracticeSaveBar
-            :dirty="practiceContentDirty"
+            :saved-at="practiceSavedAt" :has-draft="Boolean(practiceContent.draft)" :can-view="true" @view="publishedPreview = 'practice'" :dirty="practiceContentDirty"
             :conflict="practiceContentConflict"
             :saving="practiceContentSaving"
             label="共同实践 · 详情页"
@@ -8729,7 +8724,7 @@ onBeforeUnmount(() => {
             <p v-if="practiceContentConflict" class="error full" role="alert">实践内容已被其他管理员更新。本地修改已保留，载入最新版本前不能继续保存。</p>
             <p v-if="practiceContentError" class="error" role="alert">{{ practiceContentError }}</p>
             <p v-if="practiceContentMessage" class="status-message" role="status">{{ practiceContentMessage }}</p>
-            <PracticeSaveBar :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="日常之物 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
+            <PracticeSaveBar :saved-at="practiceSavedAt" :has-draft="Boolean(practiceContent.draft)" :can-view="true" @view="publishedPreview = 'practice'" :dirty="practiceContentDirty" :conflict="practiceContentConflict" :saving="practiceContentSaving" label="日常之物 · 首页入口" :can-publish="isSuperAdmin && Boolean(practiceContent.draft)" @publish="publishPracticeContent" @reload="reloadPracticeContent" />
           </form>
           <form v-else class="practice-form daily-objects-form" @submit.prevent="saveDailyObjectsContent" @focusin="focusDailyField">
           <section class="daily-shop-gate"><div><h3>开放设置</h3><p>「实践目录 → 日常之物」入口控制目录是否开启；「系统管理 → 商城开放」独立控制商城是否对外营业。两处都开启后才会展示商品。</p></div><button type="button" class="quiet" @click="openDailyObjectsEntrySettings">设置目录入口状态</button></section>
@@ -9269,8 +9264,8 @@ onBeforeUnmount(() => {
           </div>
           <input ref="brandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage($event, 'home')" />
           <div class="brand-popup-media-actions">
-            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage('home')">{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换首页图片' : '上传首页品牌图' }}</button>
-            <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage('home')">移除</button>
+            <button type="button" :aria-busy="brandPopupUploading" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage('home')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 16v4h16v-4" /></svg><span>{{ brandPopupUploading ? '上传中…' : brandPopupPreviewUrl ? '更换首页图片' : '上传首页品牌图' }}</span></button>
+            <button v-if="systemSettings.brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage('home')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8 8 8M16 8l-8 8" /></svg><span>移除</span></button>
           </div>
           <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存后生效。</small>
         </div>
@@ -9329,8 +9324,8 @@ onBeforeUnmount(() => {
           </div>
           <input ref="dailyObjectsBrandPopupFileInput" class="brand-popup-file-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @change="selectBrandPopupImage($event, 'daily-objects')" />
           <div class="brand-popup-media-actions">
-            <button type="button" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage('daily-objects')">{{ brandPopupUploading ? '上传中…' : dailyObjectsBrandPopupPreviewUrl ? '更换日常之物图片' : '上传日常之物品牌图' }}</button>
-            <button v-if="systemSettings.daily_objects_brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage('daily-objects')">移除</button>
+            <button type="button" :aria-busy="brandPopupUploading" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="chooseBrandPopupImage('daily-objects')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 16v4h16v-4" /></svg><span>{{ brandPopupUploading ? '上传中…' : dailyObjectsBrandPopupPreviewUrl ? '更换日常之物图片' : '上传日常之物品牌图' }}</span></button>
+            <button v-if="systemSettings.daily_objects_brand_popup_image" type="button" class="quiet" :disabled="settingsLoading || !isSuperAdmin || brandPopupUploading" @click="removeBrandPopupImage('daily-objects')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8 8 8M16 8l-8 8" /></svg><span>移除</span></button>
           </div>
           <small>支持 JPG、PNG、WebP；图片会铺满屏幕，超出屏幕比例的部分会居中裁切。图片仅在保存后生效。</small>
         </div>
@@ -9361,9 +9356,9 @@ onBeforeUnmount(() => {
       <p class="brand-popup-settings-note">日常之物弹窗只影响「日常之物」模块；关闭开关或未上传图片时不会弹出。</p>
     </section>
 
-    <div v-if="isSuperAdmin" class="topbar-actions">
-      <button :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings">{{ settingsSaving ? '保存中…' : '保存系统设置' }}</button>
-      <button type="button" class="quiet" :disabled="settingsSaving || brandPopupUploading" @click="resetSystemSettings">撤销修改</button>
+    <div v-if="isSuperAdmin" class="topbar-actions settings-actions">
+      <button type="button" :aria-busy="settingsSaving" :disabled="settingsSaving || settingsLoading || brandPopupUploading || JSON.stringify(systemSettings) === JSON.stringify(systemSettingsOriginal)" @click="saveSystemSettings"><svg v-if="settingsSaving" class="settings-button-spinner" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-8-8" /></svg><svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-8" /></svg><span>{{ settingsSaving ? '保存中…' : '保存系统设置' }}</span></button>
+      <button type="button" class="quiet" :disabled="settingsSaving || brandPopupUploading" @click="resetSystemSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4 4 8l4 4M4 8h9a7 7 0 0 1 0 14" /></svg><span>撤销修改</span></button>
     </div>
       <p v-else class="muted">当前账号仅可查看设置。</p>
     </div>
@@ -9645,6 +9640,7 @@ onBeforeUnmount(() => {
       </div>
     </template>
     </main>
+    <Teleport to="body"><PublishedContentDialog v-if="loggedIn && publishedPreview" :kind="publishedPreview" :issue-code="issueForm.code" :api-base="apiBase" :request="apiFetch" @close="publishedPreview = null" /><MediaUploadStatus v-if="loggedIn" :items="mediaUploadItems" @dismiss="dismissMediaUpload" /></Teleport>
     <Teleport to="body">
       <ImageCropDialog
         v-if="pendingImageCrop"

@@ -1763,10 +1763,10 @@ export class ContentController {
   }
 
   private async materializePublicHome(cache: PublicHomeCache): Promise<PublicHomeResponse> {
-    const [cover, voice, background] = await Promise.all([
-      this.createDownloadUrlIfAvailable(cache.issue?.coverObjectKey ?? undefined),
+    const [coverUrl, voice, backgroundUrl] = await Promise.all([
+      this.createPublicImageUrlIfAvailable(cache.issue?.coverObjectKey ?? undefined),
       this.createDownloadUrlIfAvailable(cache.issue?.microVoiceObjectKey ?? undefined),
-      this.createDownloadUrlIfAvailable(cache.issue?.homeBackgroundObjectKey ?? undefined),
+      this.createPublicImageUrlIfAvailable(cache.issue?.homeBackgroundObjectKey ?? undefined),
     ]);
     const modules = await Promise.all((cache.modules ?? []).filter((item) => item.enabled).map(async (module) => {
       const publicModule = { ...module };
@@ -1776,7 +1776,7 @@ export class ContentController {
       delete publicModule.imageObjectKey;
       delete publicModule.audioObjectKey;
       delete publicModule.videoObjectKey;
-      if (imageKey) publicModule.imageUrl = (await this.createDownloadUrlIfAvailable(imageKey))?.url ?? '';
+      if (imageKey) publicModule.imageUrl = await this.createPublicImageUrlIfAvailable(imageKey) ?? '';
       if (audioKey) publicModule.audioUrl = (await this.createDownloadUrlIfAvailable(audioKey))?.url ?? '';
       if (videoKey) publicModule.videoUrl = (await this.createDownloadUrlIfAvailable(videoKey))?.url ?? '';
       if (Array.isArray(module.tracks)) {
@@ -1817,10 +1817,10 @@ export class ContentController {
         homeCoverCaptionLeftRichText: cache.issue.homeCoverCaptionLeftRichText ?? '',
         homeCoverCaptionRight: cache.issue.homeCoverCaptionRight,
         homeCoverCaptionRightRichText: cache.issue.homeCoverCaptionRightRichText ?? '',
-        homeBackgroundUrl: background?.url ?? '',
+        homeBackgroundUrl: backgroundUrl ?? '',
       } : null,
       question: cache.question,
-      coverUrl: cover?.url ?? '',
+      coverUrl: coverUrl ?? '',
       microVoice: {
         title: cache.issue?.microVoiceTitle ?? '',
         duration: cache.issue?.microVoiceDuration ?? '',
@@ -1978,6 +1978,13 @@ export class ContentController {
         ? !allowedVideoTypes.includes(metadata[index]?.contentType || '')
         : !allowedAudioTypes.includes(metadata[index]?.contentType || ''));
     if (invalidType) throw new BadRequestException('期刊媒体类型与对象路径不匹配');
+  }
+
+  private async createPublicImageUrlIfAvailable(objectKey?: string) {
+    if (!objectKey || !objectKey.startsWith('content/image/')) return null;
+    const metadata = await this.storage.objectMetadata(objectKey);
+    if (!this.isAllowedMediaObject(objectKey, metadata)) return null;
+    return this.storage.createPublicUrl(objectKey);
   }
 
   private async createDownloadUrlIfAvailable(objectKey?: string) {
@@ -2916,7 +2923,7 @@ export class ContentController {
     try {
       const metadata = await this.storage.objectMetadata(objectKey);
       if (!this.isAllowedMediaObject(objectKey, metadata)) return { enabled: false };
-      imageUrl = (await this.storage.createDownloadUrl(objectKey)).url;
+      imageUrl = this.storage.createPublicUrl(objectKey);
     } catch {
       return { enabled: false };
     }
@@ -2966,7 +2973,7 @@ export class ContentController {
       try {
         const metadata = await this.storage.objectMetadata(image);
         if (!this.isAllowedMediaObject(image, metadata)) return '';
-        return (await this.storage.createDownloadUrl(image)).url;
+        return this.storage.createPublicUrl(image);
       } catch {
         return '';
       }

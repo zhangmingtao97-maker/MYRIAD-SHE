@@ -34,7 +34,7 @@
 .overview-workspace .overview-hero-copy h2 { font-size: clamp(24px, 2.5vw, 34px); font-weight: 500; letter-spacing: -.035em; }
 .overview-workspace .overview-hero .overview-hero-description { color: var(--ink-2); font-size: 14px; }
 .overview-hero-date { position: relative; display: grid; gap: 4px; justify-items: end; align-self: start; color: var(--muted); font-size: 12px; }
-.overview-hero-date > span { color: var(--accent-strong); font-family: Garamond, Georgia, serif; font-size: 28px; letter-spacing: .02em; line-height: 1.2; }
+.overview-hero-date > span { color: var(--accent-strong); font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 28px; letter-spacing: .02em; line-height: 1.2; }
 .overview-workspace .overview-hero-actions { grid-column: 1 / -1; align-items: center; padding-top: 20px; border-top: 1px solid var(--accent-line); gap: 10px; }
 .overview-workspace .overview-hero-actions button { min-height: 40px; }
 .overview-hero-actions svg,

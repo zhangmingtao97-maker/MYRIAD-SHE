@@ -1,29 +1,49 @@
 @import "../../app.wxss";
 
 page { min-height: 100vh; background: #e7dfd1; color: #5c493c; }
-.audio-page { min-height: 100vh; padding-bottom: calc(170rpx + env(safe-area-inset-bottom)); background: #e7dfd1; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; }
+.audio-page { min-height: 100vh; padding-bottom: calc(170rpx + env(safe-area-inset-bottom)); background: #e7dfd1; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .audio-topbar { position: sticky; z-index: 10; top: 0; border-bottom: 1rpx solid rgba(92, 73, 60, .22); background: #e7dfd1; box-sizing: border-box; }
 .audio-topbar-row { position: relative; display: flex; height: 88rpx; align-items: center; justify-content: center; padding: 0 120rpx; box-sizing: border-box; }
 .audio-nav-title { color: #5c493c; font-size: 30rpx; font-weight: 600; line-height: 1.4; }
-.audio-control { position: absolute; top: 0; left: 22rpx; display: flex; width: 72rpx; height: 88rpx; align-items: center; justify-content: center; color: #5c493c; font-family: Georgia, serif; font-size: 56rpx; line-height: 1; }
+.audio-control { position: absolute; top: 0; left: 22rpx; display: flex; width: 72rpx; height: 88rpx; align-items: center; justify-content: center; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 56rpx; line-height: 1; }
 .audio-page [role="button"]:active { opacity: .65; }
 .audio-state { padding: 80rpx 40rpx; color: #8a6755; font-size: 26rpx; line-height: 1.8; }
 .audio-error { color: #8c4035; }
 .audio-retry { display: inline-block; margin-top: 30rpx; padding: 18rpx 0; color: #663124; border-bottom: 1rpx solid rgba(92, 73, 60, .28); }
-.audio-meta { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin: 0 40rpx; padding-top: 48rpx; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 23rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.audio-meta { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin: 0 40rpx; padding-top: 48rpx; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 23rpx; line-height: 1.5; letter-spacing: 1rpx; }
 .audio-meta text:last-child { color: #663124; white-space: nowrap; }
 .audio-hero { padding: 72rpx 40rpx 64rpx; }
-.audio-eyebrow { color: #8b6b58; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 21rpx; line-height: 1.5; letter-spacing: 2rpx; }
+.audio-eyebrow { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 21rpx; line-height: 1.5; letter-spacing: 2rpx; }
 .audio-title { margin-top: 26rpx; color: #5c493c; font-size: 58rpx; font-weight: 600; line-height: 1.35; white-space: pre-wrap; }
 .audio-subtitle { margin-top: 26rpx; color: #5c493c; font-size: 28rpx; font-weight: 400; line-height: 1.8; white-space: pre-wrap; }
 .audio-tracks { margin: 0 40rpx; border-top: 1rpx solid rgba(92, 73, 60, .24); }
 .audio-track { display: flex; align-items: flex-start; gap: 22rpx; padding: 34rpx 0 36rpx; border-bottom: 1rpx solid rgba(92, 73, 60, .24); }
-.audio-track-index { flex: 0 0 54rpx; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 23rpx; line-height: 1.7; letter-spacing: 1rpx; }
+.audio-track-index { flex: 0 0 54rpx; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 23rpx; line-height: 1.7; letter-spacing: 1rpx; }
 .audio-track-copy { min-width: 0; flex: 1; }
 .audio-track-title { color: #5c493c; font-size: 32rpx; font-weight: 600; line-height: 1.55; }
 .audio-track-subtitle { margin-top: 10rpx; color: #8a6755; font-size: 24rpx; line-height: 1.7; }
-.audio-track-meta { display: flex; align-items: center; gap: 18rpx; margin-top: 16rpx; color: #8a6755; font-family: Garamond, Georgia, "Songti SC", serif; font-size: 21rpx; }
-.audio-track-kind { padding: 3rpx 14rpx; border: 1rpx solid rgba(102, 49, 36, .28); border-radius: 999rpx; color: #663124; font-family: "Songti SC", STSong, serif; font-size: 20rpx; line-height: 1.5; }
-.audio-track-arrow { flex: 0 0 auto; padding-top: 3rpx; color: #663124; font-family: Garamond, Georgia, serif; font-size: 34rpx; line-height: 1.3; }
+.audio-track-meta { display: flex; align-items: center; gap: 18rpx; margin-top: 16rpx; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 21rpx; }
+.audio-track-kind { padding: 3rpx 14rpx; border: 1rpx solid rgba(102, 49, 36, .28); border-radius: 999rpx; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 20rpx; line-height: 1.5; }
+.audio-track-arrow { flex: 0 0 auto; padding-top: 3rpx; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 34rpx; line-height: 1.3; }
 .audio-return { display: flex; min-height: 96rpx; align-items: center; gap: 24rpx; margin: 64rpx 40rpx 0; color: #5c493c; font-size: 28rpx; font-weight: 600; }
-.audio-return text:last-child { color: #663124; font-family: Garamond, Georgia, serif; font-size: 34rpx; }
+.audio-return text:last-child { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 34rpx; }
+
+/* ---------- 列表关键节点轻量动效 ---------- */
+.audio-meta { animation: audio-enter .24s cubic-bezier(.22, 1, .36, 1) both; }
+.audio-hero { animation: audio-enter .3s cubic-bezier(.22, 1, .36, 1) .04s both; }
+.audio-track { animation: audio-track-enter .28s cubic-bezier(.22, 1, .36, 1) both; }
+.audio-track-arrow { transition: transform .18s ease; }
+.audio-track:active .audio-track-arrow { transform: translateX(5rpx); }
+@keyframes audio-enter {
+  from { opacity: .4; transform: translateY(10rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes audio-track-enter {
+  from { opacity: .25; transform: translateY(12rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .audio-meta, .audio-hero, .audio-track { animation: none; transform: none; }
+  .audio-track-arrow { transition: none; }
+  .audio-track:active .audio-track-arrow { transform: none; }
+}

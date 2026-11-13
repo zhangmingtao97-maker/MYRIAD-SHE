@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PublicationStatus from './PublicationStatus.vue';
 defineProps<{
   dirty: boolean;
   conflict: boolean;
@@ -6,16 +7,21 @@ defineProps<{
   label: string;
   canPublish?: boolean;
   reloadLabel?: string;
+  savedAt?: string;
+  hasDraft?: boolean;
+  publishedVersion?: number;
+  canView?: boolean;
 }>();
 
-const emit = defineEmits<{ publish: []; reload: [] }>();
+const emit = defineEmits<{ publish: []; reload: []; view: [] }>();
 </script>
 
 <template>
-  <footer class="practice-savebar" :class="{ 'is-dirty': dirty, 'is-conflict': conflict }">
-    <div class="practice-savebar-copy">
-      <strong>{{ conflict ? '云端版本已更新' : dirty ? '有未保存的修改' : '已与云端同步' }}</strong>
+  <footer class="practice-savebar" :class="{ 'is-dirty': dirty, 'is-conflict': conflict, 'is-saving': saving }" :aria-busy="saving">
+    <div class="practice-savebar-copy" role="status" aria-live="polite" aria-atomic="true">
+      <strong class="save-state"><span class="save-state-dot" aria-hidden="true"></span>{{ conflict ? '云端版本已更新' : saving ? '正在保存草稿…' : dirty ? '有未保存的修改' : '草稿已与云端同步' }}</strong>
       <small>{{ label }}</small>
+      <PublicationStatus :saved-at="savedAt" :has-draft="hasDraft" :published-version="publishedVersion" :can-view="canView" @view="emit('view')" />
     </div>
     <div class="form-actions">
       <button type="submit" :disabled="saving || conflict">{{ saving ? '保存中…' : '保存草稿' }}</button>

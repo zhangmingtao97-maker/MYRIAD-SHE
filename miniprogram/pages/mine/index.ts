@@ -118,7 +118,7 @@ function readNativeInputValue(selector: string) {
   });
 }
 Page({
-  data: { statusBarHeight: 0, avatarPickerVisible: false, isLoggedIn: false, loggingIn: false, accountProfileReady: false, profileSaving: false, editingNickname: false, nicknameEditingValue: '', profileError: '', accountProfile: { ...emptyAccountProfile } as AccountProfile, observationCount: 0, localContributionCount: 0, localContributions: [] as LocalContribution[], cloudContributionCount: 0, cloudContributions: [] as CloudContribution[], cloudContributionsLoading: false, cloudContributionsError: '', minePage: { title: '把正在经历的，留在自己这里。', intro: '观察记录保存在你的云端账户上。讨论中的发言由你另行选择，个人观察不会自动公开。', observationHeading: '我的观察', emptyTitle: '还没有观察记录。', emptyIntro: '从一件真实发生的事开始，或借四时气韵换一个角度。', startButton: '开始第一次观察', discussionHeading: '我参与的讨论', discussionCount: '0 条已保存经历', discussionEmptyAction: '还没有留下发言', discussionIntro: '本期讨论独立于个人观察。示例装载的发言不会计入你的参与。', practiceHeading: '线下实践', practiceCount: '0 次', practiceEmptyTitle: '尚未参加共同实践', practiceIntro: '活动开放并真实参与后，会记录在这里。', privacyHeading: '选择与隐私', privacyAction: '通知与隐私' } as MinePageContent, minePageAccessibility: { startButton: '开始第一次观察', privacyAction: '通知与隐私' }, observations: [] as ObservationListItem[], loading: false, loadingMore: false, hasMore: false, offset: 0, pageSize: 30, error: '', moreError: '', accountDeleted: false, creatingNewAccount: false, newAccountError: '' },
+  data: { statusBarHeight: 0, isLoggedIn: false, loggingIn: false, accountProfileReady: false, profileSaving: false, editingNickname: false, nicknameEditingValue: '', profileError: '', accountProfile: { ...emptyAccountProfile } as AccountProfile, observationCount: 0, localContributionCount: 0, localContributions: [] as LocalContribution[], cloudContributionCount: 0, cloudContributions: [] as CloudContribution[], cloudContributionsLoading: false, cloudContributionsError: '', minePage: { title: '把正在经历的，留在自己这里。', intro: '观察记录保存在你的云端账户上。讨论中的发言由你另行选择，个人观察不会自动公开。', observationHeading: '我的观察', emptyTitle: '还没有观察记录。', emptyIntro: '从一件真实发生的事开始，或借四时气韵换一个角度。', startButton: '开始第一次观察', discussionHeading: '我参与的讨论', discussionCount: '0 条已保存经历', discussionEmptyAction: '还没有留下发言', discussionIntro: '本期讨论独立于个人观察。示例装载的发言不会计入你的参与。', practiceHeading: '线下实践', practiceCount: '0 次', practiceEmptyTitle: '尚未参加共同实践', practiceIntro: '活动开放并真实参与后，会记录在这里。', privacyHeading: '选择与隐私', privacyAction: '通知与隐私' } as MinePageContent, minePageAccessibility: { startButton: '开始第一次观察', privacyAction: '通知与隐私' }, observations: [] as ObservationListItem[], loading: false, loadingMore: false, hasMore: false, offset: 0, pageSize: 30, error: '', moreError: '', accountDeleted: false, creatingNewAccount: false, newAccountError: '' },
   requestGeneration: 0,
   minePageRequestGeneration: 0,
   discussionRequestGeneration: 0,
@@ -139,7 +139,7 @@ Page({
     this.syncLocalDiscussions();
     void this.loadMinePageContent();
     if (app.globalData.accountDeleted) {
-      this.closeAvatarPicker();
+      this.clearAvatarSelection();
       this.accountProfileUserId = '';
       this.accountProfileSavedNickname = '';
       this.nicknameDraft = '';
@@ -154,7 +154,7 @@ Page({
     const authChanged = this.knownAuthGeneration !== app.globalData.authGeneration;
     this.knownAuthGeneration = app.globalData.authGeneration;
     if (!this.hasSession()) {
-      this.closeAvatarPicker();
+      this.clearAvatarSelection();
       this.accountProfileUserId = '';
       this.accountProfileSavedNickname = '';
       this.nicknameDraft = '';
@@ -168,7 +168,7 @@ Page({
     }
     const userId = app.globalData.userId;
     if (this.accountProfileUserId !== userId || authChanged) {
-      this.closeAvatarPicker();
+      this.clearAvatarSelection();
       this.accountProfileSavedNickname = '';
       this.nicknameDraft = '';
       this.nicknameDirty = false;
@@ -350,7 +350,7 @@ Page({
       }
     }
   },
-  openAvatarPicker() {
+  prepareAvatarSelection() {
     if (this.data.profileSaving) {
       wx.showToast({ title: '资料正在保存，请稍候', icon: 'none' });
       return;
@@ -360,16 +360,25 @@ Page({
       return;
     }
     this.avatarSelection = { userId: app.globalData.userId, authGeneration: app.globalData.authGeneration };
-    this.setData({ avatarPickerVisible: true, profileError: '' });
+    // Keep this gesture synchronous; the native button opens the chooser.
   },
-  closeAvatarPicker() {
+  clearAvatarSelection() {
     this.avatarSelection = null;
-    this.setData({ avatarPickerVisible: false });
+  },
+  onAvatarError(event: WechatMiniprogram.CustomEvent<{ errMsg?: string }>) {
+    this.clearAvatarSelection();
+    const reason = event.detail?.errMsg || '';
+    if (/cancel/i.test(reason)) return;
+    const message = /privacy|authorize|auth deny/i.test(reason)
+      ? '请先同意微信的头像隐私授权，再点击头像重试。'
+      : '微信头像选择器暂时无法打开，请重试。';
+    this.setData({ profileError: message });
+    wx.showToast({ title: message, icon: 'none' });
   },
   onChooseAvatar(event: WechatMiniprogram.CustomEvent<{ avatarUrl?: string }>) {
     const selection = this.avatarSelection;
     const tempFilePath = String(event.detail?.avatarUrl || '');
-    this.closeAvatarPicker();
+    this.clearAvatarSelection();
     if (!selection || selection.userId !== app.globalData.userId || selection.userId !== this.accountProfileUserId
       || selection.authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) {
       wx.showToast({ title: '登录状态已变化，请重新选择头像', icon: 'none' });
@@ -567,6 +576,11 @@ Page({
         this.setData({ creatingNewAccount: true, newAccountError: '' });
         try {
           await app.createNewAccount();
+          if (!app.globalData.accessToken) {
+            this.setData({ accountDeleted: false, isLoggedIn: false, creatingNewAccount: false });
+            this.openLogin();
+            return;
+          }
           this.knownAuthGeneration = app.globalData.authGeneration;
           this.accountProfileUserId = app.globalData.userId;
           this.setData({ accountDeleted: false, isLoggedIn: true, accountProfileReady: false, accountProfile: { ...emptyAccountProfile }, creatingNewAccount: false });

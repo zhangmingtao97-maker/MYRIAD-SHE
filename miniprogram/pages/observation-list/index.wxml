@@ -8,6 +8,7 @@
   </view>
   <view class="observation-list-content">
     <view class="observation-list-intro">每一条记录都仅自己可见。</view>
+    <view wx:if="{{refreshError}}" class="error-state" role="status"><text>{{refreshError}}</text><view class="list-retry-button" aria-role="button" tabindex="0" bindtap="loadObservations">重新同步</view></view>
     <view wx:if="{{loading}}" class="loading-state" role="status" aria-live="polite">正在读取云端记录…</view>
     <view wx:elif="{{error}}" class="error-state" role="alert"><text class="error-text">{{error}}</text><view class="list-retry-button" role="button" aria-role="button" tabindex="0" bindtap="loadObservations">重新加载</view></view>
     <view wx:elif="{{!observations.length}}" class="observation-list-empty">还没有观察记录。</view>

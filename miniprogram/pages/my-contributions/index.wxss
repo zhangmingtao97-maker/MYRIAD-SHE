@@ -36,13 +36,13 @@
   justify-content: center;
   padding-bottom: 6rpx;
   color: #5c493c;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 56rpx;
   line-height: 1;
 }
 .contributions-title {
   color: #5c493c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 31rpx;
   font-weight: 600;
   letter-spacing: 1rpx;
@@ -51,7 +51,7 @@
   position: absolute;
   right: 2rpx;
   color: #8e493c;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 23rpx;
 }
 .contributions-content { padding-top: 32rpx; }
@@ -63,14 +63,14 @@
 }
 .contributions-kicker {
   color: #9a816f;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 17rpx;
   letter-spacing: 4rpx;
   line-height: 1.5;
 }
 .contributions-heading {
   color: #3d332c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 40rpx;
   font-weight: 600;
   line-height: 1.4;
@@ -125,7 +125,7 @@
 }
 .contribution-issue {
   color: #8b5a45;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 20rpx;
   line-height: 1.5;
 }
@@ -142,7 +142,7 @@
 .contribution-body {
   margin-top: 14rpx;
   color: #4a3d34;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 25rpx;
   line-height: 1.75;
   white-space: pre-wrap;
@@ -181,7 +181,7 @@
 }
 .contributions-empty-title {
   color: #3d332c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 30rpx;
   font-weight: 600;
 }

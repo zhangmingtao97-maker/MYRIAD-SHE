@@ -169,7 +169,7 @@ const pick = (field: RealityStageCopyKey) => emit('pick', `reality:${props.stage
 </template>
 
 <style scoped>
-.reality-preview-list { min-height: 100%; color: #40362f; font-family: Georgia, 'Times New Roman', serif; }
+.reality-preview-list { min-height: 100%; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .reality-preview-nav { display: grid; grid-template-columns: 28px 1fr 36px; align-items: center; height: 38px; color: #40362f; font-size: 12px; text-align: center; }
 .reality-preview-nav span { color: #663124; font-size: 18px; }
 .reality-preview-nav strong { font-size: 12px; font-weight: 500; letter-spacing: .04em; }

@@ -4,26 +4,29 @@
 
 :root {
   /* 鐢诲竷涓庨潰 */
-  --bg: #f6f6f4;
+  /* CMYK 的屏幕近似色；归安赭：C56 M83 Y89 K37。 */
+  --brand-rice: #e0decf;
+  --brand-ochre: #471b12;
+  --bg: var(--brand-rice);
   --surface: #ffffff;
-  --surface-2: #fafaf8;
-  --surface-3: #f2f2ee;
+  --surface-2: #f6f5f0;
+  --surface-3: #eeece3;
 
   /* 澧ㄨ壊灞傜骇 */
-  --ink: #17181a;
-  --ink-2: #3f4247;
-  --muted: #6f7378;
-  --faint: #9a9ea3;
+  --ink: #302622;
+  --ink-2: #56433c;
+  --muted: #74675f;
+  --faint: #82756d;
 
   /* 鍒嗛殧 */
-  --line: #e7e7e2;
-  --line-strong: #d7d7d0;
+  --line: #e5ddd4;
+  --line-strong: #cfc1b4;
 
   /* 鍞竴寮鸿皟鑹诧紙鍝佺墝闄跺湡鑹诧級 */
-  --accent: #8a4130;
-  --accent-strong: #6d3122;
-  --accent-soft: #f7ede9;
-  --accent-line: #e9d3ca;
+  --accent: var(--brand-ochre);
+  --accent-strong: #35140e;
+  --accent-soft: #f0e8e0;
+  --accent-line: #cbb4a6;
 
   /* 鐘舵€?*/
   --ok: #2f6b46;
@@ -41,11 +44,11 @@
   --ease: cubic-bezier(.2, .7, .3, 1);
   --t: .16s var(--ease);
 
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-ui: "MYRIAD Garamond", "MYRIAD Song", serif;
 
   color: var(--ink);
   background: var(--bg);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-synthesis-weight: none;
 }
 
@@ -55,7 +58,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
@@ -67,7 +70,7 @@ body {
 .app-frame {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
 }
 
 ::selection { background: rgba(138, 65, 48, .14); }
@@ -76,7 +79,7 @@ body {
 h1, h2, h3, h4 {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-weight: 600;
   letter-spacing: -.012em;
 }
@@ -101,7 +104,7 @@ strong { font-weight: 600; }
 .status-message { color: var(--ok); font-size: 13px; }
 .loading-note { margin: 16px 0 0; color: var(--muted); font-size: 13px; }
 .field-help { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
-.mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace; }
+.mono { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 
 /* ---------- 澶栧３ ---------- */
 /* .app-frame 鏄?column flex 瀹瑰櫒锛氫氦鍙夎酱涓婄殑 auto margin 浼氳 .shell 鏀剁缉鎴愬唴瀹瑰搴︼紝
@@ -182,7 +185,7 @@ strong { font-weight: 600; }
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--ink);
   font-size: 13.5px;
   font-weight: 500;
   text-align: left;
@@ -208,10 +211,10 @@ strong { font-weight: 600; }
   box-shadow: none;
 }
 .dashboard-tab.active::before { height: 18px; }
-.dashboard-tab > svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--faint); transition: color var(--t); }
+.dashboard-tab > svg { flex: 0 0 18px; width: 18px; height: 18px; color: currentColor; transition: color var(--t); }
 .dashboard-tab:hover > svg, .dashboard-tab.active > svg { color: var(--accent); }
 .dashboard-tab > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dashboard-tab .nav-chevron { width: 14px; height: 14px; margin-left: auto; opacity: .7; transition: transform .2s var(--ease); }
+.dashboard-tab .nav-chevron { width: 14px; height: 14px; margin-left: auto; opacity: 1; transition: transform .2s var(--ease); }
 .dashboard-nav-group.expanded .nav-chevron { transform: rotate(180deg); }
 
 .dashboard-subnav {
@@ -231,13 +234,13 @@ strong { font-weight: 600; }
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--muted);
+  color: var(--ink-2);
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
   text-align: left;
   transition: color var(--t), background-color var(--t);
 }
-.dashboard-subtab svg { flex: 0 0 15px; width: 15px; height: 15px; color: var(--faint); }
+.dashboard-subtab svg { flex: 0 0 15px; width: 15px; height: 15px; color: currentColor; opacity: 1; }
 .dashboard-subtab:hover { color: var(--ink); background: var(--surface-2); transform: none; box-shadow: none; }
 .dashboard-subtab.active { color: var(--accent-strong); background: var(--accent-soft); font-weight: 500; }
 .dashboard-subtab.active svg { color: var(--accent); }
@@ -333,7 +336,7 @@ strong { font-weight: 600; }
 .panel:hover { transform: none; border-color: var(--line-strong); box-shadow: var(--shadow-2); }
 .panel strong { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
 /* 璇存槑鎬ф钀借蛋姝ｆ枃灞傜骇锛涙棫瑙勫垯鎶?.panel 鍐呯殑 p 鏀惧ぇ鎴?22px 琛嚎锛岀紪杈戝櫒閲屼細璇激 */
-.panel p:not(.eyebrow) { margin: 0; font-family: var(--font-ui); font-size: 13.5px; font-weight: 400; line-height: 1.7; }
+.panel p:not(.eyebrow) { margin: 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 13.5px; font-weight: 400; line-height: 1.7; }
 /* 鏈熷垔鍒楄〃鍗＄墖鏈韩甯?.panel锛屽唴閮ㄦ爣棰樹笉璇ョ户鎵块潰鏉跨殑 22px */
 .panel .issue-list-item strong { font-size: 14px; font-weight: 600; line-height: 1.5; }
 .health-panel { gap: 10px; }
@@ -406,7 +409,7 @@ button {
   border-radius: var(--radius-sm);
   background: var(--accent);
   color: #fff;
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.3;
@@ -488,7 +491,7 @@ input, textarea, select {
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 13.5px;
   line-height: 1.5;
   transition: border-color var(--t), box-shadow var(--t);
@@ -602,7 +605,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .login-panel-inner { width: 100%; max-width: 340px; }
 .login-brand {
   margin: 0 0 36px;
-  font-family: Garamond, Georgia, "Times New Roman", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: clamp(28px, 2.6vw, 34px);
   font-weight: 400;
   letter-spacing: .12em;
@@ -1089,7 +1092,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .life-card-list-item:hover { background: var(--surface-2); border-color: var(--line); transform: none; box-shadow: none; }
 .life-card-list-item.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-strong); font-weight: 600; }
 .life-card-day { color: var(--muted); font-variant-numeric: tabular-nums; }
-.life-card-face { font-family: Georgia, serif; color: var(--ink); }
+.life-card-face { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; color: var(--ink); }
 .life-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .life-card-form { max-width: none; }
 .life-card-form-head { display: grid; gap: 4px; }
@@ -1824,7 +1827,7 @@ form { display: grid; gap: 16px; margin-top: 24px; }
 .discussion-report-row strong { font-size: 13.5px; font-weight: 600; }
 .discussion-report-row small { color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .discussion-report-detail { color: var(--ink-2); }
-.discussion-report-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.discussion-report-actions { display: flex; flex-wrap: nowrap; gap: 6px; justify-content: flex-end; }
 .discussion-report-actions button { min-height: 32px; padding: 5px 10px; font-size: 12.5px; }
 @media (max-width: 1100px) {
   .discussion-report-head, .discussion-report-row { grid-template-columns: minmax(200px, 1fr) 96px 88px 140px 200px; gap: 10px; }

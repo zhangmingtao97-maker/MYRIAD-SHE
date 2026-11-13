@@ -21,7 +21,9 @@
     "minifyWXML": true,
     "localPlugins": false,
     "disableUseStrict": false,
-    "useCompilerPlugins": ["typescript"],
+    "useCompilerPlugins": [
+      "typescript"
+    ],
     "condition": false,
     "babelSetting": {
       "ignore": [],
@@ -32,7 +34,16 @@
   "condition": {},
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "file",
+        "value": "SourceHanSerifCN-Regular.otf"
+      },
+      {
+        "type": "file",
+        "value": "AppleGaramond.ttf"
+      }
+    ],
     "include": []
   },
   "editorSetting": {}

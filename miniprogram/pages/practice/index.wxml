@@ -5,12 +5,15 @@
   <rich-text class="title" nodes="{{introRichText}}" style="font-size: {{introFontSize}}px; color: {{introColor}};" />
   <view class="practice-intro">不是要求自己平静，而是看清正在发生什么，然后再选择下一步。</view>
 
-  <view wx:if="{{loading}}" class="loading-state" role="status" aria-live="polite">正在读取云端实践内容…</view>
+  <view wx:if="{{loading}}" class="practice-directory practice-skeleton" role="status" aria-label="正在读取实践目录">
+    <view class="skeleton-heading"></view>
+    <view wx:for="{{[1, 2, 3]}}" wx:key="*this" class="skeleton-entry"><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
+  </view>
   <view wx:elif="{{error}}" class="error-state" role="alert"><view class="error-text">{{error}}</view><view class="button secondary" role="button" aria-label="重新读取实践内容" tabindex="0" bindtap="load">重新读取</view></view>
   <view wx:else class="practice-directory" aria-label="实践目录">
     <view class="directory-heading"><view class="eyebrow">实践目录</view><view class="page-code">PRACTICE</view></view>
     <block wx:for="{{entries}}" wx:key="key">
-      <view class="practice-entry {{item.enabled ? 'active-entry' : 'disabled-entry'}}" role="button" aria-label="{{item.title}}，{{item.enabled ? item.description : '暂未开放'}}" aria-disabled="{{!item.enabled}}" tabindex="0" bindtap="handleEntryTap" data-key="{{item.key}}">
+      <view class="practice-entry entry-enter {{item.enabled ? 'active-entry' : 'disabled-entry'}}" role="button" aria-label="{{item.title}}，{{item.enabled ? item.description : '暂未开放'}}" aria-disabled="{{!item.enabled}}" tabindex="0" bindtap="handleEntryTap" data-key="{{item.key}}" style="animation-delay: {{index * 60}}ms;">
         <text class="entry-number">{{index + 1 < 10 ? '0' + (index + 1) : index + 1}}</text>
         <view class="entry-copy">
           <rich-text class="entry-context" nodes="{{item.contextRichText}}" style="font-size: {{item.contextFontSize}}px; color: {{item.contextColor}};" />
@@ -22,6 +25,9 @@
     </block>
   </view>
 
+  <view class="practice-refresh-status" role="status" aria-live="polite">
+    <view wx:if="{{refreshError}}">暂未更新，当前目录仍可查看。<text class="refresh-retry" role="button" bindtap="load" aria-label="重试刷新实践目录">重试</text></view>
+  </view>
   <view class="page-signature" aria-label="实践页页尾文案">
     <view class="signature-grid">
       <rich-text class="signature-kicker signature-brand" nodes="{{footerCopy.brand.richText}}" style="font-size: {{footerCopy.brand.fontSize}}px; color: {{footerCopy.brand.color}};" />

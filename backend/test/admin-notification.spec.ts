@@ -289,7 +289,7 @@ test('new WeChat users emit one notification while returning users do not', asyn
   const database = {
     query: async () => {
       loginCount += 1;
-      return { rows: [{ id: 'user-1', created: loginCount === 1 }], rowCount: 1 };
+      return { rows: [{ id: 'user-1', created: loginCount === 1, status: 'active', nickname: '已有昵称', avatarObjectKey: 'users/avatars/existing.png', profileCompletedAt: '2026-01-01T00:00:00.000Z', phoneVerifiedAt: '2026-01-01T00:00:00.000Z' }], rowCount: 1 };
     },
   } as unknown as DatabaseService;
   const auth = new AuthService(

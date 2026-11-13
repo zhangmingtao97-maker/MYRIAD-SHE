@@ -32,14 +32,14 @@
   justify-content: space-between;
   gap: 10px;
   color: #49392f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12px;
   letter-spacing: .06em;
 }
 
 .phone-preview-head small {
   color: #8b6b58;
-  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
   letter-spacing: .04em;
 }
@@ -58,7 +58,7 @@
 .phone-screen-inner article h3 {
   margin: 10px 0;
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 24px;
   font-weight: 400;
   line-height: 1.4;
@@ -67,7 +67,7 @@
 .phone-screen-inner article p {
   margin: 0;
   color: #5e5045;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 13px;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -104,7 +104,7 @@
   height: 30px;
   padding: 0 20px;
   color: #40362f;
-  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
 }
 
@@ -203,7 +203,7 @@
   border-radius: 999px;
   background: rgba(89, 72, 61, .72);
   color: #fdf9f3;
-  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
   letter-spacing: .04em;
   line-height: 1.6;
@@ -255,7 +255,7 @@
   gap: 12px;
   padding: 14px 0 10px;
   border-bottom: 1px solid #cdbbae;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   letter-spacing: .08em;
 }
 
@@ -265,7 +265,7 @@
 
 .practice-preview-kicker {
   margin: 18px 0 10px;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-weight: 400;
   line-height: 1.35;
   white-space: pre-wrap;
@@ -273,7 +273,7 @@
 
 .practice-preview-intro {
   margin: 10px 0 0;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   line-height: 1.4;
   white-space: pre-wrap;
 }
@@ -316,7 +316,7 @@
 
 .practice-preview-number {
   color: #8b6b58;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12px;
 }
 
@@ -374,7 +374,7 @@
 
 .practice-preview-signature-grid small {
   color: #5c493c;
-  font-family: "MYRIAD Garamond", Garamond, "Times New Roman", "MYRIAD Song", "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
   font-weight: 400;
   line-height: 1.5;
@@ -383,7 +383,7 @@
 
 .practice-preview-signature-grid strong {
   color: #40362f;
-  font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 15.5px;
   font-weight: 600;
   line-height: 1.35;
@@ -492,7 +492,7 @@
 }
 
 .practice-preview-tab-label {
-  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
   line-height: 1.2;
 }
@@ -514,7 +514,7 @@
 .daily-preview-brand strong {
   display: block;
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 17px;
   font-weight: 400;
   letter-spacing: .06em;
@@ -553,7 +553,7 @@
 .daily-preview-header h3 {
   margin: 10px 0 8px;
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 24px;
   font-weight: 400;
   line-height: 1.35;
@@ -563,7 +563,7 @@
 .daily-preview-header p {
   margin: 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 13px;
   line-height: 1.8;
 }
@@ -583,14 +583,14 @@
 }
 
 .daily-preview-landing-brand strong {
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 16px;
   font-weight: 400;
 }
 
 .daily-preview-landing-brand small {
   color: #8b6b58;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 9px;
 }
 
@@ -603,7 +603,7 @@
 .daily-preview-landing h3 {
   margin: 14px 0 0;
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 22px;
   font-weight: 400;
   line-height: 1.5;
@@ -613,7 +613,7 @@
 .daily-preview-landing p {
   margin: 12px 0 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12px;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -643,7 +643,7 @@
 .daily-preview-heading-row h4 {
   margin: 0;
   color: #663124;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 15px;
   font-weight: 600;
 }
@@ -669,7 +669,7 @@
 .daily-preview-article-copy h4 {
   margin: 10px 0 0;
   color: #40362f;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.6;
@@ -678,7 +678,7 @@
 .daily-preview-article-copy p {
   margin: 8px 0 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12px;
   line-height: 1.75;
 }
@@ -738,7 +738,7 @@
 .daily-preview-explore > p {
   margin: 11px 0 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12px;
   line-height: 1.8;
 }
@@ -809,7 +809,7 @@
   display: block;
   margin: 2px 0 4px;
   color: #40362f;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.5;
@@ -828,7 +828,7 @@
 
 .daily-preview-price {
   color: #40362f;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
 }
 
@@ -876,7 +876,7 @@
 .about-preview-hero h3 {
   margin: 8px 0 0;
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 20px;
   font-weight: 400;
 }
@@ -896,7 +896,7 @@
 .about-preview-section p {
   margin: 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 13px;
   line-height: 1.85;
   white-space: pre-wrap;
@@ -940,14 +940,14 @@
   border-radius: 50%;
   background: #c8553d;
   color: #fdf9f3;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
 }
 
 .mine-preview-profile strong {
   display: block;
   color: #40362f;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
   font-weight: 600;
 }
@@ -971,7 +971,7 @@
 .mine-preview-intro h3 {
   margin: 0 0 6px;
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 22px;
   font-weight: 400;
 }
@@ -998,7 +998,7 @@
 
 .mine-preview-section-head strong {
   color: #40362f;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 15px;
   font-weight: 600;
 }
@@ -1069,7 +1069,7 @@
 
 .copy-preview-line p {
   margin: 0;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   line-height: 1.75;
   white-space: pre-wrap;
 }
@@ -1131,7 +1131,7 @@
   position: absolute;
   left: 11px;
   color: #5c493c;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 26px;
   line-height: 1;
 }
@@ -1149,7 +1149,7 @@
   gap: 10px;
   padding-top: 24px;
   color: #8a6755;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
   letter-spacing: .04em;
 }
@@ -1165,7 +1165,7 @@
 
 .audio-preview-hero small {
   color: #8b6b58;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
   letter-spacing: .1em;
 }
@@ -1173,7 +1173,7 @@
 .audio-preview-hero h3 {
   margin: 13px 0 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 29px;
   font-weight: 600;
   line-height: 1.35;
@@ -1203,7 +1203,7 @@
 .audio-preview-index {
   flex: 0 0 27px;
   color: #8a6755;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
   line-height: 1.7;
 }
@@ -1235,7 +1235,7 @@
   gap: 9px;
   margin-top: 8px;
   color: #8a6755;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
 }
 
@@ -1244,7 +1244,7 @@
   border: 1px solid rgba(102, 49, 36, .28);
   border-radius: 999px;
   color: #663124;
-  font-family: "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
   font-style: normal;
   line-height: 1.5;
@@ -1253,7 +1253,7 @@
 .audio-preview-arrow {
   padding-top: 2px;
   color: #663124;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 17px;
   line-height: 1.3;
 }
@@ -1276,7 +1276,7 @@
 
 .audio-preview-return span:last-child {
   color: #663124;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 17px;
 }
 
@@ -1310,7 +1310,7 @@
 
 .audio-preview-audio small {
   color: #8b6b58;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
   letter-spacing: .1em;
 }
@@ -1332,7 +1332,7 @@
   border: 1px solid rgba(102, 49, 36, .45);
   border-radius: 50%;
   color: #663124;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
 }
 
@@ -1368,7 +1368,7 @@
   justify-content: space-between;
   margin-top: 6px;
   color: #8a6755;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
 }
 
@@ -1384,7 +1384,7 @@
 
 .audio-preview-article small {
   color: #8b6b58;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 10px;
   letter-spacing: .1em;
 }
@@ -1392,7 +1392,7 @@
 .audio-preview-article h3 {
   margin: 13px 0 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 27px;
   font-weight: 600;
   line-height: 1.35;
@@ -1444,7 +1444,7 @@
   border-radius: 999px;
   background: rgba(255, 253, 249, .4);
   color: #663124;
-  font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 9px;
   font-weight: 500;
   line-height: 1.2;
@@ -1610,61 +1610,137 @@
   margin-bottom: 10px;
 }
 
-/* 微声音详情页操作模块编辑：一条一个模块，窄屏自动纵向排列 */
+/* 微声音详情页操作：独立卡片、完整宽度的文案编辑区。 */
 .issue-audio-actions-editor {
-  margin-top: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
 }
 
-.issue-audio-actions-editor[open] {
+.issue-audio-actions-body {
   display: grid;
   gap: 12px;
+  padding-top: 8px;
 }
+
+.issue-audio-actions-editor > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.issue-audio-actions-editor > summary::-webkit-details-marker { display: none; }
+.issue-audio-actions-editor > summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin: 0 3px 0 1px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+}
+.issue-audio-actions-editor[open] > summary::before { transform: rotate(45deg); }
+.issue-audio-action-count {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.issue-audio-actions-body > .field-help { margin: 0; }
 
 .issue-audio-action-row {
   display: grid;
-  grid-template-columns: minmax(120px, .55fr) minmax(150px, 1fr) minmax(220px, 1.6fr) auto;
-  align-items: end;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #e2d8cc;
-  border-radius: 6px;
-  background: #fffdf9;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'title remove' 'settings settings' 'label label';
+  align-items: center;
+  gap: 16px 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
 }
 
-.issue-audio-action-row label {
+.issue-audio-action-row > .issue-audio-action-title {
+  grid-area: title;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.issue-audio-action-settings {
+  display: grid;
+  grid-area: settings;
+  grid-template-columns: 176px minmax(0, 1fr);
+  align-items: end;
+  gap: 16px;
+  min-width: 0;
+}
+
+.issue-audio-action-settings > label {
   display: grid;
   min-width: 0;
   gap: 6px;
-  color: #6e594a;
+  color: var(--ink-2);
   font-size: 12px;
 }
 
-.issue-audio-action-row select,
-.issue-audio-action-row input {
+.issue-audio-action-settings :is(select, input) {
   width: 100%;
   min-width: 0;
+  min-height: 40px;
   box-sizing: border-box;
 }
 
-.issue-audio-action-row > button {
-  grid-column: 4;
+.issue-audio-action-row .issue-audio-action-settings > .issue-audio-action-hint {
+  align-self: end;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.issue-audio-action-label { grid-area: label; min-width: 0; }
+.issue-audio-action-label .rich-text-canvas { min-height: 64px; }
+.issue-audio-action-label .rich-text-toolbar .rich-text-control { display: grid; align-content: start; gap: 4px; }
+.issue-audio-action-label .rich-text-color input { width: 40px; }
+
+.issue-audio-action-row > .issue-audio-action-remove {
+  grid-area: remove;
   justify-self: end;
   min-height: 40px;
+  white-space: nowrap;
+}
+
+.issue-audio-actions-body > .issue-audio-action-add {
+  width: 100%;
+  min-height: 44px;
+  border-style: dashed;
+  color: var(--accent-strong);
+  white-space: nowrap;
 }
 
 .issue-audio-action-row:focus-within {
-  border-color: rgba(200, 85, 61, .62);
-  box-shadow: 0 0 0 2px rgba(200, 85, 61, .12);
+  border-color: var(--accent);
+  box-shadow: var(--admin-focus);
 }
 
-@media (max-width: 760px) {
-  .issue-audio-action-row {
+@media (max-width: 1240px) {
+  .issue-audio-action-settings {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .issue-audio-action-row > button {
-    grid-column: 1;
-    justify-self: start;
   }
 }
 /* 预览页头右侧：说明文字 + 页面切换按钮同一行 */
@@ -1731,7 +1807,7 @@
 
 .story-preview-back {
   left: 0;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 26px;
   line-height: 1;
 }
@@ -1755,7 +1831,7 @@
   gap: 10px;
   padding-top: 24px;
   color: #8a6755;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
   letter-spacing: .04em;
 }
@@ -1773,7 +1849,7 @@
 .story-preview-hero h3 {
   margin: 0;
   color: #5c493c;
-  font-family: "Source Han Serif CN", "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 32px;
   font-weight: 600;
   line-height: 1.22;
@@ -1818,7 +1894,7 @@
   gap: 12px;
   padding-top: 9px;
   color: #8a6755;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11px;
   line-height: 1.55;
 }
@@ -1840,7 +1916,7 @@
   width: 90%;
   margin: 0 auto;
   color: #8a6755;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 11.5px;
   line-height: 1.6;
 }
@@ -1892,7 +1968,7 @@
 
 .story-preview-arrow {
   color: #663124;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 17px;
 }
 
@@ -1909,7 +1985,7 @@
 
 .story-preview-back-to-issue span:last-child {
   color: #663124;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 17px;
 }
 
@@ -2133,7 +2209,7 @@
 
 .practice-entry-header .practice-entry-index {
   color: #8b6b58;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12px;
   letter-spacing: .08em;
 }
@@ -2145,7 +2221,7 @@
 
 .practice-entry-header .practice-entry-summary strong {
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 15px;
   font-weight: 500;
   letter-spacing: .01em;
@@ -2185,7 +2261,7 @@
   border-radius: 8px;
   background: #fffdf9;
   color: #49392f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
 }
 
@@ -2225,7 +2301,7 @@
   border-radius: 999px;
   background: transparent;
   color: #8b6b58;
-  font-family: -apple-system, "PingFang SC", sans-serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12.5px;
   letter-spacing: .02em;
   cursor: pointer;
@@ -2284,7 +2360,7 @@
   border-radius: 8px;
   background: #fffdf9;
   color: #49392f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
 }
 
@@ -2315,7 +2391,7 @@
 .directory-toolbar-copy strong {
   display: block;
   color: #49392f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
 }
 
@@ -2337,7 +2413,7 @@
   border-radius: 8px;
   background: #fffdf9;
   color: #49392f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 13px;
 }
 
@@ -2362,7 +2438,7 @@
 
 .practice-directory-index {
   color: #b08b6f;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 12px;
   letter-spacing: .08em;
 }
@@ -2376,7 +2452,7 @@
 .practice-directory-copy strong {
   overflow: hidden;
   color: #40362f;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 14px;
   font-weight: 400;
   text-overflow: ellipsis;

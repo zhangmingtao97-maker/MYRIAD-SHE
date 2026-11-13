@@ -29,13 +29,13 @@
   <view wx:else class="profile-card profile-card-member">
     <view class="profile-watermark" aria-hidden="true">SHE</view>
     <view class="profile-main">
-      <button class="account-avatar" bindtap="openAvatarPicker" aria-label="更换头像" hover-class="account-avatar-active" aria-expanded="{{avatarPickerVisible}}">
+      <button class="account-avatar" open-type="chooseAvatar" bindtap="prepareAvatarSelection" bindchooseavatar="onChooseAvatar" binderror="onAvatarError" disabled="{{profileSaving}}" aria-label="选择微信头像" hover-class="account-avatar-active">
         <image wx:if="{{accountProfile.avatarUrl}}" class="account-avatar-image" src="{{accountProfile.avatarUrl}}" mode="aspectFill"></image>
         <text wx:else class="account-avatar-plus" aria-hidden="true">+</text>
       </button>
       <view class="profile-identity">
         <input id="mineNicknameInput" class="profile-name-input" type="nickname" name="nickname" value="{{nicknameEditingValue}}" maxlength="32" placeholder="请输入账号昵称" placeholder-style="color: rgba(251, 244, 234, .72)" aria-label="账号昵称，可选用微信昵称或自行输入" confirm-type="done" disabled="{{profileSaving}}" bindfocus="onNicknameFocus" bindinput="onNicknameInput" bindchange="onNicknameChange" bindblur="onNicknameBlur" bindconfirm="onNicknameConfirm" bindnicknamereview="onNicknameReview" />
-        <view class="profile-edit-hint" aria-live="polite">{{profileSaving ? '正在保存…' : '选用微信昵称或自行输入'}}</view>
+        <view wx:if="{{profileSaving}}" class="profile-edit-hint" aria-live="polite">正在保存…</view>
       </view>
       <view class="profile-enter" role="button" aria-role="button" aria-label="打开个人资料" bindtap="openProfile">›</view>
     </view>
@@ -136,5 +136,4 @@
   </view>
 
   <view class="mine-footer" aria-hidden="true"><view class="mine-footer-mark">MYRIAD SHE</view><view class="mine-footer-copy">我有我的时节</view></view>
-  <avatar-picker visible="{{avatarPickerVisible}}" busy="{{profileSaving}}" bindchooseavatar="onChooseAvatar" bindclose="closeAvatarPicker"></avatar-picker>
 </view>

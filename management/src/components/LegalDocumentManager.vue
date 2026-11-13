@@ -47,9 +47,9 @@ function openDraftPreview() {
 <style>
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
-body { margin: 0; padding: 40px 20px 64px; background: #f1e9de; color: #40362f; font-family: "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif; }
+body { margin: 0; padding: 40px 20px 64px; background: #f1e9de; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .document { width: min(760px, 100%); margin: 0 auto; padding: 56px 64px 48px; background: #fffdf9; border: 1px solid #ded3c5; box-shadow: 0 18px 60px rgb(64 54 47 / 8%); }
-.eyebrow { margin: 0 0 24px; color: #8a6755; font-family: Arial, sans-serif; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+.eyebrow { margin: 0 0 24px; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
 .title { margin: 0 0 20px; font-size: 34px; font-weight: 600; line-height: 1.35; }
 .title p, .intro p, .body p { margin: 0 0 1em; }
 .intro { margin: 0 0 22px; color: #75675d; font-size: 16px; line-height: 1.9; }
@@ -61,7 +61,7 @@ body { margin: 0; padding: 40px 20px 64px; background: #f1e9de; color: #40362f; 
 .body strong { font-weight: 600; }
 .body a { color: #663124; }
 .empty { color: #9b8b7d; }
-.note { margin: 40px 0 0; padding-top: 18px; border-top: 1px solid #e4dbd1; color: #9b8b7d; font-family: Arial, sans-serif; font-size: 11px; line-height: 1.7; }
+.note { margin: 40px 0 0; padding-top: 18px; border-top: 1px solid #e4dbd1; color: #9b8b7d; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 11px; line-height: 1.7; }
 @media (max-width: 640px) { body { padding: 0; background: #fffdf9; } .document { padding: 36px 24px 40px; border: 0; box-shadow: none; } .title { font-size: 28px; } }
 @media print { body { padding: 0; background: #fff; } .document { width: 100%; padding: 0; border: 0; box-shadow: none; } .note { display: none; } }
 </style>

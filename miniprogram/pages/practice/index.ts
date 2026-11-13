@@ -4,28 +4,38 @@ import type { PracticeContent } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 
 Page({
-  data: { statusBarHeight: 0, title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 32, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', footerCopy: { brand: { richText: 'MYRIAD SHE', fontSize: 11, color: '#5c493c' }, line1: { richText: '看见真实经验', fontSize: 16, color: '#40362f' }, label: { richText: '此刻归安', fontSize: 11, color: '#5c493c' }, line2: { richText: '让一件小事发生', fontSize: 16, color: '#40362f' } }, entries: [] as PracticeContent['entries'], loading: true, error: '' },
+  data: { statusBarHeight: 0, title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 32, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', footerCopy: { brand: { richText: 'MYRIAD SHE', fontSize: 11, color: '#5c493c' }, line1: { richText: '看见真实经验', fontSize: 16, color: '#40362f' }, label: { richText: '此刻归安', fontSize: 11, color: '#5c493c' }, line2: { richText: '让一件小事发生', fontSize: 16, color: '#40362f' } }, entries: [] as PracticeContent['entries'], loading: true, error: '', refreshError: '' },
   requestGeneration: 0,
+  contentVisible: false,
+  requestInFlight: false,
   onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); void this.load(); },
   onShow() { if (!this.data.loading) void this.load(); },
   onHide() {
     this.requestGeneration += 1;
+    this.requestInFlight = false;
     if (this.data.loading) this.setData({ loading: false });
   },
   async load() {
+    if (this.requestInFlight) return;
+    this.requestInFlight = true;
     const generation = ++this.requestGeneration;
-    this.setData({ loading: true, error: '' });
+    this.setData({ loading: !this.contentVisible, error: '', refreshError: '' });
     try {
       const data = await request<PracticeContent>('/content/practice');
       if (generation !== this.requestGeneration) return;
       if (!isPracticeContent(data)) throw new Error('实践内容格式无效');
       // 目录是否点亮只由实践目录自身的入口开关决定；商城总闸在小程序日常之物页单独判断。
-      this.setData({ ...data, loading: false, error: '' });
+      this.contentVisible = true;
+      this.setData({ ...data, loading: false, error: '', refreshError: '' });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
-      this.setData({ loading: false, error: apiErrorMessage(caught, '暂时无法读取实践内容') });
+      const message = apiErrorMessage(caught, '暂时无法读取实践内容');
+      this.setData({ loading: false, error: this.contentVisible ? '' : message, refreshError: this.contentVisible ? message : '' });
+    } finally {
+      if (generation === this.requestGeneration) this.requestInFlight = false;
     }
   },
+  onUnload() { this.requestGeneration += 1; this.requestInFlight = false; },
   handleEntryTap(event: WechatMiniprogram.CustomEvent) {
     const key = String(event.currentTarget.dataset.key || '');
     const entry = this.data.entries.find((item) => item.key === key);

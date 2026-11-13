@@ -10,14 +10,12 @@ const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.Modu
 assert.equal(compiled.diagnostics?.length, 0);
 const profileCompiled = ts.transpileModule(readFileSync(resolve(__dirname, '../../../miniprogram/pages/profile/index.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
 assert.equal(profileCompiled.diagnostics?.length, 0);
-const pickerCompiled = ts.transpileModule(readFileSync(resolve(__dirname, '../../../miniprogram/components/avatar-picker/index.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
-assert.equal(pickerCompiled.diagnostics?.length, 0);
 
 function harness(pageName: 'mine' | 'profile' = 'mine') {
   let page: any;
   let nativeValue: string | null = null;
   let pendingUpload: any;
-  let requestHandler = async (_path: string, options?: any) => ({ nickname: options?.data?.nickname ?? '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: null });
+  let requestHandler: (path: string, options?: any) => Promise<Record<string, unknown>> = async (_path, options) => ({ nickname: options?.data?.nickname ?? '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: null });
   const requests: Array<{ path: string; options: any }> = [];
   const toasts: string[] = [];
   const app = { globalData: { userId: 'user-1', accessToken: 'test-token', authGeneration: 0, accountDeleted: false, apiBaseUrl: 'https://example.com/api', requestTimeoutMs: 8000 }, ensureLogin: async () => undefined };
@@ -46,56 +44,64 @@ function harness(pageName: 'mine' | 'profile' = 'mine') {
   page.nicknameDraft = '原昵称';
   page.setData({ isLoggedIn: true, accountProfileReady: true, nicknameEditingValue: '原昵称', accountProfile: { nickname: '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: null } });
   if (pageName === 'profile') page.setData({ loading: false, profile: { nickname: '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: null } });
-  return { page, app, requests, toasts, native: (value: string) => { nativeValue = value; }, upload: () => pendingUpload, respond: (handler: typeof requestHandler) => { requestHandler = handler; } };
+  return { page, app, requests, toasts, native: (value: string) => { nativeValue = value; }, upload: () => pendingUpload, respond: (handler: (path: string, options?: any) => Promise<Record<string, unknown>>) => { requestHandler = handler; } };
 }
 
 async function settle() { for (let i = 0; i < 5; i += 1) await new Promise(setImmediate); }
 
-function pickerHarness(supported = true) {
-  let definition: any;
-  let pendingImage: any;
-  const events: Array<{ name: string; detail: any }> = [];
-  runInNewContext(pickerCompiled.outputText, {
-    exports: {}, Component: (value: any) => { definition = value; },
-    wx: { canIUse: () => supported, chooseImage: (options: any) => { pendingImage = options; } },
-  });
-  const picker = {
-    ...definition.methods,
-    data: { ...definition.data }, properties: { visible: false, busy: false },
-    setData(values: Record<string, unknown>) { Object.assign(this.data, values); },
-    triggerEvent(name: string, detail?: any) { events.push({ name, detail }); },
-  };
-  const visible = (value: boolean) => {
-    picker.properties.visible = value;
-    definition.observers.visible.call(picker, value);
-  };
-  definition.lifetimes.attached.call(picker);
-  visible(true);
-  return { picker, events, visible, image: () => pendingImage, detach: () => definition.lifetimes.detached.call(picker) };
-}
+test('profile setup exposes an empty native nickname field and saves the native WeChat avatar under the signed-in account', async () => {
+  const h = harness('profile');
+  h.page.setData({ setup: true });
+  h.respond(async () => ({ nickname: '微信用户AB12', avatarUrl: null, phoneNumber: null }));
+  await h.page.loadProfile();
+  assert.equal(h.page.data.editingNickname, true);
+  assert.equal(h.page.data.nicknameEditingValue, '');
+  assert.equal(h.page.nicknameDraft, '');
+  h.page.prepareAvatarSelection();
+  h.page.onChooseAvatar({ detail: { avatarUrl: 'wxfile://wechat-avatar' } });
+  await settle();
+  assert.equal(h.upload().url, 'https://example.com/api/me/profile/avatar');
+  assert.equal(h.upload().header.Authorization, 'Bearer test-token');
+  h.upload().success({ statusCode: 200, data: JSON.stringify({ nickname: '微信用户AB12', avatarUrl: 'https://example.com/saved-avatar.png', phoneNumber: null }) });
+  await settle();
+  assert.equal(h.page.data.profile.avatarUrl, 'https://example.com/saved-avatar.png');
+  assert.equal(h.page.data.nicknameEditingValue, '');
+});
 
 for (const pageName of ['mine', 'profile'] as const) {
   const avatar = (page: any) => pageName === 'mine' ? page.data.accountProfile.avatarUrl : page.data.profile.avatarUrl;
 
-  test(`${pageName}: tapping an avatar opens the sheet immediately even if reading profile failed`, () => {
+  test(`${pageName}: the native chooser gesture captures the account without rerendering or starting an upload`, () => {
     const h = harness(pageName);
-    h.page.setData({ accountProfileReady: false, profileError: '读取失败', loadError: '读取失败' });
-    assert.equal(h.page.data.avatarPickerVisible, false);
-    h.page.openAvatarPicker();
-    assert.equal(h.page.data.avatarPickerVisible, true);
+    let renders = 0;
+    const setData = h.page.setData;
+    h.page.setData = (values: Record<string, unknown>) => { renders += 1; setData(values); };
+    h.page.prepareAvatarSelection();
+    assert.equal(renders, 0, 'the native open-type gesture must not mount an intervening dialog');
+    assert.equal(h.page.avatarSelection.userId, h.app.globalData.userId);
     assert.equal(h.requests.length, 0);
     assert.equal(h.upload(), undefined);
-    h.page.closeAvatarPicker();
-    assert.equal(h.page.data.avatarPickerVisible, false);
+    h.page.onAvatarError({ detail: { errMsg: 'chooseAvatar:fail cancel' } });
     assert.equal(h.page.avatarSelection, null);
+    assert.equal(h.toasts.length, 0);
     assert.equal(h.upload(), undefined);
   });
 
-  test(`${pageName}: a selected avatar closes the sheet, previews, and persists`, async () => {
+  test(`${pageName}: native privacy errors leave an actionable message and allow another attempt`, () => {
     const h = harness(pageName);
-    h.page.openAvatarPicker();
+    h.page.prepareAvatarSelection();
+    h.page.onAvatarError({ detail: { errMsg: 'chooseAvatar:fail privacy permission is not authorized' } });
+    assert.equal(h.page.avatarSelection, null);
+    assert.match(h.toasts.at(-1)!, /隐私授权/);
+    h.page.prepareAvatarSelection();
+    assert.equal(h.page.avatarSelection.userId, h.app.globalData.userId);
+  });
+
+  test(`${pageName}: a native avatar selection previews and persists`, async () => {
+    const h = harness(pageName);
+    h.page.prepareAvatarSelection();
     h.page.onChooseAvatar({ detail: { avatarUrl: 'wxfile://picked' } });
-    assert.equal(h.page.data.avatarPickerVisible, false);
+    assert.equal(h.page.avatarSelection, null);
     assert.equal(avatar(h.page), 'wxfile://picked');
     await settle();
     assert.equal(h.upload().filePath, 'wxfile://picked');
@@ -108,7 +114,7 @@ for (const pageName of ['mine', 'profile'] as const) {
 
   test(`${pageName}: an account change while choosing rejects the image and explains why`, async () => {
     const h = harness(pageName);
-    h.page.openAvatarPicker();
+    h.page.prepareAvatarSelection();
     h.app.globalData.userId = 'user-2';
     h.app.globalData.authGeneration += 1;
     h.page.onChooseAvatar({ detail: { avatarUrl: 'wxfile://old-account' } });
@@ -122,20 +128,20 @@ for (const pageName of ['mine', 'profile'] as const) {
     const h = harness(pageName);
     const saving = pageName === 'mine' ? 'profileSaving' : 'saving';
     h.page.setData({ [saving]: true });
-    h.page.openAvatarPicker();
-    assert.equal(h.page.data.avatarPickerVisible, false);
+    h.page.prepareAvatarSelection();
+    assert.equal(h.page.avatarSelection, null);
     assert.match(h.toasts.at(-1)!, /保存/);
     h.page.setData({ [saving]: false });
     h.app.globalData.accessToken = '';
-    h.page.openAvatarPicker();
-    assert.equal(h.page.data.avatarPickerVisible, false);
+    h.page.prepareAvatarSelection();
+    assert.equal(h.page.avatarSelection, null);
     assert.match(h.toasts.at(-1)!, /登录/);
   });
 
   test(`${pageName}: failed or invalid avatar uploads restore the old image and permit retry`, async () => {
     for (const failure of ['network', 'server', 'invalid-json']) {
       const h = harness(pageName);
-      h.page.openAvatarPicker();
+      h.page.prepareAvatarSelection();
       h.page.onChooseAvatar({ detail: { avatarUrl: 'wxfile://picked' } });
       await settle();
       if (failure === 'network') h.upload().fail(new Error('offline'));
@@ -144,8 +150,8 @@ for (const pageName of ['mine', 'profile'] as const) {
       assert.equal(avatar(h.page), 'https://example.com/avatar.jpg');
       assert.equal(h.page.data[pageName === 'mine' ? 'profileSaving' : 'saving'], false);
       assert.match(pageName === 'mine' ? h.page.data.profileError : h.toasts.at(-1), /重新选择/);
-      h.page.openAvatarPicker();
-      assert.equal(h.page.data.avatarPickerVisible, true);
+      h.page.prepareAvatarSelection();
+      assert.equal(h.page.avatarSelection.userId, h.app.globalData.userId);
     }
   });
 
@@ -154,7 +160,7 @@ for (const pageName of ['mine', 'profile'] as const) {
     let finish!: (value: any) => void;
     h.respond(() => new Promise((resolve) => { finish = resolve; }));
     const reading = pageName === 'mine' ? h.page.loadAccountProfile() : h.page.loadProfile();
-    h.page.openAvatarPicker();
+    h.page.prepareAvatarSelection();
     h.page.onChooseAvatar({ detail: { avatarUrl: 'wxfile://picked' } });
     finish({ nickname: '旧昵称', avatarUrl: 'https://example.com/stale.jpg', phoneNumber: null });
     await reading;
@@ -165,92 +171,6 @@ for (const pageName of ['mine', 'profile'] as const) {
     assert.equal(avatar(h.page), 'https://example.com/new.jpg');
   });
 }
-
-test('the sheet forwards the native WeChat avatar and keeps errors inside the sheet', () => {
-  const h = pickerHarness();
-  h.picker.onWechatAvatar({ detail: {} });
-  assert.match(h.picker.data.error, /相册/);
-  assert.equal(h.events.length, 0);
-  h.picker.onWechatAvatar({ detail: { avatarUrl: 'wxfile://wechat' } });
-  assert.equal(h.events[0].name, 'chooseavatar');
-  assert.equal(h.events[0].detail.avatarUrl, 'wxfile://wechat');
-  h.visible(false);
-  h.picker.onWechatAvatar({ detail: { avatarUrl: 'wxfile://late' } });
-  assert.equal(h.events.length, 1);
-});
-
-test('album and camera actions open only the requested image source', () => {
-  for (const source of ['album', 'camera']) {
-    const h = pickerHarness();
-    h.picker.chooseImage({ currentTarget: { dataset: { source } } });
-    assert.equal(h.picker.data.choosing, true);
-    assert.equal(h.image().count, 1);
-    assert.deepEqual(Array.from(h.image().sourceType), [source]);
-    h.image().success({ tempFilePaths: [`wxfile://${source}`] });
-    h.image().complete();
-    assert.equal(h.events[0].detail.avatarUrl, `wxfile://${source}`);
-    assert.equal(h.picker.data.choosing, false);
-  }
-});
-
-test('canceling image selection keeps the sheet ready for another choice', () => {
-  const h = pickerHarness();
-  h.picker.chooseImage({ currentTarget: { dataset: { source: 'album' } } });
-  h.image().fail({ errMsg: 'chooseImage:fail cancel' });
-  h.image().complete();
-  assert.equal(h.picker.data.error, '');
-  assert.equal(h.picker.data.choosing, false);
-  assert.equal(h.picker.properties.visible, true);
-  assert.equal(h.events.length, 0);
-  h.picker.chooseImage({ currentTarget: { dataset: { source: 'camera' } } });
-  assert.deepEqual(Array.from(h.image().sourceType), ['camera']);
-});
-
-test('native chooser failures explain the fallback and camera permission errors allow retry', () => {
-  const h = pickerHarness();
-  h.picker.onWechatError({ detail: { errMsg: 'chooseAvatar:fail' } });
-  assert.match(h.picker.data.error, /相册/);
-  h.picker.chooseImage({ currentTarget: { dataset: { source: 'camera' } } });
-  h.image().fail({ errMsg: 'chooseImage:fail auth deny' });
-  h.image().complete();
-  assert.match(h.picker.data.error, /相机权限/);
-  assert.equal(h.picker.data.choosing, false);
-  assert.equal(h.events.length, 0);
-});
-
-test('closing and reopening the sheet ignores the previous image selection callback', () => {
-  const h = pickerHarness();
-  h.picker.chooseImage({ currentTarget: { dataset: { source: 'album' } } });
-  const oldSelection = h.image();
-  h.picker.close();
-  assert.equal(h.events[0].name, 'close');
-  h.visible(false);
-  h.visible(true);
-  h.picker.chooseImage({ currentTarget: { dataset: { source: 'camera' } } });
-  oldSelection.success({ tempFilePaths: ['wxfile://stale'] });
-  oldSelection.complete();
-  assert.equal(h.events.length, 1);
-  assert.equal(h.picker.data.choosing, true);
-  h.image().success({ tempFilePaths: ['wxfile://current'] });
-  h.image().complete();
-  assert.equal(h.events[1].detail.avatarUrl, 'wxfile://current');
-});
-
-test('a client without WeChat avatar support can still select a local image', () => {
-  const h = pickerHarness(false);
-  assert.equal(h.picker.data.supportsWechatAvatar, false);
-  h.picker.chooseImage({ currentTarget: { dataset: { source: 'album' } } });
-  h.image().success({ tempFilePaths: ['wxfile://local'] });
-  assert.equal(h.events[0].detail.avatarUrl, 'wxfile://local');
-});
-
-test('detached sheets ignore outstanding native image callbacks', () => {
-  const h = pickerHarness();
-  h.picker.chooseImage({ currentTarget: { dataset: { source: 'album' } } });
-  h.detach();
-  h.image().success({ tempFilePaths: ['wxfile://late'] });
-  assert.equal(h.events.length, 0);
-});
 
 test('typed nickname saves automatically only after WeChat review, without rewriting the focused input', async () => {
   const h = harness();
@@ -337,4 +257,18 @@ test('a nickname save response cannot overwrite a different account', async () =
   finish({ nickname: '旧账户返回值', avatarUrl: null, phoneNumber: null });
   await saving;
   assert.equal(h.page.data.accountProfile.nickname, '另一个账户');
+});
+
+test('profile binds a WeChat phone number directly without returning to login', async () => {
+  const h = harness('profile');
+  h.respond(async (path) => {
+    if (path !== '/me/phone-number') throw new Error('unexpected request');
+    return { nickname: '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: '+8613800138000' };
+  });
+  await h.page.onGetPhoneNumber({ detail: { errMsg: 'getPhoneNumber:ok', code: 'phone-code' } });
+  assert.deepEqual(h.requests.map((entry) => entry.path), ['/me/phone-number']);
+  assert.equal(JSON.stringify(h.requests[0]?.options), JSON.stringify({ method: 'POST', data: { code: 'phone-code' } }));
+  assert.equal(h.page.data.profile.phoneNumber, '+8613800138000');
+  assert.equal(h.page.data.saving, false);
+  assert.equal(h.toasts.at(-1), '手机号已绑定');
 });

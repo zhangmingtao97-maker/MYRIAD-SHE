@@ -4,10 +4,20 @@ Component({
     visible: { type: Boolean, value: false },
     busy: { type: Boolean, value: false },
   },
-  data: { choosing: false, supportsWechatAvatar: true, error: '', _selectionGeneration: 0 },
+  data: { choosing: false, supportsWechatAvatar: true, isWechatDevTools: false, error: '', _selectionGeneration: 0 },
   lifetimes: {
     attached() {
-      this.setData({ supportsWechatAvatar: typeof wx.canIUse !== 'function' || wx.canIUse('button.open-type.chooseAvatar') });
+      let isWechatDevTools = false;
+      try {
+        const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : null;
+        isWechatDevTools = String(deviceInfo?.platform || '').toLowerCase() === 'devtools';
+      } catch {
+        isWechatDevTools = false;
+      }
+      this.setData({
+        supportsWechatAvatar: typeof wx.canIUse !== 'function' || wx.canIUse('button.open-type.chooseAvatar'),
+        isWechatDevTools,
+      });
     },
     detached() { this.data._selectionGeneration += 1; },
   },
@@ -24,18 +34,33 @@ Component({
       this.setData({ choosing: false, error: '' });
       this.triggerEvent('close');
     },
+    onWechatAvatarTap() {
+      if (!this.properties.visible || this.properties.busy || this.data.choosing) return;
+      if (this.data.isWechatDevTools) {
+        this.showWechatAvatarError('微信开发者工具暂不支持头像选择器，请使用真机预览，或从相册选择/拍照');
+      }
+    },
+    showWechatAvatarError(message: string) {
+      this.setData({ error: message });
+      if (typeof wx.showModal === 'function') {
+        wx.showModal({ title: '微信头像不可用', content: message, showCancel: false, confirmText: '知道了' });
+        return;
+      }
+      wx.showToast({ title: message, icon: 'none' });
+    },
     onWechatAvatar(event: WechatMiniprogram.CustomEvent<{ avatarUrl?: string }>) {
       if (!this.properties.visible || this.properties.busy || this.data.choosing) return;
       const avatarUrl = String(event.detail?.avatarUrl || '');
       if (!avatarUrl) {
-        this.setData({ error: '没有获取到微信头像，请从相册选择或拍照' });
+        this.showWechatAvatarError('没有获取到微信头像，请从相册选择或拍照');
         return;
       }
+      this.setData({ error: '' });
       this.triggerEvent('chooseavatar', { avatarUrl });
     },
     onWechatError(event: WechatMiniprogram.CustomEvent<{ errMsg?: string }>) {
       if (String(event.detail?.errMsg || '').toLowerCase().includes('cancel')) return;
-      this.setData({ error: '微信头像暂时无法选择，请从相册选择或拍照' });
+      this.showWechatAvatarError('微信头像暂时无法使用，请从相册选择或拍照；若仍失败，请在真机重试');
     },
     chooseImage(event: WechatMiniprogram.CustomEvent) {
       if (!this.properties.visible || this.properties.busy || this.data.choosing) return;

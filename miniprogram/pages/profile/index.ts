@@ -55,21 +55,28 @@ function readNativeInputValue(selector: string) {
   });
 }
 Page({
-  data: { statusBarHeight: 0, avatarPickerVisible: false, loading: true, saving: false, editingNickname: false, nicknameEditingValue: '', nicknameFocusRequested: false, loadError: '', profile: { nickname: '', avatarUrl: '', phoneNumber: '' } as AccountProfile },
+  data: { statusBarHeight: 0, setup: false, loading: true, saving: false, editingNickname: false, nicknameEditingValue: '', nicknameFocusRequested: false, loadError: '', profile: { nickname: '', avatarUrl: '', phoneNumber: '' } as AccountProfile },
   nicknameDraft: '',
   nicknameDirty: false,
   nicknameEditorOpening: false,
   nicknameCommitInFlight: false,
+  editorAccount: '',
   avatarSelection: null as { userId: string; authGeneration: number } | null,
   profileRequestGeneration: 0,
-  onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
+  onLoad(options: { setup?: string }) { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight, setup: options?.setup === '1' }); },
   onShow() {
-    if (app.globalData.accountDeleted || !app.globalData.accessToken) { this.closeAvatarPicker(); wx.navigateBack({ delta: 1 }); return; }
-    if (this.avatarSelection && (this.avatarSelection.userId !== app.globalData.userId || this.avatarSelection.authGeneration !== app.globalData.authGeneration)) this.closeAvatarPicker();
+    if (app.globalData.accountDeleted || !app.globalData.accessToken) { this.clearAvatarSelection(); wx.navigateBack({ delta: 1 }); return; }
+    if (this.avatarSelection && (this.avatarSelection.userId !== app.globalData.userId || this.avatarSelection.authGeneration !== app.globalData.authGeneration)) this.clearAvatarSelection();
+    const account = `${app.globalData.userId}:${app.globalData.authGeneration}`;
+    if (this.editorAccount && this.editorAccount !== account) {
+      this.nicknameDraft = ''; this.nicknameDirty = false;
+      this.setData({ editingNickname: false, nicknameEditingValue: '', saving: false, profile: { nickname: '', avatarUrl: null, phoneNumber: null, address: null } });
+    }
+    this.editorAccount = account;
     void this.loadProfile();
   },
   async loadProfile() {
-    if (this.data.saving) return;
+    if (this.data.saving || (this.data.editingNickname && this.nicknameDirty)) return;
     const generation = ++this.profileRequestGeneration;
     const userId = app.globalData.userId;
     const authGeneration = app.globalData.authGeneration;
@@ -81,6 +88,11 @@ Page({
       this.nicknameDraft = profile.nickname;
       this.nicknameDirty = false;
       this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null }, loading: false });
+      if (this.data.setup) {
+        const nickname = /^微信用户[0-9a-f]{4}$/i.test(profile.nickname) ? '' : profile.nickname;
+        this.nicknameDraft = nickname;
+        this.setData({ editingNickname: true, nicknameEditingValue: nickname });
+      }
     } catch (caught) {
       if (generation !== this.profileRequestGeneration || userId !== app.globalData.userId || authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) return;
       this.setData({ loading: false, loadError: apiErrorMessage(caught, '暂时无法读取个人资料') });
@@ -186,25 +198,30 @@ Page({
       return;
     }
     const previousNickname = this.data.profile.nickname;
+    this.editorAccount = `${app.globalData.userId}:${app.globalData.authGeneration}`;
+    const userId = app.globalData.userId;
+    const authGeneration = app.globalData.authGeneration;
+    const currentAccount = () => userId === app.globalData.userId && authGeneration === app.globalData.authGeneration && !app.globalData.accountDeleted;
     this.nicknameCommitInFlight = true;
     this.setData({ 'profile.nickname': nickname, editingNickname: false, saving: true });
     try {
       const profile = await request<AccountProfile>('/me/profile', { method: 'PATCH', data: { nickname } });
+      if (!currentAccount()) return;
       if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
       this.nicknameDraft = profile.nickname;
       this.nicknameDirty = false;
       this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null }, saving: false });
     } catch (caught) {
-      this.nicknameDirty = false;
-      this.nicknameDraft = previousNickname;
-      this.setData({ 'profile.nickname': previousNickname, saving: false });
+      if (!currentAccount()) return;
+      this.nicknameDirty = true;
+      this.nicknameDraft = nickname;
+      this.setData({ 'profile.nickname': previousNickname, saving: false, editingNickname: true, nicknameEditingValue: nickname });
       wx.showToast({ title: apiErrorMessage(caught, '昵称暂时无法保存'), icon: 'none' });
-      void this.loadProfile();
     } finally {
       this.nicknameCommitInFlight = false;
     }
   },
-  openAvatarPicker() {
+  prepareAvatarSelection() {
     if (this.data.saving) {
       wx.showToast({ title: '资料正在保存，请稍候', icon: 'none' });
       return;
@@ -214,16 +231,24 @@ Page({
       return;
     }
     this.avatarSelection = { userId: app.globalData.userId, authGeneration: app.globalData.authGeneration };
-    this.setData({ avatarPickerVisible: true });
+    // Keep the page unchanged until the native chooseavatar callback.
   },
-  closeAvatarPicker() {
+  clearAvatarSelection() {
     this.avatarSelection = null;
-    this.setData({ avatarPickerVisible: false });
+  },
+  onAvatarError(event: WechatMiniprogram.CustomEvent<{ errMsg?: string }>) {
+    this.clearAvatarSelection();
+    const reason = event.detail?.errMsg || '';
+    if (/cancel/i.test(reason)) return;
+    const message = /privacy|authorize|auth deny/i.test(reason)
+      ? '请先同意微信的头像隐私授权，再点击头像重试。'
+      : '微信头像选择器暂时无法打开，请重试。';
+    wx.showToast({ title: message, icon: 'none' });
   },
   onChooseAvatar(event: WechatMiniprogram.CustomEvent<{ avatarUrl?: string }>) {
     const selection = this.avatarSelection;
     const filePath = String(event.detail?.avatarUrl || '');
-    this.closeAvatarPicker();
+    this.clearAvatarSelection();
     if (!selection || selection.userId !== app.globalData.userId || selection.authGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted) {
       wx.showToast({ title: '登录状态已变化，请重新选择头像', icon: 'none' });
       return;
@@ -284,7 +309,30 @@ Page({
       wx.showToast({ title: apiErrorMessage(caught, '收货地址暂时无法保存'), icon: 'none' });
     }
   },
-  showPhone() { wx.showToast({ title: this.data.profile.phoneNumber ? '手机号已绑定' : '请返回登录页绑定手机号', icon: 'none' }); },
+  async onGetPhoneNumber(event: WechatMiniprogram.CustomEvent<{ errMsg?: string; code?: string }>) {
+    if (this.data.saving) return;
+    const errMsg = event.detail?.errMsg || '';
+    if (/deny|cancel|fail/i.test(errMsg)) {
+      wx.showModal({ title: '未绑定手机号', content: '你可以稍后在“个人资料”中再次绑定。', showCancel: false, confirmText: '知道了' });
+      return;
+    }
+    const code = event.detail?.code;
+    if (typeof code !== 'string' || !code.trim()) {
+      wx.showModal({ title: '暂时无法绑定', content: '没有读取到手机号授权信息，请重试。', showCancel: false, confirmText: '知道了' });
+      return;
+    }
+    this.setData({ saving: true });
+    try {
+      const profile = await request<AccountProfile>('/me/phone-number', { method: 'POST', data: { code } });
+      if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
+      this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null } });
+      wx.showToast({ title: '手机号已绑定', icon: 'success' });
+    } catch (caught) {
+      wx.showModal({ title: '手机号绑定失败', content: apiErrorMessage(caught, '请检查网络后重试。'), showCancel: false, confirmText: '知道了' });
+    } finally {
+      this.setData({ saving: false });
+    }
+  },
   showUnavailable() { wx.showToast({ title: '该功能将逐步开放', icon: 'none' }); },
   openPrivacy() { wx.navigateTo({ url: '/pages/privacy/index' }); },
   openAgreement() { wx.navigateTo({ url: '/pages/privacy-policy/index?type=user-agreement' }); },

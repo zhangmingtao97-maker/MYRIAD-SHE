@@ -19,6 +19,18 @@ test('storage service closes both S3 clients during module shutdown', () => {
   assert.equal(destroyed, 2);
 });
 
+test('storage service builds stable public URLs with encoded object segments', () => {
+  const service = new StorageService(new ConfigService({
+    MINIO_ENDPOINT: 'minio', MINIO_PORT: '9000', MINIO_PUBLIC_ENDPOINT: 'https://media.invalid',
+    MINIO_ACCESS_KEY: 'access', MINIO_SECRET_KEY: 'secret', MINIO_BUCKET: 'myriad she',
+  }));
+
+  assert.equal(
+    service.createPublicUrl('content/image/2026-11/cover image.webp'),
+    'https://media.invalid/myriad%20she/content/image/2026-11/cover%20image.webp',
+  );
+});
+
 test('storage service rejects an invalid fallback endpoint port', () => {
   assert.throws(() => new StorageService(new ConfigService({
     MINIO_ENDPOINT: 'minio', MINIO_PORT: '70000', MINIO_PUBLIC_ENDPOINT: 'http://media.invalid:61025',

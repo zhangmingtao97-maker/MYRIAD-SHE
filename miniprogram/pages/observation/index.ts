@@ -189,6 +189,9 @@ function realityStageView(copy: ObservationCopy, step: number) {
   };
 }
 
+// Session-only navigation hints contain no answers and never cross accounts.
+const draftPositions = new Map<string, { revision: number; step: number; seasonStage: number }>();
+
 Page({
   data: {
     statusBarHeight: 0,
@@ -427,7 +430,9 @@ Page({
         ? ['situation', 'body', 'need', 'nextAction']
         : ['birthDate', 'experience', 'season', 'sevenDayAction'];
       const firstEmpty = fields.findIndex((field) => !record.answers?.[field]);
-      const restoredStep = record.status === 'saved' ? 0 : (firstEmpty < 0 ? 3 : firstEmpty);
+      const hint = draftPositions.get(`${app.globalData.userId}:${app.globalData.authGeneration}:${record.id}`);
+      const position = record.status === 'draft' && hint?.revision === record.revision ? hint : null;
+      const restoredStep = record.status === 'saved' ? 0 : position?.step ?? (firstEmpty < 0 ? 3 : firstEmpty);
       const validStateOptions = this.data.seasonStateOptions;
       const restoredStates = String(record.answers?.seasonStates || '')
         .split(',')
@@ -444,8 +449,8 @@ Page({
         String(record.answers?.season || ''),
         this.data.observationCopy.seasonStages.now.recent.relations,
       );
-      const restoredSeasonStage = restoredStep === 1
-        && (restoredStates.length > 0 || Boolean(String(record.answers?.seasonInsight || '').trim())) ? 1 : 0;
+      const restoredSeasonStage = position?.seasonStage ?? (restoredStep === 1
+        && (restoredStates.length > 0 || Boolean(String(record.answers?.seasonInsight || '').trim())) ? 1 : 0);
       this.setData({
         phase: 'form', selected: record.method, editingSaved: record.status === 'saved', observationId: record.id, revision: record.revision, clientDraftId: record.clientDraftId || record.id,
         issueCode: record.issueCode || '', issueLabel: record.issueLabel || '', issueQuestion: record.issueQuestion || '', issueLoading: false,
@@ -981,15 +986,23 @@ Page({
       },
     });
   },
+  rememberDraftPosition() {
+    if (this.knownAuthGeneration !== app.globalData.authGeneration || app.globalData.accountDeleted || this.data.phase !== 'form' || this.data.editingSaved || !this.data.observationId) return;
+    const key = `${app.globalData.userId}:${app.globalData.authGeneration}:${this.data.observationId}`;
+    draftPositions.set(key, { revision: this.data.revision, step: this.data.step, seasonStage: this.data.seasonStage });
+    if (draftPositions.size > 20) draftPositions.delete(draftPositions.keys().next().value!);
+  },
   onHide() {
+    this.rememberDraftPosition();
     if (this.data.seasonGuideOpen) this.setData({ seasonGuideOpen: false });
     if (this.autosaveTimer) {
       clearTimeout(this.autosaveTimer);
       this.autosaveTimer = null;
     }
-    if (!app.globalData.accountDeleted && this.data.phase === 'form' && this.data.syncState === 'pending') void this.flushAutosave();
+    if (!app.globalData.accountDeleted && this.data.phase === 'form' && this.data.syncState === 'pending') void this.flushAutosave().then(() => this.rememberDraftPosition());
   },
   onUnload() {
+    this.rememberDraftPosition();
     this.seasonPausedUnsubscribe?.();
     this.seasonPausedUnsubscribe = null;
     if (!app.globalData.accountDeleted && this.data.phase === 'form' && this.data.syncState === 'pending') void this.flushAutosave();

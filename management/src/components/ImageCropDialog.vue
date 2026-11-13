@@ -93,15 +93,27 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-function outputType() {
-  if (props.file.type === 'image/jpeg' || props.file.type === 'image/webp') return props.file.type;
-  return 'image/png';
-}
+const MAX_IMAGE_EDGE = 1600;
+const WEBP_QUALITY = 0.82;
 
 function outputFileName(type: string) {
-  const extension = type === 'image/jpeg' ? 'jpg' : type === 'image/webp' ? 'webp' : 'png';
+  const extension = type === 'image/webp' ? 'webp' : 'jpg';
   const baseName = props.file.name.replace(/\.([a-z0-9]+)$/i, '') || 'image';
   return `${baseName}-cropped.${extension}`;
+}
+
+function encodeCanvas(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, type, quality);
+  });
+}
+
+async function optimizedImageBlob(canvas: HTMLCanvasElement) {
+  for (const [type, quality] of [['image/webp', WEBP_QUALITY], ['image/jpeg', WEBP_QUALITY]] as const) {
+    const blob = await encodeCanvas(canvas, type, quality);
+    if (blob && blob.type === type) return blob;
+  }
+  throw new Error('当前浏览器无法生成 WebP 或 JPEG 图片');
 }
 
 async function confirmCrop() {
@@ -109,21 +121,15 @@ async function confirmCrop() {
   processing.value = true;
   error.value = '';
   try {
-    const type = outputType();
     const canvas = cropper.value.getCroppedCanvas({
-      maxWidth: 2400,
-      maxHeight: 2400,
-      fillColor: type === 'image/jpeg' ? '#ffffff' : undefined,
+      maxWidth: MAX_IMAGE_EDGE,
+      maxHeight: MAX_IMAGE_EDGE,
+      fillColor: '#ffffff',
       imageSmoothingEnabled: true,
       imageSmoothingQuality: 'high',
     });
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((value) => {
-        if (value) resolve(value);
-        else reject(new Error('无法生成裁剪后的图片'));
-      }, type, type === 'image/png' ? undefined : 0.92);
-    });
-    emit('confirm', new File([blob], outputFileName(type), { type, lastModified: Date.now() }));
+    const blob = await optimizedImageBlob(canvas);
+    emit('confirm', new File([blob], outputFileName(blob.type), { type: blob.type, lastModified: Date.now() }));
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : '图片裁剪失败，请重试。';
   } finally {

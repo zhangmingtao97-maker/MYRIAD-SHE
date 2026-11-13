@@ -19,7 +19,7 @@
 .stage-title {
   margin-top: 12rpx;
   color: #3f352e;
-  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 30rpx;
   font-weight: 600;
   line-height: 1.65;
@@ -35,7 +35,7 @@
 .stage-value {
   margin-top: 12rpx;
   color: #3f352e;
-  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 27rpx;
   font-weight: 600;
   line-height: 1.8;
@@ -47,7 +47,7 @@
 .stage-action {
   margin-top: 16rpx;
   color: #3f352e;
-  font-family: "MYRIAD Song", "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 27rpx;
   font-weight: 600;
   line-height: 1.8;
@@ -150,7 +150,7 @@
 .detail-nav-row { position: relative; display: flex; height: 56px; align-items: center; justify-content: center; }
 .detail-nav-title {
   color: #5c493c;
-  font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 31rpx;
   font-weight: 600;
   letter-spacing: 1rpx;
@@ -166,7 +166,7 @@
   justify-content: center;
   padding-bottom: 6rpx;
   color: #5c493c;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 56rpx;
   line-height: 1;
 }

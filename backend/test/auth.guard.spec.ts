@@ -18,3 +18,16 @@ test('user auth guard rejects malformed UUID subjects before database access', a
   await assert.rejects(guard.canActivate(context), UnauthorizedException);
   assert.equal(queried, false);
 });
+
+test('user auth guard rejects a profile completion challenge as a normal session', async () => {
+  let queried = false;
+  const guard = new UserAuthGuard(
+    { verifyAsync: async () => ({ sub: '11111111-1111-4111-8111-111111111111', role: 'user', scope: 'profile:complete', exp: Math.floor(Date.now() / 1000) + 60 }) } as unknown as JwtService,
+    { query: async () => { queried = true; return { rows: [{ 1: 1 }] }; } } as unknown as DatabaseService,
+  );
+  const request = { headers: { authorization: 'Bearer profile-token' } };
+  const context = { switchToHttp: () => ({ getRequest: () => request }) } as unknown as ExecutionContext;
+
+  await assert.rejects(guard.canActivate(context), UnauthorizedException);
+  assert.equal(queried, false);
+});

@@ -6,5 +6,7 @@ dist/
 .test-dist/
 .test-artifacts/
 *.tsbuildinfo
+.codex-artifacts/
+__pycache__/
 management/src/**/*.js
 miniprogram/**/*.js

@@ -3,6 +3,8 @@ import { isPublicHomeContent } from '../../utils/content';
 import type { PublicHomeContent } from '../../utils/content';
 import { buildMicroVoice, findMicroVoiceTrack } from '../../utils/micro-voice';
 import type { MicroVoiceAction, MicroVoiceTrack } from '../../utils/micro-voice';
+import { createRecoverableAudio } from '../../utils/recoverable-audio';
+import { refreshAudioSource } from '../../utils/audio-source';
 import { enableShareMenu } from '../../utils/share';
 
 type OfficialArticleRuntime = typeof wx & {
@@ -31,20 +33,28 @@ Page({
     description: '',
     descriptionHtml: '',
     playing: false,
+    buffering: false,
+    playbackError: '',
     progress: 0,
     currentLabel: '00:00',
     durationLabel: '00:00',
   },
   requestGeneration: 0,
   requestedTrackId: '',
+  requestedIssueCode: '',
+  contentRequestInFlight: false,
+  audioSession: null as ReturnType<typeof createRecoverableAudio> | null,
   audioContext: null as WechatMiniprogram.InnerAudioContext | null,
   onLoad(query: Record<string, string | undefined>) {
     enableShareMenu();
+    this.requestedIssueCode = query.issueCode || '';
     this.requestedTrackId = query.id ? decodeURIComponent(query.id) : '';
     this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight });
     void this.loadContent();
   },
+  onShow() { if (this.data.loading && !this.contentRequestInFlight) void this.loadContent(); },
   onHide() {
+    this.contentRequestInFlight = false;
     this.requestGeneration += 1;
     this.stopAudio();
   },
@@ -53,16 +63,19 @@ Page({
     this.stopAudio();
   },
   async loadContent() {
+    this.stopAudio();
     const generation = ++this.requestGeneration;
+    this.contentRequestInFlight = true;
     this.setData({ loading: true, error: '', track: null });
     try {
-      const data = await request<PublicHomeContent>('/content/home', { header: { 'Cache-Control': 'no-cache' } });
+      const data = await request<PublicHomeContent>(this.requestedIssueCode ? `/content/archive/${encodeURIComponent(this.requestedIssueCode)}` : '/content/home', { header: { 'Cache-Control': 'no-cache' } });
       if (generation !== this.requestGeneration) return;
       if (!isPublicHomeContent(data)) throw new Error('本期微声音格式无效');
+      if (this.requestedIssueCode && data.issue?.code !== this.requestedIssueCode) throw new Error('这期微声音暂时无法读取');
       const module = (data.modules || []).find((item) => item.enabled && item.type === 'audio');
       const audio = buildMicroVoice(module);
       const track = findMicroVoiceTrack(audio, this.requestedTrackId);
-      if (!track) throw new Error('这段微声音暂未开放');
+      if (!track || (this.requestedTrackId && track.id !== this.requestedTrackId)) throw new Error('这段微声音暂未开放');
       this.setData({
         loading: false,
         error: '',
@@ -77,7 +90,7 @@ Page({
     } catch (caught) {
       if (generation !== this.requestGeneration) return;
       this.setData({ loading: false, error: apiErrorMessage(caught, '暂时无法读取这段微声音') });
-    }
+    } finally { if (generation === this.requestGeneration) this.contentRequestInFlight = false; }
   },
   toggleAudio() {
     const track = this.data.track;
@@ -85,54 +98,34 @@ Page({
       wx.showToast({ title: '这段声音暂不可用', icon: 'none' });
       return;
     }
-    if (this.audioContext) {
-      if (this.data.playing) {
-        this.audioContext.pause();
-        this.setData({ playing: false });
-      } else {
-        this.audioContext.play();
-        this.setData({ playing: true });
-      }
+    if (this.audioSession) {
+      if (this.data.playing || this.data.buffering) this.audioSession.pause();
+      else this.audioSession.resume();
       return;
     }
-    const context = wx.createInnerAudioContext();
-    this.audioContext = context;
-    this.setData({ playing: true, progress: 0, currentLabel: '00:00', durationLabel: track.duration || '00:00' });
-    context.src = track.audioUrl;
-    context.onCanplay(() => {
-      if (this.audioContext !== context) return;
-      const duration = Math.max(0, Number(context.duration) || 0);
-      if (duration) this.setData({ durationLabel: formatTime(duration) });
+    this.setData({ playbackError: '', progress: 0, currentLabel: '00:00', durationLabel: track.duration || '00:00' });
+    this.audioSession = createRecoverableAudio({
+      source: track.audioUrl,
+      refreshSource: () => refreshAudioSource(this.data.issueCode, '', track.id),
+      onContext: (context) => { this.audioContext = context; },
+      onState: (state) => this.setData({ playing: state === 'playing', buffering: state === 'buffering', playbackError: state === 'error' ? '声音暂时无法播放，请重试。' : '' }),
+      onProgress: (context) => {
+        const duration = Math.max(0, Number(context.duration) || 0);
+        const current = Math.max(0, Number(context.currentTime) || 0);
+        const currentLabel = formatTime(current);
+        const durationLabel = duration ? formatTime(duration) : this.data.durationLabel;
+        if (currentLabel === this.data.currentLabel && durationLabel === this.data.durationLabel) return;
+        this.setData({ progress: duration ? Math.min(100, current / duration * 100) : 0, currentLabel, durationLabel });
+      },
     });
-    context.onTimeUpdate(() => {
-      if (this.audioContext !== context) return;
-      const duration = Math.max(0, Number(context.duration) || 0);
-      const current = Math.max(0, Number(context.currentTime) || 0);
-      this.setData({
-        progress: duration ? Math.min(100, current / duration * 100) : 0,
-        currentLabel: formatTime(current),
-        durationLabel: duration ? formatTime(duration) : this.data.durationLabel,
-      });
-    });
-    context.onEnded(() => {
-      if (this.audioContext !== context) return;
-      this.setData({ playing: false, progress: 0, currentLabel: '00:00' });
-    });
-    context.onError(() => {
-      if (this.audioContext !== context) return;
-      this.setData({ playing: false });
-      wx.showToast({ title: '声音播放失败，请稍后重试', icon: 'none' });
-    });
-    context.play();
   },
   stopAudio() {
-    if (this.audioContext) {
-      this.audioContext.stop();
-      this.audioContext.destroy();
-      this.audioContext = null;
-    }
-    this.setData({ playing: false, progress: 0, currentLabel: '00:00' });
+    this.audioSession?.destroy();
+    this.audioSession = null;
+    this.audioContext = null;
+    this.setData({ playing: false, buffering: false });
   },
+
   handleBack() {
     wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/home/index' }) });
   },
@@ -178,7 +171,7 @@ Page({
   onShareAppMessage() {
     const track = this.data.track;
     const title = track ? `${track.detailTitle || track.title}｜微声音` : '微声音｜MYRIAD SHE';
-    return { title, path: track ? `/pages/audio/detail?id=${encodeURIComponent(track.id)}` : '/pages/audio/index' };
+    return { title, path: track ? `/pages/audio/detail?id=${encodeURIComponent(track.id)}&issueCode=${encodeURIComponent(this.data.issueCode)}` : '/pages/audio/index' };
   },
   onShareTimeline() {
     const track = this.data.track;

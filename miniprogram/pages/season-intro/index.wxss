@@ -8,7 +8,7 @@ page { background: #e7dfd1; }
   background: #e7dfd1;
   color: #4a3f38;
   box-sizing: border-box;
-  font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
 }
 
 /* 顶栏 */
@@ -39,8 +39,8 @@ page { background: #e7dfd1; }
   color: #5c493c;
   line-height: 1;
 }
-.season-back { left: 16rpx; font-family: Georgia, serif; font-size: 56rpx; padding-bottom: 6rpx; }
-.season-more { right: 16rpx; font-family: Georgia, serif; font-size: 30rpx; letter-spacing: 2rpx; }
+.season-back { left: 16rpx; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 56rpx; padding-bottom: 6rpx; }
+.season-more { right: 16rpx; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 30rpx; letter-spacing: 2rpx; }
 .season-back:active, .season-more:active { opacity: .58; }
 
 /* 页眉 */
@@ -280,3 +280,39 @@ page { background: #e7dfd1; }
 .season-spacing-roomy .season-primary { margin-top: 48rpx; }
 .season-spacing-roomy .season-secondary { margin-top: 58rpx; }
 .season-spacing-roomy .season-skip { margin-top: 34rpx; }
+
+/* ---------- 阅读确认与表单解锁轻量动效 ---------- */
+.season-guide-body {
+  animation: season-guide-enter .24s cubic-bezier(.22, 1, .36, 1) both;
+}
+.season-form {
+  transform: translateY(0);
+  transition: opacity .22s ease, transform .22s cubic-bezier(.22, 1, .36, 1);
+}
+.season-form.is-locked {
+  opacity: .5;
+  transform: translateY(8rpx);
+}
+.birth-number {
+  animation: season-value-enter .22s cubic-bezier(.22, 1, .36, 1) both;
+}
+.season-primary {
+  transform: translateY(0);
+  transition: background-color .2s ease, opacity .18s ease, transform .22s cubic-bezier(.22, 1, .36, 1), box-shadow .2s ease;
+}
+.season-primary.is-locked {
+  transform: translateY(6rpx);
+}
+@keyframes season-guide-enter {
+  from { opacity: .35; transform: translateY(12rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes season-value-enter {
+  from { opacity: 0; transform: translateY(5rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .season-guide-body, .birth-number { animation: none; transform: none; }
+  .season-form, .season-primary { transition: none; transform: none; }
+  .season-form.is-locked, .season-primary.is-locked { transform: none; }
+}

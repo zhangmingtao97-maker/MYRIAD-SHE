@@ -2,6 +2,7 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPrivacyPolicyContent } from '../../utils/content';
 import type { PrivacyPolicyContent } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { openWechatPrivacyContract } from '../../utils/privacy-authorization';
 
 function formatBody(html: string) {
   return html.replace(/<(p|div|h[1-6]|ul|ol|li|table|th|td|blockquote)(?=>|\s)[^>]*>/gi, (_match, tag: string) => {
@@ -42,6 +43,7 @@ Page({
   },
   handleBack() { wx.navigateBack({ delta: 1 }); },
   handleMore() { wx.showToast({ title: this.data.label + '由后台持续维护', icon: 'none' }); },
+  openWechatPrivacyContract() { openWechatPrivacyContract(); },
   onShareAppMessage() {
     return shareCard({
       title: '协议与说明｜MYRIAD SHE',

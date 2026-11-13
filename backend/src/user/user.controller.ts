@@ -11,6 +11,7 @@ import { DataEncryptionService } from '../security/data-encryption.service';
 import type { EncryptionPurpose } from '../security/data-encryption.service';
 import { AuthService } from '../auth/auth.service';
 import { StorageService } from '../storage/storage.service';
+import { avatarContentType, avatarMaxBytes, type AvatarFile } from '../storage/avatar-file';
 
 class UpdateSettingsDto {
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean() notificationsEnabled?: boolean;
@@ -41,7 +42,6 @@ type ShippingAddress = {
   postalCode: string;
   nationalCode: string;
 };
-type AvatarFile = { buffer: Buffer; mimetype: string };
 const phoneEncryptionPurpose: EncryptionPurpose = 'user.phone';
 const addressEncryptionPurpose: EncryptionPurpose = 'user.address';
 
@@ -74,24 +74,6 @@ function normalizeShippingAddress(value: unknown): ShippingAddress {
     nationalCode,
   };
 }
-const avatarMaxBytes = 2 * 1024 * 1024;
-
-function avatarContentType(file?: AvatarFile): 'image/jpeg' | 'image/png' | 'image/webp' {
-  const buffer = file?.buffer;
-  if (!Buffer.isBuffer(buffer) || buffer.byteLength === 0 || buffer.byteLength > avatarMaxBytes) {
-    throw new BadRequestException('头像文件无效或超过 2 MB');
-  }
-  const detected = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
-    ? 'image/jpeg'
-    : buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-      ? 'image/png'
-      : buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP'
-        ? 'image/webp'
-        : null;
-  if (!detected || file?.mimetype?.toLowerCase() !== detected) throw new BadRequestException('头像仅支持 JPEG、PNG 或 WebP 图片');
-  return detected;
-}
-
 @Controller('me')
 @UseGuards(UserAuthGuard)
 export class UserController {

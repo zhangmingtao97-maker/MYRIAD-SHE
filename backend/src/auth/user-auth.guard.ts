@@ -15,13 +15,14 @@ export class UserAuthGuard implements CanActivate {
     const header = request.headers.authorization;
     if (!header?.startsWith('Bearer ')) throw new UnauthorizedException('需要用户登录');
     if (header.length > 7 + maxBearerTokenLength) throw new UnauthorizedException('用户登录已失效');
-    let payload: { sub?: string; role?: string; exp?: number };
+    let payload: { sub?: string; role?: string; scope?: string; exp?: number };
     try {
-      payload = await this.jwt.verifyAsync<{ sub?: string; role?: string; exp?: number }>(header.slice(7));
+      payload = await this.jwt.verifyAsync<{ sub?: string; role?: string; scope?: string; exp?: number }>(header.slice(7));
     } catch {
       throw new UnauthorizedException('用户登录已失效');
     }
     if (typeof payload.sub !== 'string' || !userIdPattern.test(payload.sub) || payload.role !== 'user') throw new UnauthorizedException('用户身份无效');
+    if (payload.scope !== undefined && payload.scope !== 'user') throw new UnauthorizedException('用户登录方式无效');
     if (!payload.exp || payload.exp * 1000 <= Date.now()) throw new UnauthorizedException('用户登录已失效');
     const activeUser = await this.database.query(`select 1 from users where id = $1 and status = 'active'`, [payload.sub]);
     if (!activeUser.rows[0]) throw accountDeletedException();

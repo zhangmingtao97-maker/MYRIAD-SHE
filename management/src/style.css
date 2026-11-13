@@ -1,4 +1,4 @@
-:root { color: #3e392e; background: #e0decf; font-family: Garamond, "Source Han Serif CN", "Songti SC", serif; text-rendering: optimizeLegibility; }
+:root { color: #3e392e; background: #e0decf; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; text-rendering: optimizeLegibility; }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: radial-gradient(ellipse at 92% 0%, rgba(255, 253, 249, .84), transparent 48%), #f5f0e8; }
@@ -18,11 +18,11 @@ textarea, select { font: inherit; border: 1px solid #cfc1b2; background: #fff; c
 .dashboard-sidebar { position: sticky; top: 0; height: 100vh; min-height: 100vh; padding: 28px 16px; background: rgba(255, 250, 244, .94); border: 0; border-right: 1px solid #ded3c5; box-shadow: 8px 0 28px rgba(77, 49, 34, .035); }
 .dashboard-brand { display: flex; align-items: center; padding: 4px 10px 16px; }
 .dashboard-brand-copy { min-width: 0; }
-.dashboard-brand strong { color: #40362f; font-family: Georgia, serif; font-size: 24px; font-weight: 500; }
+.dashboard-brand strong { color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 24px; font-weight: 500; }
 .dashboard-workspace { min-width: 0; padding: 44px clamp(28px, 4vw, 64px) 64px; }
 .login-panel { max-width: 440px; margin: 10vh auto; padding: 36px; background: #fffdf9; border: 1px solid #ded3c5; }
 .eyebrow { margin: 0 0 12px; color: #8b6b58; font-size: 12px; letter-spacing: .14em; }
-h1 { margin: 0 0 10px; font-family: Georgia, serif; font-size: clamp(28px, 4vw, 42px); font-weight: 500; }
+h1 { margin: 0 0 10px; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: clamp(28px, 4vw, 42px); font-weight: 500; }
 .muted, small { color: #88786b; }
 form { display: grid; gap: 16px; margin-top: 28px; }
 label { display: grid; gap: 7px; font-size: 14px; }
@@ -90,7 +90,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .member-filters { grid-template-columns: minmax(240px, 1.6fr) repeat(2, minmax(150px, 1fr)) auto; align-items: end; }
 .member-summary { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .member-avatar, .member-avatar-placeholder { display: flex; flex: 0 0 38px; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid #ded3c5; border-radius: 50%; background: #f1e8de; color: #663124; object-fit: cover; }
-.member-avatar-placeholder { font-family: Georgia, serif; font-size: 17px; }
+.member-avatar-placeholder { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 17px; }
 .member-summary-copy { display: grid; gap: 3px; min-width: 0; }
 .member-summary-copy strong { overflow: hidden; color: #40362f; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .member-summary-copy small { overflow: hidden; color: #75675d; font-size: 10px; text-overflow: ellipsis; }
@@ -101,11 +101,11 @@ button:disabled { opacity: .6; cursor: wait; }
 .member-permission-guide > div:last-child { border-color: #d8d8c9; background: #fafbf6; }
 .member-permission-guide strong { color: #40362f; font-size: 13px; }
 .member-detail-profile { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-.member-detail-profile strong { color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 19px; font-weight: 600; }
+.member-detail-profile strong { color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 19px; font-weight: 600; }
 .employee-head { grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) minmax(170px, 1fr) minmax(170px, 1fr) minmax(100px, .6fr); }
 .settings-form { display: grid; gap: 24px; max-width: 820px; padding: 24px; background: rgba(255,253,249,.9); border: 1px solid #ded3c5; }
 .settings-form > label { display: grid; gap: 8px; }
-.settings-shell { width: 100%; max-width: 1040px; overflow: hidden; border: 1px solid #d8c8b8; border-radius: 16px; background: #fffdf9; box-shadow: 0 18px 44px rgba(77, 49, 34, .06); }
+.settings-shell { width: 100%; max-width: none; overflow: hidden; border: 1px solid #d8c8b8; border-radius: 16px; background: #fffdf9; box-shadow: 0 18px 44px rgba(77, 49, 34, .06); }
 .settings-tabs { display: flex; width: 100%; margin: 0; padding: 0; overflow-x: auto; border-bottom: 1px solid #e1d6c9; background: #f4ede5; scrollbar-width: thin; }
 .settings-tab { position: relative; display: grid; flex: 1 0 190px; grid-template-columns: 34px minmax(0, 1fr); align-items: center; align-content: center; gap: 12px; min-height: 78px; padding: 14px 20px; border: 0; border-right: 1px solid #e2d7ca; border-radius: 0; background: transparent; color: #75675d; text-align: left; box-shadow: none; }
 .settings-tab:last-child { border-right: 0; }
@@ -140,22 +140,22 @@ button:disabled { opacity: .6; cursor: wait; }
 
 .settings-switch-card { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 22px; border: 1px solid #d8c8b8; border-left: 3px solid #663124; background: #fffdf9; box-shadow: 0 8px 22px rgba(77, 49, 34, .035); }
 .settings-switch-card-copy { display: grid; gap: 7px; min-width: 0; }
-.settings-switch-card-copy h3 { margin: 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 20px; font-weight: 500; }
+.settings-switch-card-copy h3 { margin: 0; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 20px; font-weight: 500; }
 .settings-switch-card-copy p { max-width: 570px; margin: 0; color: #78685b; font-size: 13px; line-height: 1.65; }
 .settings-switch-control { display: inline-flex !important; flex: 0 0 auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #ded3c5; border-radius: 999px; background: #f8f4ee; color: #6e594a; font-size: 12px; line-height: 1; white-space: nowrap; cursor: pointer; }
 .settings-switch-control input { flex: 0 0 auto; width: 20px; height: 20px; margin: 0; accent-color: #663124; cursor: pointer; }
 .settings-switch-control input:disabled { cursor: not-allowed; }
-.settings-form--single { width: 100%; max-width: 920px; }
+.settings-form--single { width: 100%; max-width: none; }
 .store-access-rule { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 22px; border: 1px solid #d8c8b8; background: #f7f1e8; }
 .store-access-rule > div { display: grid; gap: 7px; min-width: 0; }
-.store-access-rule h3 { margin: 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 19px; font-weight: 500; }
+.store-access-rule h3 { margin: 0; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 19px; font-weight: 500; }
 .store-access-rule p:not(.eyebrow) { max-width: 620px; margin: 0; color: #78685b; font-size: 13px; line-height: 1.65; }
 .store-access-rule .eyebrow { margin: 0; }
 
 .section-description { max-width: 680px; margin: 10px 0 0; color: #78685b; font-size: 14px; line-height: 1.7; }
 .brand-popup-settings { display: grid; gap: 20px; padding: 0; border: 0; background: transparent; }
 .brand-popup-settings-heading { padding-bottom: 20px; border-bottom: 1px solid #e1d6c9; }
-.brand-popup-settings-heading h3 { margin: 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 22px; font-weight: 500; }
+.brand-popup-settings-heading h3 { margin: 0; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22px; font-weight: 500; }
 .brand-popup-settings-heading p:not(.eyebrow) { max-width: 510px; margin: 8px 0 0; color: #78685b; font-size: 13px; line-height: 1.65; }
 .brand-popup-master-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 18px; border: 1px solid #e1d6c9; border-radius: 10px; background: #faf7f2; }
 .brand-popup-master-row > span:first-child { display: grid; gap: 4px; min-width: 0; }
@@ -209,7 +209,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .health-dependencies span { padding: 5px 8px; border: 1px solid #cfc1b2; border-radius: 3px; }
 .health-dependencies .healthy { color: #47684e; border-color: #9fc2a5; }
 .health-dependencies .unhealthy { color: #8b6b58; }
-.panel p:not(.eyebrow) { font-family: Georgia, serif; font-size: 22px; line-height: 1.45; }
+.panel p:not(.eyebrow) { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22px; line-height: 1.45; }
 .wide { grid-column: 1 / -1; }
 .content-area { margin-top: 36px; animation: section-enter .3s cubic-bezier(.2,.75,.25,1) backwards; }
 .content-area > :nth-child(2) { animation: section-enter .34s .04s cubic-bezier(.2,.75,.25,1) backwards; }
@@ -217,15 +217,15 @@ button:disabled { opacity: .6; cursor: wait; }
 .section-heading { display: flex; justify-content: space-between; align-items: end; border-bottom: 1px solid #ded3c5; padding-bottom: 16px; }
 .section-tools { display: flex; align-items: center; gap: 12px; text-align: right; }
 .lifecycle-policy { margin: 12px 0 0; font-size: 13px; }
-h2 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
+h2 { margin: 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-weight: 500; }
 .issue-form { margin: 20px 0; padding: 24px; background: rgba(255, 253, 249, .92); border: 1px solid #ded3c5; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; box-shadow: 0 8px 26px rgba(77, 49, 34, .045); }
 .issue-form .full { grid-column: 1 / -1; }
 .issue-meta-editor { display: grid; gap: 12px; padding: 18px; border: 1px solid #ded3c5; background: #f8f4ee; }
 .cover-caption-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 18px; border: 1px solid #ded3c5; background: #f8f4ee; }
 .cover-caption-editor > .section-heading, .cover-caption-editor > .muted, .cover-caption-preview { grid-column: 1 / -1; }
 .cover-caption-editor .section-heading { margin: 0; }
-.cover-caption-editor h3 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
-.cover-caption-preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 14px; background: #ebe2d6; color: #40362f; font-family: Georgia, serif; line-height: 1.4; }
+.cover-caption-editor h3 { margin: 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-weight: 500; }
+.cover-caption-preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 14px; background: #ebe2d6; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; line-height: 1.4; }
 .cover-caption-preview span { min-width: 0; overflow-wrap: anywhere; }
 .cover-caption-preview span:last-child { text-align: right; }
 .issue-meta-editor .section-heading { margin: 0; }
@@ -249,7 +249,7 @@ h2 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
 .practice-footer-editor > .field-help { grid-column: 1 / -1; margin: 0; }
 .observation-copy-groups { display: grid; gap: 16px; }
 .observation-copy-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; padding: 20px; border: 1px solid #ded3c5; background: rgba(255, 253, 249, .9); }
-.observation-copy-group h3 { grid-column: 1 / -1; margin: 0; color: #663124; font-family: Georgia, serif; font-weight: 500; }
+.observation-copy-group h3 { grid-column: 1 / -1; margin: 0; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-weight: 500; }
 .copy-field { min-width: 0; }
 .copy-field.is-locating .rich-text-canvas { border-color: #a3432e; box-shadow: 0 0 0 3px rgba(163, 67, 46, .18); }
 .copy-field.is-locating .rich-text-label { color: #a3432e; }
@@ -301,7 +301,7 @@ h2 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
 .mine-editor-tab:focus-visible, .mine-copy-group:focus-visible { outline: 3px solid #bf7c50; outline-offset: 2px; }
 .mine-page-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
 .mine-copy-group { display: grid; align-content: start; gap: 14px; min-width: 0; padding: 20px; border: 1px solid #ded3c5; background: #fffdf9; }
-.mine-copy-group h3 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
+.mine-copy-group h3 { margin: 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-weight: 500; }
 .rich-text-field { display: grid; gap: 8px; min-width: 0; }
 .rich-text-label { color: #40362f; font-weight: 600; }
 .rich-text-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid #ded3c5; background: #f7f2eb; }
@@ -334,7 +334,7 @@ h2 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
 .practice-entry-toggle { display: flex; flex: 1; align-items: center; gap: 16px; min-width: 0; min-height: 52px; padding: 8px 4px; color: #40362f; background: transparent; text-align: left; }
 .practice-entry-toggle:hover, .practice-entry-toggle:active { color: #663124; background: transparent; box-shadow: none; transform: none; }
 .practice-entry-toggle:focus-visible { outline: 2px solid #8b4a36; outline-offset: 2px; }
-.practice-entry-index { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border: 1px solid #d9cabb; border-radius: 50%; color: #8b6b58; font-family: Georgia, serif; font-size: 12px; }
+.practice-entry-index { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border: 1px solid #d9cabb; border-radius: 50%; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; }
 .practice-entry-summary { display: grid; gap: 4px; min-width: 0; }
 .practice-entry-summary strong { overflow: hidden; color: #40362f; font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .practice-entry-summary small, .practice-entry-protected { color: #897d72; font-size: 12px; }
@@ -363,7 +363,7 @@ h2 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
 .practice-line-style label { display: grid; align-content: start; gap: 6px; color: #66584c; font-size: 12px; }
 .practice-line-style input[type="number"] { width: 100%; min-height: 42px; }
 .practice-line-style input[type="color"] { width: 100%; min-height: 42px; padding: 4px; border: 1px solid #cfc1b2; background: #fffdf9; }
-.practice-line-editor .rich-text-canvas { min-height: 60px; font-family: Georgia, serif; }
+.practice-line-editor .rich-text-canvas { min-height: 60px; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .practice-entry-state { display: grid; gap: 7px; align-content: start; padding: 14px; border: 1px solid #e4dbd1; color: #66584c; background: rgba(255, 253, 249, .76); font-size: 12px; }
 .practice-entry-state strong { color: #40362f; font-size: 14px; font-weight: 500; }
 .practice-entry-state small { line-height: 1.5; overflow-wrap: anywhere; }
@@ -428,11 +428,11 @@ input[type="file"] { padding: 8px; font-size: 13px; }
 .observation-view-button:hover:not(:disabled) { border-color: #8b4a36; background: #f7f0e8; box-shadow: none; transform: none; }
 .observation-detail-panel { display: grid; gap: 14px; margin-top: 20px; padding: 22px; border: 1px solid #cdbbae; background: #f8f4ee; }
 .observation-detail-panel .section-heading { margin: 0; }
-.observation-detail-panel h3 { margin: 0; font-family: Georgia, serif; font-weight: 500; }
+.observation-detail-panel h3 { margin: 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-weight: 500; }
 .observation-answer { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #e4dbd1; background: #fffdf9; }
 .observation-answer h4 { margin: 0; color: #8b6b58; font-size: 12px; font-weight: 500; }
 .observation-answer p { margin: 0; color: #40362f; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
-.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.mono { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .privacy-head { grid-template-columns: 1fr 1fr .8fr 1.5fr; }
 .privacy-head span:last-child small { display: block; margin-top: 4px; }
 .audit-head { grid-template-columns: 1.5fr 1.5fr 1fr .7fr; }
@@ -467,19 +467,19 @@ button { border-radius: 14px; }
 .about-draft-preview { position: sticky; top: 20px; overflow: hidden; border: 1px solid #d8cabb; background: #e7dfd1; color: #5c493c; }
 .about-draft-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid rgba(92,73,60,.22); }
 .about-draft-preview-heading .eyebrow { margin: 0 0 5px; color: #8b6b58; font-size: 10px; letter-spacing: .12em; }
-.about-draft-preview-heading h3 { margin: 0; font-family: Georgia, serif; font-size: 16px; font-weight: 500; }
+.about-draft-preview-heading h3 { margin: 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 16px; font-weight: 500; }
 .draft-state { padding: 5px 9px; border: 1px solid rgba(142,73,60,.38); color: #8e493c; font-size: 11px; white-space: nowrap; }
 .about-preview-content { display: grid; gap: 18px; max-height: min(68vh, 680px); overflow-y: auto; padding: 20px; }
-.about-preview-brand { display: flex; justify-content: space-between; margin: 0; color: #8b6b58; font-family: Georgia, serif; font-size: 11px; letter-spacing: .12em; }
-.about-preview-content > h4 { margin: 22px 0 0; font-family: Georgia, "Songti SC", serif; font-size: 25px; line-height: 1.4; }
+.about-preview-brand { display: flex; justify-content: space-between; margin: 0; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 11px; letter-spacing: .12em; }
+.about-preview-content > h4 { margin: 22px 0 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 25px; line-height: 1.4; }
 .about-preview-content section { padding-top: 14px; border-top: 1px solid rgba(92,73,60,.22); }
 .about-preview-content h5 { margin: 0 0 8px; color: #8b6b58; font-size: 12px; font-weight: 500; }
-.about-preview-content section p { margin: 0; font-family: Georgia, "Songti SC", serif; font-size: 13px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.about-preview-content section p { margin: 0; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 13px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 .about-history-list { display: grid; gap: 16px; margin-top: 22px; }
 .about-history-card { display: grid; gap: 14px; padding: 20px; border: 1px solid #ded3c5; background: #fffdf9; }
 .about-history-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 12px; border-bottom: 1px solid #e4dbd1; }
 .about-history-card .eyebrow { margin: 0 0 4px; color: #8b6b58; font-size: 10px; letter-spacing: .12em; }
-.about-history-card h3 { margin: 0; color: #663124; font-family: Georgia, serif; font-size: 18px; font-weight: 500; }
+.about-history-card h3 { margin: 0; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 18px; font-weight: 500; }
 .about-history-card time { color: #716155; font-size: 12px; line-height: 1.5; text-align: right; }
 .about-history-actor { margin: 0; color: #40362f; font-size: 13px; }
 .about-history-snapshot { display: grid; gap: 12px; }
@@ -497,13 +497,13 @@ button { border-radius: 14px; }
 .issue-list-item small { color: #806854; }
 .issue-live-home { padding-top: 12px; border-top: 1px solid #e4dbd1; color: #49392f; }
 .issue-live-home > summary { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style-position: inside; }
-.issue-live-home > summary span { color: #8b6b58; font-family: Georgia, serif; font-size: 12px; }
+.issue-live-home > summary span { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; }
 .issue-live-home-body { display: grid; gap: 5px; padding: 8px 0 4px; }
 .issue-live-home-body > strong { font-size: 13px; font-weight: 600; line-height: 1.5; }
 .issue-live-home-body > small { color: #806854; font-size: 11px; }
 .issue-live-home-body ol { display: grid; gap: 0; margin: 8px 0 0; padding: 0; list-style: none; }
 .issue-live-home-body li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; padding: 9px 0; border-top: 1px solid #eee7de; }
-.issue-live-home-body li > span { color: #8b6b58; font-family: Georgia, serif; font-size: 11px; }
+.issue-live-home-body li > span { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 11px; }
 .issue-live-home-body li > div { display: grid; min-width: 0; gap: 3px; }
 .issue-live-home-body li strong { font-size: 12px; font-weight: 500; }
 .issue-live-home-body li small { overflow: hidden; color: #806854; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
@@ -513,13 +513,13 @@ button { border-radius: 14px; }
 .issue-module-picker { display: grid; max-height: 252px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow-y: auto; padding: 2px; }
 .issue-module-picker button { display: grid; min-width: 0; min-height: 44px; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid #ded3c5; border-radius: 6px; background: #fffdf9; color: #49392f; cursor: pointer; text-align: left; }
 .issue-module-picker button.active { border-color: #94634f; background: #f6eee5; }
-.issue-module-picker button > small { color: #8b6b58; font-family: Georgia, serif; font-size: 10px; }
+.issue-module-picker button > small { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 10px; }
 .issue-module-picker button > span { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .issue-module-picker button > em { color: #8b6b58; font-size: 10px; font-style: normal; }
 .issue-module-list { display: grid; gap: 12px; }
 .issue-module-card { display: grid; gap: 12px; padding: 14px; border: 1px solid #e2d8cc; border-radius: 14px; background: #fffdf9; }
 .issue-module-card > header { display: flex; align-items: center; gap: 8px; color: #806854; font-size: 12px; }
-.issue-module-card > header > span { margin-right: auto; font-family: Georgia, serif; }
+.issue-module-card > header > span { margin-right: auto; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .issue-module-card label, .issue-editor-form > label, .issue-legacy-fields label { display: grid; gap: 6px; min-width: 0; color: #6e594a; font-size: 12px; }
 .issue-module-card input, .issue-module-card textarea, .issue-editor-form input, .issue-editor-form textarea { width: 100%; min-width: 0; box-sizing: border-box; }
 .issue-module-card textarea { resize: vertical; line-height: 1.65; }
@@ -553,23 +553,23 @@ button { border-radius: 14px; }
 .discussion-live-preview { margin-top: 8px; }
 .discussion-phone-preview { overflow: hidden; width: min(100%, 390px); margin: 8px auto; border: 9px solid #59483d; border-radius: 24px; background: #e7dfd1; color: #49392f; }
 .discussion-phone-preview > header { display: flex; height: 48px; align-items: center; justify-content: space-between; padding: 0 14px; border-bottom: 1px solid #cdbbae; }
-.discussion-phone-preview > header strong { font-family: Georgia, "Songti SC", serif; }
+.discussion-phone-preview > header strong { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .discussion-phone-body { max-height: min(60vh, 500px); overflow-y: auto; padding: 22px 16px; }
 .discussion-phone-body > small { color: #8b6b58; font-size: 10px; }
-.discussion-phone-body > p, .discussion-phone-body section p { color: #49392f; font-family: Georgia, "Songti SC", serif; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
-.discussion-phone-body > h3, .discussion-phone-body section h3 { margin: 20px 0 14px; color: #49392f; font-family: Georgia, "Songti SC", serif; font-size: 23px; line-height: 1.5; white-space: pre-wrap; }
+.discussion-phone-body > p, .discussion-phone-body section p { color: #49392f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
+.discussion-phone-body > h3, .discussion-phone-body section h3 { margin: 20px 0 14px; color: #49392f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 23px; line-height: 1.5; white-space: pre-wrap; }
 .discussion-phone-issue { margin-top: 26px; color: #8b6b58 !important; }
 .discussion-phone-link { display: flex; justify-content: space-between; margin: 22px 0 10px; padding: 12px 0; border-block: 1px solid #8b6b58; color: #663124; }
 .discussion-phone-primary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 10px; padding: 14px 15px; border: 1px solid #663124; background: #663124; color: #f5f0e8; }
 .discussion-phone-primary-copy { display: grid; gap: 3px; }
 .discussion-phone-primary-copy small { color: rgba(245, 240, 232, .78); font-size: 9px; line-height: 1.5; }
-.discussion-phone-primary > span { font-family: Georgia, serif; font-size: 20px; line-height: 1; }
+.discussion-phone-primary > span { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 20px; line-height: 1; }
 .discussion-phone-body > section { padding: 22px 0; border-bottom: 1px solid #cdbbae; }
 .discussion-phone-body section article { margin: 12px 0 0 12px; padding-left: 12px; border-left: 1px solid #cdbbae; }
 .discussion-phone-body section article small { color: #8b6b58; font-size: 10px; }
 .discussion-compose-phone-preview .discussion-phone-body > h3 { margin-top: 30px; }
 .discussion-compose-preview-label { margin-top: 22px; padding-bottom: 10px; border-bottom: 1px solid rgba(92,73,60,.34); color: #663124; font-size: 11px; }
-.discussion-compose-preview-input { min-height: 150px; padding: 14px 0; color: #988878; font-family: Georgia, "Songti SC", serif; font-size: 12px; line-height: 1.8; }
+.discussion-compose-preview-input { min-height: 150px; padding: 14px 0; color: #988878; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; line-height: 1.8; }
 .discussion-compose-preview-count { color: #75675d; font-size: 10px; text-align: right; }
 .discussion-compose-preview-actions { display: flex; justify-content: space-between; margin-top: 24px; padding: 12px 0; color: #663124; font-size: 11px; }
 .discussion-detail-copy { display: grid; gap: 12px; margin-top: 18px; padding: 14px; border: 1px solid #d8c9b8; border-radius: 6px; background: #f3ece2; }
@@ -583,8 +583,8 @@ button { border-radius: 14px; }
 .discussion-thread-preview-origin > .rich-text-view { margin-top: 10px; }
 .discussion-thread-preview-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(92, 73, 60, .24); color: #663124; font-size: 10px; }
 .discussion-thread-preview-replies { padding-bottom: 4px; }
-.discussion-thread-preview-replies h4 { margin: 0 0 12px; color: #49392f; font-family: Georgia, "Songti SC", serif; font-size: 15px; }
-.discussion-thread-preview-footer { display: grid; gap: 1px; margin-top: 18px; border-block: 1px solid #8b6b58; color: #663124; font-family: Georgia, "Songti SC", serif; font-size: 12px; }
+.discussion-thread-preview-replies h4 { margin: 0 0 12px; color: #49392f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 15px; }
+.discussion-thread-preview-footer { display: grid; gap: 1px; margin-top: 18px; border-block: 1px solid #8b6b58; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; }
 .discussion-thread-preview-footer > span { display: flex; align-items: center; justify-content: space-between; min-height: 46px; padding: 0 2px; }
 .discussion-thread-preview-footer > span + span { border-top: 1px solid rgba(92, 73, 60, .24); }
 .cover-story-typography { align-items: end; padding: 12px; border: 1px solid #e9dfd3; border-radius: 10px; background: #faf7f1; }
@@ -599,30 +599,30 @@ button { border-radius: 14px; }
 .issue-preview-disclosure > summary span { color: #8b6b58; font-size: 11px; font-weight: 400; }
 .issue-preview-disclosure[open] { padding: 14px; }
 .issue-phone-preview { overflow: hidden; width: min(100%, 390px); margin: 4px auto; border: 9px solid #59483d; border-radius: 28px; background: #e7dfd1; color: #49392f; box-shadow: 0 12px 28px rgba(64,54,47,.12); }
-.issue-phone-preview-head { display: grid; gap: 6px; padding: 17px 14px; border-bottom: 1px solid #cdbbae; font-family: Georgia, serif; text-align: center; }
+.issue-phone-preview-head { display: grid; gap: 6px; padding: 17px 14px; border-bottom: 1px solid #cdbbae; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; text-align: center; }
 .issue-phone-preview-head small { color: #8b6b58; font-family: inherit; font-size: 10px; }
 .issue-phone-preview-body { max-height: min(56vh, 420px); overflow-y: auto; overscroll-behavior: contain; padding: 0 16px; }
 .issue-phone-preview-body article { padding: 24px 0; border-bottom: 1px solid #cdbbae; }
 .issue-phone-preview-body small { color: #8b6b58; font-size: 10px; }
-.issue-phone-preview-body h3 { margin: 12px 0; color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 23px; line-height: 1.45; }
-.issue-phone-preview-body p { margin: 0; color: #5e5045; font-family: Georgia, "Songti SC", serif; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
+.issue-phone-preview-body h3 { margin: 12px 0; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 23px; line-height: 1.45; }
+.issue-phone-preview-body p { margin: 0; color: #5e5045; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
 .preview-issueMeta { padding: 21px 0 14px !important; border-bottom: 0 !important; }
 .preview-issue-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; color: #40362f; }
-.preview-issue-meta small { color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 12px; line-height: 1.5; letter-spacing: 2px; }
-.preview-issue-meta strong { color: inherit; font-family: Georgia, serif; font-size: 17px; font-weight: 400; line-height: 1.4; letter-spacing: 1px; }
-.preview-issue-meta span { color: #8b6b58; font-family: Georgia, serif; font-size: 11px; line-height: 1.5; letter-spacing: 1px; text-transform: uppercase; }
+.preview-issue-meta small { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; line-height: 1.5; letter-spacing: 2px; }
+.preview-issue-meta strong { color: inherit; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 17px; font-weight: 400; line-height: 1.4; letter-spacing: 1px; }
+.preview-issue-meta span { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 11px; line-height: 1.5; letter-spacing: 1px; text-transform: uppercase; }
 .preview-cover { text-align: center; }
 .preview-image-placeholder { display: grid; min-height: 120px; place-items: center; margin-top: 10px; background: #ddd1c3; color: #806854; font-size: 11px; }
 .preview-image { display: block; width: 100%; max-height: 300px; margin-top: 10px; object-fit: cover; }
 .preview-coverStory { margin: 0 -16px; padding: 0 !important; border: 0 !important; background: #e9e0d2; }
 .preview-coverStory .preview-image, .preview-coverStory .preview-image-placeholder { width: 100%; height: 280px; max-height: none; margin: 0; object-fit: cover; }
-.preview-cover-caption { display: flex; justify-content: space-between; gap: 12px; padding: 10px 20px; color: #8a6755; font-family: Georgia, "Songti SC", serif; font-size: 10px; }
+.preview-cover-caption { display: flex; justify-content: space-between; gap: 12px; padding: 10px 20px; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 10px; }
 .preview-cover-copy { padding: 30px 22px 34px; color: #40362f; }
 .preview-cover-copy small { color: #976e59; font-size: 11px; letter-spacing: 1px; }
-.preview-cover-copy h3 { margin: 16px 0 16px; color: #59483d; font-family: Georgia, "Songti SC", serif; font-size: 30px; line-height: 1.18; white-space: pre-wrap; }
-.preview-cover-copy p { color: #40362f; font-family: Georgia, "Songti SC", serif; font-size: 13px; font-weight: 600; line-height: 1.75; white-space: pre-wrap; }
-.preview-cover-copy footer { margin-top: 22px; color: #8a6755; font-family: Georgia, "Songti SC", serif; font-size: 10px; letter-spacing: .5px; }
-.preview-story { margin: 0 6px; padding: 22px 0 88px !important; border-top: 1px solid #c3b4a4; border-bottom: 0 !important; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; background: #e7dfd1; }
+.preview-cover-copy h3 { margin: 16px 0 16px; color: #59483d; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 30px; line-height: 1.18; white-space: pre-wrap; }
+.preview-cover-copy p { color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 13px; font-weight: 600; line-height: 1.75; white-space: pre-wrap; }
+.preview-cover-copy footer { margin-top: 22px; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 10px; letter-spacing: .5px; }
+.preview-story { margin: 0 6px; padding: 22px 0 88px !important; border-top: 1px solid #c3b4a4; border-bottom: 0 !important; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; background: #e7dfd1; }
 .preview-story-kicker { display: grid; grid-template-columns: 48px 1fr; color: #663124; font-size: 12px; letter-spacing: .12em; line-height: 1.4; }
 .preview-story blockquote { margin: 56px 0 29px 32px; color: #5c493c; font-size: 30px; font-weight: 400; line-height: 1.48; white-space: pre-wrap; }
 .preview-story .preview-story-copy { color: #5c493c; font-family: inherit; font-size: 16px; font-weight: 400; line-height: 1.78; }
@@ -630,11 +630,11 @@ button { border-radius: 14px; }
 .preview-story .preview-image { width: 100%; height: auto; aspect-ratio: 3 / 2; max-height: none; margin: 72px 0 0; object-fit: cover; object-position: 78% 74%; }
 .preview-story footer { display: grid; grid-template-columns: 112px 1fr; gap: 18px; margin-top: 14px; color: #663124; font-family: inherit; font-size: 12px; line-height: 1.55; }
 .preview-story footer span { color: #5c493c; font-size: 13px; line-height: 1.7; }
-.preview-audio { margin: 0 6px; padding: 20px 0 39px !important; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; }
-.preview-audio-kicker, .preview-question-kicker { display: grid; grid-template-columns: 44px 1fr auto; align-items: baseline; color: #663124; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 12px; line-height: 1.4; letter-spacing: .12em; }
+.preview-audio { margin: 0 6px; padding: 20px 0 39px !important; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
+.preview-audio-kicker, .preview-question-kicker { display: grid; grid-template-columns: 44px 1fr auto; align-items: baseline; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; line-height: 1.4; letter-spacing: .12em; }
 .preview-audio-kicker time { text-align: right; font-size: 11px; letter-spacing: .04em; }
 .preview-audio-feature { display: grid; grid-template-columns: 44px 1fr; margin-top: 38px; }
-.preview-audio-play { padding-top: 4px; color: #5c493c; font-family: Garamond, "Times New Roman", serif; font-size: 13px; }
+.preview-audio-play { padding-top: 4px; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 13px; }
 .preview-audio-feature h3 { margin: 0; color: #5c493c; font-size: 24px; font-weight: 600; line-height: 1.5; white-space: pre-wrap; }
 .preview-audio-subtitle { margin: 12px 0 0; color: #5c493c; font-size: 14px; font-weight: 500; line-height: 1.65; }
 .preview-audio-transcript { margin: 18px 0 0; color: #5c493c; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
@@ -642,37 +642,37 @@ button { border-radius: 14px; }
 .preview-audio-more h4 { margin: 12px 0 0; color: #8a6755; font-size: 12px; font-weight: 400; }
 .preview-audio-more-item { padding: 14px 0 16px; border-bottom: 1px solid rgba(92, 73, 60, .2); }
 .preview-audio-more-title { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: baseline; gap: 8px; color: #5c493c; }
-.preview-audio-more-title > span, .preview-audio-more-title time { color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 12px; }
+.preview-audio-more-title > span, .preview-audio-more-title time { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; }
 .preview-audio-more-title strong { font-size: 14px; font-weight: 500; }
 .preview-audio-more-item p, .preview-audio-more-item blockquote { margin: 8px 0 0; color: #5c493c; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
 .preview-audio-more-item blockquote { margin-top: 12px; font-size: 16px; }
-.preview-question { margin: 0 6px; padding: 20px 0 65px !important; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; }
+.preview-question { margin: 0 6px; padding: 20px 0 65px !important; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .preview-question-kicker { grid-template-columns: 44px 1fr; }
-.preview-question-intro { margin: 56px 0 0 !important; color: #8a6755 !important; font-family: Garamond, "Times New Roman", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 12px !important; line-height: 1.5; text-align: center; }
+.preview-question-intro { margin: 56px 0 0 !important; color: #8a6755 !important; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px !important; line-height: 1.5; text-align: center; }
 .preview-question-title { margin: 25px 0 0 !important; color: #5c493c !important; font-size: 24px !important; font-weight: 600; line-height: 1.55; text-align: center; white-space: pre-wrap; }
 .preview-question-body { margin: 29px 0 0 !important; color: #5c493c !important; font-size: 16px !important; line-height: 1.78; white-space: pre-wrap; }
 .preview-question-actions { margin: 29px 8px 0; border-top: 1px solid rgba(92, 73, 60, .24); }
 .preview-question-action { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; border-bottom: 1px solid rgba(92, 73, 60, .24); color: #5c493c; }
 .preview-question-action strong { display: block; font-size: 16px; font-weight: 400; line-height: 1.5; }
 .preview-question-action small { display: block; margin-top: 4px; color: #5c493c; font-size: 12px; line-height: 1.6; }
-.preview-question-action > span { flex: 0 0 auto; color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 17px; }
+.preview-question-action > span { flex: 0 0 auto; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 17px; }
 .preview-contents { padding: 14px 0 80px !important; color: #5c493c; }
-.preview-contents-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 6px; color: #8a6755; font-family: Georgia, "Songti SC", serif; font-size: 12px; }
-.preview-contents-heading small { color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 10px; letter-spacing: .08em; }
+.preview-contents-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 6px; color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; }
+.preview-contents-heading small { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 10px; letter-spacing: .08em; }
 .preview-contents-row { display: grid; grid-template-columns: 32px 82px minmax(0, 1fr); align-items: center; min-height: 48px; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(92, 73, 60, .24); }
-.preview-contents-row small { color: #8a6755; font-family: Garamond, "Times New Roman", serif; font-size: 10px; }
-.preview-contents-row strong { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 14px; font-weight: 500; }
-.preview-contents-row span { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 11px; line-height: 1.5; }
+.preview-contents-row small { color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 10px; }
+.preview-contents-row strong { color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 14px; font-weight: 500; }
+.preview-contents-row span { color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 11px; line-height: 1.5; }
 .preview-archive { min-height: 0; margin: 0 4px; padding: 20px 0 80px !important; border-bottom: 0 !important; color: #5c493c; }
-.preview-archive-heading { color: #8a6755; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 12px; line-height: 1.5; }
+.preview-archive-heading { color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 12px; line-height: 1.5; }
 .preview-archive-entry { display: grid; gap: 8px; margin-top: 30px; padding-bottom: 14px; border-bottom: 1px solid rgba(92, 73, 60, .24); }
-.preview-archive-entry small { color: #8a6755; font-family: Garamond, "Times New Roman", serif; font-size: 10px; letter-spacing: .04em; }
-.preview-archive-entry strong { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 15px; font-weight: 600; line-height: 1.5; }
-.preview-archive-entry strong span { color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 17px; }
+.preview-archive-entry small { color: #8a6755; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 10px; letter-spacing: .04em; }
+.preview-archive-entry strong { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.preview-archive-entry strong span { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 17px; }
 .preview-brandFooter { position: relative; min-height: 335px; margin: 0 -16px; padding: 60px 16px 12px !important; overflow: hidden; border-top: 1px solid #cdbbae; border-bottom: 0 !important; background: #e7dfd1; box-sizing: border-box; }
-.preview-footer-brand { color: #663124; font-family: Garamond, "Times New Roman", serif; font-size: 21px; font-weight: 400; line-height: 1.35; }
-.preview-footer-title { margin-top: 75px; color: #5c493c; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif; font-size: 28px; font-weight: 600; line-height: 1.4; }
-.preview-footer-copy { position: relative; z-index: 1; max-width: 310px; margin: 21px 0 0 !important; color: #40362f !important; font-family: "Source Han Serif CN", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", STSong, serif !important; font-size: 14px !important; font-weight: 500; line-height: 1.7; }
+.preview-footer-brand { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 21px; font-weight: 400; line-height: 1.35; }
+.preview-footer-title { margin-top: 75px; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 28px; font-weight: 600; line-height: 1.4; }
+.preview-footer-copy { position: relative; z-index: 1; max-width: 310px; margin: 21px 0 0 !important; color: #40362f !important; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 14px !important; font-weight: 500; line-height: 1.7; }
 .preview-footer-flower { position: absolute; right: 4px; bottom: 0; width: 75px; height: 75px; opacity: .36; }
 .preview-footer-flower i { position: absolute; width: 29px; height: 38px; background: #a99181; border-radius: 58% 42% 62% 38%; }
 .preview-footer-flower i:nth-child(1) { top: 0; left: 23px; }

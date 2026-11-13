@@ -10,6 +10,7 @@
     "test:legal-ui": "node test/legal-documents.browser.mjs",
     "test:dashboard": "node test/dashboard.browser.mjs",
     "test:admin": "node test/admin-experience.browser.mjs",
+    "test:media-feedback": "node test/media-feedback.browser.mjs",
     "test:rich-text": "node test/rich-text-editor.browser.mjs"
   },
   "dependencies": {

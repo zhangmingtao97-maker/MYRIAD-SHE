@@ -561,7 +561,7 @@ const optionActive = (kind: 'relations' | 'states', key: string, field: 'label' 
 </template>
 
 <style scoped>
-.season-stages-preview { min-height: 100%; color: #40362f; font-family: Georgia, 'Times New Roman', serif; }
+.season-stages-preview { min-height: 100%; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .season-stages-nav { display: grid; grid-template-columns: 28px 1fr 36px; align-items: center; height: 38px; color: #40362f; font-size: 12px; text-align: center; }
 .season-stages-nav span { color: #663124; font-size: 18px; }
 .season-stages-nav strong { font-size: 12px; font-weight: 500; letter-spacing: .04em; }

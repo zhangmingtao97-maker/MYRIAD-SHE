@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 // 后台预览按 iPhone 12/13 的外框显示（390×844 逻辑像素，与微信开发者工具的模拟器一致）。
@@ -34,7 +34,9 @@ function measure() {
   const available = el.clientWidth;
   if (!available) return;
   const widthScale = available / DEVICE_WIDTH;
-  const heightScale = (window.innerHeight - 236) / DEVICE_HEIGHT;
+  const pageSwitch = el.closest('#journal-module-workspace')?.querySelector<HTMLElement>('.editor-page-switch');
+  const pageSwitchSpace = pageSwitch ? pageSwitch.offsetHeight + parseFloat(getComputedStyle(pageSwitch).marginBottom || '0') : 0;
+  const heightScale = (window.innerHeight - 236 - pageSwitchSpace) / DEVICE_HEIGHT;
   scale.value = Math.min(1, Math.max(0.55, Math.min(widthScale, heightScale || 1)));
 }
 

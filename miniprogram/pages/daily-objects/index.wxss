@@ -1,38 +1,38 @@
-page { height: 100vh; overflow: hidden; background: #e7dfd1; color: #5c493c; font-family: Georgia, "Songti SC", serif; }
+page { height: 100vh; overflow: hidden; background: #e7dfd1; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .shop-frame { display: flex; width: 100%; height: 100vh; flex-direction: column; overflow: hidden; background: #e7dfd1; }
 .shop-topbar { position: relative; z-index: 2; display: flex; flex: 0 0 auto; height: 56px; align-items: center; justify-content: center; box-sizing: content-box; border-bottom: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; }
-.shop-topbar-title { color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 31rpx; font-weight: 600; letter-spacing: 1rpx; }
-.shop-topbar-action { position: absolute; top: 0; display: flex; width: 76rpx; height: 56px; align-items: center; justify-content: center; color: #5c493c; font-family: Georgia, serif; font-size: 56rpx; line-height: 1; }
+.shop-topbar-title { color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 31rpx; font-weight: 600; letter-spacing: 1rpx; }
+.shop-topbar-action { position: absolute; top: 0; display: flex; width: 76rpx; height: 56px; align-items: center; justify-content: center; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 56rpx; line-height: 1; }
 .shop-topbar-action:active, .shop-frame [role="button"]:active, .shop-tab:active { opacity: .62; }
 .shop-back { left: 20rpx; padding-bottom: 6rpx; }
 .shop-more { right: 20rpx; padding-bottom: 18rpx; font-size: 31rpx; letter-spacing: 2rpx; }
 .shop-scroll { flex: 1 1 0; width: 100%; height: 0; min-height: 0; }
 .shop-access-state { display: flex; flex: 1 1 0; align-items: center; justify-content: center; padding: 48rpx; color: #5c493c; font-size: 28rpx; text-align: center; }
-.shop-content { padding: 56rpx 52rpx 76rpx; box-sizing: border-box; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 30rpx; line-height: 1.8; }
+.shop-content { padding: 56rpx 52rpx 76rpx; box-sizing: border-box; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 30rpx; line-height: 1.8; }
 .shop-brand { display: flex; align-items: center; gap: 22rpx; margin: 0 0 68rpx; }
 .shop-brand-mark { flex: 0 0 68rpx; }
-.shop-brand-name { color: #663124; font-family: Georgia, "Times New Roman", serif; font-size: 38rpx; line-height: 1.2; letter-spacing: .02em; }
-.shop-brand-name text { display: block; margin-top: 10rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 20rpx; letter-spacing: .15em; }
-.shop-text { color: #663124; font-family: Georgia, "Songti SC", serif; font-size: 24rpx; line-height: 1.65; }
+.shop-brand-name { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 38rpx; line-height: 1.2; letter-spacing: .02em; }
+.shop-brand-name text { display: block; margin-top: 10rpx; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 20rpx; letter-spacing: .15em; }
+.shop-text { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 24rpx; line-height: 1.65; }
 .shop-bag { margin-left: auto; white-space: nowrap; font-size: 20rpx; }
-.shop-bag text { margin-left: 10rpx; font-family: Georgia, serif; font-size: 28rpx; }
+.shop-bag text { margin-left: 10rpx; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 28rpx; }
 .shop-header { margin-bottom: 0; }
-.shop-folio { margin: 0 0 32rpx; color: #663124; font-family: Georgia, "Times New Roman", serif; font-size: 22rpx; line-height: 1.4; letter-spacing: .12em; }
-.shop-title { margin: 20rpx 0 26rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 58rpx; font-weight: 500; line-height: 1.35; letter-spacing: -.025em; }
+.shop-folio { margin: 0 0 32rpx; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; line-height: 1.4; letter-spacing: .12em; }
+.shop-title { margin: 20rpx 0 26rpx; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 58rpx; font-weight: 500; line-height: 1.35; letter-spacing: -.025em; }
 .shop-intro { color: #5c493c; font-size: 26rpx; line-height: 1.8; white-space: pre-line; }
 .shop-preview-note { margin: 36rpx 0 52rpx; padding-top: 26rpx; border-top: 1rpx solid rgba(92, 73, 60, .23); color: #5c493c; font-size: 20rpx; line-height: 1.8; letter-spacing: .04em; }
 .shop-catalog { margin: 0 -52rpx; }
 .shop-object { margin: 0 0 68rpx; }
 .shop-object-image { display: block; position: relative; width: 100%; overflow: hidden; background: #d7d3ce; }
 .shop-object-image image { display: block; width: 100%; }
-.shop-object-image text { position: absolute; top: 42rpx; left: 52rpx; color: #663124; font-family: Georgia, "Times New Roman", serif; font-size: 26rpx; line-height: 1.4; }
+.shop-object-image text { position: absolute; top: 42rpx; left: 52rpx; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 26rpx; line-height: 1.4; }
 .shop-object-caption { display: flex; justify-content: space-between; gap: 36rpx; padding: 36rpx 52rpx 0; }
 .shop-object-name { flex: 1; min-width: 0; }
-.shop-object-english { display: block; color: #5c493c; font-family: Georgia, "Times New Roman", serif; font-size: 18rpx; line-height: 1.4; letter-spacing: .11em; }
+.shop-object-english { display: block; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 18rpx; line-height: 1.4; letter-spacing: .11em; }
 .shop-object-title { display: flex; justify-content: space-between; gap: 20rpx; width: 100%; padding-top: 16rpx; color: #5c493c; font-size: 36rpx; line-height: 1.5; }
 .shop-object-title text { color: #663124; font-size: 30rpx; }
-.shop-price { flex: 0 0 auto; min-width: 140rpx; margin-top: 40rpx; color: #5c493c; font-family: Georgia, "Times New Roman", serif; font-size: 34rpx; line-height: 1.2; text-align: right; }
-.shop-price text { display: block; margin-top: 10rpx; color: #5c493c; font-family: Georgia, "Songti SC", serif; font-size: 18rpx; line-height: 1.4; }
+.shop-price { flex: 0 0 auto; min-width: 140rpx; margin-top: 40rpx; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 34rpx; line-height: 1.2; text-align: right; }
+.shop-price text { display: block; margin-top: 10rpx; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 18rpx; line-height: 1.4; }
 .shop-footer { margin-top: 76rpx; padding-top: 52rpx; border-top: 1rpx solid rgba(92, 73, 60, .23); color: #5c493c; font-size: 24rpx; line-height: 1.9; }
 .shop-support { display: inline-flex; min-height: 72rpx; align-items: center; margin-top: 24rpx; font-size: 24rpx; }
 .shop-tabbar { position: relative; z-index: 5; display: flex; flex: 0 0 auto; height: calc(120rpx + env(safe-area-inset-bottom)); padding: 0 24rpx env(safe-area-inset-bottom); border-top: 1rpx solid rgba(92, 73, 60, .23); background: #e7dfd1; box-sizing: border-box; }
@@ -47,10 +47,10 @@ page { height: 100vh; overflow: hidden; background: #e7dfd1; color: #5c493c; fon
 .shop-mine-head { position: absolute; top: 6rpx; left: 12rpx; width: 9rpx; height: 9rpx; border: 2rpx solid currentColor; border-radius: 50%; }
 .shop-mine-body { position: absolute; bottom: -7rpx; left: 6rpx; width: 21rpx; height: 16rpx; border: 2rpx solid currentColor; border-radius: 50% 50% 0 0; }
 .shop-tab text { color: inherit; font-size: 22rpx; line-height: 1.2; }
-.daily-landing { min-height: 100%; padding: 62rpx 62rpx 120rpx; box-sizing: border-box; color: #5c493c; font-family: Georgia, "Songti SC", serif; }
+.daily-landing { min-height: 100%; padding: 62rpx 62rpx 120rpx; box-sizing: border-box; color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
 .landing-brand { color: #663124; }
 .landing-logo { display: block; width: 222rpx; height: 178rpx; margin-left: -8rpx; }
-.landing-meta { margin-top: 86rpx; color: #8b6b58; font-family: Georgia, "Songti SC", serif; font-size: 22rpx; line-height: 1.5; letter-spacing: .06em; }
+.landing-meta { margin-top: 86rpx; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; line-height: 1.5; letter-spacing: .06em; }
 .landing-title { margin-top: 68rpx; color: #5c493c; font-size: 58rpx; font-weight: 600; line-height: 1.45; white-space: pre-line; }
 .landing-intro { margin-top: 38rpx; color: #5c493c; font-size: 28rpx; font-weight: 600; line-height: 1.8; }
 .landing-status { margin-top: 42rpx; color: #8b6b58; font-size: 22rpx; line-height: 1.6; }
@@ -59,7 +59,7 @@ page { height: 100vh; overflow: hidden; background: #e7dfd1; color: #5c493c; fon
 .daily-section:last-child { border-bottom: 0; }
 .daily-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 24rpx; color: #663124; line-height: 1.4; }
 .daily-section-heading text:first-child { font-size: 42rpx; font-weight: 600; }
-.daily-section-heading text:last-child { flex: 0 0 auto; font-family: Georgia, "Times New Roman", serif; font-size: 18rpx; letter-spacing: .12em; }
+.daily-section-heading text:last-child { flex: 0 0 auto; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 18rpx; letter-spacing: .12em; }
 .daily-article-label { display: flex; align-items: center; gap: 20rpx; margin-top: 38rpx; color: #8b6b58; font-size: 20rpx; line-height: 1.5; letter-spacing: .08em; white-space: nowrap; }
 .daily-article-label text { flex: 0 0 auto; }
 .daily-article-label::after { flex: 1; height: 1rpx; background: rgba(92, 73, 60, .23); content: ""; }
@@ -69,7 +69,7 @@ page { height: 100vh; overflow: hidden; background: #e7dfd1; color: #5c493c; fon
 .daily-article-image { display: block; width: 100%; height: 100%; }
 .daily-article-caption { margin-top: 16rpx; color: #8b6b58; font-size: 20rpx; line-height: 1.6; letter-spacing: .04em; }
 .daily-article-action { display: flex; min-height: 96rpx; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 36rpx; padding: 0 28rpx; background: #663124; box-sizing: border-box; color: #f2ece3; font-size: 25rpx; line-height: 1.5; }
-.daily-article-action text:last-child { flex: 0 0 auto; font-family: Georgia, serif; font-size: 30rpx; }
+.daily-article-action text:last-child { flex: 0 0 auto; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 30rpx; }
 .daily-exploration-copy { max-width: 580rpx; margin-top: 30rpx; color: #5c493c; font-size: 27rpx; line-height: 1.9; }
 @media (max-width: 360px) {
   .shop-content { padding-right: 44rpx; padding-left: 44rpx; }

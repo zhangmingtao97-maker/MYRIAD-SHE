@@ -217,10 +217,10 @@ const pick = (key: ObservationRecordCopyKey) => emit('pick', previewKey(key));
   box-sizing: border-box;
   background: #e7dfd1;
   color: #3f352e;
-  font-family: "Source Han Serif CN", "Songti SC", STSong, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
 }
 .record-preview-nav { display: grid; grid-template-columns: 34px 1fr 42px; align-items: center; height: 53px; border-bottom: 1px solid rgba(92, 73, 60, .22); }
-.record-preview-nav > span:first-child { color: #5c493c; font-family: Georgia, serif; font-size: 30px; font-weight: 600; }
+.record-preview-nav > span:first-child { color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 30px; font-weight: 600; }
 .record-preview-nav > span:nth-child(2) { justify-self: center; }
 .record-preview-nav-menu { justify-self: end; color: #5c493c; font-size: 13px; letter-spacing: 1px; }
 .record-preview-meta { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; color: #8b6b58; font-size: 11px; }

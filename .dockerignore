@@ -4,6 +4,10 @@
 management/node_modules
 management/dist
 management/.env*
+management/.codex-artifacts
+management/.test-artifacts
 !miniprogram/
-!miniprogram/AppleGaramond.ttf
-!miniprogram/SourceHanSerifCN-Regular.otf
+!miniprogram/fonts/
+!miniprogram/fonts/*.woff2
+!miniprogram/utils/
+!miniprogram/utils/content.ts

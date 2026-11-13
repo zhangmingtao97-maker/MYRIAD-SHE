@@ -242,7 +242,7 @@ const isActive = (field: SeasonIntroCopyKey) => props.activeKey === previewKey(f
 </template>
 
 <style scoped>
-.season-intro-preview { min-height: 100%; margin: -8px -20px -30px; padding: 8px 20px 32px; background: #e7dfd1; color: #4a3f38; font-family: Georgia, 'Songti SC', 'STSong', serif; box-sizing: border-box; }
+.season-intro-preview { min-height: 100%; margin: -8px -20px -30px; padding: 8px 20px 32px; background: #e7dfd1; color: #4a3f38; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; box-sizing: border-box; }
 .season-preview-nav { display: grid; grid-template-columns: 28px minmax(0, 1fr) 36px; height: 42px; align-items: center; border-bottom: 1px solid rgba(92, 73, 60, .18); text-align: center; }
 .season-preview-nav > span { color: #5c493c; font-size: 17px; }
 .season-preview-nav-title { min-width: 0; color: #5c493c; font-weight: 600; }
@@ -255,7 +255,7 @@ const isActive = (field: SeasonIntroCopyKey) => props.activeKey === previewKey(f
 .season-preview-guide-head { display: flex; align-items: center; gap: 7px; }
 .season-preview-caret { color: #7b5a45; font-size: 9px; }
 .season-preview-guide-title { color: #4a3f38; font-weight: 600; line-height: 1.55; }
-.season-preview-statuses { display: flex; align-items: center; gap: 6px; margin-top: 7px; padding-left: 16px; color: #9a897b; font-family: -apple-system, 'PingFang SC', sans-serif; font-size: 8px; }
+.season-preview-statuses { display: flex; align-items: center; gap: 6px; margin-top: 7px; padding-left: 16px; color: #9a897b; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 8px; }
 .season-preview-status { padding: 1px 5px; border: 1px solid rgba(102, 49, 36, .35); color: #663124; font-size: 9px; line-height: 1.5; }
 .season-preview-status.is-read { border-color: rgba(139, 107, 88, .35); color: #8b6b58; }
 .season-preview-paragraph { margin-top: 9px; color: #5b4c42; line-height: 1.95; }
@@ -274,7 +274,7 @@ const isActive = (field: SeasonIntroCopyKey) => props.activeKey === previewKey(f
 .season-preview-remember-title { color: #4a3f38; line-height: 1.5; }
 .season-preview-remember-note { color: #8b6b58; line-height: 1.6; }
 .season-preview-primary { display: flex; min-height: 43px; align-items: center; justify-content: center; margin-top: 17px; border-radius: 2px; background: #663124; color: #fffaf4; text-align: center; letter-spacing: .03em; }
-.season-preview-locked-state { display: flex; align-items: center; gap: 7px; margin-top: 7px; padding: 5px 8px; border: 1px dashed #c5b5a6; color: #8b6b58; font-family: -apple-system, 'PingFang SC', sans-serif; font-size: 8px; }
+.season-preview-locked-state { display: flex; align-items: center; gap: 7px; margin-top: 7px; padding: 5px 8px; border: 1px dashed #c5b5a6; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 8px; }
 .season-preview-locked-copy { color: #8b6b58; font-size: 10px; }
 .season-preview-secondary { display: flex; min-height: 43px; align-items: center; justify-content: center; margin-top: 22px; border: 1px solid #7c6552; color: #4a3f38; text-align: center; }
 .season-preview-skip { display: flex; min-height: 34px; align-items: center; justify-content: center; margin-top: 12px; color: #8b6b58; text-align: center; }

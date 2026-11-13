@@ -27,7 +27,7 @@
 }
 .mine-topbar-meta {
   color: #8b6b58;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 18rpx;
   letter-spacing: 2rpx;
   line-height: 1;
@@ -76,7 +76,7 @@
   right: 12rpx;
   bottom: -44rpx;
   color: rgba(255, 255, 255, .05);
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 190rpx;
   letter-spacing: 8rpx;
   line-height: 1;
@@ -85,7 +85,7 @@
   position: relative;
   z-index: 1;
   color: rgba(251, 244, 234, .62);
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 18rpx;
   letter-spacing: 3rpx;
   line-height: 1.5;
@@ -95,7 +95,7 @@
   z-index: 1;
   overflow-wrap: anywhere;
   color: #fbf4ea;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 40rpx;
   font-weight: 600;
   line-height: 1.4;
@@ -111,7 +111,7 @@
   border: 0;
   background: transparent;
   color: #fbf4ea;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 40rpx;
   font-weight: 600;
   line-height: 88rpx;
@@ -167,7 +167,7 @@
 .account-avatar-active { background: rgba(255, 255, 255, .22); }
 .account-avatar[disabled] { opacity: .55; }
 .account-avatar-image { width: 100%; height: 100%; }
-.account-avatar-plus { color: #fbf4ea; font-family: Georgia, serif; font-size: 40rpx; line-height: 1; }
+.account-avatar-plus { color: #fbf4ea; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 40rpx; line-height: 1; }
 .profile-enter {
   display: flex;
   width: 56rpx;
@@ -178,7 +178,7 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, .08);
   color: #fbf4ea;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 34rpx;
   line-height: 1;
   box-sizing: border-box;
@@ -193,7 +193,7 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, .08);
   color: #fbf4ea;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 27rpx;
   letter-spacing: 2rpx;
   box-sizing: border-box;
@@ -228,7 +228,7 @@
 .stat-value {
   min-width: 62rpx;
   color: #fbf4ea;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 44rpx;
   line-height: 1;
   text-align: center;
@@ -317,7 +317,7 @@
   border-radius: 50%;
   background: #f6eee3;
   color: #8b5a45;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 19rpx;
   line-height: 1;
   box-sizing: border-box;
@@ -333,7 +333,7 @@
   display: block;
   overflow: hidden;
   color: #3d332c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 34rpx;
   font-weight: 600;
   line-height: 1.4;
@@ -355,7 +355,7 @@
   border-radius: 999rpx;
   background: rgba(102, 49, 36, .06);
   color: #663124;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 20rpx;
   line-height: 1.3;
   box-sizing: border-box;
@@ -366,8 +366,8 @@
   background: rgba(102, 49, 36, .12);
   opacity: .76;
 }
-.section-arrow { color: #8b5a45; font-family: Georgia, serif; font-size: 22rpx; line-height: 1; }
-.section-count { display: block; color: #8b6b58; font-family: "MYRIAD Song", Georgia, "Songti SC", serif; font-size: 21rpx; line-height: 1.5; }
+.section-arrow { color: #8b5a45; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; line-height: 1; }
+.section-count { display: block; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 21rpx; line-height: 1.5; }
 .section-count-tail { flex: 0 0 auto; align-self: center; }
 .section-note { max-width: 58%; color: #8f7d6e; font-size: 18rpx; line-height: 1.5; text-align: right; }
 
@@ -392,7 +392,7 @@
 .section-empty-title {
   display: block;
   color: #3d332c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 28rpx;
   font-weight: 600;
   line-height: 1.5;
@@ -457,7 +457,7 @@
   margin-top: 10rpx;
   padding-left: 6rpx;
   color: #3d332c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 29rpx;
   font-weight: 600;
   line-height: 1.55;
@@ -485,7 +485,7 @@
   background: #fffdf8;
 }
 .contribution-meta { display: flex; align-items: center; justify-content: space-between; gap: 14rpx; }
-.contribution-issue { color: #8b5a45; font-family: Georgia, "Songti SC", serif; font-size: 20rpx; line-height: 1.5; }
+.contribution-issue { color: #8b5a45; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 20rpx; line-height: 1.5; }
 .status-pill {
   flex: 0 0 auto;
   padding: 3rpx 14rpx;
@@ -499,7 +499,7 @@
 .contribution-body {
   margin-top: 12rpx;
   color: #4a3d34;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 24rpx;
   line-height: 1.75;
   white-space: pre-wrap;
@@ -533,17 +533,17 @@
 .settings-title {
   display: block;
   color: #3d332c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 32rpx;
   font-weight: 600;
   line-height: 1.45;
 }
 .settings-value { display: block; color: #8b6b58; font-size: 21rpx; line-height: 1.5; }
-.settings-arrow { flex: 0 0 auto; color: #663124; font-family: Georgia, serif; font-size: 32rpx; line-height: 1; }
+.settings-arrow { flex: 0 0 auto; color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 32rpx; line-height: 1; }
 
 /* 页脚 */
 .mine-footer { margin-top: 56rpx; padding-bottom: 18rpx; text-align: center; }
-.mine-footer-mark { color: #a08c7b; font-family: Georgia, serif; font-size: 18rpx; line-height: 1.6; letter-spacing: 6rpx; }
+.mine-footer-mark { color: #a08c7b; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 18rpx; line-height: 1.6; letter-spacing: 6rpx; }
 .mine-footer-copy { margin-top: 6rpx; color: #b0a092; font-size: 19rpx; line-height: 1.6; letter-spacing: 3rpx; }
 
 .mine-page [role="button"]:active { opacity: .72; }

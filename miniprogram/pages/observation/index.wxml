@@ -221,7 +221,10 @@
         <view class="season-footnote" style="font-size: {{seasonAction.footer.fontSize * 2}}rpx; color: {{seasonAction.footer.color}};"><rich-text nodes="{{seasonAction.footer.richText}}"></rich-text></view>
       </view>
     </block>
-    <view wx:if="{{syncState === 'pending'}}" class="sync-status pending" role="status" aria-live="polite">有未同步的改动</view><view wx:elif="{{syncState === 'saving'}}" class="sync-status" role="status" aria-live="polite">正在保存到云端…</view><view wx:elif="{{syncState === 'conflict'}}" class="sync-status error" role="alert">云端草稿已在其他位置更新</view><view wx:elif="{{syncState === 'error'}}" class="sync-status error" role="alert">{{error || '云端保存失败，请重试'}}</view>
+    <view class="sync-status {{syncState}}" role="status" aria-live="polite" aria-atomic="true">
+      <view class="sync-indicator" aria-hidden="true"></view>
+      <text>{{syncState === 'pending' ? '有未同步的改动' : syncState === 'saving' ? '正在保存到云端…' : syncState === 'saved' ? '已保存到云端' : syncState === 'conflict' ? '云端草稿已在其他位置更新' : syncState === 'error' ? (error || '云端保存失败，请重试') : '填写后自动保存'}}</text>
+    </view>
     <view wx:if="{{validationError}}" class="validation-error" role="alert">{{validationError}}</view>
     <view class="actions season-actions align-{{currentSeasonAlign}}">
       <view wx:if="{{step > 0}}" class="button secondary" role="button" aria-label="{{selected === 'season' ? currentSeasonPreviousLabel : currentRealityStagePreviousLabel}}" aria-disabled="{{saving || advancing}}" tabindex="0" bindtap="previous" style="{{selected === 'reality' ? 'color: ' + currentRealityStage.previousLabel.color + '; border-color: ' + currentRealityStage.previousLabel.color + ';' : 'color: ' + currentSeasonPreviousCopy.color + '; border-color: ' + currentSeasonPreviousCopy.color + ';'}}">

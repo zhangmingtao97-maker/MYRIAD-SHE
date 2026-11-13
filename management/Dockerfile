@@ -6,8 +6,8 @@ RUN npm ci
 FROM dependencies AS development
 WORKDIR /app
 COPY management/ .
-COPY miniprogram/AppleGaramond.ttf /miniprogram/AppleGaramond.ttf
-COPY miniprogram/SourceHanSerifCN-Regular.otf /miniprogram/SourceHanSerifCN-Regular.otf
+COPY miniprogram/fonts/AppleGaramond.woff2 /miniprogram/fonts/AppleGaramond.woff2
+COPY miniprogram/fonts/SourceHanSerifCN-Regular.woff2 /miniprogram/fonts/SourceHanSerifCN-Regular.woff2
 COPY miniprogram/utils/content.ts /miniprogram/utils/content.ts
 EXPOSE 61022
 CMD ["npm", "run", "dev"]
@@ -21,14 +21,14 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_API_REQUEST_TIMEOUT_MS=${VITE_API_REQUEST_TIMEOUT_MS}
 ENV VITE_MEDIA_UPLOAD_TIMEOUT_MS=${VITE_MEDIA_UPLOAD_TIMEOUT_MS}
 COPY management/ .
-COPY miniprogram/AppleGaramond.ttf /miniprogram/AppleGaramond.ttf
-COPY miniprogram/SourceHanSerifCN-Regular.otf /miniprogram/SourceHanSerifCN-Regular.otf
+COPY miniprogram/fonts/AppleGaramond.woff2 /miniprogram/fonts/AppleGaramond.woff2
+COPY miniprogram/fonts/SourceHanSerifCN-Regular.woff2 /miniprogram/fonts/SourceHanSerifCN-Regular.woff2
 COPY miniprogram/utils/content.ts /miniprogram/utils/content.ts
 RUN npm run build
 
 FROM nginx:alpine AS production
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY --from=build /miniprogram /usr/share/nginx/html/fonts
+COPY --from=build /miniprogram/fonts /usr/share/nginx/html/fonts
 COPY management/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,155 @@
+/* 后台品牌层：温禾米为底，归安赭为强调色，手机内容保留各自的发布样式。 */
+:root {
+  --admin-focus: 0 0 0 4px rgb(71 27 18 / 12%);
+  --admin-soft-shadow: 0 6px 24px -16px rgb(71 27 18 / 20%);
+}
+
+::selection { background: rgb(71 27 18 / 16%); }
+.dashboard-sidebar { background: var(--surface); border-color: var(--line-strong); }
+.dashboard-brand-copy strong { color: var(--accent); }
+.topbar { background: var(--bg); }
+.topbar-title .eyebrow, .admin-page-description { color: var(--muted); }
+.dashboard-workspace :is(.eyebrow, .field-help) { color: var(--muted); }
+.dashboard-tab.active { box-shadow: inset 0 0 0 1px var(--accent-line); }
+.admin-workspace-mark { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+.admin-notification-badge { background: var(--accent); }
+.account-avatar-button { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+.overview-workspace .overview-hero { background: linear-gradient(115deg, var(--surface-2), var(--surface) 66%, var(--accent-soft)); }
+.overview-workspace .overview-hero::before { box-shadow: 0 0 0 28px rgb(71 27 18 / 3%), 0 0 0 56px rgb(71 27 18 / 2%); }
+.sidebar-toggle.quiet, .admin-workspace-chevron { color: var(--ink-2); }
+.admin-workspace-chevron { stroke: currentColor; }
+
+.editor-page-switch {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  margin-bottom: 18px;
+  padding: 12px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.editor-page-switch-label { flex: 0 0 auto; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.editor-page-switch .admin-segmented-tabs { margin: 0; }
+.editor-page-switch .admin-segmented-tabs > button { min-height: 40px; padding-inline: 24px; }
+.story-editor-guidance > .field-help { margin: 0; }
+
+/* 编辑器工具、栏目选择与保存条采用同一套品牌状态。 */
+.journal-module-toolbar-wrap, .journal-meta-panel, .journal-background-panel { background: var(--surface-2); border-color: var(--line); }
+.journal-module-form .issue-module-card, .journal-context, .journal-overview { border-color: var(--line); }
+.issue-module-picker button.active { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.issue-module-picker button.active :is(small, span) { color: var(--accent); }
+.journal-derived-grid small { color: var(--muted); }
+.journal-derived-grid button, .issue-module-toolbar h3, .observation-copy-group h3, .daily-product-editor-heading { color: var(--accent); }
+.dashboard-workspace :is(.journal-savebar, .practice-savebar) { background: var(--surface); border-color: var(--line-strong); }
+.dashboard-workspace :is(.rich-text-toolbar, .rich-text-control select, .rich-text-color input) { border-color: var(--line-strong); }
+.dashboard-workspace .rich-text-toolbar { background: var(--surface-2); }
+.dashboard-workspace .rich-text-tool.is-active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.dashboard-workspace .rich-text-tool:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.dashboard-workspace :is(.rich-text-control, .rich-text-label) { color: var(--ink-2); }
+.dashboard-workspace :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--accent); }
+.dashboard-workspace :is(.rich-text-tool, .rich-text-control select, .rich-text-color input, .rich-text-canvas):focus-visible { outline-color: var(--accent); }
+.journal-module-form :is(.copy-field, [data-audio-field], [data-story-field]).is-locating { outline-color: var(--accent); }
+.phone-screen-inner .preview-block:hover { background: rgb(71 27 18 / 4%); }
+.phone-screen-inner .preview-block.is-preview-active { background: rgb(71 27 18 / 7%); box-shadow: inset 0 0 0 2px var(--accent); }
+.preview-block:hover .preview-block-tag, .preview-block.is-preview-active .preview-block-tag { background: var(--accent); }
+.issue-module-card.is-locating, .practice-field.is-locating, .practice-entry-row.is-locating { box-shadow: 0 0 0 2px var(--accent), 0 10px 24px rgb(71 27 18 / 12%); }
+
+/* 行政面板的中性外观统一；成功、警告、危险仍使用可区分的语义色。 */
+.state-machine-hero { background: var(--surface-2); border-color: var(--line-strong); }
+.module-summary-card, .module-state-card { background: var(--surface); border-color: var(--line); }
+.module-summary-card.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.module-state-machine { color: var(--ink); }
+.dashboard-workspace :is(.observation-head, .discussion-contribution-head, .discussion-report-head, .employee-table-head) { background: var(--surface-2); color: var(--ink-2); }
+.dashboard-workspace :is(.observation-row, .discussion-contribution-row, .discussion-report-row, .employee-table-row):not(.observation-head):not(.discussion-contribution-head):not(.discussion-report-head):is(:hover, :focus-within) { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.admin-command-dialog, .account-menu-panel, .admin-notification-panel { border-color: var(--line-strong); }
+.admin-command-result.selected { background: var(--accent-soft); color: var(--accent); }
+.settings-switch-card { background: var(--surface); border-color: var(--line-strong); border-left-color: var(--accent); }
+.media-upload-progress { background: var(--accent-soft); }
+.media-upload-progress span { background: var(--accent); }
+.media-upload-item.is-complete .media-upload-progress span { background: var(--ok); }
+.publication-preview-dialog { color: var(--ink); background: var(--surface-2); border-color: var(--line-strong); }
+.image-crop-dialog .image-crop-confirm { background: var(--accent); border-color: var(--accent-strong); }
+.image-crop-dialog .image-crop-confirm:not(:disabled):hover { background: var(--accent-strong); }
+
+/* 系统与商城设置随工作区扩展，宽屏不保留固定宽度造成的右侧空白。 */
+.dashboard-workspace.settings-workspace { max-width: none; }
+
+/* 系统设置的操作按钮延续栏目切换的胶囊形状。 */
+#system-settings .settings-tabs > button {
+  min-height: 44px;
+  padding-inline: 22px;
+}
+#system-settings :is(.settings-actions, .brand-popup-media-actions) { gap: 10px; }
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  border-color: var(--accent);
+  white-space: nowrap;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+#system-settings .settings-actions > button:first-child { min-width: 156px; }
+#system-settings .settings-actions > .quiet { min-width: 124px; }
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button.quiet {
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--ink-2);
+}
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button:hover:not(:disabled) {
+  box-shadow: 0 3px 10px rgb(71 27 18 / 12%);
+  transform: none;
+}
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button.quiet:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button:active:not(:disabled) {
+  box-shadow: inset 0 1px 3px rgb(71 27 18 / 16%);
+}
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: var(--admin-focus);
+}
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button:disabled {
+  background: var(--surface-3);
+  border-color: var(--line);
+  color: var(--muted);
+  opacity: 1;
+  box-shadow: none;
+  transform: none;
+}
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button[aria-busy="true"] { cursor: wait; }
+#system-settings :is(.settings-actions, .brand-popup-media-actions) svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.settings-button-spinner { animation: spin .9s linear infinite; }
+@media (max-width: 560px) {
+  #system-settings .settings-tabs > button { padding-inline: 14px; }
+  #system-settings .settings-actions > button:first-child,
+  #system-settings .settings-actions > button.quiet { flex: 1 1 auto; min-width: 0; padding-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #system-settings :is(.settings-actions, .brand-popup-media-actions) > button { transition: none; }
+  .settings-button-spinner { animation: none; }
+}
+
+@media (max-width: 560px) {
+  .editor-page-switch { gap: 10px; padding: 10px 12px; }
+  .editor-page-switch-label { font-size: 12px; }
+  .editor-page-switch .admin-segmented-tabs > button { min-height: 44px; padding-inline: 14px; }
+}

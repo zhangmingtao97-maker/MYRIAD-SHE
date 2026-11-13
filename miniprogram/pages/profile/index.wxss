@@ -8,7 +8,7 @@ page {
   padding: 0 24rpx calc(60rpx + env(safe-area-inset-bottom));
   background: #e9e1d4;
   box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
 }
 
 /* 顶栏 */
@@ -33,7 +33,7 @@ page {
   border: 0;
   background: transparent;
   color: #663124;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 54rpx;
   line-height: 62rpx;
   text-align: left;
@@ -41,7 +41,7 @@ page {
 .profile-icon-button::after { border: 0; }
 .profile-topbar-title {
   color: #3d332c;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 31rpx;
   font-weight: 600;
 }
@@ -49,6 +49,10 @@ page {
 
 /* 账户卡：整页只保留这一块深色底 */
 .profile-content { padding-top: 24rpx; }
+.profile-setup-note { margin-bottom: 24rpx; padding: 28rpx; border: 1rpx solid rgba(92, 73, 60, .14); border-radius: 22rpx; background: #fffaf3; color: #75675d; font-size: 25rpx; line-height: 1.7; }
+.profile-setup-title { margin-bottom: 10rpx; color: #40362f; font-size: 32rpx; }
+.profile-setup-skip { margin: 16rpx 0 0; padding: 0; background: transparent; color: #663124; font-size: 25rpx; line-height: 1.8; text-align: left; }
+.profile-setup-skip::after { border: 0; }
 .profile-hero {
   padding: 30rpx 28rpx 32rpx;
   overflow: hidden;
@@ -60,7 +64,7 @@ page {
 }
 .hero-eyebrow {
   color: rgba(251, 244, 234, .58);
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 18rpx;
   letter-spacing: 3rpx;
   line-height: 1.5;
@@ -93,7 +97,7 @@ page {
 .profile-avatar { width: 100%; height: 100%; object-fit: cover; }
 .profile-avatar-placeholder {
   color: #fbf4ea;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 38rpx;
   line-height: 1;
 }
@@ -101,7 +105,7 @@ page {
 .hero-name {
   overflow-wrap: anywhere;
   color: #fbf4ea;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 38rpx;
   font-weight: 600;
   line-height: 1.4;
@@ -112,7 +116,8 @@ page {
   font-size: 21rpx;
   line-height: 1.6;
 }
-.hero-avatar-fallback { display: inline-block; margin-top: 8rpx; padding: 4rpx 0; color: rgba(251, 244, 234, .78); font-size: 20rpx; line-height: 1.5; }
+.hero-avatar-fallback { display: inline-block; margin: 8rpx 0 0; padding: 4rpx 0; border: 0; border-radius: 0; background: transparent; color: rgba(251, 244, 234, .78); font-size: 20rpx; line-height: 1.5; }
+.hero-avatar-fallback::after { border: 0; }
 
 /* 分组卡 */
 .profile-group { margin-top: 30rpx; }
@@ -161,11 +166,24 @@ page {
   flex: 0 0 auto;
   margin-left: 10rpx;
   color: #a08c7b;
-  font-family: Georgia, serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 34rpx;
   line-height: 1;
 }
 .profile-action-row:active { opacity: .62; }
+.profile-phone-row {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-bottom: 1rpx solid rgba(92, 73, 60, .10);
+  border-radius: 0;
+  background: transparent;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+}
+.profile-phone-row::after { border: 0; }
+.profile-phone-row[disabled] { opacity: .55; }
 
 /* 昵称编辑：直接替换“用户名”这一行，避免多出一条分隔线 */
 .profile-nickname-editor {
@@ -207,7 +225,7 @@ page {
   border-radius: 999rpx;
   background: #663124;
   color: #fffaf2;
-  font-family: "MYRIAD Song", Georgia, "Songti SC", serif;
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
   font-size: 24rpx;
   font-weight: 600;
   line-height: 64rpx;

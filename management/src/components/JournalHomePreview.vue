@@ -137,6 +137,7 @@ const resolvedKey = computed(() => {
 <template>
   <PhonePreview title="期刊首页" caption="MYRIAD SHE" :background-image-url="backgroundImageUrl" :active-key="resolvedKey">
       <p v-if="introduction" class="preview-home-introduction">{{ introduction }}</p>
+      <TransitionGroup name="editorial-order" tag="div" class="preview-module-order">
       <article
         v-for="module in rows"
         :key="module.id"
@@ -235,6 +236,7 @@ const resolvedKey = computed(() => {
           <div v-else-if="module.type === 'cover' || module.type === 'image'" class="preview-image-placeholder">{{ text(module.altText) || '图片预览（上传或保存后载入）' }}</div>
         </template>
       </article>
+      </TransitionGroup>
       <p v-if="!rows.length" class="preview-empty">这一期还没有可预览的栏目。</p>
   </PhonePreview>
 </template>

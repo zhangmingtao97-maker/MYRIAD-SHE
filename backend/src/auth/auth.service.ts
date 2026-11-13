@@ -1,9 +1,14 @@
-﻿import { randomBytes } from 'crypto';
-import { BadRequestException, HttpException, HttpStatus, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { createHash, randomBytes } from 'crypto';
+import { BadRequestException, HttpException, HttpStatus, Injectable, Optional, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuditService } from '../admin/audit.service';
 import { DatabaseService } from '../database/database.service';
+import { StorageService } from '../storage/storage.service';
+import { avatarContentType, avatarMaxBytes, isUserAvatarObjectKey, type AvatarFile } from '../storage/avatar-file';
+import { DataEncryptionService } from '../security/data-encryption.service';
+import type { EncryptionPurpose } from '../security/data-encryption.service';
+import { accountDeletedException } from './auth-errors';
 import { hashAdminPassword, verifyAdminPassword } from './admin-password';
 
 interface AdminLoginSource {
@@ -16,6 +21,25 @@ interface AdminLoginFailureState {
   lockedUntil: number;
 }
 
+interface WechatIdentity {
+  openid: string;
+  unionid: string | null;
+}
+
+interface WechatUserRow {
+  id: string;
+  created: boolean;
+  nickname: string | null;
+  avatarObjectKey: string | null;
+  status: string;
+  profileCompletedAt: string | null;
+  phoneVerifiedAt: string | null;
+}
+
+const userIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const maxBearerTokenLength = 16_384;
+const phoneEncryptionPurpose: EncryptionPurpose = 'user.phone';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -23,6 +47,8 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    @Optional() private readonly storage?: StorageService,
+    @Optional() private readonly encryption?: DataEncryptionService,
   ) {}
 
   private readonly adminLoginFailures = new Map<string, AdminLoginFailureState>();
@@ -95,6 +121,112 @@ export class AuthService {
     return Number.isInteger(configured) && configured >= 100
       ? Math.min(configured, 30_000)
       : 8_000;
+  }
+
+  private profileTokenTtlSeconds() {
+    const configured = Number(this.config.get('WECHAT_PROFILE_TOKEN_TTL_SECONDS', 600));
+    return Number.isInteger(configured) && configured >= 120 ? Math.min(configured, 1_800) : 600;
+  }
+
+  private profileTokenHash(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async userSession(userId: string) {
+    const expiresIn = this.sessionTtlSeconds('JWT_ACCESS_TTL_SECONDS', 3_600);
+    const token = await this.jwt.signAsync({ sub: userId, role: 'user', scope: 'user' }, { expiresIn });
+    return { accessToken: token, userId, expiresIn };
+  }
+
+  private async issueProfileToken(userId: string) {
+    const expiresIn = this.profileTokenTtlSeconds();
+    const jti = randomBytes(24).toString('base64url');
+    const profileToken = await this.jwt.signAsync(
+      { sub: userId, role: 'user', scope: 'profile:complete', jti },
+      { expiresIn },
+    );
+    const tokenHash = this.profileTokenHash(profileToken);
+    await this.database.withTransaction(async (client) => {
+      await client.query(
+        `update wechat_profile_tokens
+         set consumed_at = clock_timestamp()
+         where user_id = $1 and consumed_at is null`,
+        [userId],
+      );
+      await client.query(
+        `insert into wechat_profile_tokens (token_hash, user_id, expires_at)
+         values ($1, $2, clock_timestamp() + make_interval(secs => $3::int))`,
+        [tokenHash, userId, expiresIn],
+      );
+    });
+    return { needProfile: true as const, profileToken, expiresIn };
+  }
+
+  private async verifiedProfileToken(authorization?: string) {
+    if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('请先使用微信登录');
+    const token = authorization.slice(7);
+    if (!token || token.length > maxBearerTokenLength) throw new UnauthorizedException('资料补充凭证已失效');
+    let payload: { sub?: unknown; role?: unknown; scope?: unknown; exp?: unknown };
+    try {
+      payload = await this.jwt.verifyAsync<{ sub?: unknown; role?: unknown; scope?: unknown; exp?: unknown }>(token);
+    } catch {
+      throw new UnauthorizedException('资料补充凭证已失效，请重新登录');
+    }
+    if (typeof payload.sub !== 'string' || !userIdPattern.test(payload.sub) || payload.role !== 'user'
+      || payload.scope !== 'profile:complete' || typeof payload.exp !== 'number' || payload.exp * 1_000 <= Date.now()) {
+      throw new UnauthorizedException('资料补充凭证已失效，请重新登录');
+    }
+    return { userId: payload.sub, tokenHash: this.profileTokenHash(token) };
+  }
+
+  private async activeProfileToken(tokenHash: string, userId: string) {
+    const result = await this.database.query<{ avatarObjectKey: string | null }>(
+      `select avatar_object_key as "avatarObjectKey"
+       from wechat_profile_tokens
+       where token_hash = $1 and user_id = $2 and consumed_at is null and expires_at > clock_timestamp()`,
+      [tokenHash, userId],
+    );
+    if (!result.rows[0]) throw new UnauthorizedException('资料补充已过期，请重新微信登录');
+    return result.rows[0];
+  }
+
+  private async wechatIdentity(code: string): Promise<WechatIdentity> {
+    const normalizedCode = code.trim();
+    if (!normalizedCode || normalizedCode.length > 256) throw new UnauthorizedException('缺少微信登录凭证');
+    const appId = this.config.get<string>('WECHAT_MINI_APP_ID');
+    const secret = this.config.get<string>('WECHAT_MINI_APP_SECRET');
+    if (!appId || !secret) throw new UnauthorizedException('微信小程序配置未完成');
+    const query = new URLSearchParams({ appid: appId, secret, js_code: normalizedCode, grant_type: 'authorization_code' });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.upstreamTimeoutMs());
+    let response: Response;
+    let result: { openid?: unknown; unionid?: unknown; errcode?: unknown; errmsg?: unknown };
+    try {
+      response = await fetch(
+        `${this.config.get('WECHAT_OPEN_API_BASE_URL', 'https://api.weixin.qq.com')}/sns/jscode2session?${query}`,
+        { signal: controller.signal },
+      );
+      if (!response.ok) throw new Error('wechat_identity_request_failed');
+      const parsed: unknown = await response.json();
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('wechat_identity_response_invalid');
+      result = parsed as typeof result;
+    } catch (caught) {
+      if (caught instanceof HttpException) throw caught;
+      throw new UnauthorizedException('微信登录服务暂时不可用');
+    } finally {
+      clearTimeout(timeout);
+    }
+    const openid = typeof result.openid === 'string' ? result.openid.trim() : '';
+    const unionid = typeof result.unionid === 'string' ? result.unionid.trim() : null;
+    const errcode = Number(result.errcode ?? 0);
+    if ((result.errcode !== undefined && !Number.isFinite(errcode)) || errcode !== 0 || !openid
+      || openid.length > 256 || (unionid !== null && unionid.length > 256)) {
+      if (typeof result.errmsg === 'string' && result.errmsg.trim()) {
+        throw new UnauthorizedException('微信登录凭证已失效，请重新登录');
+      }
+      throw new UnauthorizedException('微信登录服务返回无效数据');
+    }
+    return { openid, unionid: unionid || null };
   }
 
   async adminLogin(username: string, password: string, source?: AdminLoginSource) {
@@ -441,52 +573,19 @@ export class AuthService {
     return { accessToken: token, expiresIn };
   }
 
-  async wechatLogin(code: string) {
-    const normalizedCode = code.trim();
-    if (!normalizedCode) throw new UnauthorizedException('缺少微信登录凭证');
-    const appId = this.config.get<string>('WECHAT_MINI_APP_ID');
-    const secret = this.config.get<string>('WECHAT_MINI_APP_SECRET');
-    if (!appId || !secret) throw new UnauthorizedException('微信小程序配置未完成');
-
-    const query = new URLSearchParams({ appid: appId, secret, js_code: normalizedCode, grant_type: 'authorization_code' });
-    const controller = new AbortController();
-    const timeoutMs = this.upstreamTimeoutMs();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    let response: Response;
-    try {
-      response = await fetch(`${this.config.get('WECHAT_OPEN_API_BASE_URL', 'https://api.weixin.qq.com')}/sns/jscode2session?${query}`, { signal: controller.signal });
-    } catch {
-      clearTimeout(timeout);
-      throw new UnauthorizedException('微信登录服务暂时不可用');
-    }
-    if (!response.ok) {
-      clearTimeout(timeout);
-      throw new UnauthorizedException('微信登录服务暂时不可用');
-    }
-    let result: { openid?: string; unionid?: string; errcode?: number; errmsg?: string };
-    try {
-      const parsed: unknown = await response.json();
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid_wechat_response');
-      result = parsed as { openid?: string; unionid?: string; errcode?: number; errmsg?: string };
-    } catch (error) {
-      clearTimeout(timeout);
-      if (error instanceof Error && error.name === 'AbortError') throw new UnauthorizedException('微信登录服务暂时不可用');
-      throw new UnauthorizedException('微信登录服务返回无效数据');
-    }
-    clearTimeout(timeout);
-    const openid = typeof result.openid === 'string' ? result.openid.trim() : '';
-    const unionid = typeof result.unionid === 'string' ? result.unionid.trim() : null;
-    const errorMessage = typeof result.errmsg === 'string' && result.errmsg.trim() ? result.errmsg.slice(0, 512) : '微信登录失败';
-    if (!openid || openid.length > 256 || (unionid !== null && unionid.length > 256)) throw new UnauthorizedException(errorMessage);
-
-    const user = await this.database.query<{ id: string; created: boolean }>(
+  async wechatLogin(code: string, phoneCode?: string) {
+    const identity = await this.wechatIdentity(code);
+    const user = await this.database.query<WechatUserRow>(
       `insert into users (wechat_openid, wechat_unionid) values ($1, $2)
-       on conflict (wechat_openid) do update set wechat_unionid = coalesce(excluded.wechat_unionid, users.wechat_unionid), updated_at = now()
-       returning id, (xmax = 0) as created`,
-      [openid, unionid || null],
+       on conflict (wechat_openid) do update
+       set wechat_unionid = coalesce(excluded.wechat_unionid, users.wechat_unionid), updated_at = now()
+       returning id, (xmax = 0) as created, nickname, status, avatar_object_key as "avatarObjectKey",
+                 profile_completed_at as "profileCompletedAt", phone_verified_at as "phoneVerifiedAt"`,
+      [identity.openid, identity.unionid],
     );
     const currentUser = user.rows[0];
     if (!currentUser) throw new UnauthorizedException('微信登录服务返回无效数据');
+    if (currentUser.status !== 'active') throw new UnauthorizedException('账户当前不可用，请联系客服');
     if (currentUser.created) {
       try {
         await this.audit.record({
@@ -500,9 +599,125 @@ export class AuthService {
         // 新用户通知失败不能阻止正常登录。
       }
     }
-    const expiresIn = this.sessionTtlSeconds('JWT_ACCESS_TTL_SECONDS', 3600);
-    const token = await this.jwt.signAsync({ sub: currentUser.id, role: 'user' }, { expiresIn });
-    return { accessToken: token, userId: currentUser.id, expiresIn };
+    if (phoneCode) {
+      const challenge = await this.issueProfileToken(currentUser.id);
+      return this.completeWechatProfile(`Bearer ${challenge.profileToken}`, { phoneCode });
+    }
+    if (!currentUser.phoneVerifiedAt) return this.issueProfileToken(currentUser.id);
+    return { needProfile: false as const, ...await this.userSession(currentUser.id) };
+  }
+
+  async wechatProfileAvatar(authorization: string | undefined, file?: AvatarFile) {
+    if (!this.storage) throw new ServiceUnavailableException('头像服务暂时不可用');
+    const proof = await this.verifiedProfileToken(authorization);
+    await this.activeProfileToken(proof.tokenHash, proof.userId);
+    const contentType = avatarContentType(file);
+    const objectKey = await this.storage.saveUserAvatar(proof.userId, file!.buffer, contentType);
+    let previousObjectKey: string | null = null;
+    try {
+      await this.database.withTransaction(async (client) => {
+        const active = await client.query<{ avatarObjectKey: string | null }>(
+          `select avatar_object_key as "avatarObjectKey"
+           from wechat_profile_tokens
+           where token_hash = $1 and user_id = $2 and consumed_at is null and expires_at > clock_timestamp()
+           for update`,
+          [proof.tokenHash, proof.userId],
+        );
+        if (!active.rows[0]) throw new UnauthorizedException('资料补充已过期，请重新微信登录');
+        previousObjectKey = active.rows[0].avatarObjectKey;
+        await client.query(
+          `update wechat_profile_tokens set avatar_object_key = $1 where token_hash = $2 and user_id = $3`,
+          [objectKey, proof.tokenHash, proof.userId],
+        );
+      });
+    } catch (error) {
+      await this.storage.deleteObject(objectKey).catch(() => undefined);
+      throw error;
+    }
+    if (previousObjectKey && previousObjectKey !== objectKey) {
+      await this.storage.deleteObject(previousObjectKey).catch(() => undefined);
+    }
+    return { avatarObjectKey: objectKey };
+  }
+
+  async completeWechatProfile(
+    authorization: string | undefined,
+    input: { nickname?: string; phoneCode?: string },
+  ) {
+    const proof = await this.verifiedProfileToken(authorization);
+    const rawNickname = typeof input.nickname === 'string' ? input.nickname.trim() : '';
+    if (rawNickname.length > 32 || /[\u0000-\u001f\u007f]/.test(rawNickname)) {
+      throw new BadRequestException('昵称最多 32 个字，不能包含控制字符');
+    }
+    const nickname = rawNickname || null;
+    await this.activeProfileToken(proof.tokenHash, proof.userId);
+    const phoneCode = typeof input.phoneCode === 'string' ? input.phoneCode.trim() : '';
+    if (!phoneCode) throw new BadRequestException('请授权手机号后登录');
+    let encryptedPhone: string | null = null;
+    let phoneNumber: string | null = null;
+    if (phoneCode) {
+      if (!this.encryption) throw new ServiceUnavailableException('手机号绑定服务暂时不可用');
+      phoneNumber = await this.wechatPhoneNumber(phoneCode);
+      encryptedPhone = JSON.stringify(this.encryption.encryptJson(phoneNumber, phoneEncryptionPurpose));
+    }
+
+    let previousAvatarObjectKey: string | null = null;
+    let selectedAvatarObjectKey: string | null = null;
+    await this.database.withTransaction(async (client) => {
+      const active = await client.query<{ avatarObjectKey: string | null }>(
+        `select avatar_object_key as "avatarObjectKey"
+         from wechat_profile_tokens
+         where token_hash = $1 and user_id = $2 and consumed_at is null and expires_at > clock_timestamp()
+         for update`,
+        [proof.tokenHash, proof.userId],
+      );
+      if (!active.rows[0]) throw new UnauthorizedException('资料补充已过期，请重新微信登录');
+      const currentUser = await client.query<{ avatarObjectKey: string | null; status: string }>(
+        `select avatar_object_key as "avatarObjectKey", status from users where id = $1 for update`,
+        [proof.userId],
+      );
+      if (!currentUser.rows[0]) throw new UnauthorizedException('用户账户不存在，请重新微信登录');
+      if (currentUser.rows[0].status !== 'active') throw new UnauthorizedException('账户当前不可用，请联系客服');
+      previousAvatarObjectKey = currentUser.rows[0].avatarObjectKey;
+      selectedAvatarObjectKey = active.rows[0].avatarObjectKey;
+      if (selectedAvatarObjectKey && !isUserAvatarObjectKey(selectedAvatarObjectKey, proof.userId)) {
+        throw new BadRequestException('头像信息无效，请重新选择');
+      }
+      const updated = await client.query(
+        `update users
+         set nickname = coalesce($1, nickname),
+             avatar_object_key = coalesce($2, avatar_object_key),
+             phone_encrypted = coalesce($3::jsonb, phone_encrypted),
+             phone_last4 = coalesce(right($4, 4), phone_last4),
+             phone_verified_at = case when $4::text is null then phone_verified_at else clock_timestamp() end,
+             profile_completed_at = coalesce(profile_completed_at, clock_timestamp()),
+             updated_at = clock_timestamp()
+         where id = $5 and status = 'active'
+         returning id`,
+        [nickname, selectedAvatarObjectKey, encryptedPhone, phoneNumber, proof.userId],
+      );
+      if (!updated.rows[0]) throw new UnauthorizedException('用户账户不存在，请重新微信登录');
+      await client.query(
+        `update wechat_profile_tokens set consumed_at = clock_timestamp()
+         where user_id = $1 and consumed_at is null`,
+        [proof.userId],
+      );
+      await this.audit.record({
+        actorType: 'user',
+        actorId: proof.userId,
+        action: 'user.profile.completed',
+        resourceType: 'user_profile',
+        resourceId: proof.userId,
+        metadata: {
+          avatar: Boolean(selectedAvatarObjectKey),
+          phone: Boolean(phoneNumber),
+        },
+      }, client);
+    });
+    if (this.storage && selectedAvatarObjectKey && previousAvatarObjectKey && previousAvatarObjectKey !== selectedAvatarObjectKey) {
+      await this.storage.deleteObject(previousAvatarObjectKey).catch(() => undefined);
+    }
+    return { needProfile: false as const, ...await this.userSession(proof.userId) };
   }
 
   async getWechatAccessToken(forceRefresh = false) {

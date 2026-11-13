@@ -3,31 +3,64 @@
 .practice-page { padding-top: 0; background: #e7dfd1; }
 .practice-page [role="button"]:active { opacity: .72; }
 .practice-meta, .directory-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; }
-.practice-meta { min-height: 82rpx; padding: 42rpx 0 20rpx; color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; letter-spacing: 1rpx; }
+.practice-meta { min-height: 82rpx; padding: 42rpx 0 20rpx; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 23rpx; letter-spacing: 1rpx; }
 .practice-meta-label { text-align: right; }
 .practice-meta-copy { display: block; max-width: 48%; line-height: 1.5; overflow-wrap: anywhere; }
 .practice-kicker { margin-top: 48rpx; color: #8b6b58; font-size: 23rpx; letter-spacing: 2rpx; }
-.practice-page .title { max-width: 660rpx; margin-top: 48rpx; color: #40362f; font-family: Georgia, serif; font-size: 64rpx; line-height: 1.4; }
-.practice-intro { max-width: 660rpx; margin-top: 42rpx; color: #40362f; font-family: Georgia, serif; font-size: 28rpx; font-weight: 600; line-height: 1.75; }
+.practice-page .title { max-width: 660rpx; margin-top: 48rpx; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 64rpx; line-height: 1.4; }
+.practice-intro { max-width: 660rpx; margin-top: 42rpx; color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 28rpx; font-weight: 600; line-height: 1.75; }
 .loading-state, .error-state { padding: 70rpx 0; }
 .error-state { display: grid; gap: 18rpx; }
 .error-text { color: #8f352d; font-size: 25rpx; line-height: 1.6; }
 .practice-directory { margin-top: 150rpx; border-top: 1rpx solid #cdbbae; }
 .directory-heading { align-items: center; padding: 34rpx 0 18rpx; }
 .directory-heading .eyebrow { margin: 0; color: #8b6b58; font-size: 23rpx; letter-spacing: 2rpx; }
-.page-code { color: #663124; font-family: Georgia, serif; font-size: 22rpx; letter-spacing: 2rpx; }
+.page-code { color: #663124; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; letter-spacing: 2rpx; }
 .practice-entry { display: grid; grid-template-columns: 68rpx minmax(0, 1fr) 44rpx; align-items: start; gap: 14rpx; width: 100%; min-height: 204rpx; margin: 0; padding: 22rpx 0 26rpx; border: 0; border-bottom: 1rpx solid #cdbbae; border-radius: 0; background: transparent; color: #40362f; text-align: left; line-height: 1.4; box-sizing: border-box; }
-.entry-number { padding-top: 7rpx; color: #8b6b58; font-family: Georgia, serif; font-size: 22rpx; }
+.entry-number { padding-top: 7rpx; color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; }
 .entry-copy { display: grid; gap: 7rpx; min-width: 0; }
-.entry-context { color: #8b6b58; font-family: Georgia, serif; font-size: 23rpx; line-height: 1.45; }
-.entry-title { color: #40362f; font-family: Georgia, serif; font-size: 31rpx; font-weight: 600; }
-.entry-desc { color: #40362f; font-family: Georgia, serif; font-size: 25rpx; line-height: 1.6; }
+.entry-context { color: #8b6b58; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 23rpx; line-height: 1.45; }
+.entry-title { color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 31rpx; font-weight: 600; }
+.entry-desc { color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 25rpx; line-height: 1.6; }
 .entry-arrow { align-self: center; padding-top: 12rpx; color: #663124; font-size: 34rpx; text-align: right; }
 .disabled-entry .entry-title, .disabled-entry .entry-arrow { color: #88786b; }
 .practice-page .error-state .button { justify-self: start; }
 .page-signature { position: relative; min-height: 618rpx; margin-top: 70rpx; padding: 68rpx 0 0; border-top: 1rpx solid #cdbbae; box-sizing: border-box; }
 .signature-grid { display: grid; grid-template-columns: 202rpx minmax(0, 1fr); align-items: baseline; row-gap: 40rpx; }
-.signature-kicker { color: #5c493c; font-family: "MYRIAD Garamond", Garamond, "Times New Roman", "MYRIAD Song", "Source Han Serif CN", "Songti SC", serif; font-size: 22rpx; font-weight: 400; line-height: 1.5; letter-spacing: 1rpx; }
+.signature-kicker { color: #5c493c; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 22rpx; font-weight: 400; line-height: 1.5; letter-spacing: 1rpx; }
 .signature-brand { color: #5c493c; }
-.signature-line { color: #40362f; font-family: "MYRIAD Song", "Source Han Serif CN", "Source Han Serif SC", "Songti SC", STSong, serif; font-size: 31rpx; font-weight: 600; line-height: 1.35; letter-spacing: .5rpx; white-space: nowrap; }
+.signature-line { color: #40362f; font-family: "MYRIAD Garamond", "MYRIAD Song", serif; font-size: 31rpx; font-weight: 600; line-height: 1.35; letter-spacing: .5rpx; white-space: nowrap; }
 .signature-flower { position: absolute; right: 0; bottom: 132rpx; display: block; width: 140rpx; height: 152rpx; opacity: .31; }
+
+/* ---------- 目录与关键入口轻量动效 ---------- */
+.practice-meta { animation: practice-header-enter .28s cubic-bezier(.22, 1, .36, 1) both; }
+.practice-kicker { animation: practice-header-enter .3s cubic-bezier(.22, 1, .36, 1) .04s both; }
+.practice-page .title { animation: practice-header-enter .32s cubic-bezier(.22, 1, .36, 1) .08s both; }
+.practice-intro { animation: practice-header-enter .32s cubic-bezier(.22, 1, .36, 1) .12s both; }
+.entry-enter { animation: practice-entry-enter .3s cubic-bezier(.22, 1, .36, 1) both; }
+.entry-arrow { transition: transform .18s ease; }
+.practice-entry:active .entry-arrow { transform: translateX(5rpx); }
+@keyframes practice-header-enter {
+  from { opacity: .42; transform: translateY(10rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes practice-entry-enter {
+  from { opacity: .3; transform: translateY(14rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .practice-meta, .practice-kicker, .practice-page .title, .practice-intro, .entry-enter { animation: none; transform: none; }
+  .entry-arrow { transition: none; }
+  .practice-entry:active .entry-arrow { transform: none; }
+}
+
+/* Keep refresh feedback in a reserved line so the footer does not jump. */
+.practice-refresh-status { min-height: 104rpx; padding-top: 14rpx; box-sizing: border-box; color: #88786b; font-size: 23rpx; line-height: 1.6; }
+.refresh-retry { display: inline-flex; align-items: center; min-height: 88rpx; padding: 0 20rpx; color: #663124; }
+.practice-skeleton { color: transparent; }
+.skeleton-heading { width: 160rpx; height: 26rpx; margin: 34rpx 0; background: #d9cebf; }
+.skeleton-entry { min-height: 204rpx; padding: 34rpx 0; border-bottom: 1rpx solid #cdbbae; box-sizing: border-box; }
+.skeleton-line { width: 76%; height: 28rpx; margin: 12rpx 0 26rpx 82rpx; background: #dcd2c5; }
+.skeleton-line.short { width: 52%; height: 22rpx; background: #e0d7cc; }
+
+.practice-refresh-status > view { display: flex; align-items: center; }

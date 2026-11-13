@@ -23,7 +23,7 @@
       <view
         wx:for="{{audio.tracks}}"
         wx:key="id"
-        class="audio-track audio-track-link"
+        class="audio-track audio-track-link" style="animation-delay: {{index * 60}}ms;"
         role="button"
         tabindex="0"
         aria-label="进入{{item.title}}详情"
