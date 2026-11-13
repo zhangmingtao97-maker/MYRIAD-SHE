@@ -91,7 +91,7 @@ export class AuthService {
   }
 
   private upstreamTimeoutMs() {
-    const configured = Number(this.config.get('WECHAT_OPEN_API_TIMEOUT_MS', 8_000));
+    const configured = Number(this.config.get('WECHAT_OPEN_API_TIMEOUT_MS', 12_000));
     return Number.isInteger(configured) && configured >= 100
       ? Math.min(configured, 30_000)
       : 8_000;

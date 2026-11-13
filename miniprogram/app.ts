@@ -1,4 +1,4 @@
-import { apiErrorFromResponse } from './utils/api-error';
+import { ApiRequestError, apiErrorFromResponse } from './utils/api-error';
 import { API_BASE_URL } from './utils/env';
 
 const maxAccessTokenLength = 16_384;
@@ -19,7 +19,7 @@ function storageExpiry(key: string) {
 }
 
 App<IAppOption>({
-  globalData: { apiBaseUrl: API_BASE_URL, requestTimeoutMs: 8000, accessToken: '', accessTokenExpiresAt: 0, userId: '', accountDeleted: false, authGeneration: 0, loginPromise: null },
+  globalData: { apiBaseUrl: API_BASE_URL, requestTimeoutMs: 8000, loginTimeoutMs: 15000, accessToken: '', accessTokenExpiresAt: 0, userId: '', accountDeleted: false, authGeneration: 0, loginPromise: null },
   onLaunch() {
     this.globalData.accessToken = boundedStorageText('myriad_she_access_token', maxAccessTokenLength);
     this.globalData.accessTokenExpiresAt = storageExpiry('myriad_she_access_token_expires_at');
@@ -56,7 +56,7 @@ App<IAppOption>({
           wx.request({
             url: `${this.globalData.apiBaseUrl}/auth/wechat/login`,
             method: 'POST',
-            timeout: this.globalData.requestTimeoutMs,
+            timeout: this.globalData.loginTimeoutMs,
             enableHttp2: false,
             header: { 'content-type': 'application/json' },
             data: { code },
@@ -85,7 +85,13 @@ App<IAppOption>({
               wx.setStorageSync('myriad_she_user_id', result.userId);
               resolve();
             },
-            fail: reject,
+            fail: (error) => {
+              const errMsg = error && typeof error === 'object' && typeof (error as { errMsg?: unknown }).errMsg === 'string'
+                ? (error as { errMsg: string }).errMsg
+                : '';
+              const timedOut = /timeout/i.test(errMsg);
+              reject(new ApiRequestError(timedOut ? '微信登录超时，请检查网络后重试。' : '微信登录失败，请检查网络后重试。', 0, timedOut ? 'login_timeout' : 'login_request_failed'));
+            },
           });
         },
         fail: reject,
