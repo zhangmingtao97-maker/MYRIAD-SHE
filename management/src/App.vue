@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import ModuleStateMachine from './components/ModuleStateMachine.vue';
-import AnimatedNumber from './components/AnimatedNumber.vue';
+import EditorialWorkspace, { type WorkspaceMetric, type WorkspaceTask } from './components/EditorialWorkspace.vue';
 import AdminCommandMenu from './components/AdminCommandMenu.vue';
 import { useAdminDialogs } from './composables/useAdminDialogs';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
@@ -475,6 +475,8 @@ const issueSaveMessage = ref('');
 const issueSavedAt = ref('');
 const practiceSavedAt = ref('');
 const publishedPreview = ref<'issue' | 'practice' | null>(null);
+const publishedPreviewIssueCode = ref('');
+watch(publishedPreview, value => { if (!value) publishedPreviewIssueCode.value = ''; });
 const issueValidationMessage = ref('');
 const issueValidationDialogOpen = ref(false);
 type IssueFieldKey = 'code' | 'label' | 'month' | 'edition' | 'theme' | 'question';
@@ -1527,11 +1529,7 @@ const adminPasswordChangeRequired = computed(() => {
 const isSuperAdmin = computed(() => adminRole.value === 'super_admin');
 const adminModuleList = computed<AdminModuleId[]>(() => adminPermissions.value ?? effectiveModulesForRole(adminRole.value, null));
 const canAccessAnyModule = computed(() => adminModuleList.value.length > 0);
-const overviewGreeting = computed(() => {
-  const hour = new Date().getHours();
-  const period = hour < 6 ? '夜深了' : hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
-  return `${period}，${adminIdentity.value.name}`;
-});
+
 type AuditCategory = '内容发布' | '讨论管理' | '会员操作' | '观察记录' | '账户与权限' | '隐私与安全' | '系统设置';
 type AuditActionDefinition = { label: string; category: AuditCategory };
 const auditActionDefinitions: Record<string, AuditActionDefinition> = {
@@ -2565,6 +2563,97 @@ function displayFileSize(value?: number) {
 }
 
 const apiFetch = createAdminFetch(apiRequestTimeoutMs);
+
+const overviewCounts = ref<{ members: number | null; contributions: number | null; reports: number | null }>({ members: null, contributions: null, reports: null });
+async function loadOverviewCounts(session: number, generation: number) {
+  // Read aggregate counts independently of list filters and transient dialog errors.
+  const sources = [
+    { id: 'members', module: 'members', path: '/admin/users?limit=1&offset=0' },
+    { id: 'contributions', module: 'contributions', path: '/admin/discussion-contributions?limit=1&offset=0' },
+    { id: 'reports', module: 'discussion-reports', path: '/admin/discussion-reports?limit=1&offset=0' },
+  ] as const;
+  await Promise.all(sources.map(async source => {
+    if (!canAccessModule(source.module)) return;
+    let count: number | null = null;
+    try {
+      const response = await apiFetch(`${apiBase}${source.path}`, { headers: { Authorization: `Bearer ${token.value}` } });
+      if (handleAdminUnauthorized(response, session) || !response.ok) throw new Error('Count unavailable');
+      const result: unknown = await response.json();
+      if (source.id === 'members') {
+        const page = result as { items?: unknown; total?: number } | null;
+        if (page && Array.isArray(page.items) && Number.isSafeInteger(page.total) && Number(page.total) >= 0) count = Number(page.total);
+      } else if (source.id === 'contributions' && isDiscussionContributionPage(result)) count = result.summary.pending;
+      else if (source.id === 'reports' && isDiscussionReportPage(result)) count = result.summary.pending;
+    } catch { /* Keep unavailable counts distinct from an empty queue. */ }
+    if (session === sessionGeneration && generation === dashboardRequestGeneration && loggedIn.value) overviewCounts.value[source.id] = count;
+  }));
+}
+
+const overviewIssue = computed(() => {
+  if (!canAccessModule('journal')) return null;
+  const selected = issues.value.find(issue => issue.id === editingIssueId.value);
+  return selected || issues.value.find(issue => issue.status === 'published')
+    || [...issues.value].filter(issue => issue.status === 'draft').sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0] || null;
+});
+const overviewCoverUrl = ref('');
+watch(() => [activeSection.value, overviewIssue.value?.coverObjectKey, token.value, overviewUpdatedAt.value] as const, async ([section, key], _previous, onCleanup) => {
+  overviewCoverUrl.value = '';
+  if (section !== 'overview' || !key || !canAccessModule('journal') || !loggedIn.value) return;
+  const controller = new AbortController();
+  onCleanup(() => controller.abort());
+  const session = sessionGeneration;
+  try {
+    const response = await apiFetch(`${apiBase}/content/media/preview-url?objectKey=${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token.value}` }, signal: controller.signal });
+    if (handleAdminUnauthorized(response, session) || !response.ok) return;
+    const result: unknown = await response.json();
+    if (!controller.signal.aborted && session === sessionGeneration && isMediaViewTarget(result)) overviewCoverUrl.value = result.url;
+  } catch { /* A typographic cover remains readable when media is unavailable. */ }
+}, { immediate: true });
+const overviewTasks = computed<WorkspaceTask[]>(() => {
+  const ready = Boolean(overviewUpdatedAt.value);
+  const tasks: WorkspaceTask[] = [];
+  if (canAccessModule('privacy')) tasks.push({ id: 'privacy', label: '隐私申请', count: ready && privacyLifecycle.value ? privacyLifecycle.value.pendingCount : null,
+    description: privacyLifecycle.value?.duePendingCount ? `其中 ${privacyLifecycle.value.duePendingCount} 条已到处理时间` : privacyLifecycle.value?.failedCount ? `${privacyLifecycle.value.failedCount} 条处理失败，请查看` : '及时回应账户删除申请', urgent: Boolean(privacyLifecycle.value?.duePendingCount || privacyLifecycle.value?.failedCount) });
+  if (canAccessModule('contributions')) tasks.push({ id: 'contributions', label: '经历审核', count: ready ? overviewCounts.value.contributions : null, description: '读者主动提交的经历，等待你的回应' });
+  if (canAccessModule('discussion-reports')) tasks.push({ id: 'discussion-reports', label: '内容举报', count: ready ? overviewCounts.value.reports : null, description: '查看读者反馈，照看讨论秩序', urgent: Number(overviewCounts.value.reports) > 0 });
+  return tasks;
+});
+const overviewMetrics = computed<WorkspaceMetric[]>(() => {
+  const ready = Boolean(overviewUpdatedAt.value);
+  const metrics: WorkspaceMetric[] = [];
+  if (canAccessModule('members')) metrics.push({ id: 'members', label: '社区会员', value: ready ? overviewCounts.value.members : null, unit: '位', description: '打开会员列表' });
+  if (canAccessModule('observations')) metrics.push({ id: 'observations', label: '已保存观察', value: ready && observationLifecycle.value ? observationLifecycle.value.savedCount : null, unit: '条', description: '查看观察记录' });
+  if (canAccessModule('journal')) metrics.push({ id: 'journal-list', label: '期刊草稿', value: ready && issueLifecycle.value ? issueLifecycle.value.draftCount : null, unit: '期', description: '前往期刊列表' });
+  if (canAccessModule('audit')) metrics.push({ id: 'audit', label: '操作记录', value: ready ? auditTotal.value : null, unit: '条', description: '查看操作记录' });
+  return metrics;
+});
+async function continueOverviewIssue(id: string) {
+  const issue = issues.value.find(item => item.id === id);
+  if (!issue || !canAccessModule('journal') || uploading.value) return;
+  const session = sessionGeneration;
+  // Keep the in-memory draft when returning to the same issue.
+  if (editingIssueId.value !== id) await editIssue(issue);
+  if (session !== sessionGeneration || editingIssueId.value !== id) return;
+  await openJournalSubsection('journal-home');
+}
+function previewOverviewIssue(code: string) {
+  if (!canAccessModule('journal') || !issues.value.some(issue => issue.publishedVersion > 0 && (issue.publishedCode || issue.code) === code)) return;
+  publishedPreviewIssueCode.value = code;
+  publishedPreview.value = 'issue';
+}
+function openOverviewDestination(destination: string) {
+  if (destination === 'journal-list') { void openJournalSubsection('journal-list'); return; }
+  if (!canAccessModule(destination as AdminModuleId)) return;
+  switch (destination) {
+    case 'contributions': discussionContributionPublicationStatus.value = 'pending'; discussionContributionIssueCode.value = ''; discussionContributionKind.value = ''; activeSection.value = 'contributions'; void refreshDiscussionContributions(); break;
+    case 'discussion-reports': discussionReportStatus.value = 'pending'; discussionReportIssueCode.value = ''; activeSection.value = 'discussion-reports'; void refreshDiscussionReports(); break;
+    case 'privacy': privacyStatus.value = privacyLifecycle.value?.failedCount && !privacyLifecycle.value.pendingCount ? 'failed' : 'pending'; activeSection.value = 'privacy'; void refreshPrivacy(true); break;
+    case 'members': memberQuery.value = ''; memberFrom.value = ''; memberTo.value = ''; activeSection.value = 'members'; void refreshMembers(); break;
+    case 'observations': activeSection.value = 'observations'; void refreshObservations(); break;
+    case 'audit': auditActorType.value = ''; auditAction.value = ''; activeSection.value = 'audit'; void refreshAudit(); break;
+  }
+}
+
 
 function isPracticeContent(raw: unknown): raw is PracticeContent {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
@@ -4134,7 +4223,7 @@ async function loadDashboard() {
       optionalFetch(canObservations, `${apiBase}/admin/observations?${observationQuery(0)}`),
       optionalFetch(canObservations, `${apiBase}/admin/observations/lifecycle`),
       optionalFetch(canPrivacy, `${apiBase}/admin/privacy-requests?${privacyQuery(0)}`),
-      optionalFetch(canAudit, `${apiBase}/admin/audit-logs?${auditQuery(0)}`),
+      optionalFetch(canAudit, `${apiBase}/admin/audit-logs?${activeSection.value === 'overview' ? 'limit=1&offset=0' : auditQuery(0)}`),
    ]);
     const responses = [homeResponse, issuesResponse, issueSummaryResponse, practiceResponse, minePageResponse, aboutResponse, observationsResponse, lifecycleResponse, privacyResponse, auditResponse].filter((response): response is Response => response !== null);
     if (responses.some((response) => response.status === 401)) {
@@ -4224,10 +4313,7 @@ async function loadDashboard() {
       await loadPrivacyRevisions('about-page');
     }
     if (activeSection.value === 'overview') {
-      await Promise.all([
-        canAccessModule('contributions') ? refreshDiscussionContributions() : Promise.resolve(),
-        canAccessModule('members') ? refreshMembers() : Promise.resolve(),
-      ]);
+      await loadOverviewCounts(session, dashboardGeneration);
     }
   } catch (caught) {
     if (dashboardGeneration === dashboardRequestGeneration && session === sessionGeneration && loggedIn.value) {
@@ -7233,6 +7319,7 @@ function logout(message = '') {
   sessionExpiresAt.value = 0;
   overviewUpdatedAt.value = '';
   overviewSyncError.value = '';
+  overviewCounts.value = { members: null, contributions: null, reports: null };
   home.value = null;
   issues.value = [];
   issueLifecycle.value = null;
@@ -7703,86 +7790,14 @@ onBeforeUnmount(() => {
 </Teleport>
           <button v-if="showBackToTop" type="button" class="to-top" aria-label="回到顶部" title="回到顶部" @click="scrollToTop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
           <p v-if="dashboardLoading" class="loading-note" role="status" aria-live="polite">正在同步云端数据…</p>
-      <section v-if="activeSection === 'overview'" id="overview-panel" class="overview-workspace" :aria-busy="dashboardLoading">
-        <header class="panel overview-hero">
-          <div class="overview-hero-copy">
-            <p class="eyebrow">A LITTLE CARE, EVERY DAY</p>
-            <h2>{{ overviewGreeting }}</h2>
-            <p class="overview-hero-description">从这里，照看每一份真实的表达。</p>
-            <p class="muted">{{ adminRoleLabels[adminRole] }} · 已授权 {{ adminModuleList.length }} / {{ adminModules.length }} 个模块</p>
-          </div>
-          <div class="overview-hero-date">
-            <span>{{ new Date(overviewUpdatedAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase() }}</span>
-            <time :datetime="overviewUpdatedAt || undefined">{{ new Date(overviewUpdatedAt || Date.now()).toLocaleDateString('zh-CN', { year: 'numeric', weekday: 'long' }) }}</time>
-          </div>
-          <div class="overview-hero-actions">
-            <button v-if="canAccessModule('journal')" type="button" @click="openJournalSubsection('journal-list')">期刊工作台 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-            <button v-if="canAccessModule('contributions')" type="button" class="quiet" @click="activeSection = 'contributions'; refreshDiscussionContributions()">管理讨论内容</button>
-            <button v-if="canAccessModule('observations')" type="button" class="quiet" @click="activeSection = 'observations'; refreshObservations()">观察记录</button>
-            <button v-if="isSuperAdmin" type="button" class="quiet" @click="activeSection = 'employees'; loadEmployees()">员工与权限</button>
-            <span class="overview-sync-message" :class="{ 'has-error': Boolean(overviewSyncError) }" role="status">{{ dashboardLoading ? '正在同步最新数据' : overviewSyncError ? '数据同步未完成，请重试' : overviewUpdatedAt ? '更新于 ' + displayDate(overviewUpdatedAt) : '等待同步数据' }}</span>
-            <button type="button" class="quiet overview-sync" :class="{ 'is-syncing': dashboardLoading }" :disabled="dashboardLoading || currentPageRefreshing" @click="refreshCurrentPage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 11.5-1L20 9M4 15l2.5 3A7 7 0 0 0 18 17"/></svg>{{ dashboardLoading ? '同步中…' : '刷新数据' }}</button>
-          </div>
-        </header>
-
-        <p v-if="adminModuleList.length === 0" class="panel overview-empty">当前账号还没有获得任何后台模块。请让超级管理员在「员工与权限 → 授权模块」中勾选后使用。</p>
-
-        <div class="overview-section-heading">
-          <div><h3>运营概览</h3><p>内容、社区与日常运营，一目了然。</p></div>
-          <span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 11h16"/></svg>截至最近一次同步</span>
-        </div>
-        <div class="overview-metrics">
-          <article v-if="canAccessModule('journal')" class="panel overview-metric">
-            <div class="overview-metric-top"><p class="eyebrow">JOURNAL / 当前期刊</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h5a4 4 0 0 1 4 4v13a4 4 0 0 0-4-3H3zM12 8a4 4 0 0 1 4-4h5v14h-5a4 4 0 0 0-4 3"/></svg></span></div>
-            <strong>{{ dashboardLoading && !overviewUpdatedAt ? '—' : issueLifecycle?.publishedCode || '尚未发布' }}</strong>
-            <p class="overview-metric-line">草稿 {{ issueLifecycle?.draftCount ?? 0 }} 期 · 归档 {{ issueLifecycle?.archivedCount ?? 0 }} 期</p>
-            <small>{{ issueLifecycle?.publishedUpdatedAt ? '发布时间 ' + displayDate(issueLifecycle.publishedUpdatedAt) : '还没有已发布期刊' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="openJournalSubsection('journal-list')"><span>管理期刊</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-          </article>
-
-          <article v-if="canAccessModule('contributions')" class="panel overview-metric">
-            <div class="overview-metric-top"><p class="eyebrow">REVIEW / 经历审核</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h12v15H8zM4 7v14h12M11 10l2 2 4-4"/></svg></span></div>
-            <strong><AnimatedNumber :value="discussionContributionSummary.pending" :loading="dashboardLoading" /><span class="overview-metric-unit">条待审核</span></strong>
-            <p class="overview-metric-line">本期讨论里用户主动保存的经历</p>
-            <small v-if="discussionContributions[0]">最近提交：{{ displayDate(discussionContributions[0].createdAt) }}</small>
-            <small v-else>暂时没有待审核内容</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'contributions'; refreshDiscussionContributions()"><span>进入审核队列</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-          </article>
-
-          <article v-if="canAccessModule('observations')" class="panel overview-metric" data-tone="sage">
-            <div class="overview-metric-top"><p class="eyebrow">OBSERVATIONS / 此刻观察</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span></div>
-            <strong><AnimatedNumber :value="observationLifecycle?.savedCount ?? observationTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">条已保存</span></strong>
-            <p class="overview-metric-line">草稿 {{ observationLifecycle?.draftCount ?? 0 }} 条 · 超期草稿 {{ observationLifecycle?.staleDraftCount ?? 0 }} 条</p>
-            <small>保留期 {{ observationLifecycle?.retentionDays ?? 90 }} 天</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'observations'; refreshObservations()"><span>查看观察记录</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-          </article>
-
-          <article v-if="canAccessModule('members')" class="panel overview-metric">
-            <div class="overview-metric-top"><p class="eyebrow">MEMBERS / 社区会员</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3.5"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 4a3.5 3.5 0 0 1 0 7m4 10v-2a6 6 0 0 0-4-5.5"/></svg></span></div>
-            <strong><AnimatedNumber :value="memberTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">位会员</span></strong>
-            <p class="overview-metric-line">按注册时间倒序展示在会员列表</p>
-            <small>{{ members[0] ? '最近注册 ' + displayDate(members[0].createdAt) : '暂无注册会员' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'members'; refreshMembers()"><span>打开会员列表</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-          </article>
-
-          <article v-if="canAccessModule('privacy')" class="panel overview-metric" data-tone="amber">
-            <div class="overview-metric-top"><p class="eyebrow">PRIVACY / 隐私申请</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3-8 3v6c0 5 8 9 8 9s8-4 8-9V6zM9 12l2 2 4-4"/></svg></span></div>
-            <strong><AnimatedNumber :value="privacyLifecycle?.pendingCount ?? 0" :loading="dashboardLoading" /><span class="overview-metric-unit">条待处理</span></strong>
-            <p class="overview-metric-line">其中到期 {{ privacyLifecycle?.duePendingCount ?? 0 }} 条 · 失败 {{ privacyLifecycle?.failedCount ?? 0 }} 条</p>
-            <small>{{ privacyLifecycle?.oldestPendingAt ? '最早申请 ' + displayDate(privacyLifecycle.oldestPendingAt) : '没有积压的删除申请' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'privacy'; refreshPrivacy(true)"><span>处理删除申请</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-          </article>
-
-          <article v-if="canAccessModule('audit')" class="panel overview-metric">
-            <div class="overview-metric-top"><p class="eyebrow">AUDIT / 操作记录</p><span class="overview-metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"/></svg></span></div>
-            <strong><AnimatedNumber :value="auditTotal" :loading="dashboardLoading" /><span class="overview-metric-unit">条操作记录</span></strong>
-            <p class="overview-metric-line">覆盖用户、管理员与系统动作</p>
-            <small>{{ auditLogs[0] ? '最近动作 ' + displayDate(auditLogs[0].createdAt) : '暂无审计记录' }}</small>
-            <button type="button" class="quiet overview-metric-action" @click="activeSection = 'audit'; refreshAudit()"><span>查看操作记录</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
-          </article>
-        </div>
-
-      </section>
+      <EditorialWorkspace v-if="activeSection === 'overview'"
+        :issue="overviewIssue" :issues="canAccessModule('journal') ? issues : []" :cover-url="overviewCoverUrl"
+        :dirty="Boolean(overviewIssue && editingIssueId === overviewIssue.id && issueDraftDirty)"
+        :busy="uploading" :loading="dashboardLoading || currentPageRefreshing" :updated-at="overviewUpdatedAt"
+        :sync-error="overviewSyncError" :tasks="overviewTasks" :metrics="overviewMetrics" :can-journal="canAccessModule('journal')"
+        @edit="continueOverviewIssue" @preview="previewOverviewIssue" @navigate="openOverviewDestination"
+        @refresh="refreshCurrentPage" @journal="openJournalSubsection('journal-list')"
+      />
       <section v-if="activeSection === 'content' && activeContentSection === 'journal-list'" id="journal-list" class="content-area">
         <div class="journal-list-layout">
           <aside class="panel issue-list-panel">
@@ -9640,7 +9655,7 @@ onBeforeUnmount(() => {
       </div>
     </template>
     </main>
-    <Teleport to="body"><PublishedContentDialog v-if="loggedIn && publishedPreview" :kind="publishedPreview" :issue-code="issueForm.code" :api-base="apiBase" :request="apiFetch" @close="publishedPreview = null" /><MediaUploadStatus v-if="loggedIn" :items="mediaUploadItems" @dismiss="dismissMediaUpload" /></Teleport>
+    <Teleport to="body"><PublishedContentDialog v-if="loggedIn && publishedPreview" :kind="publishedPreview" :issue-code="publishedPreviewIssueCode || issueForm.code" :api-base="apiBase" :request="apiFetch" @close="publishedPreview = null" /><MediaUploadStatus v-if="loggedIn" :items="mediaUploadItems" @dismiss="dismissMediaUpload" /></Teleport>
     <Teleport to="body">
       <ImageCropDialog
         v-if="pendingImageCrop"

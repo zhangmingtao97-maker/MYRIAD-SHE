@@ -14,10 +14,19 @@
 .admin-workspace-mark { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
 .admin-notification-badge { background: var(--accent); }
 .account-avatar-button { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
-.overview-workspace .overview-hero { background: linear-gradient(115deg, var(--surface-2), var(--surface) 66%, var(--accent-soft)); }
-.overview-workspace .overview-hero::before { box-shadow: 0 0 0 28px rgb(71 27 18 / 3%), 0 0 0 56px rgb(71 27 18 / 2%); }
 .sidebar-toggle.quiet, .admin-workspace-chevron { color: var(--ink-2); }
 .admin-workspace-chevron { stroke: currentColor; }
+
+/* Clear interface typography around the editorial content and phone previews. */
+.dashboard-sidebar, .topbar :is(button, .admin-page-description),
+.dashboard-workspace :is(.editor-page-switch, .admin-segmented-tabs, .field-help, .settings-actions, .journal-savebar, .practice-savebar) {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+.dashboard-sidebar :is(button, small),
+.dashboard-workspace :is(.editor-page-switch, .admin-segmented-tabs, .settings-actions, .journal-savebar, .practice-savebar) button { font-family: inherit; }
+.dashboard-brand-copy strong { font-family: "MYRIAD Garamond", "MYRIAD Song", serif; }
+.topbar-title h1 { font-weight: 500; }
+.topbar :is(.admin-page-description, .eyebrow) { line-height: 1.8; }
 
 .editor-page-switch {
   display: flex;
