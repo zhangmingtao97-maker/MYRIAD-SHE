@@ -33,6 +33,7 @@ import { useMediaUploads } from './composables/useMediaUploads';
 import { createAdminFetch, responseMessage, conciseResponseMessage } from './admin-api';
 import { practiceEntryFixedStyle, practiceEntryText } from './practiceEntry';
 import { normalizePracticeContentResponse } from './practice-content-defaults';
+import { practiceContentPayload } from './practice-content-payload';
 import { createDefaultDiscussionContent } from './discussion-content';
 import { isSeasonStagesCopy, seasonActionCopyGroups, seasonCardCopyGroups, seasonChoiceCopyGroups, seasonNowChangeCopyGroups, seasonNowRecentCopyGroups, seasonStageDefinitions, seasonStagesFormatIssue } from './season-stages';
 import type { SeasonNowTab, SeasonStageKey, SeasonStagesCopy } from './season-stages';
@@ -4397,29 +4398,6 @@ async function refreshCurrentPage() {
       window.scrollTo(scrollX, scrollY);
     }
   }
-}
-
-// 后端返回的 PracticeContent 多了两处「派生字段」：顶层 draft 标记，以及
-// sharedPracticeCopy 里由 onlineCopy / rule1..4 归并出来的 onlineParagraphs、rules。
-// DTO 开了 whitelist，把这些原样发回去会 400（property ... should not exist），
-// 所以保存前先剥掉，保存后再把本地这两段合并回内存，界面不会闪。
-function practiceContentPayload(content: PracticeContent) {
-  const { draft: _draft, sharedPracticeCopy, ...rest } = content;
-  const entries = rest.entries.map((entry) => {
-    const context = practiceEntryText(entry.contextRichText);
-    const title = practiceEntryText(entry.titleRichText);
-    const description = practiceEntryText(entry.descriptionRichText);
-    return {
-      ...entry,
-      contextRichText: context, contextFontSize: practiceEntryFixedStyle.context.fontSize, contextColor: practiceEntryFixedStyle.context.color,
-      titleRichText: title, titleFontSize: practiceEntryFixedStyle.title.fontSize, titleColor: practiceEntryFixedStyle.title.color, title,
-      descriptionRichText: description, descriptionFontSize: practiceEntryFixedStyle.description.fontSize, descriptionColor: practiceEntryFixedStyle.description.color, description,
-    };
-  });
-  const shared = sharedPracticeCopy
-    ? Object.fromEntries(Object.entries(sharedPracticeCopy).filter(([key]) => key !== 'onlineParagraphs' && key !== 'rules'))
-    : sharedPracticeCopy;
-  return { ...rest, entries, sharedPracticeCopy: shared };
 }
 
 async function savePracticeContent() {

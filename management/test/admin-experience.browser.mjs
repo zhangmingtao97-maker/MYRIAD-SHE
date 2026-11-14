@@ -332,6 +332,9 @@ try {
       if (path === '/content/issues') return send(issueFixtures);
       if (path === '/content/issues/summary') return send(issueSummaryFixture());
       if (path === '/content/practice/manage' && route.request().method() === 'PATCH') {
+        if (Object.hasOwn(body, 'offlineActivitiesPublished')) {
+          return route.fulfill({ status: 400, json: { message: ['property offlineActivitiesPublished should not exist'] } });
+        }
         savedPracticePayload = body;
         Object.assign(practice, body, { editVersion: practice.editVersion + 1 });
         return send(practice);

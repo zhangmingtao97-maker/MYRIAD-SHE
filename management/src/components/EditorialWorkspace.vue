@@ -67,7 +67,7 @@ function timeLabel(value: string) {
         <header class="editorial-section-heading"><h2 id="editorial-tasks-title">待处理</h2><span>照看每一份表达</span></header>
         <ul v-if="tasks.length"><li v-for="task in tasks" :key="task.id"><button type="button" class="editorial-task" :class="{ 'is-urgent': task.urgent }" @click="emit('navigate', task.id)"><div><strong>{{ task.label }}</strong><small>{{ task.count === null ? '暂未读取，点击重试' : task.description }}</small></div><span class="editorial-task-count">{{ count(task.count) }}<small>条</small></span><span class="editorial-arrow" aria-hidden="true">↗</span></button></li></ul>
         <p v-else class="editorial-muted">当前账号没有待处理模块的访问权限。</p>
-        <p v-if="tasks.length && tasks.every(task => task.count === 0)" class="editorial-all-clear">待处理事项已清空，可以安心回到内容。</p>
+        <p v-if="tasks.length && tasks.every(task => task.count === 0 && !task.urgent)" class="editorial-all-clear">待处理事项已清空，可以安心回到内容。</p>
       </section>
     </div>
 

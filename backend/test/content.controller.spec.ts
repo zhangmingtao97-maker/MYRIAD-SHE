@@ -1,7 +1,11 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 import { ConfigService } from '@nestjs/config';
 import type { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
@@ -1649,6 +1653,48 @@ test('shared practice exposes offline activities when the issue is explicitly pu
   const { controller } = practiceHarness({ offlineActivitiesPublished: true });
   const result = await controller.practice();
   assert.equal(result.offlineActivitiesPublished, true);
+});
+
+test('practice editor requests pass the actual PATCH validation after reading published or draft content', async () => {
+  const modules = new Map<string, Record<string, any>>();
+  function frontendModule(name: string): Record<string, any> {
+    const cached = modules.get(name);
+    if (cached) return cached;
+    const exports = {};
+    const source = readFileSync(resolve(__dirname, '../../../management/src', `${name}.ts`), 'utf8');
+    const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
+    assert.equal(compiled.diagnostics?.length, 0);
+    runInNewContext(compiled.outputText, { exports, require: (path: string) => frontendModule(path.replace(/^\.\//, '')) });
+    modules.set(name, exports);
+    return exports;
+  }
+  const { practiceContentPayload } = frontendModule('practice-content-payload');
+  const metatype = Reflect.getMetadata('design:paramtypes', ContentController.prototype, 'updatePracticeContent')[1];
+  const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+  const metadata = { type: 'body' as const, metatype };
+  for (const draft of [false, true]) {
+    const { controller } = practiceHarness(draft ? { draftContent: practiceUpdate(), draftEditVersion: 3 } : {});
+    const content = await controller.managePractice();
+    assert.equal(content.draft, draft);
+    assert.equal(content.offlineActivitiesPublished, false);
+    // Reproduce the reported rejection with the valid write body plus the GET-only field.
+    const payload = JSON.parse(JSON.stringify(practiceContentPayload(content)));
+    await assert.rejects(pipe.transform({ ...payload, offlineActivitiesPublished: false }, metadata), (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.match(JSON.stringify(error.getResponse()), /property offlineActivitiesPublished should not exist/);
+      return true;
+    });
+    const validated = await pipe.transform(payload, metadata);
+    assert.equal(validated.title, content.title);
+    assert.equal(validated.editVersion, content.editVersion);
+    assert.equal(validated.entries.length, content.entries.length);
+    assert.deepEqual(JSON.parse(JSON.stringify(validated.observationCopy)), content.observationCopy);
+    // Publication state and preview data stay available in the loaded editor.
+    assert.equal(content.offlineActivitiesPublished, false);
+    assert.ok(Array.isArray(content.sharedPracticeCopy.rules));
+    assert.ok(!Object.hasOwn(payload, 'draft'));
+    assert.ok(!Object.hasOwn(payload, 'offlineActivitiesPublished'));
+  }
 });
 
 test('practice page title preserves rich text, line breaks, font size, and color', async () => {
