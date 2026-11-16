@@ -8903,13 +8903,12 @@ onBeforeUnmount(() => {
       <section v-if="activeSection === 'contributions'" id="discussion-contributions" class="content-area discussion-management">
         <div class="section-heading discussion-page-heading">
           <div><p class="eyebrow">TOGETHER / CONTENT</p><h2>一起谈谈内容</h2><p class="admin-page-description">审核主经历与回复留言，处理公开状态和精华展示；会员发布权限请前往「一起谈谈权限」。</p></div>
-          <div class="section-tools discussion-page-actions"><button type="button" class="quiet" :disabled="discussionContributionLoading" @click="refreshDiscussionContributions()">{{ discussionContributionLoading ? '刷新中…' : '刷新内容' }}</button></div>
         </div>
           <p v-if="discussionContributionActionMessage" class="status-message" role="status">{{ discussionContributionActionMessage }}</p>
           <p v-if="discussionContributionError" class="error" role="alert">{{ discussionContributionError }}</p>
-          <div class="discussion-summary-tabs" aria-label="发布状态概览">
-            <button v-for="status in discussionPublicationStatuses" :key="status" type="button" :class="{ active: discussionContributionPublicationStatus === status }" @click="discussionContributionPublicationStatus = status; refreshDiscussionContributions()"><span>{{ discussionContributionPublicationLabel(status) }}</span><strong>{{ discussionContributionSummary[status] }}</strong></button>
-            <button type="button" :class="{ active: discussionContributionPublicationStatus === '' }" @click="discussionContributionPublicationStatus = ''; refreshDiscussionContributions()"><span>全部</span><strong>{{ discussionContributionGrandTotal }}</strong></button>
+          <div class="discussion-summary-tabs" role="group" aria-label="发布状态概览">
+            <button v-for="status in discussionPublicationStatuses" :key="status" type="button" :class="{ active: discussionContributionPublicationStatus === status }" :aria-pressed="discussionContributionPublicationStatus === status" @click="discussionContributionPublicationStatus = status; refreshDiscussionContributions()"><span>{{ discussionContributionPublicationLabel(status) }}</span><strong>{{ discussionContributionSummary[status] }}</strong></button>
+            <button type="button" :class="{ active: discussionContributionPublicationStatus === '' }" :aria-pressed="discussionContributionPublicationStatus === ''" @click="discussionContributionPublicationStatus = ''; refreshDiscussionContributions()"><span>全部</span><strong>{{ discussionContributionGrandTotal }}</strong></button>
           </div>
           <div class="filters" aria-label="讨论内容筛选">
             <label>发布状态<select v-model="discussionContributionPublicationStatus" @change="refreshDiscussionContributions"><option value="pending">待审核</option><option value="published">已公开</option><option value="hidden">已隐藏</option><option value="rejected">已拒绝</option><option value="">全部</option></select></label>

@@ -652,8 +652,8 @@ try {
   assert.ok(latestContentRequest?.query.includes('publicationStatus=pending'), 'content moderation should default to the pending queue');
   const contentSummary = discussionSection.locator('[aria-label="发布状态概览"]');
   await contentSummary.getByRole('button', { name: /^全部 7$/ }).waitFor();
-  assert.equal(await discussionSection.locator('.discussion-page-actions button').count(), 1, 'content page should expose its own refresh action');
-  assert.equal(await discussionSection.locator('.discussion-page-actions button').isVisible(), true, 'content refresh action should be visible');
+  assert.equal(await discussionSection.getByRole('button', { name: '刷新内容', exact: true }).count(), 0, 'content page should use the shared page refresh action');
+  assert.equal(await page.getByRole('button', { name: '刷新页面', exact: true }).count(), 1, 'the shared refresh action should remain available');
   assert.match((await contentSummary.getByRole('button', { name: /^全部/ }).innerText()).replace(/\s+/g, ' '), /^全部 7$/, 'content total should sum every publication status');
   assert.equal(await discussionSection.locator('.discussion-contribution-row').count(), 2, 'pending queue should show pending fixtures only');
   assert.equal(await discussionSection.locator('.discussion-contribution-row-actions button svg').count(), 0, 'discussion action buttons should not use decorative arrows');

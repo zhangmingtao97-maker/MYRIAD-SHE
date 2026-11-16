@@ -165,6 +165,63 @@
 .content-area .discussion-summary-tabs > button:is(:hover, .active) { background: var(--accent-soft); box-shadow: none; }
 .content-area .discussion-summary-tabs strong { font-family: var(--admin-ui-font); font-size: 30px; font-weight: 400; }
 .content-area .discussion-summary-tabs span { font-size: 12px; }
+
+/* Publication filters read as one compact navigation row above the results. */
+#discussion-contributions .discussion-summary-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 24px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-line) transparent;
+  overscroll-behavior-x: contain;
+}
+#discussion-contributions .discussion-summary-tabs > button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 100px;
+  min-height: 56px;
+  padding: 10px 4px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-2);
+  white-space: nowrap;
+  box-shadow: none;
+}
+#discussion-contributions .discussion-summary-tabs span { font-size: 13px; font-weight: 500; }
+#discussion-contributions .discussion-summary-tabs strong {
+  min-width: 26px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--ink-2);
+  font-family: var(--admin-ui-font);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
+}
+#discussion-contributions .discussion-summary-tabs > button:hover { background: transparent; color: var(--accent); }
+#discussion-contributions .discussion-summary-tabs > button.active { border-bottom-color: var(--accent); background: transparent; color: var(--accent); }
+#discussion-contributions .discussion-summary-tabs > button.active strong { background: var(--accent); color: var(--surface); }
+#discussion-contributions .discussion-summary-tabs > button:focus-visible { outline-offset: -3px; }
+#discussion-contributions .filters { margin-top: 0; border-top: 0; }
+@media (max-width: 600px) {
+  #discussion-contributions .discussion-summary-tabs { gap: 12px; }
+  #discussion-contributions .discussion-summary-tabs > button { min-width: 96px; }
+}
 .content-area .discussion-table-panel { border-radius: 8px; box-shadow: none; }
 .content-area .discussion-table-toolbar { padding: 24px; background: var(--admin-paper); }
 .content-area .discussion-table-toolbar .filters { margin: 0; padding: 0; border: 0; }
