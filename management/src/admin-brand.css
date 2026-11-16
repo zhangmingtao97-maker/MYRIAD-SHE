@@ -5,7 +5,35 @@
 }
 
 ::selection { background: rgb(var(--brand-ochre-rgb) / 16%); }
-.dashboard-sidebar { background: var(--surface); border-color: var(--line-strong); }
+.dashboard-sidebar {
+  --surface: var(--brand-ochre);
+  --surface-2: #70483f;
+  --ink: #faf3ea;
+  --ink-2: var(--brand-rice);
+  --muted: var(--brand-rice);
+  --line: rgb(222 212 200 / 20%);
+  --line-strong: rgb(222 212 200 / 32%);
+  --accent: var(--brand-rice);
+  --accent-strong: #faf3ea;
+  --accent-soft: rgb(222 212 200 / 14%);
+  --accent-line: rgb(222 212 200 / 40%);
+  background: var(--brand-ochre);
+  color: var(--ink);
+  border-color: var(--line);
+  scrollbar-color: rgb(222 212 200 / 35%) transparent;
+}
+.dashboard-sidebar::-webkit-scrollbar-thumb { background: rgb(222 212 200 / 35%); }
+.dashboard-sidebar :is(.dashboard-tab, .dashboard-subtab).active,
+.dashboard-sidebar :is(.dashboard-tab, .dashboard-subtab).active:hover {
+  background: var(--brand-rice);
+  color: var(--brand-ochre);
+  box-shadow: none;
+}
+.dashboard-sidebar :is(.dashboard-tab, .dashboard-subtab).active svg { color: inherit; }
+.dashboard-sidebar .dashboard-subtab.active::after { background: var(--brand-ochre); }
+.dashboard-sidebar .sidebar-toggle.quiet:hover { background: var(--surface-2); color: var(--ink); }
+.dashboard-sidebar .admin-workspace-dot { background: #a9c7b4; box-shadow: 0 0 0 3px rgb(169 199 180 / 14%); }
+.dashboard-sidebar .account-menu-item.danger { color: #ffd4c7; }
 .dashboard-brand-copy strong { color: var(--accent); }
 .topbar { background: var(--bg); }
 .topbar-title .eyebrow, .admin-page-description { color: var(--muted); }
