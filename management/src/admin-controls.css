@@ -1,0 +1,123 @@
+/* Action controls share a size and alignment; navigation and authored previews
+   retain their own layout. Do not style every button as a form action. */
+:root {
+  --admin-button-height: 44px;
+  --admin-button-radius: 6px;
+  --admin-button-gap: 8px;
+}
+
+:is(.dashboard-workspace .content-area, .observation-detail-panel, .admin-error-dialog, .issue-lifecycle-dialog, .publication-preview-dialog, .password-dialog, .image-crop-dialog)
+:is(.form-actions, .section-tools, .table-actions, .settings-actions, .journal-overview-actions, .issue-list-heading-actions, .issue-list-actions, .employee-actions, .member-actions, .discussion-contribution-row-actions, .discussion-report-actions, .audit-filter-actions, .reports-toolbar, .journal-background-actions, .journal-past-actions, .brand-popup-media-actions, .admin-error-actions) > button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 80px;
+  min-height: var(--admin-button-height);
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: var(--admin-button-radius);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  box-shadow: none;
+  touch-action: manipulation;
+}
+
+.dashboard-workspace .content-area :is(.form-actions, .settings-actions) > button { min-width: 112px; }
+.dashboard-workspace .content-area :is(.member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions) > button { min-width: 64px; padding-inline: 12px; }
+
+.dashboard-workspace .content-area :is(.form-actions, .settings-actions, .journal-overview-actions, .issue-list-heading-actions, .issue-list-actions, .member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions, .audit-filter-actions, .journal-background-actions, .journal-past-actions, .brand-popup-media-actions),
+:is(.observation-detail-panel, .admin-error-dialog, .issue-lifecycle-dialog, .publication-preview-dialog, .password-dialog, .image-crop-dialog) :is(.form-actions, .admin-error-actions) {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-button-gap);
+}
+.dashboard-workspace .content-area :is(.form-actions, .settings-actions) { justify-content: flex-end; }
+.observation-detail-panel .form-actions { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.observation-detail-panel .form-actions > button { flex: 0 1 auto; width: auto; max-width: 100%; }
+.dashboard-workspace .content-area :is(.member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions) { flex-wrap: nowrap; }
+.dashboard-workspace .content-area :is(.section-tools, .reports-toolbar) { align-items: center; gap: 12px; }
+.dashboard-workspace .content-area :is(.filters, .employee-toolbar, .life-card-view-filters) { align-items: flex-end; }
+.dashboard-workspace .content-area :is(.filters, .employee-toolbar, .life-card-view-filters) > button { min-width: 88px; min-height: var(--admin-button-height); padding: 10px 16px; white-space: nowrap; }
+.dashboard-workspace .content-area .audit-filter-actions { align-self: end; }
+
+/* Quiet actions remain visible beside the single filled primary action. */
+.dashboard-workspace .content-area :is(.form-actions, .section-tools, .table-actions, .settings-actions, .journal-overview-actions, .member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions, .audit-filter-actions) > button.quiet:not(.danger) {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+.dashboard-workspace .content-area :is(.form-actions, .section-tools, .table-actions, .settings-actions, .journal-overview-actions, .member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions, .audit-filter-actions) > button.quiet:not(.danger):hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: none;
+  transform: none;
+}
+.dashboard-workspace .content-area :is(.form-actions, .section-tools, .settings-actions, .member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions) > button:disabled {
+  background: var(--surface-3);
+  color: var(--muted);
+  border-color: var(--line);
+  opacity: 1;
+  box-shadow: none;
+}
+
+/* Long editor forms keep status copy and the action pair in distinct groups. */
+.dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  padding: 16px 20px;
+  background: var(--surface);
+}
+.dashboard-workspace .content-area :is(.journal-savebar-copy, .practice-savebar-copy) { flex: 1 1 300px; gap: 4px; }
+.dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) > .form-actions { flex: 0 0 auto; flex-wrap: nowrap; margin-left: auto; }
+.dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) .publication-status { gap: 4px 10px; }
+.dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) .publication-status > button { min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--accent); font-size: 12px; }
+.dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) .publication-status > button:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Controls with a single icon use a stable square target. */
+.dashboard-workspace .content-area .issue-module-toolbar > div { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; }
+.dashboard-workspace .content-area .issue-module-toolbar button { min-width: 44px; min-height: 44px; padding: 10px 12px; border-radius: var(--admin-button-radius); white-space: nowrap; }
+.dashboard-workspace .content-area .rich-text-toolbar { gap: 8px; }
+.dashboard-workspace .content-area .rich-text-toolbar-group { gap: 8px; padding-right: 8px; }
+.dashboard-workspace .content-area .rich-text-tool { display: inline-grid; place-items: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: var(--admin-button-radius); }
+.dashboard-workspace .content-area :is(.rich-text-control select, .rich-text-color input) { min-height: 44px; }
+.dashboard-workspace .topbar > .topbar-actions { gap: 8px; align-items: center; }
+.dashboard-workspace .topbar :is(.admin-command-trigger, .admin-page-refresh) { min-height: 44px; padding: 10px 16px; border-radius: var(--admin-button-radius); font-size: 13px; }
+.dashboard-workspace .topbar :is(.admin-notification-trigger, .account-avatar-button) { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 0; }
+.dashboard-workspace .topbar .admin-notification-trigger { border-radius: var(--admin-button-radius); }
+.dashboard-sidebar .sidebar-toggle { min-width: 44px; min-height: 44px; padding: 12px; }
+
+/* One visual shape for settings actions; tabs keep their capsule navigation. */
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button { min-width: 112px; min-height: 44px; padding: 10px 16px; border-radius: var(--admin-button-radius); }
+#system-settings :is(.settings-actions, .brand-popup-media-actions) > button.quiet { min-width: 88px; }
+.dashboard-workspace .editorial-primary { min-width: 112px; gap: 20px; min-height: 44px; padding: 10px 16px; border-radius: var(--admin-button-radius); font-size: 13px; }
+.dashboard-workspace .editorial-issue-actions { gap: 8px 16px; }
+.dashboard-workspace .editor-page-switch .admin-segmented-tabs > button { min-height: 44px; padding: 10px 20px; }
+
+/* Keep the complete member action group visible on desktop while its data
+   columns scroll inside the table. Small screens retain the full scroll view. */
+@media (min-width: 1200px) {
+  #member-directory .member-head > :last-child { position: sticky; right: 0; z-index: 1; padding-left: 12px; background: var(--surface); box-shadow: -12px 0 16px -16px rgb(var(--brand-ochre-rgb) / 45%); }
+  #member-directory .observation-head > :last-child { background: var(--surface-2); }
+  #member-directory .observation-row:hover > :last-child { background: var(--surface-2); }
+}
+
+@media (max-width: 600px) {
+  .dashboard-workspace .content-area :is(.form-actions, .settings-actions) { flex-wrap: wrap; }
+  .dashboard-workspace .content-area :is(.form-actions, .settings-actions) > button { min-width: 0; padding-inline: 14px; }
+  .dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) { flex-direction: column; flex-wrap: nowrap; align-items: stretch; padding: 16px; }
+  .dashboard-workspace .content-area :is(.journal-savebar-copy, .practice-savebar-copy) { flex: 0 1 auto; width: 100%; }
+  .dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) > .form-actions { width: 100%; margin-left: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) > .form-actions > button { flex: 1 1 auto; }
+  .dashboard-workspace .topbar :is(.admin-command-trigger, .admin-page-refresh) { width: 44px; min-width: 44px; height: 44px; padding: 11px; }
+  .dashboard-workspace .editor-page-switch .admin-segmented-tabs > button { padding-inline: 14px; }
+}

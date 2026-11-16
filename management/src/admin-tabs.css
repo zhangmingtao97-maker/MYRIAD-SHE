@@ -63,14 +63,14 @@
 .admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"] {
   background: var(--accent);
   color: #ffffff;
-  box-shadow: 0 2px 6px rgb(71 27 18 / 12%);
+  box-shadow: 0 2px 6px rgb(var(--brand-ochre-rgb) / 12%);
 }
 
 .admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"]:hover:not(:disabled),
 .admin-segmented-tabs.admin-segmented-tabs > button[aria-selected="true"]:active:not(:disabled) {
   background: var(--accent-strong);
   color: #fff;
-  box-shadow: 0 2px 6px rgb(71 27 18 / 12%);
+  box-shadow: 0 2px 6px rgb(var(--brand-ochre-rgb) / 12%);
   transform: none;
 }
 

@@ -17,6 +17,7 @@ import './admin-tabs.css';
 import './admin-motion.css';
 import './admin-brand.css';
 import './admin-editorial.css';
+import './admin-controls.css';
 
 const brandFonts = document.createElement('style');
 brandFonts.textContent = `

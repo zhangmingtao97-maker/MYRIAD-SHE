@@ -4,29 +4,31 @@
 
 :root {
   /* 鐢诲竷涓庨潰 */
-  /* CMYK 的屏幕近似色；归安赭：C56 M83 Y89 K37。 */
-  --brand-rice: #e0decf;
-  --brand-ochre: #471b12;
+  /* 以用户提供的品牌色卡为屏幕参考；CMYK 保留于品牌说明。 */
+  --brand-rice: #ded4c8;
+  --brand-ochre: #5e3229;
+  --brand-ochre-rgb: 94 50 41;
   --bg: var(--brand-rice);
   --surface: #ffffff;
-  --surface-2: #f6f5f0;
-  --surface-3: #eeece3;
+  --surface-2: #f5f0ea;
+  --surface-3: #eae1d7;
+  --surface-paper: #faf7f2;
 
   /* 澧ㄨ壊灞傜骇 */
-  --ink: #302622;
-  --ink-2: #56433c;
-  --muted: #74675f;
-  --faint: #82756d;
+  --ink: #342923;
+  --ink-2: #604b42;
+  --muted: #69584e;
+  --faint: #69584e;
 
   /* 鍒嗛殧 */
-  --line: #e5ddd4;
-  --line-strong: #cfc1b4;
+  --line: #e6dcd1;
+  --line-strong: #c4b3a5;
 
   /* 鍞竴寮鸿皟鑹诧紙鍝佺墝闄跺湡鑹诧級 */
   --accent: var(--brand-ochre);
-  --accent-strong: #35140e;
-  --accent-soft: #f0e8e0;
-  --accent-line: #cbb4a6;
+  --accent-strong: #4c2821;
+  --accent-soft: #efe5de;
+  --accent-line: #bda394;
 
   /* 鐘舵€?*/
   --ok: #2f6b46;

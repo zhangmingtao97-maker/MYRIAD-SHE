@@ -451,9 +451,37 @@ try {
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState === 'finished'));
   }
   async function noOverflow(label) {
+    await page.waitForFunction(() => document.getAnimations().filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity).every(animation => animation.playState === 'finished'));
     const overflow = await page.evaluate(() => ({ width: innerWidth, actual: document.documentElement.scrollWidth, offenders: Array.from(document.querySelectorAll('body *')).filter((el) => el.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(el).position !== 'fixed').slice(0, 8).map((el) => `${el.tagName}.${el.className}`) }));
     if (overflow.actual > overflow.width) await page.screenshot({ path: resolve(output, 'admin-overflow.png'), fullPage: true });
     assert.ok(overflow.actual <= overflow.width, `${label}: ${JSON.stringify(overflow)}`);
+    const controlIssues = await page.evaluate(() => {
+      const scopes = '.form-actions, .section-tools, .settings-actions, .member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions, .audit-filter-actions';
+      const issues = [];
+      for (const group of document.querySelectorAll(scopes)) {
+        if (group.closest('.phone-screen, .phone-screen-inner')) continue;
+        const buttons = [...group.children].filter(el => el.tagName === 'BUTTON' && el.getClientRects().length);
+        for (const button of buttons) {
+          const box = button.getBoundingClientRect();
+          if (box.width < 43.5 || box.height < 43.5 || button.scrollWidth > button.clientWidth + 1) {
+            issues.push({ text: button.textContent.trim(), width: box.width, height: box.height, clipped: button.scrollWidth > button.clientWidth + 1 });
+          }
+          if (innerWidth >= 1200 && group.matches('.member-actions')) {
+            const table = group.closest('.observation-table').getBoundingClientRect();
+            if (box.x < table.x || box.right > table.right + 1) issues.push({ text: button.textContent.trim(), reason: 'desktop member action is outside the visible table' });
+          }
+        }
+        if (group.matches('.member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions')) {
+          for (let index = 1; index < buttons.length; index += 1) {
+            const previous = buttons[index - 1].getBoundingClientRect();
+            const current = buttons[index].getBoundingClientRect();
+            if (Math.abs(previous.y - current.y) > 1 || current.x - previous.right < 7.5) issues.push({ group: group.className, reason: 'row actions wrap, overlap or sit too close' });
+          }
+        }
+      }
+      return issues;
+    });
+    assert.deepEqual(controlIssues, [], `${label}: action controls should fit their labels and remain easy to click`);
   }
   async function navigate(label) {
     await page.keyboard.press('Control+k');

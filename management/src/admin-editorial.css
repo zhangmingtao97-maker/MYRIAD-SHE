@@ -2,7 +2,7 @@
    events and state. The phone preview and authored rich text keep their own type. */
 .dashboard-workspace {
   --admin-ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
-  --admin-paper: #faf9f5;
+  --admin-paper: var(--surface-paper);
   --admin-space: 28px;
 }
 .dashboard-workspace > .content-area {
@@ -70,7 +70,7 @@
   padding: 18px 20px;
   border-radius: 8px;
   background: var(--surface);
-  box-shadow: 0 8px 24px -20px rgb(71 27 18 / 24%);
+  box-shadow: 0 8px 24px -20px rgb(var(--brand-ochre-rgb) / 24%);
 }
 .content-area :is(.journal-savebar, .practice-savebar) .form-actions { gap: 10px; }
 .content-area :is(.journal-savebar, .practice-savebar) .form-actions button { min-height: 44px; padding-inline: 18px; }
