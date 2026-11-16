@@ -9060,8 +9060,11 @@ onBeforeUnmount(() => {
         </div>
       </section>
       <section v-if="activeSection === 'privacy'" id="privacy-requests" class="content-area">
-        <div class="section-heading"><div><p class="eyebrow">PRIVACY</p><h2>账户删除申请</h2></div><div class="section-tools"><button class="quiet" :disabled="privacyControlsBusy" @click="refreshPrivacy(true)">{{ privacyRefreshing ? '刷新中…' : '刷新申请' }}</button></div></div>
-        <div class="filters" aria-label="账户删除申请筛选"><label>状态<select v-model="privacyStatus" :disabled="privacyControlsBusy" @change="refreshPrivacy()"><option value="">全部</option><option value="pending">待处理</option><option value="failed">失败</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></label></div>
+        <div class="section-heading"><div><p class="eyebrow">PRIVACY</p><h2>账户删除申请</h2></div></div>
+        <div class="filters" aria-label="账户删除申请筛选">
+          <label>状态<select v-model="privacyStatus" :disabled="privacyControlsBusy" @change="refreshPrivacy()"><option value="">全部</option><option value="pending">待处理</option><option value="failed">失败</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></label>
+          <div class="section-tools"><button class="quiet" :disabled="privacyControlsBusy" @click="refreshPrivacy(true)">{{ privacyRefreshing ? '刷新中…' : '刷新申请' }}</button></div>
+        </div>
         <p v-if="privacyActionMessage" class="status-message" role="status">{{ privacyActionMessage }}</p>
         <p v-if="privacyActionError" class="error" role="alert">{{ privacyActionError }}</p>
         <div class="observation-table">

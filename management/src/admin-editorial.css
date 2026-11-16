@@ -31,6 +31,9 @@
 .content-area > .section-heading h2 { font-family: var(--admin-ui-font); font-size: 14px; font-weight: 600; white-space: normal; }
 .content-area > .section-heading :is(.section-description, .admin-page-description, .audit-page-intro) { max-width: 76ch; margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.85; }
 .content-area .section-tools { flex: 0 1 auto; align-items: center; gap: 12px; }
+#privacy-requests .filters { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+#privacy-requests .filters > label { width: auto; justify-self: start; }
+#privacy-requests .filters > .section-tools { width: auto; }
 .content-area :is(.section-tools, .form-actions, .table-actions, .settings-actions, .member-actions, .employee-actions, .issue-list-actions) button { white-space: nowrap; }
 .content-area button:not(:where(.phone-screen *, .rich-text-toolbar *, .life-card-day, .life-card-months *, .module-summary-card)) { min-height: 44px; border-radius: 6px; }
 .content-area button:not(:disabled):not(:where(.phone-screen *, .rich-text-toolbar *)):is(:hover, :active) { transform: none; box-shadow: none; }
