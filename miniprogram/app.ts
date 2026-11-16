@@ -137,17 +137,11 @@ App<IAppOption>({
     if (this.globalData.accountDeleted) return Promise.reject(new Error('当前微信身份对应的账户已删除，请先确认是否创建新账户。'));
     const freshEnough = this.globalData.accessTokenExpiresAt > Date.now() + 60_000;
     if (!force && this.globalData.accessToken && this.globalData.userId && freshEnough) return Promise.resolve();
-    if (this.globalData.profileToken && this.globalData.profileTokenExpiresAt > Date.now()) {
-      const pages = getCurrentPages();
-      if (pages[pages.length - 1]?.route !== 'pages/login/index') wx.navigateTo({ url: '/pages/login/index' });
-      return Promise.reject(new ApiRequestError('请先授权手机号登录，再继续操作', 401, 'profile_required'));
-    }
-    return this.loginWithWechat().then(() => {
-      if (!this.globalData.accessToken) {
-        wx.navigateTo({ url: '/pages/login/index' });
-        throw new ApiRequestError('请先授权手机号登录，再继续操作', 401, 'profile_required');
-      }
-    });
+    // A protected action cannot initiate identity collection before the user
+    // has chosen to accept the terms and authorize login on the login page.
+    const pages = getCurrentPages();
+    if (pages[pages.length - 1]?.route !== 'pages/login/index') wx.navigateTo({ url: '/pages/login/index' });
+    return Promise.reject(new ApiRequestError('请先阅读并同意协议，再授权手机号登录', 401, 'profile_required'));
   },
   loginWithWechat(phoneCode?: string): Promise<void> {
     if (this.globalData.accountDeleted) return Promise.reject(new Error('当前微信身份对应的账户已删除，请先确认是否创建新账户。'));
@@ -288,7 +282,7 @@ App<IAppOption>({
     this.globalData.accountDeleted = false;
     this.globalData.loginPromise = null;
     wx.removeStorageSync('myriad_she_account_deleted');
-    await this.loginWithWechat();
+    // The caller opens the login page, where the new account needs fresh consent.
   },
 });
 

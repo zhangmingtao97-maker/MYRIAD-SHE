@@ -5,7 +5,7 @@ import { openWechatPrivacyContract } from '../../utils/privacy-authorization';
 const app = getApp<IAppOption>();
 
 Page({
-  data: { privacyReady: false, privacyContractName: '《小程序用户隐私保护指引》', loggingIn: false, loginError: '' },
+  data: { termsAccepted: false, privacyReady: false, privacyContractName: '《小程序用户隐私保护指引》', loggingIn: false, loginError: '' },
   loginGeneration: 0,
   onLoad() {
     enableShareMenu();
@@ -15,11 +15,19 @@ Page({
     });
   },
   onUnload() { this.loginGeneration += 1; },
+  onConsentChange(event: WechatMiniprogram.CustomEvent<{ value: string[] }>) {
+    if (this.data.loggingIn) return;
+    this.setData({ termsAccepted: event.detail.value.includes('accepted'), loginError: '' });
+  },
+  promptConsent() {
+    this.setData({ loginError: '请先阅读并自主勾选同意《用户协议》和《隐私政策》。' });
+  },
   // Privacy agreement alone must never create a session. The coupled native
   // button separately emits the phone authorization result from this gesture.
   onAgreePrivacyAuthorization() {},
   async onGetPhoneNumber(event: WechatMiniprogram.CustomEvent<{ code?: string; errMsg?: string }>) {
     if (this.data.loggingIn) return;
+    if (!this.data.termsAccepted) { this.promptConsent(); return; }
     const phoneCode = event.detail?.code;
     if (!phoneCode || /deny|cancel|fail/i.test(event.detail?.errMsg || '')) {
       this.setData({ loginError: '未完成手机号授权。你可以重试，或返回浏览公开内容。' });
@@ -42,6 +50,7 @@ Page({
       if (generation === this.loginGeneration) this.setData({ loggingIn: false });
     }
   },
+  browseWithoutLogin() { wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/home/index' }) }); },
   openPrivacyPolicy() { wx.navigateTo({ url: '/pages/privacy-policy/index' }); },
   openUserAgreement() { wx.navigateTo({ url: '/pages/privacy-policy/index?type=user-agreement' }); },
   openWechatPrivacyContract() { openWechatPrivacyContract(); },

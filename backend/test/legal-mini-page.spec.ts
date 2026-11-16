@@ -78,7 +78,7 @@ test('new users keep a profile challenge without silently signing in with empty 
 
 test('concurrent login requests share one WeChat session', async () => {
   const harness = miniAppHarness({ needProfile: false, accessToken: 'user-token', userId: 'user-id', expiresIn: 3600 });
-  await Promise.all([harness.app.ensureLogin(), harness.app.ensureLogin()]);
+  await Promise.all([harness.app.loginWithWechat(), harness.app.loginWithWechat()]);
   assert.equal(harness.loginCalls(), 1);
   assert.equal(harness.requests.length, 1);
   assert.equal(harness.app.globalData.accessToken, 'user-token');
@@ -87,22 +87,39 @@ test('concurrent login requests share one WeChat session', async () => {
 test('protected requests stop at pending onboarding without issuing another WeChat code', async () => {
   const h = miniAppHarness({ needProfile: true, profileToken: 'pending-profile', expiresIn: 600 });
   await h.app.loginWithWechat();
-  await assert.rejects(h.app.ensureLogin(), /授权手机号登录/);
+  await assert.rejects(h.app.ensureLogin(), /同意协议.*手机号登录/);
   assert.equal(h.loginCalls(), 1);
   assert.equal(h.requests.length, 1);
   assert.deepEqual(h.navigations, ['/pages/login/index']);
 });
 
-test('creating a new account still requires explicit profile completion', async () => {
+test('creating a new account returns to consent without collecting another identity', async () => {
   const harness = miniAppHarness({ needProfile: true, profileToken: 'new-account-token', expiresIn: 600 });
   harness.app.globalData.accountDeleted = true;
   harness.storage.set('myriad_she_account_deleted', true);
   await harness.app.createNewAccount();
   assert.equal(harness.app.globalData.accountDeleted, false);
   assert.equal(harness.app.globalData.accessToken, '');
-  assert.equal(harness.app.globalData.profileToken, 'new-account-token');
+  assert.equal(harness.app.globalData.profileToken, '');
+  assert.equal(harness.loginCalls(), 0);
+  assert.equal(harness.requests.length, 0);
   assert.equal(harness.storage.get('myriad_she_account_deleted'), undefined);
   assert.equal(harness.storage.has('myriad_she_access_token'), false);
+});
+
+test('protected actions require interactive consent when a session is absent or expired', async () => {
+  const h = miniAppHarness({ needProfile: false, accessToken: 'user-token', userId: 'user-id', expiresIn: 3600 });
+  await assert.rejects(h.app.ensureLogin(), /同意协议/);
+  h.app.globalData.accessToken = 'expired-token';
+  h.app.globalData.userId = 'known-user';
+  h.app.globalData.accessTokenExpiresAt = Date.now() - 1000;
+  await assert.rejects(h.app.ensureLogin(), /同意协议/);
+  assert.equal(h.loginCalls(), 0);
+  assert.equal(h.requests.length, 0);
+  assert.deepEqual(h.navigations, ['/pages/login/index', '/pages/login/index']);
+  h.app.globalData.accessTokenExpiresAt = Date.now() + 3_600_000;
+  await h.app.ensureLogin();
+  assert.equal(h.loginCalls(), 0, 'an existing valid session remains usable');
 });
 interface PageInstance {
   data: { documentKey: string; label: string; content: ReturnType<typeof content> | null; error: string; bodyNodes: string; loading: boolean };
@@ -143,17 +160,39 @@ function phoneLoginHarness() {
     wx: {
       getPrivacySetting: (options: any) => options.success({ needAuthorization: true, privacyContractName: '《真实平台指引》' }),
       navigateBack: () => navigations.push('back'), switchTab: () => navigations.push('mine'),
+      navigateTo: ({ url }: { url: string }) => navigations.push(url),
     },
     require: (path: string) => path.endsWith('/share') ? { enableShareMenu: () => undefined }
+      : path.endsWith('/privacy-authorization') ? { openWechatPrivacyContract: () => navigations.push('wechat-privacy') }
       : { apiErrorMessage: (_error: unknown, fallback: string) => fallback },
   });
   page.setData = (value: object) => Object.assign(page.data, value);
   return { page, codes, navigations, app, fail: () => { failure = true; }, defer: () => { finish = () => undefined; }, finish: () => finish?.() };
 }
 
+test('login consent starts unchecked and reading either policy never accepts it', async () => {
+  const h = phoneLoginHarness(); h.page.onLoad();
+  assert.equal(h.page.data.termsAccepted, false);
+  h.page.openUserAgreement(); h.page.openPrivacyPolicy(); h.page.openWechatPrivacyContract();
+  assert.equal(h.page.data.termsAccepted, false);
+  assert.deepEqual(h.navigations, ['/pages/privacy-policy/index?type=user-agreement', '/pages/privacy-policy/index', 'wechat-privacy']);
+  await h.page.onGetPhoneNumber({ detail: { code: 'unexpected-phone-code' } });
+  assert.deepEqual(h.codes, []);
+  assert.match(h.page.data.loginError, /自主勾选/);
+  h.page.onConsentChange({ detail: { value: ['accepted'] } });
+  assert.equal(h.page.data.termsAccepted, true);
+  h.page.onConsentChange({ detail: { value: [] } });
+  await h.page.onGetPhoneNumber({ detail: { code: 'revoked-phone-code' } });
+  assert.deepEqual(h.codes, []);
+  h.page.browseWithoutLogin();
+  assert.equal(h.navigations.at(-1), 'back');
+  assert.equal(h.app.globalData.accessToken, '');
+});
+
 test('phone authorization alone signs in without a profile dialog or selected avatar', async () => {
   const h = phoneLoginHarness(); h.page.onLoad();
   assert.equal(h.page.data.privacyContractName, '《真实平台指引》');
+  h.page.onConsentChange({ detail: { value: ['accepted'] } });
   h.page.onAgreePrivacyAuthorization();
   assert.equal(h.codes.length, 0, 'privacy agreement alone cannot sign in');
   await h.page.onGetPhoneNumber({ detail: { code: 'phone-code', errMsg: 'getPhoneNumber:ok' } });
@@ -165,6 +204,7 @@ test('phone authorization alone signs in without a profile dialog or selected av
 
 test('denied or missing phone authorization never attempts login', async () => {
   const h = phoneLoginHarness();
+  h.page.onConsentChange({ detail: { value: ['accepted'] } });
   for (const detail of [{ errMsg: 'getPhoneNumber:fail user deny' }, { code: 'ignored', errMsg: 'getPhoneNumber:fail cancel' }, {}]) {
     await h.page.onGetPhoneNumber({ detail });
     assert.equal(h.codes.length, 0);
@@ -174,6 +214,7 @@ test('denied or missing phone authorization never attempts login', async () => {
 
 test('phone login failure permits retry and deleted accounts cannot log in', async () => {
   const h = phoneLoginHarness(); h.fail();
+  h.page.onConsentChange({ detail: { value: ['accepted'] } });
   await h.page.onGetPhoneNumber({ detail: { code: 'phone-code' } });
   assert.equal(h.page.data.loggingIn, false);
   assert.match(h.page.data.loginError, /重新授权/);
@@ -186,6 +227,7 @@ test('phone login failure permits retry and deleted accounts cannot log in', asy
 
 test('duplicate phone events are ignored and unloaded pages never navigate', async () => {
   const h = phoneLoginHarness(); h.defer();
+  h.page.onConsentChange({ detail: { value: ['accepted'] } });
   const pending = h.page.onGetPhoneNumber({ detail: { code: 'phone-code' } });
   await h.page.onGetPhoneNumber({ detail: { code: 'duplicate-code' } });
   assert.deepEqual(h.codes, ['phone-code']);

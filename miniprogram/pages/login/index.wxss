@@ -17,8 +17,13 @@ page { min-height: 100%; background: #f5f0e8; }
 .one-click-login-button { background: #663124; color: #fffaf4; box-shadow: 0 8rpx 18rpx rgba(102, 49, 36, .14); }
 .login-page .one-click-login-button[disabled] { border-color: #c8b6a3; background: #e8ddd0; color: #645247; box-shadow: none; }
 .one-click-login-button:not([disabled]):active { background: #52251c; transform: translateY(1rpx); }
-.login-consent { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4rpx 8rpx; min-height: 64rpx; color: #75675d; font-size: 21rpx; line-height: 1.5; }
-.consent-policy-link { color: #663124; text-decoration: underline; }
+.login-consent { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0 4rpx; color: #75675d; font-size: 24rpx; line-height: 1.6; }
+.consent-checkbox-group { flex: 0 0 auto; }
+.consent-checkbox-label { display: flex; align-items: center; min-height: 88rpx; }
+.consent-checkbox-label checkbox { margin-left: -10rpx; transform: scale(.72); }
+.consent-policy-link { display: inline-flex; align-items: center; min-height: 88rpx; color: #663124; text-decoration: underline; }
+.browse-button { min-height: 88rpx; background: transparent; color: #75675d; font-size: 26rpx; font-weight: 400; }
+.login-privacy-footer { color: #75675d; font-size: 21rpx; line-height: 1.6; }
 .wechat-privacy-notice { width: 100%; text-align: center; }
 
 .login-error { margin-top: 22rpx; color: #a63725; font-size: 24rpx; line-height: 1.6; }
