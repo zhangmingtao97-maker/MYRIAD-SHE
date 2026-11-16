@@ -1,0 +1,243 @@
+/* Shared editorial layout. Only presentation changes; controls retain their DOM,
+   events and state. The phone preview and authored rich text keep their own type. */
+.dashboard-workspace {
+  --admin-ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --admin-paper: #faf9f5;
+  --admin-space: 28px;
+}
+.dashboard-workspace > .content-area {
+  min-width: 0;
+  margin-top: 32px;
+  font-family: var(--admin-ui-font);
+  line-height: 1.75;
+}
+.dashboard-workspace > .content-area :is(.phone-screen, .phone-screen-inner, .life-card-face, .legal-preview) {
+  font-family: "MYRIAD Garamond", "MYRIAD Song", serif;
+}
+.dashboard-workspace > .content-area .phone-screen { line-height: 1.65; }
+.content-area :is(button, input, select, textarea, label, .field-help, .muted, .eyebrow, .rich-text-label, .rich-text-help):not(:where(.phone-screen *, .rich-text-canvas *, .legal-preview *, .life-card-face *)) {
+  font-family: var(--admin-ui-font);
+}
+.content-area :is(.eyebrow, .field-help, .rich-text-help):not(.phone-screen *) { line-height: 1.8; }
+.content-area :is(.field-help, .rich-text-help):not(.phone-screen *) { font-size: 12px; }
+.content-area > .section-heading {
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 28px;
+  padding: 0 0 24px;
+  border-color: var(--line-strong);
+}
+.content-area > .section-heading .eyebrow { margin-bottom: 10px; font-size: 10px; letter-spacing: .14em; }
+.content-area > .section-heading h2 { font-family: var(--admin-ui-font); font-size: 14px; font-weight: 600; white-space: normal; }
+.content-area > .section-heading :is(.section-description, .admin-page-description, .audit-page-intro) { max-width: 76ch; margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.85; }
+.content-area .section-tools { flex: 0 1 auto; align-items: center; gap: 12px; }
+.content-area :is(.section-tools, .form-actions, .table-actions, .settings-actions, .member-actions, .employee-actions, .issue-list-actions) button { white-space: nowrap; }
+.content-area button:not(:where(.phone-screen *, .rich-text-toolbar *, .life-card-day, .life-card-months *, .module-summary-card)) { min-height: 44px; border-radius: 6px; }
+.content-area button:not(:disabled):not(:where(.phone-screen *, .rich-text-toolbar *)):is(:hover, :active) { transform: none; box-shadow: none; }
+.content-area button:focus-visible:not(.phone-screen *) { outline: 2px solid var(--accent); outline-offset: 3px; }
+.content-area :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea):not(:where(.phone-screen *, .rich-text-toolbar *, .date-picker *)) {
+  border-color: var(--line-strong);
+  border-radius: 6px;
+  background-color: var(--surface);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.content-area :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select):not(:where(.phone-screen *, .rich-text-toolbar *, .date-picker *)) { min-height: 44px; }
+.content-area :is(.form-grid, .practice-page-fields, .journal-meta-grid, .daily-objects-fields) { gap: 24px; }
+.content-area :is(.form-actions, .table-actions) { gap: 10px; }
+
+/* Paper surfaces replace nested, raised cards. */
+.content-area :is(.panel, .settings-shell, .settings-form, .issue-form, .practice-form, .observation-copy-group, .mine-copy-group, .about-history-card, .media-maintenance, .audio-library, .about-draft-preview, .practice-entry-state, .daily-product-editor, .audit-log-card, .employee-role-card, .module-state-card) {
+  border-color: var(--line);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.content-area .panel:hover { box-shadow: none; border-color: var(--line); }
+.content-area :is(.practice-form, .journal-module-form, .journal-create-form, .settings-form, .mine-page-form) { padding: var(--admin-space); background: var(--admin-paper); }
+.content-area :is(.practice-form, .journal-module-form, .settings-form, .mine-page-form) { gap: 28px; }
+.content-area :is(.observation-copy-group, .mine-copy-group, .daily-product-editor) { padding: 24px; background: var(--surface); }
+.content-area :is(.observation-copy-group, .mine-copy-group) > h3 { margin-bottom: 8px; font-size: 20px; font-weight: 500; line-height: 1.6; }
+.content-area :is(.practice-form, .journal-module-form, .mine-page-form) :is(.observation-copy-group, .mine-copy-group) {
+  padding: 24px 0 4px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.content-area :is(.observation-copy-groups, .mine-copy-groups) { gap: 28px; }
+.content-area :is(.journal-savebar, .practice-savebar) {
+  gap: 20px;
+  padding: 18px 20px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px -20px rgb(71 27 18 / 24%);
+}
+.content-area :is(.journal-savebar, .practice-savebar) .form-actions { gap: 10px; }
+.content-area :is(.journal-savebar, .practice-savebar) .form-actions button { min-height: 44px; padding-inline: 18px; }
+.content-area :is(.journal-savebar-copy, .practice-savebar-copy) { gap: 7px; }
+.content-area :is(.journal-savebar-copy, .practice-savebar-copy) strong { font-family: var(--admin-ui-font); font-size: 13px; font-weight: 500; }
+.content-area :is(.journal-savebar-copy, .practice-savebar-copy) small { font-size: 11px; line-height: 1.8; }
+.content-area .practice-form > .form-actions { padding-top: 24px; border-top: 1px solid var(--line-strong); }
+
+/* Editors: a quiet preview rail, a clear context line, then the manuscript. */
+.content-area :is(.journal-preview-layout, .preview-layout, .about-editor-layout) { gap: 28px; }
+.content-area .editor-page-switch { gap: 24px; padding: 0 0 20px; border: 0; border-bottom: 1px solid var(--line-strong); border-radius: 0; background: transparent; }
+.content-area :is(.journal-context, .practice-entry-toolbar, .directory-toolbar) { gap: 20px; padding-bottom: 24px; border-bottom-color: var(--line-strong); }
+.content-area .journal-context-copy strong { font-size: 24px; font-weight: 500; }
+.content-area .journal-meta-panel { padding: 24px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+.content-area .journal-background-panel { border-radius: 6px; box-shadow: none; background: var(--surface-2); }
+.content-area .journal-module-toolbar-wrap { padding: 20px; border-radius: 6px; box-shadow: none; background: var(--surface-2); }
+.content-area .issue-module-picker { gap: 10px; }
+.content-area .issue-module-picker button { min-height: 48px; border-radius: 5px; }
+.content-area .journal-module-form .issue-module-card { padding: 24px 0 0; border: 0; border-top: 1px solid var(--line-strong); border-radius: 0; box-shadow: none; background: transparent; }
+.content-area .issue-module-toolbar { padding-bottom: 18px; }
+.content-area .issue-module-toolbar h3 { font-size: 15px; font-weight: 600; }
+.content-area .journal-derived-grid { gap: 0; border-block: 1px solid var(--line); }
+.content-area .journal-derived-grid > div { padding: 16px; border: 0; border-radius: 0; background: transparent; }
+.content-area .journal-derived-grid > div + div { border-left: 1px solid var(--line); }
+.content-area .rich-text-toolbar { gap: 6px; padding: 10px; border-color: var(--line); border-radius: 6px; background: var(--surface-2); }
+.content-area .rich-text-toolbar :is(button, select) { font-family: var(--admin-ui-font); }
+.content-area .rich-text-help { color: var(--muted); }
+.content-area .rich-text-canvas { border-color: var(--line-strong); border-radius: 6px; }
+.content-area .practice-entry-row { border-color: var(--line); border-radius: 6px; box-shadow: none; }
+.content-area .practice-entry-header { min-height: 76px; padding: 14px 18px; }
+.content-area .directory-toolbar { margin-bottom: 8px; }
+.content-area .about-draft-preview { padding: 20px; background: var(--surface-2); }
+.content-area .about-history-card { padding: 28px; background: var(--admin-paper); }
+
+/* Journal index: issue navigation and one open work surface. */
+.content-area .journal-list-layout { grid-template-columns: 292px minmax(0, 1fr); gap: 28px; }
+.content-area .journal-list-layout > .issue-list-panel { padding: 20px 20px 20px 0; border: 0; border-right: 1px solid var(--line-strong); border-radius: 0; background: transparent; box-shadow: none; }
+.content-area .issue-list-panel .section-heading { padding: 0 0 20px; margin-bottom: 14px; gap: 8px; }
+.content-area .issue-list-heading-actions { gap: 8px; }
+.content-area .issue-list-heading-actions small { padding-inline: 0; border: 0; background: transparent; }
+.content-area .issue-list-panel .issue-list-item { padding: 16px 14px; }
+.content-area .issue-list-panel .issue-list-item strong { font-size: 14px; line-height: 1.8; }
+.content-area .issue-list-panel .issue-list-item small { margin-top: 8px; font-size: 12px; }
+.content-area .journal-overview { padding: 28px; gap: 24px; border-color: var(--line); background: var(--admin-paper); box-shadow: none; }
+.content-area .journal-overview::before { display: none; }
+.content-area .journal-overview-meta { gap: 0; padding-block: 16px; border-block: 1px solid var(--line); }
+.content-area .journal-overview-meta > div { padding: 8px 16px; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; }
+.content-area .journal-overview-meta > div:first-child { padding-left: 0; border-left: 0; }
+.content-area .journal-overview-actions { gap: 10px; }
+.content-area :is(.audio-library, .media-maintenance) { padding: 28px; background: var(--admin-paper); }
+
+/* Lists: unboxed filters, calm column headings and room for every row action. */
+.content-area :is(.filters, .life-card-view-filters, .employee-toolbar) {
+  gap: 16px 20px;
+  margin-block: 24px;
+  padding: 24px 0;
+  border: 0;
+  border-block: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.content-area :is(.filters, .life-card-view-filters, .employee-toolbar) label { gap: 8px; color: var(--ink-2); font-size: 12px; }
+.content-area .member-filters { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(160px, .55fr) minmax(160px, .55fr) auto; }
+.content-area .member-filters > button { min-height: 44px; }
+.content-area :is(.member-permission-guide, .employee-role-guide) { gap: 0; margin-block: 0 28px; border-block: 1px solid var(--line-strong); }
+.content-area :is(.member-permission-guide > div, .employee-role-card) { padding: 18px 24px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.content-area :is(.member-permission-guide > div, .employee-role-card):first-child { padding-left: 0; }
+.content-area :is(.member-permission-guide > div, .employee-role-card) + :is(div, article) { border-left: 1px solid var(--line-strong); }
+.content-area :is(.member-permission-guide, .employee-role-card) :is(p, span:not(.role-badge)) { color: var(--ink-2); font-size: 12px; line-height: 1.85; }
+.content-area :is(.observation-table, .discussion-contribution-table, .discussion-report-table, .employee-table, .module-state-table-wrap) { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: none; }
+.content-area :is(.observation-head, .discussion-contribution-head, .discussion-report-head, .employee-table-head) { padding-block: 16px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: .02em; }
+.content-area :is(.observation-row, .discussion-contribution-row, .discussion-report-row, .employee-table-row):not(:is(.observation-head, .discussion-contribution-head, .discussion-report-head, .employee-table-head)) { padding-block: 20px; font-size: 13px; line-height: 1.8; }
+.content-area :is(.observation-row, .discussion-contribution-row, .discussion-report-row, .employee-table-row):hover { box-shadow: none; }
+#member-directory .observation-table .member-head { min-width: 1260px; grid-template-columns: minmax(150px, 1fr) 75px minmax(130px, .8fr) 145px 125px 72px 75px minmax(310px, 1.3fr); gap: 16px; padding-block: 20px; }
+#member-directory .observation-table .observation-head { padding-block: 16px; }
+.content-area .member-actions { flex-wrap: nowrap; }
+.content-area .member-actions button { padding-inline: 12px; font-size: 12px; }
+.content-area .table-actions { padding: 18px 20px; background: var(--surface-2); }
+.content-area .audit-result-summary { margin-block: 24px; }
+.content-area .audit-log-list { gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.content-area .audit-log-item { padding: 24px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+.content-area .audit-log-item:last-child { border-bottom: 0; }
+.content-area .audit-log-item:is(:hover, .is-open) { background: var(--surface-2); box-shadow: none; }
+.content-area .audit-log-meta { font-family: var(--admin-ui-font); font-size: 12px; line-height: 1.8; }
+.content-area .discussion-summary-tabs { gap: 0; padding-block: 20px; border-block: 1px solid var(--line-strong); }
+.content-area .discussion-summary-tabs > button { min-height: 104px; gap: 12px; padding: 12px 24px; border: 0; border-left: 1px solid var(--line-strong); border-radius: 0; background: transparent; box-shadow: none; }
+.content-area .discussion-summary-tabs > button:first-child { border-left: 0; }
+.content-area .discussion-summary-tabs > button:is(:hover, .active) { background: var(--accent-soft); box-shadow: none; }
+.content-area .discussion-summary-tabs strong { font-family: var(--admin-ui-font); font-size: 30px; font-weight: 400; }
+.content-area .discussion-summary-tabs span { font-size: 12px; }
+.content-area .discussion-table-panel { border-radius: 8px; box-shadow: none; }
+.content-area .discussion-table-toolbar { padding: 24px; background: var(--admin-paper); }
+.content-area .discussion-table-toolbar .filters { margin: 0; padding: 0; border: 0; }
+
+/* Settings, people and runtime status use the same open intro and data strip. */
+.content-area .employee-hero { align-items: center; margin: 0 0 32px; }
+.content-area .employee-hero-copy { margin-top: 10px; font-size: 16px; line-height: 1.8; font-family: "MYRIAD Song", serif; color: var(--ink-2); }
+.content-area :is(.employee-stats, .module-summary-grid) { gap: 0; padding-block: 24px; margin-bottom: 28px; border-block: 1px solid var(--line-strong); }
+.content-area :is(.employee-stat, .module-summary-card) { min-height: 118px; padding: 8px 24px; border: 0; border-left: 1px solid var(--line-strong); border-radius: 0; background: transparent; box-shadow: none; }
+.content-area :is(.employee-stat, .module-summary-card):first-child { padding-left: 0; border-left: 0; }
+.content-area .employee-stat { gap: 10px; }
+.content-area .employee-stat strong { font-family: var(--admin-ui-font); font-size: 32px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.content-area .employee-stat span { color: var(--ink-2); font-size: 12px; letter-spacing: 0; }
+.content-area .employee-stat small { color: var(--muted); font-size: 12px; }
+.content-area .module-state-machine { gap: 28px; font-family: var(--admin-ui-font); }
+.content-area .state-machine-hero { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.content-area .state-machine-hero h2 { font-family: var(--admin-ui-font); font-size: 14px; font-weight: 600; }
+.content-area .module-summary-card:is(:hover, .selected) { background: var(--accent-soft); box-shadow: none; transform: none; }
+.content-area .module-state-card { padding: 24px; background: var(--admin-paper); }
+.content-area .module-state-table :is(th, td) { padding-block: 18px; }
+.content-area .module-event-copy { padding: 18px 20px; border-radius: 6px; box-shadow: none; }
+.content-area .settings-shell { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.content-area .settings-tabs { margin-bottom: 28px; }
+.content-area .settings-shell .settings-form { padding: 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--admin-paper); }
+.content-area .settings-form > label { padding: 0 0 24px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; gap: 12px; }
+.content-area .settings-basics-panel { gap: 28px; }
+.content-area .settings-basics-panel > label { display: grid; gap: 12px; padding: 0 0 24px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+.content-area .settings-form .topbar-actions { padding-top: 24px; }
+.content-area .settings-switch-card { padding: 24px; border-radius: 6px; box-shadow: none; background: var(--surface); }
+.content-area .brand-popup-settings-grid { gap: 32px; }
+.content-area .brand-popup-settings-heading { padding-bottom: 24px; }
+.content-area .life-card-form { max-width: none; gap: 24px; padding: 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--admin-paper); box-shadow: none; }
+.content-area .life-card-form :is(label, input, textarea, select) { min-width: 0; max-width: 100%; }
+.content-area .life-card-face-row { grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); }
+.content-area .life-card-list { padding-right: 20px; border-right: 1px solid var(--line-strong); }
+.content-area .life-card-toolbar { gap: 24px; margin-bottom: 28px; }
+
+@media (max-width: 1200px) {
+  .dashboard-workspace { --admin-space: 24px; }
+  .content-area .journal-list-layout { grid-template-columns: 240px minmax(0, 1fr); gap: 24px; }
+  .content-area .issue-list-panel .section-heading { flex-wrap: wrap; }
+  .content-area .member-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .content-area .member-filters > button { justify-self: start; }
+  .content-area :is(.journal-savebar, .practice-savebar) { flex-wrap: wrap; gap: 16px; }
+}
+@media (max-width: 900px) {
+  .content-area .journal-list-layout { grid-template-columns: minmax(0, 1fr); }
+  .content-area .journal-list-layout > .issue-list-panel { position: static; max-height: none; padding-right: 0; padding-bottom: 24px; border-right: 0; border-bottom: 1px solid var(--line-strong); }
+  .content-area .employee-role-guide { grid-template-columns: minmax(0, 1fr); }
+  .content-area .employee-role-card { padding: 18px 0; }
+  .content-area .employee-role-card + article { border-left: 0; border-top: 1px solid var(--line-strong); }
+}
+@media (max-width: 600px) {
+  .dashboard-workspace { --admin-space: 20px; }
+  .dashboard-workspace > .content-area { margin-top: 24px; }
+  .content-area > .section-heading { gap: 16px; flex-wrap: wrap; margin-bottom: 24px; padding-bottom: 20px; }
+  .content-area :is(.journal-preview-layout, .preview-layout, .about-editor-layout) { gap: 24px; }
+  .content-area :is(.form-grid, .practice-page-fields, .journal-meta-grid, .daily-objects-fields) { gap: 20px; }
+  .content-area .journal-overview { padding: 20px; }
+  .content-area .journal-overview-meta { grid-template-columns: minmax(0, 1fr); }
+  .content-area .journal-overview-meta > div { padding: 12px 0; border-left: 0; }
+  .content-area .journal-overview-meta > div + div { border-top: 1px solid var(--line); }
+  .content-area :is(.journal-savebar, .practice-savebar) { padding: 16px; bottom: 10px; }
+  .content-area .journal-derived-grid > div + div { border-left: 0; border-top: 1px solid var(--line); }
+  .content-area .member-filters { grid-template-columns: minmax(0, 1fr); }
+  .content-area :is(.filters, .life-card-view-filters, .employee-toolbar) { padding-block: 20px; gap: 16px; }
+  .content-area .member-permission-guide { grid-template-columns: minmax(0, 1fr); }
+  .content-area .member-permission-guide > div { padding: 18px 0; }
+  .content-area .member-permission-guide > div + div { border-left: 0; border-top: 1px solid var(--line-strong); }
+  .content-area :is(.employee-stats, .module-summary-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 24px; }
+  .content-area :is(.employee-stat, .module-summary-card) { padding-inline: 16px; }
+  .content-area :is(.employee-stat, .module-summary-card):nth-child(odd) { padding-left: 0; border-left: 0; }
+  .content-area .discussion-summary-tabs { gap: 16px 0; }
+  .content-area .discussion-summary-tabs > button:nth-child(odd) { border-left: 0; }
+  .content-area :is(.observation-copy-group, .mine-copy-group, .daily-product-editor, .audio-library, .media-maintenance, .about-history-card, .module-state-card, .life-card-form) { padding: 20px; }
+  .content-area .settings-shell .settings-form { padding: 20px; }
+  .content-area .life-card-list { padding-right: 0; border-right: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .content-area :not(.phone-screen *) { scroll-behavior: auto; } }
