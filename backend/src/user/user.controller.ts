@@ -12,6 +12,8 @@ import type { EncryptionPurpose } from '../security/data-encryption.service';
 import { AuthService } from '../auth/auth.service';
 import { StorageService } from '../storage/storage.service';
 import { avatarContentType, avatarMaxBytes, type AvatarFile } from '../storage/avatar-file';
+import { normalizeShippingAddress, type ShippingAddress } from './shipping-address';
+import { ShippingAddressService } from './shipping-address.service';
 
 class UpdateSettingsDto {
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean() notificationsEnabled?: boolean;
@@ -32,48 +34,8 @@ class UpdateAddressDto {
 }
 
 type MemberProfileRow = { nickname: string | null; avatarObjectKey: string | null; phoneEncrypted: unknown; addressEncrypted?: unknown };
-type ShippingAddress = {
-  userName: string;
-  telNumber: string;
-  provinceName: string;
-  cityName: string;
-  countyName: string;
-  detailInfo: string;
-  postalCode: string;
-  nationalCode: string;
-};
 const phoneEncryptionPurpose: EncryptionPurpose = 'user.phone';
 const addressEncryptionPurpose: EncryptionPurpose = 'user.address';
-
-function addressText(value: unknown, label: string, maximum: number, required = true) {
-  if (typeof value !== 'string') throw new BadRequestException(`${label}无效`);
-  const normalized = value.trim();
-  if ((required && !normalized) || normalized.length > maximum || /[\u0000-\u001f\u007f]/.test(normalized)) {
-    throw new BadRequestException(`${label}无效`);
-  }
-  return normalized;
-}
-
-function normalizeShippingAddress(value: unknown): ShippingAddress {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException('收货地址格式无效');
-  const source = value as Record<string, unknown>;
-  const telNumber = addressText(source.telNumber, '收货人电话', 30);
-  if (!/^[0-9+\-\s()]{5,30}$/.test(telNumber)) throw new BadRequestException('收货人电话格式无效');
-  const postalCode = addressText(source.postalCode, '邮政编码', 10, false);
-  if (postalCode && !/^\d{5,10}$/.test(postalCode)) throw new BadRequestException('邮政编码格式无效');
-  const nationalCode = addressText(source.nationalCode, '地区编码', 10, false);
-  if (nationalCode && !/^\d{5,10}$/.test(nationalCode)) throw new BadRequestException('地区编码格式无效');
-  return {
-    userName: addressText(source.userName, '收货人姓名', 40),
-    telNumber,
-    provinceName: addressText(source.provinceName, '省份', 40),
-    cityName: addressText(source.cityName, '城市', 40),
-    countyName: addressText(source.countyName, '区县', 40, false),
-    detailInfo: addressText(source.detailInfo, '详细地址', 200),
-    postalCode,
-    nationalCode,
-  };
-}
 @Controller('me')
 @UseGuards(UserAuthGuard)
 export class UserController {
@@ -84,6 +46,7 @@ export class UserController {
     private readonly encryption: DataEncryptionService,
     @Optional() private readonly auth?: AuthService,
     @Optional() private readonly storage?: StorageService,
+    @Optional() private readonly addresses?: ShippingAddressService,
   ) {}
 
   private deletionEnabled() {
@@ -188,6 +151,10 @@ export class UserController {
   async updateAddress(@Req() request: Request & { user?: { sub: string } }, @Body() body: UpdateAddressDto) {
     const userId = this.userId(request);
     const address = normalizeShippingAddress(body.address);
+    if (this.addresses) {
+      await this.addresses.replaceLegacy(userId, address);
+      return this.readProfile(userId);
+    }
     const encrypted = JSON.stringify(this.encryption.encryptJson(address, addressEncryptionPurpose));
     await this.database.withTransaction(async (client) => {
       const update = await client.query(
@@ -407,6 +374,7 @@ export class UserController {
         exportVersion: 1,
         generatedAt: new Date().toISOString(),
         account: { createdAt: user.rows[0].createdAt, nickname: user.rows[0].nickname ?? '', avatarUrl: accountAvatarUrl, phoneNumber: accountPhoneNumber, address: accountAddress },
+        ...(this.addresses ? { shippingAddresses: (await this.addresses.list(userId, client)).items } : {}),
         settings: this.publicSettings(user.rows[0].settings),
         observations,
         discussionContributions,

@@ -10,8 +10,7 @@ interface PublicSupportSettings {
 
 function normalizeContact(value: unknown) {
   if (typeof value !== 'string') return '';
-  const contact = value.trim();
-  return contact && contact.length <= 200 ? contact : '';
+  return value.trim() && value.length <= 200 ? value : '';
 }
 
 Page({
@@ -51,7 +50,7 @@ Page({
   copyContact(event: WechatMiniprogram.CustomEvent) {
     const contact = normalizeContact(event.currentTarget.dataset.contact);
     if (!contact) return;
-    wx.setClipboardData({ data: contact });
+    wx.setClipboardData({ data: contact.trim() });
   },
   handleBack() {
     const pages = getCurrentPages();

@@ -287,27 +287,9 @@ Page({
       if (userId === app.globalData.userId && authGeneration === app.globalData.authGeneration) this.setData({ saving: false });
     }
   },
-  chooseAddress() {
-    if (this.data.saving) return;
-    wx.chooseAddress({
-      success: (result) => { void this.saveAddress({ userName: result.userName, telNumber: result.telNumber, provinceName: result.provinceName, cityName: result.cityName, countyName: result.countyName, detailInfo: result.detailInfo, postalCode: result.postalCode || '', nationalCode: result.nationalCode || '' }); },
-      fail: (error) => {
-        if (String(error.errMsg || '').includes('cancel')) return;
-        wx.showToast({ title: '暂时无法读取微信收货地址', icon: 'none' });
-      },
-    });
-  },
-  async saveAddress(address: ShippingAddress) {
-    this.setData({ saving: true });
-    try {
-      const profile = await request<AccountProfile>('/me/profile/address', { method: 'PATCH', data: { address } });
-      if (!isAccountProfile(profile)) throw new Error('账号资料格式无效');
-      this.setData({ profile: { nickname: profile.nickname, avatarUrl: profile.avatarUrl || null, phoneNumber: profile.phoneNumber || null, address: profile.address || null }, saving: false });
-      wx.showToast({ title: '收货地址已保存', icon: 'success' });
-    } catch (caught) {
-      this.setData({ saving: false });
-      wx.showToast({ title: apiErrorMessage(caught, '收货地址暂时无法保存'), icon: 'none' });
-    }
+  openAddresses() {
+    if (this.data.saving || !app.globalData.accessToken || app.globalData.accountDeleted) return;
+    wx.navigateTo({ url: '/pages/addresses/index' });
   },
   async onGetPhoneNumber(event: WechatMiniprogram.CustomEvent<{ errMsg?: string; code?: string }>) {
     if (this.data.saving) return;

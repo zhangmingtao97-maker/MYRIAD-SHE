@@ -3,6 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import ModuleStateMachine from './components/ModuleStateMachine.vue';
 import EditorialWorkspace, { type WorkspaceMetric, type WorkspaceTask } from './components/EditorialWorkspace.vue';
+import MemberDetailDialog from './components/MemberDetailDialog.vue';
+import type { Member, MemberAddress, MemberDetail } from './member-profile';
 import AdminCommandMenu from './components/AdminCommandMenu.vue';
 import { useAdminDialogs } from './composables/useAdminDialogs';
 import LegalHistoryPanel from './components/LegalHistoryPanel.vue';
@@ -256,7 +258,7 @@ function createEditorRecordId(prefix: string) {
 
 const DECORATIVE_ACTION_ARROWS = /[↗→›»➜➝➞➡⟶➔]/g;
 function cleanIssueAudioActionLabel(value: string) {
-  return value.replace(DECORATIVE_ACTION_ARROWS, '').replace(/\s{2,}/g, ' ').trim();
+  return value.replace(DECORATIVE_ACTION_ARROWS, '');
 }
 
 function createIssueAudioAction(number: number, source: Partial<ManagedAudioAction> = {}): ManagedAudioAction {
@@ -435,7 +437,7 @@ const issuePreviewMonthNames: Record<string, string> = {
   JUL: 'JULY', AUG: 'AUGUST', SEP: 'SEPTEMBER', SEPT: 'SEPTEMBER', OCT: 'OCTOBER', NOV: 'NOVEMBER', DEC: 'DECEMBER',
 };
 function previewIssueText(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === 'string' && value.trim() ? value : '';
 }
 // 英文刊期按杂志排印展开缩写（Sep 2026 → SEPTEMBER 2026）；中文月份写法保持原样。
 function expandPreviewIssueMonth(value: string) {
@@ -799,9 +801,6 @@ const auditMoreError = ref('');
 const auditActorType = ref('');
 const auditAction = ref('');
 const auditExpandedId = ref('');
-type MemberAddress = { userName: string; telNumber: string; provinceName: string; cityName: string; countyName: string; detailInfo: string; postalCode?: string; nationalCode?: string };
-type Member = { id: string; status: 'active' | 'suspended'; createdAt: string; updatedAt: string; observationCount: number; nickname: string | null; avatarUrl: string | null; phoneMasked: string | null; phoneNumber?: string | null; birthMonth: number | null; birthDay: number | null; address?: MemberAddress | null };
-type MemberDetail = Member & { openId: string; maskedUnionId: string | null; phoneNumber?: string | null; privacyRequests: Array<{ id: string; status: string; requestedAt: string; scheduledFor: string }> };
 const members = ref<Member[]>([]);
 const memberTotal = ref(0);
 const memberOffset = ref(0);
@@ -2309,19 +2308,19 @@ function issueLabel(code?: string) {
 const journalCurrentIssue = computed(() => issues.value.find((issue) => issue.id === editingIssueId.value) || null);
 const journalCoverModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'coverStory' || module.type === 'cover') || null);
 const journalQuestionModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'question') || null);
-const journalCoverTitle = computed(() => String(journalCoverModule.value?.title || issueForm.value.theme || '').trim());
+const journalCoverTitle = computed(() => String(journalCoverModule.value?.title || issueForm.value.theme || ''));
 const journalCoverTitleRichText = computed(() => {
   const moduleTitle = String(journalCoverModule.value?.title || '').trim();
   return moduleTitle
-    ? String(journalCoverModule.value?.titleRichText || '').trim()
-    : String(issueForm.value.themeRichText || '').trim();
+    ? String(journalCoverModule.value?.titleRichText || '')
+    : String(issueForm.value.themeRichText || '');
 });
-const journalQuestionTitle = computed(() => String(journalQuestionModule.value?.title || issueForm.value.question || '').trim());
+const journalQuestionTitle = computed(() => String(journalQuestionModule.value?.title || issueForm.value.question || ''));
 const journalQuestionTitleRichText = computed(() => {
   const moduleTitle = String(journalQuestionModule.value?.title || '').trim();
   return moduleTitle
-    ? String(journalQuestionModule.value?.titleRichText || '').trim()
-    : String(issueForm.value.questionRichText || '').trim();
+    ? String(journalQuestionModule.value?.titleRichText || '')
+    : String(issueForm.value.questionRichText || '');
 });
 watch(
   () => [issueForm.value.code, issueForm.value.label, issueForm.value.month, issueForm.value.theme, issueForm.value.question] as const,
@@ -2520,12 +2519,12 @@ function seedIssueModulesFromForm() {
   }
   const cover = sections.find((module) => module.type === 'coverStory' || module.type === 'cover');
   if (cover && !String(cover.title || '').trim() && issueForm.value.theme.trim()) {
-    cover.title = issueForm.value.theme.trim();
+    cover.title = issueForm.value.theme;
     cover.titleRichText = issueForm.value.themeRichText;
   }
   const question = sections.find((module) => module.type === 'question');
   if (question && !String(question.title || '').trim() && issueForm.value.question.trim()) {
-    question.title = issueForm.value.question.trim();
+    question.title = issueForm.value.question;
     question.titleRichText = issueForm.value.questionRichText;
   }
 }
@@ -2549,11 +2548,6 @@ function memberBirthday(member: Pick<Member, 'birthMonth' | 'birthDay'>) {
 function memberAddressRegion(address?: MemberAddress | null) {
   if (!address) return '未保存';
   return [address.provinceName, address.cityName].filter(Boolean).join(' ') || '未保存';
-}
-
-function memberAddressLabel(address?: MemberAddress | null) {
-  if (!address) return '未保存';
-  return [address.provinceName, address.cityName, address.countyName, address.detailInfo].filter(Boolean).join(' ') || '未保存';
 }
 
 function displayFileSize(value?: number) {
@@ -2597,19 +2591,44 @@ const overviewIssue = computed(() => {
     || [...issues.value].filter(issue => issue.status === 'draft').sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0] || null;
 });
 const overviewCoverUrl = ref('');
-watch(() => [activeSection.value, overviewIssue.value?.coverObjectKey, token.value, overviewUpdatedAt.value] as const, async ([section, key], _previous, onCleanup) => {
-  overviewCoverUrl.value = '';
+let overviewCoverKey = '';
+let overviewCoverSession = '';
+let overviewCoverExpiresAt = 0;
+let overviewCoverRequest: AbortController | null = null;
+watch(() => [activeSection.value, overviewIssue.value?.coverObjectKey, token.value, overviewUpdatedAt.value] as const, async ([section, key]) => {
+  // Navigation and data refreshes must not discard the same loaded cover.
+  // A replacement upload has a new object key; a new login has a new token.
+  if (key !== overviewCoverKey || token.value !== overviewCoverSession || !loggedIn.value) {
+    overviewCoverRequest?.abort();
+    overviewCoverRequest = null;
+    overviewCoverUrl.value = '';
+    overviewCoverExpiresAt = 0;
+    overviewCoverKey = key || '';
+    overviewCoverSession = token.value;
+  }
   if (section !== 'overview' || !key || !canAccessModule('journal') || !loggedIn.value) return;
+  if (overviewCoverUrl.value && Date.now() < overviewCoverExpiresAt - 30_000) return;
+  if (overviewCoverRequest) return;
   const controller = new AbortController();
-  onCleanup(() => controller.abort());
+  overviewCoverRequest = controller;
   const session = sessionGeneration;
   try {
     const response = await apiFetch(`${apiBase}/content/media/preview-url?objectKey=${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token.value}` }, signal: controller.signal });
+    if (controller.signal.aborted || session !== sessionGeneration) return;
     if (handleAdminUnauthorized(response, session) || !response.ok) return;
     const result: unknown = await response.json();
-    if (!controller.signal.aborted && session === sessionGeneration && isMediaViewTarget(result)) overviewCoverUrl.value = result.url;
+    if (!controller.signal.aborted && session === sessionGeneration && isMediaViewTarget(result)) {
+      overviewCoverUrl.value = result.url;
+      overviewCoverExpiresAt = Date.now() + result.expiresIn * 1000;
+    }
   } catch { /* A typographic cover remains readable when media is unavailable. */ }
+  finally { if (overviewCoverRequest === controller) overviewCoverRequest = null; }
 }, { immediate: true });
+function invalidateOverviewCover(url: string) {
+  if (overviewCoverUrl.value !== url) return;
+  overviewCoverUrl.value = '';
+  overviewCoverExpiresAt = 0;
+}
 const overviewTasks = computed<WorkspaceTask[]>(() => {
   const ready = Boolean(overviewUpdatedAt.value);
   const tasks: WorkspaceTask[] = [];
@@ -3292,8 +3311,8 @@ const storyEditorTab = ref<'home' | 'detail'>('home');
 const activeStoryDetailKey = ref('');
 
 const storyDetailModule = computed(() => issueForm.value.draftContent.sections.find((module) => module.type === 'story') || null);
-const storyDetailIntro = computed(() => String(journalCoverModule.value?.body || issueForm.value.theme || '').trim());
-const storyDetailIntroRichText = computed(() => String(journalCoverModule.value?.bodyRichText || issueForm.value.themeRichText || '').trim());
+const storyDetailIntro = computed(() => String(journalCoverModule.value?.body || issueForm.value.theme || ''));
+const storyDetailIntroRichText = computed(() => String(journalCoverModule.value?.bodyRichText || issueForm.value.themeRichText || ''));
 const storyDetailImageUrl = computed(() => {
   const module = storyDetailModule.value;
   return module ? issueModulePreviewUrls.value[module.id] || '' : '';
@@ -5914,8 +5933,8 @@ function syncIssueFieldsToModules() {
     issueForm.value.homeCoverCaptionRightRichText = typeof cover.captionRightRichText === 'string' ? cover.captionRightRichText : '';
   }
   if (opener) {
-    const nextTheme = String(opener.title || '').trim();
-    if (nextTheme) {
+    const nextTheme = String(opener.title || '');
+    if (nextTheme.trim()) {
       issueForm.value.theme = nextTheme;
       issueForm.value.themeRichText = typeof opener.titleRichText === 'string' ? opener.titleRichText : '';
     }
@@ -5945,8 +5964,8 @@ function syncIssueFieldsToModules() {
     audio.enabled = Boolean(audio.tracks?.some((track) => track.mediaType === 'video' ? track.videoObjectKey : track.audioObjectKey));
   }
   if (question) {
-    const nextQuestion = String(question.title || '').trim();
-    if (nextQuestion) {
+    const nextQuestion = String(question.title || '');
+    if (nextQuestion.trim()) {
       issueForm.value.question = nextQuestion;
       issueForm.value.questionRichText = typeof question.titleRichText === 'string' ? question.titleRichText : '';
     }
@@ -7768,13 +7787,14 @@ onBeforeUnmount(() => {
 </Teleport>
           <button v-if="showBackToTop" type="button" class="to-top" aria-label="回到顶部" title="回到顶部" @click="scrollToTop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
           <p v-if="dashboardLoading" class="loading-note" role="status" aria-live="polite">正在同步云端数据…</p>
-      <EditorialWorkspace v-if="activeSection === 'overview'"
+      <EditorialWorkspace v-show="activeSection === 'overview'"
         :issue="overviewIssue" :issues="canAccessModule('journal') ? issues : []" :cover-url="overviewCoverUrl"
         :dirty="Boolean(overviewIssue && editingIssueId === overviewIssue.id && issueDraftDirty)"
         :busy="uploading" :loading="dashboardLoading || currentPageRefreshing" :updated-at="overviewUpdatedAt"
         :sync-error="overviewSyncError" :tasks="overviewTasks" :metrics="overviewMetrics" :can-journal="canAccessModule('journal')"
         @edit="continueOverviewIssue" @preview="previewOverviewIssue" @navigate="openOverviewDestination"
         @refresh="refreshCurrentPage" @journal="openJournalSubsection('journal-list')"
+        @cover-error="invalidateOverviewCover"
       />
       <section v-if="activeSection === 'content' && activeContentSection === 'journal-list'" id="journal-list" class="content-area">
         <div class="journal-list-layout">
@@ -8337,18 +8357,17 @@ onBeforeUnmount(() => {
             <PracticePagePreview :content="practiceContent" :active-key="activePracticeKey" @pick="pickPracticeKey" />
           </aside>
           <form class="practice-form" @submit.prevent="savePracticeContent">
-            <div class="directory-toolbar">
-              <div class="directory-toolbar-copy">
-                <strong>目录顺序</strong>
-                <p class="muted">小程序按这个顺序编号 01、02、03…；新增的条目排在最后。「日常之物」开关只控制该目录入口是否开启，商城是否开放请在「系统管理 → 商城开放」中单独配置。</p>
-              </div>
+            <div class="directory-toolbar" role="group" aria-label="新增实践目录">
               <div class="directory-toolbar-actions">
                 <select v-model="newPracticeEntryTarget" :disabled="practiceContentSaving || practiceContentConflict" aria-label="新增条目点进去打开哪一页">
                   <option value="observation">此刻观察</option>
                   <option value="shared-practice">共同实践</option>
                   <option value="daily-goods">日常之物</option>
                 </select>
-                <button type="button" class="quiet" :disabled="practiceContentSaving || practiceContentConflict || practiceContent.entries.length >= 100" @click="addPracticeEntry()">＋ 新增目录</button>
+                <button type="button" class="directory-add-button" :disabled="practiceContentSaving || practiceContentConflict || practiceContent.entries.length >= 100" @click="addPracticeEntry()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  <span>新增目录</span>
+                </button>
               </div>
             </div>
             <TransitionGroup name="editorial-order" tag="ol" class="practice-directory-list">
@@ -9036,11 +9055,16 @@ onBeforeUnmount(() => {
         </Teleport>
       </section>
       <section v-if="activeSection === 'discussion-reports'" id="discussion-reports" class="content-area">
-        <div class="reports-toolbar"><small v-if="discussionReportSummary.pending" class="muted">待处理 {{ discussionReportSummary.pending }} 条</small><button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button></div>
-        <p class="muted">这里只处理用户提交的举报；互动内容审核在「一起谈谈内容」处理，会员权限在「一起谈谈权限」处理。</p>
         <p v-if="discussionReportActionMessage" class="status-message" role="status">{{ discussionReportActionMessage }}</p>
         <p v-if="discussionReportError" class="error" role="alert">{{ discussionReportError }}</p>
-        <div class="filters" aria-label="内容举报筛选"><label>处理状态<select v-model="discussionReportStatus" @change="refreshDiscussionReports()"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label><label>期刊<select v-model="discussionReportIssueCode" @change="refreshDiscussionReports()"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label></div>
+        <div class="filters" aria-label="内容举报筛选">
+          <label>处理状态<select v-model="discussionReportStatus" @change="refreshDiscussionReports()"><option value="pending">待处理</option><option value="handled">已处理</option><option value="dismissed">不采纳</option><option value="">全部</option></select></label>
+          <label>期刊<select v-model="discussionReportIssueCode" @change="refreshDiscussionReports()"><option value="">全部期刊</option><option v-for="issue in issues" :key="issue.code" :value="issue.code">{{ issue.label }}</option></select></label>
+          <div class="reports-toolbar">
+            <small v-if="discussionReportSummary.pending" class="muted">待处理 {{ discussionReportSummary.pending }} 条</small>
+            <button type="button" class="quiet" :disabled="discussionReportLoading" @click="refreshDiscussionReports()">{{ discussionReportLoading ? '刷新中…' : '刷新举报' }}</button>
+          </div>
+        </div>
         <div class="discussion-report-table" aria-live="polite">
           <div class="discussion-report-head"><span>期刊 / 被举报内容</span><span>原因</span><span>状态</span><span>提交时间</span><span>处理</span></div>
           <div v-for="report in discussionReports" :key="report.id" class="discussion-report-row">
@@ -9119,10 +9143,6 @@ onBeforeUnmount(() => {
       </section>
       <section v-if="activeSection === 'members'" id="member-directory" class="content-area">
         <div class="section-heading"><div><p class="eyebrow">MEMBER DIRECTORY</p><h2>会员列表</h2></div></div>
-        <div class="member-permission-guide" role="note" aria-label="停用账号与一起谈谈权限的区别">
-          <div><strong>停用账号</strong><span>阻止会员登录并使用全部功能，仅超级管理员可操作。</span></div>
-          <div><strong>一起谈谈权限</strong><span>停用后不能查看和参与一起谈谈；不影响登录、观察、实践和商城。</span></div>
-        </div>
         <div class="filters member-filters" aria-label="会员筛选"><label>昵称、ID 或手机号后四位<input v-model="memberQuery" maxlength="80" placeholder="搜索会员资料" @keyup.enter="refreshMembers()" /></label><label>注册自<DatePickerField v-model="memberFrom" aria-label="注册自" clearable /></label><label>注册至<DatePickerField v-model="memberTo" aria-label="注册至" clearable /></label><button class="quiet" :disabled="memberLoading" @click="refreshMembers()">{{ memberLoading ? '读取中…' : '筛选会员' }}</button></div>
         <p v-if="memberError" class="error" role="alert">{{ memberError }}</p>
         <p class="muted">当前条件 {{ memberTotal }} 位会员</p>
@@ -9132,12 +9152,7 @@ onBeforeUnmount(() => {
           <p v-if="!members.length && !memberLoading" class="muted">没有找到会员记录。</p>
           <div v-if="memberOffset < memberTotal" class="table-actions"><button class="quiet" :disabled="memberLoading" @click="refreshMembers(true)">加载更多会员</button></div>
         </div>
-        <Teleport to="body">
-<div v-if="memberDetail" class="observation-modal-backdrop" @click.self="memberDetail = null"><section class="observation-detail-panel" role="dialog" aria-modal="true" aria-labelledby="member-detail-title" @keydown.esc="memberDetail = null"><div class="section-heading"><div><p class="eyebrow">MEMBER ACCOUNT</p><h3 id="member-detail-title">会员详情</h3></div><button class="quiet" @click="memberDetail = null">关闭</button></div>
-          <div class="panel-body"><div class="member-detail-profile"><img v-if="memberDetail.avatarUrl" class="member-avatar" :src="memberDetail.avatarUrl" :alt="memberDetail.nickname || '会员头像'" /><span v-else class="member-avatar-placeholder" aria-hidden="true">{{ memberDetail.nickname ? memberDetail.nickname.slice(0, 1) : 'M' }}</span><strong>{{ memberDetail.nickname || '未设置昵称' }}</strong></div><p class="mono">{{ memberDetail.id }}</p><p>注册时间：{{ displayDate(memberDetail.createdAt) }}</p><p>生日：{{ memberBirthday(memberDetail) }}</p><p>收货地址：{{ isSuperAdmin ? memberAddressLabel(memberDetail.address) : '仅超级管理员可见' }}</p><p>手机号：{{ memberDetail.phoneNumber || memberDetail.phoneMasked || '未绑定' }}</p><p>微信 OpenID：{{ memberDetail.openId }}</p><p>微信 UnionID：{{ memberDetail.maskedUnionId || '未提供' }}</p><p>观察记录：{{ memberDetail.observationCount }} 条（详情内容不在此页读取）</p><h4>账户隐私申请</h4><p v-if="!memberDetail.privacyRequests?.length" class="muted">暂无隐私申请。</p><p v-for="item in memberDetail.privacyRequests" :key="item.id">{{ item.status }} · {{ displayDate(item.requestedAt) }} · 计划 {{ displayDate(item.scheduledFor) }}</p><p v-if="!isSuperAdmin" class="muted">客服仅查看申请状态；处理与删除操作由超级管理员执行。</p>
-          </div>
-        </section></div>
-</Teleport>
+        <MemberDetailDialog v-if="memberDetail" :key="memberDetail.id" :member="memberDetail" :is-super-admin="isSuperAdmin" @close="memberDetail = null" />
       </section>
       <section v-if="activeSection === 'life-card-views'" id="life-card-views" class="content-area">
   <div class="section-heading"><div><p class="eyebrow">LIFE CARD VIEWS</p><h2>生命牌查看</h2></div></div>

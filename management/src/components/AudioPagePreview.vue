@@ -49,9 +49,9 @@ const emit = defineEmits<{
   (event: 'open-detail', trackId: string): void;
 }>();
 
-const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : '');
 const DECORATIVE_ARROWS = /[↗→›»➜➝➞➡⟶➔]/g;
-const cleanActionLabel = (value: unknown) => text(value).replace(DECORATIVE_ARROWS, '').replace(/\s{2,}/g, ' ').trim();
+const cleanActionLabel = (value: unknown) => text(value).replace(DECORATIVE_ARROWS, '');
 
 const listTitle = computed(() => text(props.title) || '微声音');
 const listTitleRichText = computed(() => text(props.titleRichText));

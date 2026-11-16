@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>MYRIAD SHE</title>
+  <rect width="64" height="64" rx="10" fill="#5e3229" />
+  <path fill="#ded4c8" transform="translate(6 11.5) scale(.2587)" d="M0 0h33l69 132L168 0h33v1c-17 0-20 4-20 24v109c0 20 4 24 20 24v1h-55v-1c16 0 19-4 19-24V13L99 159h-1L25 18v101c0 30 4 39 22 39v1H0v-1c18 0 22-7 22-39V21C22 6 17 1 0 1Z" />
+</svg>

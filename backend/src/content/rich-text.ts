@@ -68,14 +68,18 @@ export function safeRichTextLineHeight(attributes: string) {
   return Number.isFinite(lineHeight) && lineHeight >= 1 && lineHeight <= 3 ? String(lineHeight) : '';
 }
 
-export function plainTextFromRichText(value: string) {
-  return decodeRichTextEntities(value
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(?:p|div)>/gi, ' ')
-    .replace(/<[^>]*>/g, '')
-    .replace(/\u200b/g, ''))
-    .replace(/\s+/g, ' ')
-    .trim();
+export function plainTextFromRichText(value: string, preserveWhitespace = false) {
+  // The last closing block adds no visible line; explicit br and blank paragraphs do.
+  if (preserveWhitespace) {
+    const source = value.replace(/<\/(?:p|div|li)>(?=(?:<\/(?:ul|ol|div)>)*[ \t]*$)/gi, '');
+    const plain = source.split(/(<[^>]*>)/g).reduce((result, token) => {
+      if (/^<(?:p|div|li)\b/i.test(token)) return result && !result.endsWith('\n') ? `${result}\n` : result;
+      if (/^<(?:br\b|\/(?:p|div|li)>)/i.test(token)) return `${result}\n`;
+      return /^<[^>]*>$/.test(token) ? result : result + token;
+    }, '');
+    return decodeRichTextEntities(plain).replace(/\u200b/g, '').replace(/\r\n?/g, '\n');
+  }
+  return decodeRichTextEntities(value.replace(/<br\s*\/?>/gi, ' ').replace(/<\/(?:p|div|li)>/gi, ' ').replace(/<[^>]*>/g, '').replace(/\u200b/g, '')).replace(/\s+/g, ' ').trim();
 }
 
 export function sanitizeRichText(value: unknown, maximumCharacters: number, label: string, options: RichTextOptions = {}) {
@@ -91,7 +95,7 @@ export function sanitizeRichText(value: unknown, maximumCharacters: number, labe
     throw new BadRequestException(`${label}文字需为 1 至 ${maximumCharacters} 个字符`);
   }
   const tags: string[] = [];
-  const tokens = value.trim().match(/<\/?[a-z][^>]*>|[^<]+|</gi) ?? [];
+  const tokens = value.match(/<\/?[a-z][^>]*>|[^<]+|</gi) ?? [];
   let html = '';
   let skippedTag = '';
   const safeTag = (tag: string) => tag === 'div' ? 'p' : tag === 'font' ? 'span' : tag;
@@ -156,8 +160,8 @@ export function sanitizeRichText(value: unknown, maximumCharacters: number, labe
   while (tags.length) html += `</${tags.pop()!}>`;
 
   const plainText = plainTextFromRichText(html);
-  const characterCount = Array.from(plainText).length;
-  if ((!allowEmpty && characterCount < 1) || characterCount > maximumCharacters || html.length > maxHtmlCharacters) {
+  const characterCount = Array.from(plainTextFromRichText(html, true)).length;
+  if ((!allowEmpty && !plainText) || characterCount > maximumCharacters || html.length > maxHtmlCharacters) {
     throw new BadRequestException(`${label}文字需为 ${allowEmpty ? 0 : 1} 至 ${maximumCharacters} 个字符`);
   }
   return html;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import RichTextEditor from './RichTextEditor.vue';
+import { plainTextForDisplay as plainTextFromHtml } from '../rich-text';
 
 const props = withDefaults(defineProps<{
   modelValue?: string;
@@ -35,22 +36,15 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
-function plainTextFromHtml(value: string) {
-  if (!value.trim()) return '';
-  const container = document.createElement('div');
-  container.innerHTML = value;
-  return (container.textContent || '').replace(/\u200b/g, '').replace(/\s+/g, ' ').trim();
-}
-
 const editorHtml = computed(() => props.richText?.trim()
   ? props.richText
   : escapeHtml(props.modelValue || '').replace(/\r?\n/g, '<br/>'));
 
 function updateRichText(value: string) {
   const plainText = plainTextFromHtml(value);
-  const richText = plainText ? value : '';
+  const richText = plainText.trim() ? value : '';
   emit('update:richText', richText);
-  emit('update:modelValue', plainText);
+  emit('update:modelValue', richText ? plainText : '');
   emit('change');
 }
 </script>

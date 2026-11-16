@@ -5,9 +5,23 @@ const tabs = [
 ];
 
 Component({
+  properties: {
+    activeTab: { type: Number, value: -1, observer() { this.syncSelected(); } },
+  },
   data: { selected: 0, list: tabs },
+  lifetimes: {
+    attached() { this.syncSelected(); },
+  },
   pageLifetimes: {
-    show() {
+    show() { this.syncSelected(); },
+  },
+  methods: {
+    syncSelected() {
+      const activeTab = this.properties.activeTab;
+      if (Number.isInteger(activeTab) && activeTab >= 0 && activeTab < tabs.length) {
+        this.setData({ selected: activeTab });
+        return;
+      }
       const pages = getCurrentPages();
       const currentPage = pages[pages.length - 1];
       const route = currentPage?.route || '';
@@ -16,18 +30,15 @@ Component({
           : tabs.findIndex((tab) => tab.pagePath === route);
       if (selected >= 0) this.setData({ selected });
     },
-  },
-  methods: {
     switchTab(event: WechatMiniprogram.CustomEvent) {
       const index = Number(event.currentTarget.dataset.index);
       const tab = tabs[index];
       if (!tab) return;
-      this.setData({ selected: index });
       wx.switchTab({
         url: `/${tab.pagePath}`,
-        success: () => this.setData({ selected: index }),
+        success: () => this.syncSelected(),
         fail: () => {
-          wx.reLaunch({ url: `/${tab.pagePath}` });
+          wx.reLaunch({ url: `/${tab.pagePath}`, complete: () => this.syncSelected() });
         },
       });
     },

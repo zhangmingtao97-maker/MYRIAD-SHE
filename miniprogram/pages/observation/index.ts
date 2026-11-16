@@ -5,6 +5,7 @@ import { isCloudObservation } from '../../utils/observation';
 import type { CloudObservation, ObservationMethod } from '../../utils/observation';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
 import { cacheSeasonPaused, hasReadSeasonGuide, readSeasonPaused, saveSeasonPaused, subscribeSeasonPaused } from '../../utils/season-preference';
+import { plainTextFromHtml } from '../../utils/rich-text';
 
 const app = getApp<IAppOption>();
 
@@ -83,18 +84,8 @@ const DEFAULT_OBSERVATION_COPY: ObservationCopy = {
 
 type RealityStageStep = { key: RealityStageKey; copy: PracticeCopyItem };
 
-function plainRichText(value: string) {
-  return value
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(?:p|div|span|li|h[1-6])>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
+function plainRichText(value: string, preserveWhitespace = true) {
+  return plainTextFromHtml(value, preserveWhitespace);
 }
 
 function readableTextColor(color: string) {
@@ -115,8 +106,8 @@ const seasonRelationLegacyLabels: Record<SeasonRelationKey, string> = {
 
 function seasonRelationKeyFromValue(value: string, options: SeasonRelationOption[]): SeasonRelationKey | '' {
   if (options.some((option) => option.key === value)) return value as SeasonRelationKey;
-  const plain = plainRichText(value);
-  const matched = options.find((option) => plainRichText(option.label.richText) === plain);
+  const plain = plainRichText(value, false);
+  const matched = options.find((option) => plainRichText(option.label.richText, false) === plain);
   if (matched) return matched.key;
   return (Object.entries(seasonRelationLegacyLabels).find(([, label]) => label === plain)?.[0] || '') as SeasonRelationKey | '';
 }
@@ -298,8 +289,7 @@ Page({
       const suitSymbol = ({ spade: '♠', heart: '♥', club: '♣', diamond: '♦' } as Record<string, string>)[card.suit] || '';
       const sourceParagraphs = String(card.sourceNote || '')
         .split(/\n{2,}/)
-        .map((paragraph) => paragraph.trim())
-        .filter(Boolean);
+        .filter((paragraph) => paragraph.trim());
       this.setData({ lifeCard: { ...card, suitSymbol, sourceParagraphs }, lifeCardLoading: false, cardSourceOpen: false });
       void this.recordLifeCardView(month, day);
     } catch (caught) {

@@ -18,7 +18,7 @@ const props = defineProps<{
   canJournal: boolean;
 }>();
 const emit = defineEmits<{
-  edit: [id: string]; preview: [code: string]; navigate: [destination: string]; refresh: []; journal: [];
+  edit: [id: string]; preview: [code: string]; navigate: [destination: string]; refresh: []; journal: []; coverError: [url: string];
 }>();
 const imageFailed = ref(false);
 watch(() => props.coverUrl, () => { imageFailed.value = false; });
@@ -48,7 +48,7 @@ function timeLabel(value: string) {
         <div v-if="loading && !updatedAt && !issue" class="editorial-placeholder" role="status">正在读取本期期刊…</div>
         <div v-else-if="issue" class="editorial-issue">
           <div class="editorial-cover" :class="{ 'has-image': coverUrl && !imageFailed }" aria-hidden="true">
-            <img v-if="coverUrl && !imageFailed" :src="coverUrl" alt="" decoding="async" @error="imageFailed = true" />
+            <img v-if="coverUrl && !imageFailed" :src="coverUrl" alt="" decoding="async" @error="imageFailed = true; emit('coverError', coverUrl)" />
             <template v-else><span>MYRIAD SHE</span><div><small>{{ issue.month }}</small><strong>{{ issue.label }}</strong><i></i><p>{{ issue.theme || '一期新的故事' }}</p></div><small>{{ issue.code }}</small></template>
           </div>
           <div class="editorial-issue-copy">

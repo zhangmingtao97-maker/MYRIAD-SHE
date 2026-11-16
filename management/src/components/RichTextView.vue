@@ -22,7 +22,7 @@ function escapeHtml(value: string) {
 }
 
 const safeHtml = computed(() => {
-  const richText = typeof props.richText === 'string' ? props.richText.trim() : '';
+  const richText = typeof props.richText === 'string' && props.richText.trim() ? props.richText : '';
   const plainText = typeof props.text === 'string' ? props.text : '';
   const source = richText || plainText || props.fallback || '';
   const html = richText
@@ -46,6 +46,7 @@ const safeHtml = computed(() => {
 </template>
 
 <style scoped>
+.rich-text-view { white-space: pre-wrap; }
 .rich-text-view.is-inline { display: inline; }
 .rich-text-suffix { white-space: pre; }
 .rich-text-view.is-inline :deep(.rich-text-block),

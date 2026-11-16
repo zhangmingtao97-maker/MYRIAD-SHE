@@ -52,21 +52,21 @@ function text(value: unknown) {
 }
 
 function rich(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === 'string' && value.trim() ? value : '';
 }
 
 const DECORATIVE_ARROWS = /[↗→›»➜➝➞➡⟶➔]/g;
 
 function cleanActionLabel(value: unknown) {
-  return text(value).replace(DECORATIVE_ARROWS, '').replace(/\s{2,}/g, ' ').trim();
+  return typeof value === 'string' ? value.replace(DECORATIVE_ARROWS, '') : '';
 }
 
 const MAX_ACTIONS = 8;
 
 function richCopy(richText: unknown, plainText: unknown, fallback = '') {
   const richValue = rich(richText);
-  const plainValue = text(plainText);
-  const readable = plainTextFromHtml(richValue) || plainValue || fallback;
+  const plainValue = typeof plainText === 'string' && plainText.trim() ? plainText : '';
+  const readable = plainTextFromHtml(richValue, true) || plainValue || fallback;
   return {
     plain: readable,
     richText: richValue,
@@ -79,7 +79,7 @@ function normalizeAction(action: Record<string, unknown>, index: number): MicroV
   if (!kind) return null;
   const id = text(action.id) || `action-${String(index + 1).padStart(2, '0')}`;
   const labelRichText = rich(action.labelRichText);
-  const label = cleanActionLabel(plainTextFromHtml(labelRichText) || action.label) || (kind === 'share' ? '分享给朋友' : '了解更多');
+  const label = cleanActionLabel(plainTextFromHtml(labelRichText, true) || action.label) || (kind === 'share' ? '分享给朋友' : '了解更多');
   const labelHtml = richTextHtml(labelRichText, cleanActionLabel(action.label) || label, label);
   if (kind === 'page') {
     const path = text(action.path);
@@ -111,7 +111,7 @@ function moduleLinkAction(module: PublicHomeModule): MicroVoiceAction | null {
   const kind = module.linkType === 'web' ? 'web' : module.linkType === 'page' ? 'page' : null;
   if (!kind) return null;
   const labelRichText = rich(module.linkLabelRichText);
-  const label = (cleanActionLabel(plainTextFromHtml(labelRichText) || module.linkLabel) || '了解更多').slice(0, 40);
+  const label = (cleanActionLabel(plainTextFromHtml(labelRichText, true) || module.linkLabel) || '了解更多').slice(0, 40);
   const labelHtml = richTextHtml(labelRichText, cleanActionLabel(module.linkLabel) || label, label);
   if (kind === 'page') {
     const path = text(module.linkPath);

@@ -28,15 +28,18 @@ function decodeHtmlEntities(value: string) {
   });
 }
 
-/** 提取富文本的纯文本，用于分享标题、aria-label 和逻辑判断。 */
-export function plainTextFromHtml(value: string) {
-  return decodeHtmlEntities(value
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(?:p|div)>/gi, ' ')
-    .replace(/<[^>]*>/g, '')
-    .replace(/\u200b/g, ''))
-    .replace(/\s+/g, ' ')
-    .trim();
+/** 展示文案保留排版；分享标题和逻辑判断默认使用紧凑文本。 */
+export function plainTextFromHtml(value: string, preserveWhitespace = false) {
+  if (preserveWhitespace) {
+    const source = value.replace(/<\/(?:p|div|li)>(?=(?:<\/(?:ul|ol|div)>)*[ \t]*$)/gi, '');
+    const plain = source.split(/(<[^>]*>)/g).reduce((result, token) => {
+      if (/^<(?:p|div|li)\b/i.test(token)) return result && !result.endsWith('\n') ? `${result}\n` : result;
+      if (/^<(?:br\b|\/(?:p|div|li)>)/i.test(token)) return `${result}\n`;
+      return /^<[^>]*>$/.test(token) ? result : result + token;
+    }, '');
+    return decodeHtmlEntities(plain).replace(/\u200b/g, '').replace(/\r\n?/g, '\n');
+  }
+  return decodeHtmlEntities(value.replace(/<br\s*\/?>/gi, ' ').replace(/<\/(?:p|div|li)>/gi, ' ').replace(/<[^>]*>/g, '').replace(/\u200b/g, '')).replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -44,7 +47,7 @@ export function plainTextFromHtml(value: string) {
  * 没有 RichText 时将旧纯文本转义，避免把用户内容当作 HTML 执行。
  */
 export function richTextHtml(richText?: unknown, plainText?: unknown, fallback = '') {
-  const rich = typeof richText === 'string' ? richText.trim() : '';
+  const rich = typeof richText === 'string' && richText.trim() ? richText : '';
   if (rich) return rich;
   const source = typeof plainText === 'string' && plainText.length
     ? plainText
@@ -54,7 +57,7 @@ export function richTextHtml(richText?: unknown, plainText?: unknown, fallback =
 
 /** 给富文本追加不可编辑的排版后缀，例如后台配置的英文刊期标识。 */
 export function richTextWithSuffixHtml(richText: unknown, plainText: unknown, fallback: string, suffix: string) {
-  const rich = typeof richText === 'string' ? richText.trim() : '';
+  const rich = typeof richText === 'string' && richText.trim() ? richText : '';
   if (!rich) return richTextHtml('', `${typeof plainText === 'string' ? plainText : fallback}${suffix}`);
   return `${rich}${escapeHtml(suffix)}`;
 }

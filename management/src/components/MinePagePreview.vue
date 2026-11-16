@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PhonePreview from './PhonePreview.vue';
+import { plainTextForDisplay as plain } from '../rich-text';
 
 interface MinePreviewContent {
   title?: string;
@@ -26,20 +27,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (event: 'pick', key: string): void }>();
-
-const plain = (html: unknown) => (typeof html === 'string'
-  ? html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(p|div|h[1-6]|li)>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim()
-  : '');
 
 const pick = (key: string) => emit('pick', key);
 </script>

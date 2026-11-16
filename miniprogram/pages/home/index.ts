@@ -9,6 +9,7 @@ import type { BrandPopupConfig } from '../../utils/brand-popup';
 import { createRecoverableAudio } from '../../utils/recoverable-audio';
 import { refreshAudioSource } from '../../utils/audio-source';
 import { homeContentSignature, mediaIdentity, retainMediaUrls } from '../../utils/home-update';
+import { syncActiveTab } from '../../utils/tab-bar';
 
 type HomeIssue = NonNullable<PublicHomeContent['issue']>;
 type HomeContentsDestination = 'story' | 'audio' | 'observation' | 'discussion';
@@ -239,7 +240,7 @@ function buildContentsEntries(modules: PublicHomeModule[], issue: HomeIssue): Ho
 }
 
 function textValue(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === 'string' && value.trim() ? value : '';
 }
 
 // 英文刊期按杂志排印展开缩写（SEP 2026 → SEPTEMBER 2026）；中文月份写法保持原样。
@@ -259,7 +260,7 @@ function buildIssueHeader(modules: PublicHomeModule[], issue: HomeIssue) {
   const month = textValue(meta?.month) || textValue(issue.month);
   const monthRichText = textValue(meta?.monthRichText) || textValue(issue.monthRichText);
   const monthText = month ? expandIssueMonth(month) : '';
-  const editionText = meta?.edition === undefined ? EDITION_TAGLINE : textValue(meta.edition).trim();
+  const editionText = meta?.edition === undefined ? EDITION_TAGLINE : textValue(meta.edition);
   const edition = [monthText, editionText].filter(Boolean).join(' · ');
   const editionSuffix = editionText ? `${monthText ? ' · ' : ''}${editionText}` : '';
   return {
@@ -305,11 +306,13 @@ Page({
     void this.loadBrandPopup();
   },
   onShow() {
+    syncActiveTab(this, 0);
     this.motionHidden = false;
     if (this.motionReady) this.observeEditorialModules();
     if (!this.contentRequestInFlight) void this.loadContent();
   },
   onReady() {
+    syncActiveTab(this, 0);
     this.motionReady = true;
     this.observeEditorialModules();
     if (this.data.brandPopup) this.setBrandTabBarHidden(true);
@@ -380,7 +383,7 @@ Page({
       if (!next || mediaIdentity(previous?.videoUrl) !== mediaIdentity(next.videoUrl)) this.stopVideoPlayback();
     }
     const meta = orderedModules.find((module) => module.type === 'issueMeta');
-    const homeIntroduction = typeof meta?.introduction === 'string' ? meta.introduction.trim() : DEFAULT_HOME_INTRODUCTION;
+    const homeIntroduction = typeof meta?.introduction === 'string' ? meta.introduction : DEFAULT_HOME_INTRODUCTION;
     // Preserve completed reveals during background refresh; a new issue starts fresh.
     const editorialRevealed = sameIssue ? this.data.editorialRevealed : {};
     const imagesReady: Record<string, boolean> = {};

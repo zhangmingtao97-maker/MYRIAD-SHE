@@ -6,8 +6,8 @@ export function useAdminDialogs() {
   const stack: { dialog: HTMLElement; previous: HTMLElement | null }[] = [];
   let originalOverflow = '';
   const focusable = (dialog: HTMLElement) => Array.from(dialog.querySelectorAll<HTMLElement>(
-    'button:not(:disabled), [href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
-  )).filter((element) => element.getClientRects().length > 0 && element.tabIndex >= 0 && !element.closest('[inert]'));
+    'button:not(:disabled), [href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])',
+  )).filter((element) => element.getClientRects().length > 0 && element.checkVisibility() && element.tabIndex >= 0 && !element.closest('[inert]'));
   function syncDialogs() {
     const hadDialog = stack.length > 0;
     const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"][role="dialog"], [aria-modal="true"][role="alertdialog"]'))

@@ -15,7 +15,7 @@ export interface DiscussionSupportSettings {
 function contactValue(value: unknown) {
   if (typeof value !== 'string') return null;
   const normalized = value.trim();
-  return normalized && normalized.length <= 200 ? normalized : null;
+  return normalized && value.length <= 200 ? value : null;
 }
 
 export async function readDiscussionSupportSettings(

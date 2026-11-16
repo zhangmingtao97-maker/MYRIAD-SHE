@@ -162,6 +162,13 @@
   background: rgba(244, 236, 224, .68);
 }
 
+/* The journal uses the cover's deeper beige across every editorial module. */
+.journal-home-preview { --journal-home-paper: #e9e0d2; }
+.journal-home-preview .phone-screen,
+.journal-home-preview .phone-screen-inner:not(.has-background) { background: var(--journal-home-paper); }
+.journal-home-preview .phone-background-scrim { background: rgba(233, 224, 210, .82); }
+.journal-home-preview .preview-block { background: transparent; }
+
 
 .preview-hint {
   margin: 0;
@@ -388,7 +395,7 @@
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: .02em;
-  white-space: nowrap;
+  white-space: pre;
 }
 
 .practice-preview-signature-flower {
@@ -532,7 +539,7 @@
   color: #8b6b58;
   font-size: 10px;
   letter-spacing: .06em;
-  white-space: nowrap;
+  white-space: pre;
 }
 
 .daily-preview-bag em {
@@ -1006,7 +1013,7 @@
 .mine-preview-section-head small {
   color: #8b6b58;
   font-size: 10px;
-  white-space: nowrap;
+  white-space: pre;
 }
 
 .mine-preview-empty {
@@ -1156,7 +1163,7 @@
 
 .audio-preview-meta span:last-child {
   color: #663124;
-  white-space: nowrap;
+  white-space: pre;
 }
 
 .audio-preview-hero {
@@ -1838,7 +1845,7 @@
 
 .story-preview-meta span:last-child {
   color: #663124;
-  white-space: nowrap;
+  white-space: pre;
 }
 
 .story-preview-hero {
@@ -2581,7 +2588,7 @@
 
 .rich-text-view {
   display: block;
-  white-space: normal;
+  white-space: pre-wrap;
 }
 
 .rich-text-view.is-inline {

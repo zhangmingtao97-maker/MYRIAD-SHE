@@ -738,7 +738,7 @@ try {
   assert.equal(await audioModuleCard.locator('.issue-module-link-editor').count(), 0, 'audio module should only expose action editors');
   const migratedActionRow = actionEditor.locator('.issue-audio-action-row').nth(1);
   assert.equal(await migratedActionRow.getByLabel('操作类型').inputValue(), 'web');
-  assert.equal(await migratedActionRow.getByLabel('按钮文字', { exact: true }).innerText(), '公众号');
+  assert.equal(await migratedActionRow.getByLabel('按钮文字', { exact: true }).innerText(), '公众号 ', 'removing the decorative arrow must preserve the authored space');
   assert.equal(await migratedActionRow.getByLabel('网站链接（HTTPS）').inputValue(), 'https://mp.weixin.qq.com/s/example');
   await actionEditor.getByRole('button', { name: '＋ 添加操作模块' }).click();
   const actionRows = actionEditor.locator('.issue-audio-action-row');

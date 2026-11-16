@@ -32,7 +32,7 @@ const emit = defineEmits<{
   (event: 'pick-from-home'): void;
 }>();
 
-const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : '');
 const hasArticle = computed(() => Boolean(text(props.officialArticleUrl)));
 </script>
 

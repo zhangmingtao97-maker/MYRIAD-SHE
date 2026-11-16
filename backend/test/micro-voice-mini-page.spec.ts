@@ -15,9 +15,28 @@ function compile(relative: string) {
   return result.outputText;
 }
 
+test('mini-program rich and plain copy retain spaces and line breaks without changing compact metadata', () => {
+  const richText: Record<string, (...args: any[]) => string> = {};
+  runInNewContext(compile('utils/rich-text.ts'), { exports: richText });
+  const source = '  <strong>开头  中间</strong>   尾部  ';
+  assert.equal(richText.richTextHtml(source, ''), source);
+  assert.equal(richText.plainTextFromHtml(source, true), '  开头  中间   尾部  ');
+  assert.equal(richText.plainTextFromHtml(source), '开头 中间 尾部');
+  assert.equal(richText.richTextHtml('', '  一  <二>\n　第三行  '), '  一  &lt;二&gt;<br/>　第三行  ');
+  assert.equal(richText.richTextWithSuffixHtml(source, '', '', ' / SHE'), `${source} / SHE`);
+  assert.equal(richText.plainTextFromHtml('第一行<div>  第二行  </div>', true), '第一行\n  第二行  ');
+  assert.equal(richText.plainTextFromHtml('<p>一</p><p></p><p>二<br/></p>', true), '一\n\n二\n');
+});
+
 function audioRuntime(wx: unknown) {
   const exports: Record<string, (...args: any[]) => any> = {};
   runInNewContext(compile('utils/recoverable-audio.ts'), { exports, wx, setTimeout: () => 1, clearTimeout() {} });
+  return exports;
+}
+
+function tabBarRuntime() {
+  const exports = {};
+  runInNewContext(compile('utils/tab-bar.ts'), { exports });
   return exports;
 }
 
@@ -83,6 +102,7 @@ function homeHarness(payload: unknown = content()) {
     exports: {},
     Page: (definition: HomePage) => { page = definition; },
     require: (path: string) => {
+      if (path.endsWith('/tab-bar')) return tabBarRuntime();
       if (path.endsWith('/home-update')) { const result = {}; runInNewContext(compile('utils/home-update.ts'), { exports: result }); return result; }
       if (path.endsWith('/recoverable-audio')) return audioRuntime(environment.wx);
       if (path.endsWith('/audio-source')) return { refreshAudioSource: async () => { throw new Error('offline'); } };
@@ -186,7 +206,8 @@ test('practice refresh keeps its directory visible, retains it on failure, and i
   let requests = 0;
   runInNewContext(compile('pages/practice/index.ts'), {
     exports: {}, Page: (definition: PracticePage) => { page = definition; },
-    require: (path: string) => path.endsWith('/content') ? { isPracticeContent: () => true }
+    require: (path: string) => path.endsWith('/tab-bar') ? tabBarRuntime()
+      : path.endsWith('/content') ? { isPracticeContent: () => true }
       : path.endsWith('/request') ? {
         request: () => { requests++; return new Promise((resolve, reject) => { respond = resolve; fail = reject; }); },
         apiErrorMessage: (_error: unknown, fallback: string) => fallback,
@@ -585,14 +606,15 @@ test('profile nickname failure preserves the input for retry and never leaks it 
 
 test('a draft resumes its last step only in the same account session and cloud revision', async () => {
   const account = { globalData: { userId: 'owner', authGeneration: 1, accountDeleted: false } };
-  const contentModule = {}; const observationModule = {};
+  const contentModule = {}; const observationModule = {}; const richText = {};
   runInNewContext(compile('utils/content.ts'), { exports: contentModule });
   runInNewContext(compile('utils/observation.ts'), { exports: observationModule });
+  runInNewContext(compile('utils/rich-text.ts'), { exports: richText });
   let definition: any;
   let record = { id: 'draft-01', revision: 1, method: 'season', status: 'draft', answers: {} };
   runInNewContext(compile('pages/observation/index.ts'), { exports: {}, getApp: () => account, Page: (page: unknown) => { definition = page; },
     wx: { setNavigationBarTitle() {} },
-    require: (path: string) => path.endsWith('/content') ? contentModule : path.endsWith('/observation') ? observationModule : path.endsWith('/request') ? { request: async () => record, apiErrorMessage: (_: unknown, fallback: string) => fallback } : {},
+    require: (path: string) => path.endsWith('/content') ? contentModule : path.endsWith('/observation') ? observationModule : path.endsWith('/rich-text') ? richText : path.endsWith('/request') ? { request: async () => record, apiErrorMessage: (_: unknown, fallback: string) => fallback } : {},
   });
   const makePage = () => {
     const page = { ...definition, data: JSON.parse(JSON.stringify(definition.data)), knownAuthGeneration: account.globalData.authGeneration };

@@ -46,6 +46,7 @@
 .dashboard-workspace .content-area :is(.filters, .employee-toolbar, .life-card-view-filters) { align-items: flex-end; }
 .dashboard-workspace .content-area :is(.filters, .employee-toolbar, .life-card-view-filters) > button { min-width: 88px; min-height: var(--admin-button-height); padding: 10px 16px; white-space: nowrap; }
 .dashboard-workspace .content-area .audit-filter-actions { align-self: end; }
+#discussion-reports .filters > .reports-toolbar { align-self: flex-end; margin: 0 0 0 auto; }
 
 /* Quiet actions remain visible beside the single filled primary action. */
 .dashboard-workspace .content-area :is(.form-actions, .section-tools, .table-actions, .settings-actions, .journal-overview-actions, .member-actions, .employee-actions, .discussion-contribution-row-actions, .discussion-report-actions, .audit-filter-actions) > button.quiet:not(.danger) {
@@ -83,6 +84,79 @@
 .dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) .publication-status > button { min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--accent); font-size: 12px; }
 .dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) .publication-status > button:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 4px; }
 
+/* A compact directory toolbar keeps the destination and add action on one line. */
+#practice-directory-content .directory-toolbar {
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 0 20px;
+  margin-bottom: 0;
+  background: transparent;
+}
+#practice-directory-content .directory-toolbar-actions {
+  display: grid;
+  grid-template-columns: minmax(128px, 160px) auto;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+}
+#practice-directory-content .directory-toolbar-actions > :is(select, button) {
+  box-sizing: border-box;
+  height: var(--admin-button-height);
+  min-height: var(--admin-button-height);
+  margin: 0;
+  border-radius: var(--admin-button-radius);
+  font-family: var(--admin-ui-font);
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+#practice-directory-content .directory-toolbar-actions > select {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 12px;
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background-color: var(--surface);
+  cursor: pointer;
+}
+#practice-directory-content .directory-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 124px;
+  padding: 10px 18px;
+  color: var(--surface);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+}
+#practice-directory-content .directory-add-button svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+#practice-directory-content .directory-add-button:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+#practice-directory-content .directory-toolbar-actions > :is(select, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: var(--admin-focus);
+}
+#practice-directory-content .directory-toolbar-actions > :is(select, button):disabled {
+  background: var(--surface-3);
+  color: var(--muted);
+  border-color: var(--line);
+  opacity: 1;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* Controls with a single icon use a stable square target. */
 .dashboard-workspace .content-area .issue-module-toolbar > div { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; }
 .dashboard-workspace .content-area .issue-module-toolbar button { min-width: 44px; min-height: 44px; padding: 10px 12px; border-radius: var(--admin-button-radius); white-space: nowrap; }
@@ -112,6 +186,8 @@
 }
 
 @media (max-width: 600px) {
+  #practice-directory-content .directory-toolbar-actions { width: 100%; grid-template-columns: minmax(0, 1fr) auto; }
+  #practice-directory-content .directory-add-button { min-width: 112px; padding-inline: 14px; }
   .dashboard-workspace .content-area :is(.form-actions, .settings-actions) { flex-wrap: wrap; }
   .dashboard-workspace .content-area :is(.form-actions, .settings-actions) > button { min-width: 0; padding-inline: 14px; }
   .dashboard-workspace .content-area :is(.journal-savebar, .practice-savebar) { flex-direction: column; flex-wrap: nowrap; align-items: stretch; padding: 16px; }

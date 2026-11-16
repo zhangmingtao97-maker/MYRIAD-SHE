@@ -19,7 +19,7 @@ try {
   const publishedIssue = {
     id: 'issue-02', code: 'issue-02', label: 'ISSUE 02', labelRichText: '', month: 'Sep 2026', monthRichText: '', theme: '手指一根一根松开', themeRichText: '',
     question: draftQuestion, questionRichText: '', status: 'published', editVersion: 2,
-    microVoiceTitle: null, microVoiceDuration: null, coverObjectKey: null, microVoiceObjectKey: null,
+    microVoiceTitle: null, microVoiceDuration: null, coverObjectKey: 'content/image/original.png', microVoiceObjectKey: null,
     homeBackgroundObjectKey: null, homeMetaRichText: '把目光放回日常', homeMetaFontSize: 16,
     homeMetaColor: '#40362f', homeCoverCaptionLeft: '人物纪实', homeCoverCaptionLeftRichText: '', homeCoverCaptionRight: '本期封面', homeCoverCaptionRightRichText: '',
     updatedAt: timestamp, publishedVersion: 1,
@@ -51,11 +51,18 @@ try {
   let failRefresh = false;
   let emptyAudit = false;
   let failMembers = false;
+  let failCover = false;
+  let coverDownloads = 0;
   const pageData = (items = [], total = 0) => ({ items, total, limit: 50, offset: 0 });
   const requests = [];
   await page.addInitScript(() => {
     localStorage.setItem('myriad_she_admin_token', `test.${btoa(JSON.stringify({ role: 'super_admin', name: 'Test Editor' }))}.test`);
     localStorage.setItem('myriad_she_admin_expires_at', String(Date.now() + 3600000));
+  });
+  await page.route('**/test-cover/**', async (route) => {
+    coverDownloads += 1;
+    if (failCover) return route.abort('failed');
+    return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64') });
   });
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname.replace(/^.*\/api/, '');
@@ -68,6 +75,12 @@ try {
     if (path === '/content/home') return send(publishedHome);
     if (path === '/content/archive/issue-02') return send(publishedHome);
     if (path === '/content/issues') return send([publishedIssue]);
+    if (path === '/content/media/preview-url') {
+      // Deliberately overlap the initial dashboard sync to catch duplicate lookups.
+      await new Promise((done) => setTimeout(done, 200));
+      const key = new URL(route.request().url()).searchParams.get('objectKey');
+      return send({ url: `${new URL(route.request().url()).origin}/test-cover/${key.split('/').at(-1)}`, expiresIn: 3600 });
+    }
     if (path === '/content/issues/summary') return send({ draftCount: 0, publishedCount: 1, archivedCount: 0, publishedCode: 'issue-02', publishedUpdatedAt: timestamp });
     if (path === '/admin/observations/lifecycle') return send({ retentionDays: 90, draftCount: 12, savedCount: 328, realityCount: 200, seasonCount: 140, wellFormedEnvelopeCount: 340, legacyPlaintextCount: 0, invalidEnvelopeCount: 0, staleDraftCount: 2, oldestDraftAt: timestamp });
     if (path === '/admin/observations') return send(pageData([], 328));
@@ -84,6 +97,12 @@ try {
   const overview = page.locator('#overview-panel');
   await overview.locator('.overview-sync-message').filter({ hasText: '更新于' }).waitFor();
   await page.waitForFunction(() => document.querySelector('#overview-panel')?.getAttribute('aria-busy') === 'false');
+  const cover = overview.locator('.editorial-cover img');
+  await page.waitForFunction(() => document.querySelector('.editorial-cover img')?.naturalWidth > 0);
+  const originalCover = await cover.elementHandle();
+  const coverLookups = () => requests.filter(path => path === '/content/media/preview-url').length;
+  assert.equal(coverLookups(), 1);
+  assert.equal(coverDownloads, 1);
   assert.equal(await overview.locator('.editorial-metric').count(), 4);
   assert.match(await overview.locator('[data-metric="members"] strong').innerText(), /1,286/);
   assert.equal(await overview.locator('.editorial-task').count(), 3);
@@ -117,6 +136,8 @@ try {
   assert.equal(await overview.getAttribute('aria-busy'), 'true');
   await page.waitForFunction(() => document.querySelector('#overview-panel')?.getAttribute('aria-busy') === 'false' && document.querySelector('[data-metric="members"] strong')?.textContent.includes('1,298'));
   slowRefresh = false;
+  assert.equal(coverLookups(), 1, 'Refreshing data must reuse the loaded cover URL');
+  assert.equal(coverDownloads, 1);
   await overview.locator('[data-metric="members"]').click();
   await page.locator('#member-directory').waitFor();
   await page.getByRole('button', { name: '工作台', exact: true }).click();
@@ -126,6 +147,25 @@ try {
   assert.ok(requests.includes('/admin/audit-logs'));
   await page.getByRole('button', { name: '工作台', exact: true }).click();
   await overview.waitFor();
+
+  assert.equal(await originalCover.evaluate(el => el.isConnected && el === document.querySelector('.editorial-cover img')), true);
+  assert.equal(coverLookups(), 1, 'Returning to the workbench must not resolve the same cover again');
+  assert.equal(coverDownloads, 1, 'Returning must keep the decoded image even with the browser cache disabled');
+
+  // A new upload must replace the old image; a failed load must be retryable.
+  publishedIssue.coverObjectKey = 'content/image/replacement.png';
+  failCover = true;
+  const failedCover = page.waitForEvent('requestfailed', request => request.url().endsWith('/test-cover/replacement.png'));
+  await overview.getByRole('button', { name: '刷新数据', exact: true }).click();
+  await failedCover;
+  await cover.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => document.querySelector('#overview-panel')?.getAttribute('aria-busy') === 'false');
+  failCover = false;
+  await overview.getByRole('button', { name: '刷新数据', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('.editorial-cover img')?.naturalWidth > 0);
+  assert.ok((await cover.getAttribute('src')).endsWith('/test-cover/replacement.png'));
+  assert.equal(coverLookups(), 3, 'The failed replacement must be resolved again on retry');
+  assert.equal(coverDownloads, 3);
 
   for (const width of [1280, 1024, 768, 390, 375]) {
     await page.setViewportSize({ width, height: 900 });
@@ -202,7 +242,7 @@ try {
   assert.equal(await overview.locator('.editorial-metric').count(), 3);
   assert.equal(requests.slice(requestStart).some(path => path.startsWith('/content/')), false);
   assert.deepEqual(errors, []);
-  console.log('PASS: editorial workbench, published snapshot preview/focus return, draft retention, task queue, real/unknown/zero metrics, refresh/loading/retry, journal and audit navigation, 5 responsive widths and reduced motion.');
+  console.log('PASS: editorial workbench, cover reuse across sync/navigation, replacement and failed-image retry, published snapshot preview/focus return, draft retention, task queue, real/unknown/zero metrics, refresh/loading/retry, journal and audit navigation, 5 responsive widths and reduced motion.');
 } finally {
   await browser?.close();
   await server.close();

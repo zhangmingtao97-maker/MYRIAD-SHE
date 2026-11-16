@@ -29,11 +29,11 @@ export function legalPlainText(value: string): string {
 export function sanitizeLegalDocument(raw: unknown, publishing = false): LegalDocument {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new BadRequestException('文档内容无效');
   const source = raw as Record<string, unknown>;
-  const text = (key: string, max: number, required = false, label = key) => {
+  const text = (key: string, max: number, required = false, label = key, preserveWhitespace = false) => {
     const value = source[key] ?? '';
     if (typeof value !== 'string' || value.length > max) throw new BadRequestException(`${label}内容无效或超出长度限制`);
     if (required && !value.trim()) throw new BadRequestException(`${label}不能为空`);
-    return value.trim();
+    return preserveWhitespace ? value : value.trim();
   };
   const copy = (key: string, max: number, fontSize: number, required: boolean): LegalCopy => {
     const value = source[key] as Partial<LegalCopy> | undefined;
@@ -48,6 +48,6 @@ export function sanitizeLegalDocument(raw: unknown, publishing = false): LegalDo
   if (publishing && !effectiveDate) throw new BadRequestException('生效日期不能为空，请填写并保存草稿后再发布');
   return {
     title: copy('title', 160, 28, true), intro: copy('intro', 1000, 16, false), body: copy('body', legalBodyLimit, 14, publishing),
-    effectiveDate, updatedDate: text('updatedDate', 80), version, updateNotes: text('updateNotes', 1000),
+    effectiveDate, updatedDate: text('updatedDate', 80), version, updateNotes: text('updateNotes', 1000, false, '更新说明', true),
   };
 }

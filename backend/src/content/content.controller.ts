@@ -622,9 +622,9 @@ function normalizeDailyObjectsContent(raw: unknown, editVersion: number) {
     deliveryDetails: typeof (item as Record<string, unknown>).deliveryDetails === 'string' ? (item as Record<string, unknown>).deliveryDetails : '',
   })) : [];
   const copy = Object.fromEntries(Object.entries(dailyObjectsCopyDefaults).map(([key, fallback]) => {
-    const value = typeof content[key] === 'string' ? (content[key] as string).trim() : '';
+    const value = typeof content[key] === 'string' ? content[key] as string : '';
     const preserveBlank = intentionallyBlankDailyObjectsCopyKeys.has(key as keyof typeof dailyObjectsCopyDefaults);
-    return [key, value || (preserveBlank ? '' : fallback)];
+    return [key, value.trim() ? value : (preserveBlank ? '' : fallback)];
   })) as Record<keyof typeof dailyObjectsCopyDefaults, string>;
   return { ...content, ...copy, editVersion, products };
 }
@@ -1430,9 +1430,9 @@ export class ContentController {
         ? undefined
         : sanitizeRichText(action.labelRichText, 40, `${actionLabel}字段 labelRichText`, issueRichTextOptions);
       const label = labelRichText !== undefined
-        ? plainTextFromRichText(labelRichText)
-        : typeof action.label === 'string' ? action.label.trim() : '';
-      if (!label || label.length > 40 || /[\r\n]/.test(label) || /<\/?[a-z][^>]*>/i.test(label)) {
+        ? plainTextFromRichText(labelRichText, true)
+        : typeof action.label === 'string' ? action.label : '';
+      if (!label.trim() || label.length > 40 || /[\r\n]/.test(label) || /<\/?[a-z][^>]*>/i.test(label)) {
         throw new BadRequestException(`${actionLabel}字段 label 须为 1–40 个字符的纯文本`);
       }
       const richLabelFields = labelRichText !== undefined ? { labelRichText } : {};
@@ -1518,8 +1518,8 @@ export class ContentController {
         ? undefined
         : sanitizeRichText(item.linkLabelRichText, 40, `${moduleLabel}字段 linkLabelRichText`, issueRichTextOptions);
       const linkLabel = linkLabelRichText !== undefined
-        ? plainTextFromRichText(linkLabelRichText)
-        : (typeof item.linkLabel === 'string' ? item.linkLabel.trim() : '');
+        ? plainTextFromRichText(linkLabelRichText, true)
+        : (typeof item.linkLabel === 'string' ? item.linkLabel : '');
       if (linkType === 'page') {
         if (!linkPath || linkPath.length > 512 || linkPath.includes('..') || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+(?:\?[^\s<>#]*)?$/i.test(linkPath)) throw new BadRequestException(`${moduleLabel}字段 linkPath 须为有效的小程序页面路径`);
       }
@@ -1540,7 +1540,7 @@ export class ContentController {
         if (richValue === undefined) continue;
         const sanitized = sanitizeRichText(richValue, issueRichTextMaximum(richField), `${moduleLabel}字段 ${richKey}`, issueRichTextOptions);
         normalizedRichText[richKey] = sanitized;
-        normalizedRichPlainText[richField] = plainTextFromRichText(sanitized);
+        normalizedRichPlainText[richField] = plainTextFromRichText(sanitized, true);
       }
       let normalizedTracks: IssueAudioTrack[] | undefined;
       for (const key of baseFields) {
@@ -1569,7 +1569,7 @@ export class ContentController {
               if (richValue === undefined) continue;
               const sanitized = sanitizeRichText(richValue, maximum, `${trackLabel}字段 ${trackField}RichText`, issueRichTextOptions);
               normalizedTrackRichText[`${trackField}RichText`] = sanitized;
-              track[trackField] = plainTextFromRichText(sanitized);
+              track[trackField] = plainTextFromRichText(sanitized, true);
             }
             const audioObjectKey = track.audioObjectKey ?? '';
             const videoObjectKey = track.videoObjectKey ?? '';
@@ -1624,8 +1624,6 @@ export class ContentController {
       if (normalizedTracks?.[0] && normalizedTracks[0].actions === undefined && normalizedLegacyActions !== undefined) normalizedTracks[0].actions = normalizedLegacyActions;
       ids.add(id);
       const normalizedItem = { ...item, ...normalizedRichText, ...normalizedRichPlainText, id, type: moduleType, order: Number(order), enabled: item.enabled } as IssueModule;
-      if (typeof normalizedItem.introduction === 'string') normalizedItem.introduction = normalizedItem.introduction.trim();
-      if (typeof normalizedItem.edition === 'string') normalizedItem.edition = normalizedItem.edition.trim();
       delete normalizedItem.actions;
       delete normalizedItem.linkType;
       delete normalizedItem.linkPath;
@@ -1668,7 +1666,7 @@ export class ContentController {
     return this.validateIssueDraft({ sections: [
       { id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, eyebrow: source.label ?? '本期策展', eyebrowRichText: source.labelRichText ?? '', month: source.month ?? '', monthRichText: source.monthRichText ?? '' },
       { id: 'cover', type: 'cover', order: 1, enabled: true, imageObjectKey: source.coverObjectKey ?? null, altText: source.theme ?? '', captionLeft: source.homeCoverCaptionLeft ?? '人物纪实·时雨', captionLeftRichText: source.homeCoverCaptionLeftRichText ?? '', captionRight: source.homeCoverCaptionRight ?? '本期封面', captionRightRichText: source.homeCoverCaptionRightRichText ?? '' },
-      { id: 'opener', type: 'opener', order: 2, enabled: true, eyebrow: '本期主题', title: source.theme ?? '', titleRichText: source.themeRichText ?? '', body: plainTextFromRichText(source.homeMetaRichText ?? ''), bodyRichText: source.homeMetaRichText ?? '' },
+      { id: 'opener', type: 'opener', order: 2, enabled: true, eyebrow: '本期主题', title: source.theme ?? '', titleRichText: source.themeRichText ?? '', body: plainTextFromRichText(source.homeMetaRichText ?? '', true), bodyRichText: source.homeMetaRichText ?? '' },
       { id: 'audio', type: 'audio', order: 3, enabled: Boolean(source.microVoiceObjectKey), title: source.microVoiceTitle ?? '', duration: source.microVoiceDuration ?? '', audioObjectKey: source.microVoiceObjectKey ?? null, quote: '', subtitle: '', transcript: '' },
       { id: 'question', type: 'question', order: 4, enabled: true, eyebrow: '从她的经验，回到你的此刻', title: source.question ?? '', titleRichText: source.questionRichText ?? '', body: '' },
       { id: 'observation-action', type: 'observationAction', order: 5, enabled: true, title: '留给自己观察', body: '从现实处境开始，记录保持私密' },
@@ -1859,19 +1857,19 @@ export class ContentController {
       : '';
   }
 
-  private requiredText(value: string, field: string, minimum: number, maximum: number) {
+  private requiredText(value: string, field: string, minimum: number, maximum: number, preserveWhitespace = false) {
     const normalized = value.trim();
-    if (normalized.length < minimum || normalized.length > maximum) {
+    if (normalized.length < minimum || (preserveWhitespace ? value.length : normalized.length) > maximum) {
       throw new BadRequestException(`${field}长度无效`);
     }
-    return normalized;
+    return preserveWhitespace ? value : normalized;
   }
 
-  private optionalText(value: string | null | undefined, field: string, maximum: number) {
+  private optionalText(value: string | null | undefined, field: string, maximum: number, preserveWhitespace = false) {
     if (value === null || value === undefined) return value;
     const normalized = value.trim();
-    if (normalized.length > maximum) throw new BadRequestException(`${field}长度无效`);
-    return normalized || null;
+    if ((preserveWhitespace ? value.length : normalized.length) > maximum) throw new BadRequestException(`${field}长度无效`);
+    return normalized ? (preserveWhitespace ? value : normalized) : null;
   }
 
   private safeHomeMetaRichText(value: string | undefined) {
@@ -1892,7 +1890,7 @@ export class ContentController {
       if (value === undefined) continue;
       const richText = sanitizeRichText(value, maximum, label, issueRichTextOptions);
       normalized[richKey] = richText as never;
-      normalized[plainKey] = plainTextFromRichText(richText) as never;
+      normalized[plainKey] = plainTextFromRichText(richText, true) as never;
     }
     const coreFields = [
       ['code', '期刊编号', 2, 64],
@@ -1907,9 +1905,9 @@ export class ContentController {
         if (requireCoreFields) throw new BadRequestException(`${label}不能为空`);
         continue;
       }
-      normalized[key] = this.requiredText(value, label, minimum, maximum) as never;
+      normalized[key] = this.requiredText(value, label, minimum, maximum, key !== 'code') as never;
     }
-    normalized.microVoiceTitle = this.optionalText(normalized.microVoiceTitle, '微声音标题', 120) as never;
+    normalized.microVoiceTitle = this.optionalText(normalized.microVoiceTitle, '微声音标题', 120, true) as never;
     normalized.microVoiceDuration = this.optionalText(normalized.microVoiceDuration, '微声音时长', 20) as never;
     normalized.coverObjectKey = this.optionalText(normalized.coverObjectKey, '封面媒体路径', 512) as never;
     normalized.microVoiceObjectKey = this.optionalText(normalized.microVoiceObjectKey, '音频媒体路径', 512) as never;
@@ -1924,7 +1922,7 @@ export class ContentController {
       if (value === undefined) continue;
       const richText = sanitizeRichText(value, 80, label, issueRichTextOptions);
       normalized[richKey] = richText as never;
-      normalized[plainKey] = plainTextFromRichText(richText) as never;
+      normalized[plainKey] = plainTextFromRichText(richText, true) as never;
     }
     const coverCaptionDefaults = { homeCoverCaptionLeft: '人物纪实·时雨', homeCoverCaptionRight: '本期封面' };
     for (const key of ['homeCoverCaptionLeft', 'homeCoverCaptionRight'] as const) {
@@ -1933,7 +1931,7 @@ export class ContentController {
         if (requireCoreFields) normalized[key] = coverCaptionDefaults[key] as never;
         continue;
       }
-      const caption = value.trim();
+      const caption = value;
       if (caption.length > 80 || /[\r\n]/.test(caption)) throw new BadRequestException('封面说明文字须为 80 字以内的单行文本');
       normalized[key] = caption as never;
     }
@@ -2389,6 +2387,11 @@ export class ContentController {
     }
     // Unlike the public view URL, this admin-only URL can preview a freshly
     // uploaded but not-yet-published object while an issue is being edited.
+    // Images already allow public reads and use immutable upload keys. A stable
+    // URL lets the browser reuse their long-lived cache across admin visits.
+    if (normalizedObjectKey.startsWith('content/image/')) {
+      return { url: this.storage.createPublicUrl(normalizedObjectKey), expiresIn: 3600 };
+    }
     return this.storage.createDownloadUrl(normalizedObjectKey);
   }
 
@@ -3146,15 +3149,15 @@ export class ContentController {
         const day = Number(row[index('day')]);
         const suit = (row[index('suit')] || '').trim();
         const rank = (row[index('rank')] || '').trim();
-        const title = (row[index('title')] || '').trim().slice(0, lifeCardTextLimits.title);
-        const summary = (row[index('summary')] || '').trim().slice(0, lifeCardTextLimits.summary);
-        const prompt = (row[index('prompt')] || '').trim().slice(0, lifeCardTextLimits.prompt);
-        const theme = (row[index('theme')] ?? '').trim().slice(0, lifeCardTextLimits.theme);
-        const note = (row[index('note')] ?? '').trim().slice(0, lifeCardTextLimits.note);
-        const sourceNote = (row[index('sourceNote')] ?? '').trim().slice(0, lifeCardTextLimits.sourceNote);
+        const title = (row[index('title')] || '').slice(0, lifeCardTextLimits.title);
+        const summary = (row[index('summary')] || '').slice(0, lifeCardTextLimits.summary);
+        const prompt = (row[index('prompt')] || '').slice(0, lifeCardTextLimits.prompt);
+        const theme = (row[index('theme')] ?? '').slice(0, lifeCardTextLimits.theme);
+        const note = (row[index('note')] ?? '').slice(0, lifeCardTextLimits.note);
+        const sourceNote = (row[index('sourceNote')] ?? '').slice(0, lifeCardTextLimits.sourceNote);
         const valid = Number.isInteger(month) && month >= 1 && month <= 12 && Number.isInteger(day) && day >= 1 && day <= 31
           && lifeCardSuits.includes(suit as typeof lifeCardSuits[number]) && lifeCardRanks.includes(rank as typeof lifeCardRanks[number])
-          && title && summary && prompt;
+          && title.trim() && summary.trim() && prompt.trim();
         if (!valid) { skipped.push(`${month}-${day}`); continue; }
         const result = await client.query(
           `update content_life_cards
@@ -3194,13 +3197,13 @@ export class ContentController {
     if (!lifeCardSuits.includes(suit as typeof lifeCardSuits[number])) throw new BadRequestException('花色无效');
     const rank = String(body.rank ?? '');
     if (!lifeCardRanks.includes(rank as typeof lifeCardRanks[number])) throw new BadRequestException('牌面点数无效');
-    const theme = typeof body.theme === 'string' ? body.theme.trim().slice(0, lifeCardTextLimits.theme) : '';
-    const title = typeof body.title === 'string' ? body.title.trim().slice(0, lifeCardTextLimits.title) : '';
-    const summary = typeof body.summary === 'string' ? body.summary.trim().slice(0, lifeCardTextLimits.summary) : '';
-    const prompt = typeof body.prompt === 'string' ? body.prompt.trim().slice(0, lifeCardTextLimits.prompt) : '';
-    const note = typeof body.note === 'string' ? body.note.trim().slice(0, lifeCardTextLimits.note) : '';
-    const sourceNote = typeof body.sourceNote === 'string' ? body.sourceNote.trim().slice(0, lifeCardTextLimits.sourceNote) : '';
-    if (!title || !summary || !prompt) throw new BadRequestException('标题、说明与观察提示不能为空');
+    const theme = typeof body.theme === 'string' ? body.theme.slice(0, lifeCardTextLimits.theme) : '';
+    const title = typeof body.title === 'string' ? body.title.slice(0, lifeCardTextLimits.title) : '';
+    const summary = typeof body.summary === 'string' ? body.summary.slice(0, lifeCardTextLimits.summary) : '';
+    const prompt = typeof body.prompt === 'string' ? body.prompt.slice(0, lifeCardTextLimits.prompt) : '';
+    const note = typeof body.note === 'string' ? body.note.slice(0, lifeCardTextLimits.note) : '';
+    const sourceNote = typeof body.sourceNote === 'string' ? body.sourceNote.slice(0, lifeCardTextLimits.sourceNote) : '';
+    if (!title.trim() || !summary.trim() || !prompt.trim()) throw new BadRequestException('标题、说明与观察提示不能为空');
     return this.database.withTransaction(async (client) => {
       const updated = await client.query<LifeCardRow>(
         `update content_life_cards
@@ -3239,8 +3242,8 @@ export class ContentController {
     const ids = body.products.map((product) => product.id.trim());
     if (new Set(ids).size !== ids.length) throw new BadRequestException('商品编号不能重复');
     const products = await Promise.all(body.products.map(async (product) => {
-      const normalized = { ...product, id: product.id.trim(), name: product.name.trim(), english: product.english.trim(), image: product.image.trim(), price: product.price.trim(), priceLabel: product.priceLabel.trim(), description: product.description.trim(), optionDetails: product.optionDetails.trim(), dailyUseDetails: product.dailyUseDetails.trim(), deliveryDetails: product.deliveryDetails.trim() };
-      if (!normalized.name || !normalized.english || !normalized.image || !normalized.description) throw new BadRequestException('商品名称、英文标识、图片路径和详情说明不能为空');
+      const normalized = { ...product, id: product.id.trim(), image: product.image.trim() };
+      if (!normalized.name.trim() || !normalized.english.trim() || !normalized.image || !normalized.description.trim()) throw new BadRequestException('商品名称、英文标识、图片路径和详情说明不能为空');
       if (normalized.image.startsWith('content/image/')) {
         let valid = false;
         try {
@@ -3272,13 +3275,13 @@ export class ContentController {
       if (!valid) throw new BadRequestException('公众号文章链接须为 mp.weixin.qq.com 的 HTTPS 文章链接');
     }
     const content = {
-      brandName: body.brandName.trim(), brandSubtitle: body.brandSubtitle.trim(), bagLabel: body.bagLabel.trim(), bagCount: body.bagCount.trim(),
-      eyebrow: body.eyebrow.trim(), title: body.title.trim(), intro: body.intro.trim(), previewNote: body.previewNote.trim(), supportLabel: body.supportLabel.trim(),
-      landingTitle: body.landingTitle.trim(), landingIntro: body.landingIntro.trim(), landingStatus: body.landingStatus.trim(),
-      herDaysTitle: body.herDaysTitle.trim(), herDaysEnglish: body.herDaysEnglish.trim(), articleLabel: body.articleLabel.trim(),
-      articleTitle: body.articleTitle.trim(), articleExcerpt: body.articleExcerpt.trim(), articleImage, articleImageAlt: body.articleImageAlt.trim(),
-      articleCaption: body.articleCaption.trim(), officialArticleUrl, officialArticleButton: body.officialArticleButton.trim(),
-      everydayObjectsTitle: body.everydayObjectsTitle.trim(), everydayObjectsEnglish: body.everydayObjectsEnglish.trim(), everydayObjectsIntro: body.everydayObjectsIntro.trim(),
+      brandName: body.brandName, brandSubtitle: body.brandSubtitle, bagLabel: body.bagLabel, bagCount: body.bagCount,
+      eyebrow: body.eyebrow, title: body.title, intro: body.intro, previewNote: body.previewNote, supportLabel: body.supportLabel,
+      landingTitle: body.landingTitle, landingIntro: body.landingIntro, landingStatus: body.landingStatus,
+      herDaysTitle: body.herDaysTitle, herDaysEnglish: body.herDaysEnglish, articleLabel: body.articleLabel,
+      articleTitle: body.articleTitle, articleExcerpt: body.articleExcerpt, articleImage, articleImageAlt: body.articleImageAlt,
+      articleCaption: body.articleCaption, officialArticleUrl, officialArticleButton: body.officialArticleButton,
+      everydayObjectsTitle: body.everydayObjectsTitle, everydayObjectsEnglish: body.everydayObjectsEnglish, everydayObjectsIntro: body.everydayObjectsIntro,
       products,
     };
     return this.database.withTransaction(async (client) => {
@@ -3479,16 +3482,16 @@ export class ContentController {
     if (new Set(keys).size !== keys.length || keys.length === 0) {
       throw new BadRequestException('目录标识不能重复，且至少要保留一个目录');
     }
-    const title = body.title.trim();
-    const intro = body.intro.trim();
-    if (!title || !intro || body.entries.some((entry) => !entry.title.trim() || !entry.description.trim())) {
+    const title = body.title;
+    const intro = body.intro;
+    if (!title.trim() || !intro.trim() || body.entries.some((entry) => !entry.title.trim() || !entry.description.trim())) {
       throw new BadRequestException('标题、说明和入口文案不能为空');
     }
     const titleRichText = sanitizeMinePageRichText(body.titleRichText ?? title, 80, '实践页面标题');
-    const normalizedTitle = plainTextFromRichText(titleRichText);
+    const normalizedTitle = plainTextFromRichText(titleRichText, true);
     if (!normalizedTitle || normalizedTitle.length > 80) throw new BadRequestException('实践页面标题需为有效文字');
     const introRichText = sanitizeMinePageRichText(body.introRichText ?? intro, 240, '实践页面说明');
-    const normalizedIntro = plainTextFromRichText(introRichText);
+    const normalizedIntro = plainTextFromRichText(introRichText, true);
     if (!normalizedIntro || normalizedIntro.length > 240) throw new BadRequestException('实践页面说明需为有效文字');
     const metaLeftRichText = sanitizeMinePageRichText(body.metaLeftRichText ?? '实践', 80, '实践页左侧页眉');
     const metaRightRichText = sanitizeMinePageRichText(body.metaRightRichText ?? '此刻归安', 80, '实践页右侧页眉');
@@ -3500,8 +3503,8 @@ export class ContentController {
       const titleRichText = sanitizeMinePageRichText(entry.titleRichText ?? entry.title, 80, '实践目录名称');
       const rawDescription = entry.descriptionRichText ?? entry.description;
       const descriptionRichText = sanitizeMinePageRichText(rawDescription, 240, '实践目录补充说明');
-      const title = plainTextFromRichText(titleRichText);
-      const description = plainTextFromRichText(descriptionRichText);
+      const title = plainTextFromRichText(titleRichText, true);
+      const description = plainTextFromRichText(descriptionRichText, true);
       if (!title || title.length > 80 || !description || description.length > 240) throw new BadRequestException('实践目录名称与补充说明需为有效文字');
       const target = entry.target && ['observation', 'shared-practice', 'daily-goods', 'none'].includes(entry.target) ? entry.target : entry.key;
       return {
@@ -3623,7 +3626,7 @@ export class ContentController {
     const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
     const value = (key: 'brandIntro' | 'contentSources' | 'contactInfo', fallback: string) => {
       const text = source[key];
-      return typeof text === 'string' && text.trim().length > 0 && text.length <= 6000 ? text.trim() : fallback;
+      return typeof text === 'string' && text.trim().length > 0 && text.length <= 6000 ? text : fallback;
     };
     return {
       brandIntro: value('brandIntro', 'MYRIAD SHE 是一个陪伴女性回到自身经验的观察与实践空间。'),

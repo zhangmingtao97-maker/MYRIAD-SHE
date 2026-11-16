@@ -2,6 +2,7 @@ import { apiErrorMessage, request } from '../../utils/request';
 import { isPracticeContent } from '../../utils/content';
 import type { PracticeContent } from '../../utils/content';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { syncActiveTab } from '../../utils/tab-bar';
 
 Page({
   data: { statusBarHeight: 0, title: '实践', titleRichText: '日常实践', titleFontSize: 12, titleColor: '#8b6b58', intro: '先回到能承接真实经验的位置。', introRichText: '先回到能承接真实经验的位置。', introFontSize: 32, introColor: '#40362f', metaLeftRichText: '实践', metaLeftFontSize: 12, metaLeftColor: '#8b6b58', metaRightRichText: '此刻归安', metaRightFontSize: 12, metaRightColor: '#8b6b58', footerCopy: { brand: { richText: 'MYRIAD SHE', fontSize: 11, color: '#5c493c' }, line1: { richText: '看见真实经验', fontSize: 16, color: '#40362f' }, label: { richText: '此刻归安', fontSize: 11, color: '#5c493c' }, line2: { richText: '让一件小事发生', fontSize: 16, color: '#40362f' } }, entries: [] as PracticeContent['entries'], loading: true, error: '', refreshError: '' },
@@ -9,7 +10,8 @@ Page({
   contentVisible: false,
   requestInFlight: false,
   onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); void this.load(); },
-  onShow() { if (!this.data.loading) void this.load(); },
+  onShow() { syncActiveTab(this, 1); if (!this.data.loading) void this.load(); },
+  onReady() { syncActiveTab(this, 1); },
   onHide() {
     this.requestGeneration += 1;
     this.requestInFlight = false;

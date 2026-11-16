@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import PhonePreview from './PhonePreview.vue';
+import { plainTextForDisplay as plain } from '../rich-text';
 import RichTextView from './RichTextView.vue';
 import { seasonStageDefinitions } from '../season-stages';
 import type { SeasonCopyItem, SeasonNowTab, SeasonStageKey, SeasonStagesCopy } from '../season-stages';
@@ -20,20 +21,6 @@ const currentNow = computed(() => props.copy.now[props.nowTab]);
 const alignment = computed(() => currentStage.value.align || 'left');
 const spacing = computed(() => currentStage.value.spacing || 'standard');
 const layoutClass = computed(() => [`season-stage-align-${alignment.value}`, `season-stage-spacing-${spacing.value}`]);
-
-const plain = (html: unknown) => (typeof html === 'string'
-  ? html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(p|div|span|h[1-6]|li)>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim()
-  : '');
 
 const itemStyle = (item?: SeasonCopyItem) => ({
   fontSize: `${item?.fontSize || 14}px`,

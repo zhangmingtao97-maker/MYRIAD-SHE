@@ -1,3 +1,5 @@
+import { plainTextForDisplay } from './rich-text';
+
 // 实践目录三行文案在真机上是固定排版（字号、颜色、行的位置都写死在 index.wxss 里），
 // 后台只改文字，不再逐个字段暴露字号 / 颜色 / 富文本。
 export type PracticeEntrySlot = 'context' | 'title' | 'description';
@@ -29,16 +31,7 @@ export const practiceEntryFixedStyle = {
 
 /** 把历史富文本压成纯文本，供输入框显示 / 提交。 */
 export function practiceEntryText(html: string) {
-  return String(html || '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
+  return plainTextForDisplay(html);
 }
 
 export function setPracticeEntryText(entry: PracticeEntryFields, slot: PracticeEntrySlot, value: string) {

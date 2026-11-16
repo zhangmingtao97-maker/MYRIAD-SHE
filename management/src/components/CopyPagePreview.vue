@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PhonePreview from './PhonePreview.vue';
+import RichTextView from './RichTextView.vue';
 
 interface CopyField {
   key: string;
@@ -42,20 +43,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (event: 'pick', key: string): void }>();
 
-const plain = (html: unknown) => (typeof html === 'string'
-  ? html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(p|div|h[1-6]|li)>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim()
-  : '');
-
 const allFields = () => props.groups.flatMap((group) => group.fields);
 
 const extraBlocks = () => (props.extraSections || []).flatMap((section) => section.blocks);
@@ -89,7 +76,7 @@ const orderOf = (key: string) => {
             fontSize: `${(copy[field.key]?.fontSize || 14)}px`,
             color: copy[field.key]?.color || '#40362f',
           }"
-        >{{ plain(copy[field.key]?.richText) || '（空）' }}</p>
+        ><RichTextView :rich-text="copy[field.key]?.richText" text="（空）" :inline="true" /></p>
       </div>
     </div>
     <div
@@ -111,7 +98,7 @@ const orderOf = (key: string) => {
             fontSize: `${(block.fontSize || 14)}px`,
             color: block.color || '#40362f',
           }"
-        >{{ plain(block.richText) || '（空）' }}</p>
+        ><RichTextView :rich-text="block.richText" text="（空）" :inline="true" /></p>
       </div>
     </div>
   </PhonePreview>

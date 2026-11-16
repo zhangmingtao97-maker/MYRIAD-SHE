@@ -22,7 +22,7 @@ export async function readDiscussionAccess(options: { requireLogin?: boolean } =
   if (!options.requireLogin && !hasAuthenticatedSession()) return { restricted: false, reason: null, endsAt: null, appealContact: null, supportContact: null };
   const result = await request<{ restricted?: unknown; reason?: unknown; endsAt?: unknown; appealContact?: unknown; supportContact?: unknown }>('/me/discussion-access');
   if (!result || typeof result.restricted !== 'boolean') throw new Error('一起谈谈权限状态格式无效');
-  const contact = (value: unknown) => typeof value === 'string' && value.trim() && value.trim().length <= 200 ? value.trim() : null;
+  const contact = (value: unknown) => typeof value === 'string' && value.trim() && value.length <= 200 ? value : null;
   return {
     restricted: result.restricted,
     reason: typeof result.reason === 'string' && result.reason.trim() ? result.reason.trim() : null,

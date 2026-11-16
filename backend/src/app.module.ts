@@ -12,6 +12,8 @@ import { ObservationController } from './observation/observation.controller';
 import { AdminAuthGuard } from './auth/admin-auth.guard';
 import { UserAuthGuard } from './auth/user-auth.guard';
 import { UserController } from './user/user.controller';
+import { ShippingAddressController } from './user/shipping-address.controller';
+import { ShippingAddressService } from './user/shipping-address.service';
 import { AdminObservationController } from './admin/admin-observation.controller';
 import { StorageService } from './storage/storage.service';
 import { AuditService } from './admin/audit.service';
@@ -45,7 +47,7 @@ import { DiscussionSupportSettingsController } from './discussion/discussion-sup
       useFactory: (config: ConfigService) => ({ secret: config.get('JWT_ACCESS_SECRET') }),
     }),
   ],
-  controllers: [HealthController, AuthController, ContentController, DiscussionPageController, LegalDocumentsController, ObservationController, DiscussionContributionController, DiscussionReportController, DiscussionSubscriptionController, DiscussionAccessController, DiscussionSupportSettingsController, UserController, AdminObservationController, AdminDiscussionContributionController, AdminDiscussionReportController, AdminDiscussionRestrictionController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController, AdminNotificationController, AdminModuleStateController],
-  providers: [DatabaseService, AuthService, AdminAuthGuard, UserAuthGuard, StorageService, RedisService, AuditService, PrivacyService, DataEncryptionService, AdminNotificationService, DiscussionReplyNotificationService, AdminModuleStateService],
+  controllers: [HealthController, AuthController, ContentController, DiscussionPageController, LegalDocumentsController, ObservationController, DiscussionContributionController, DiscussionReportController, DiscussionSubscriptionController, DiscussionAccessController, DiscussionSupportSettingsController, UserController, ShippingAddressController, AdminObservationController, AdminDiscussionContributionController, AdminDiscussionReportController, AdminDiscussionRestrictionController, AdminAuditController, AdminPrivacyController, AdminSystemController, AdminManagementController, AdminNotificationController, AdminModuleStateController],
+  providers: [ShippingAddressService, DatabaseService, AuthService, AdminAuthGuard, UserAuthGuard, StorageService, RedisService, AuditService, PrivacyService, DataEncryptionService, AdminNotificationService, DiscussionReplyNotificationService, AdminModuleStateService],
 })
 export class AppModule {}

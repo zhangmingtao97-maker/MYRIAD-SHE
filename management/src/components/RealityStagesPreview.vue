@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import PhonePreview from './PhonePreview.vue';
+import { plainTextForDisplay as plain } from '../rich-text';
 import RichTextView from './RichTextView.vue';
 
 type RealityStageKey = 'situation' | 'body' | 'need' | 'nextAction';
@@ -41,20 +42,6 @@ const optionGroups = computed(() => props.stage === 'body'
   : props.stage === 'need'
     ? ['先停一下', '说出边界', '寻求支持', '暂不决定']
     : []);
-
-const plain = (html: unknown) => (typeof html === 'string'
-  ? html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(p|div|span|h[1-6]|li)>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim()
-  : '');
 
 const itemStyle = (item: CopyItem) => ({
   fontSize: `${item.fontSize || 14}px`,

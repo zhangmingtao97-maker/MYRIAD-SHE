@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import { AuditService } from '../src/admin/audit.service';
 import { ContentController } from '../src/content/content.controller';
 import { defaultDiscussionContent, validateDiscussionContent } from '../src/content/discussion-content';
-import { sanitizeRichText } from '../src/content/rich-text';
+import { plainTextFromRichText, sanitizeRichText } from '../src/content/rich-text';
 import { DatabaseService } from '../src/database/database.service';
 import { RedisService } from '../src/cache/redis.service';
 import { StorageService } from '../src/storage/storage.service';
@@ -87,8 +87,8 @@ test('discussion support settings prefer the configured appeal contact and fall 
     }),
   } as unknown as Parameters<typeof readDiscussionSupportSettings>[0];
   assert.deepEqual(await readDiscussionSupportSettings(configured), {
-    supportContact: '客服微信：myriad-care',
-    appealContact: 'appeal@example.com',
+    supportContact: ' 客服微信：myriad-care ',
+    appealContact: ' appeal@example.com ',
   });
 
   const fallback = {
@@ -632,23 +632,24 @@ test('mine page settings are publicly readable and updates are audited with opti
   });
   assert.deepEqual(updated, {
     editVersion: 2,
-    title: '新标题',
-    intro: '新说明',
-    observationHeading: '我的观察记录',
-    emptyTitle: '空标题',
-    emptyIntro: '空说明',
-    startButton: '开始观察',
-    discussionHeading: '我参与的讨论',
-    discussionCount: '0条本机发言',
-    discussionEmptyAction: '还没有留下发言',
-    discussionIntro: '讨论说明',
-    practiceHeading: '线下实践',
-    practiceCount: '0 次',
-    practiceEmptyTitle: '尚未参加共同实践',
-    practiceIntro: '实践说明',
-    privacyHeading: '选择与隐私',
-    privacyAction: '通知与隐私',
+    title: '  新标题  ',
+    intro: ' 新说明 ',
+    observationHeading: ' 我的观察记录 ',
+    emptyTitle: ' 空标题 ',
+    emptyIntro: ' 空说明 ',
+    startButton: ' 开始观察 ',
+    discussionHeading: ' 我参与的讨论 ',
+    discussionCount: ' 0条本机发言 ',
+    discussionEmptyAction: ' 还没有留下发言 ',
+    discussionIntro: ' 讨论说明 ',
+    practiceHeading: ' 线下实践 ',
+    practiceCount: ' 0 次 ',
+    practiceEmptyTitle: ' 尚未参加共同实践 ',
+    practiceIntro: ' 实践说明 ',
+    privacyHeading: ' 选择与隐私 ',
+    privacyAction: ' 通知与隐私 ',
   });
+  assert.deepEqual(await controller.minePage(), updated, 'saved spacing must survive the next public read');
   assert.ok(events.includes('audit:content.mine_page.updated'));
 
   await assert.rejects(controller.updateMinePageContent(request, {
@@ -704,6 +705,26 @@ test('rich text sanitizer preserves typography while removing unsafe styles and 
       + '<span style="text-align:center">越界</span>'
       + '<ol><li style="text-align:center">一</li><li>二</li></ol>',
   );
+});
+
+test('rich text preserves authored whitespace across sanitizing, formatting, and plain-text fallback', () => {
+  const source = '  <p>  开头  <strong onclick="alert(1)">中间   文字</strong>  </p><p>　第二行&nbsp; </p>  ';
+  const sanitized = sanitizeRichText(source, 100, '排版文案');
+  assert.equal(sanitized, source.replace(' onclick="alert(1)"', ''));
+  assert.equal(plainTextFromRichText(sanitized, true), '  \n  开头  中间   文字  \n　第二行    ');
+  assert.equal(plainTextFromRichText(sanitized), '开头 中间 文字 第二行');
+  assert.equal(plainTextFromRichText('第一行<div>  第二行  </div>', true), '第一行\n  第二行  ');
+  assert.equal(plainTextFromRichText('<p>一</p><p></p><p>二<br/></p>', true), '一\n\n二\n');
+});
+
+test('preserving whitespace still rejects empty copy and counts spaces toward text limits', () => {
+  assert.throws(() => sanitizeRichText(' <p>&nbsp;　 </p> ', 20, '标题'), BadRequestException);
+  assert.throws(() => sanitizeRichText('  字  ', 4, '标题'), BadRequestException);
+  assert.equal(sanitizeRichText('  字  ', 5, '标题'), '  字  ');
+  const { controller } = issueEditHarness(1);
+  const normalize = (label: string) => (controller as unknown as { normalizeIssueInput: (body: unknown, required: boolean) => unknown }).normalizeIssueInput({ label }, false);
+  assert.throws(() => normalize(' '.repeat(120) + '标签'), BadRequestException);
+  assert.throws(() => normalize('   '), BadRequestException);
 });
 
 test('mine page rich text drops unsafe and out-of-range font sizes', async () => {
@@ -1007,31 +1028,53 @@ test('public media view rejects oversized object keys before database access', a
   await assert.rejects(controller.mediaViewUrl('content/image/file.webp?raw=1'), BadRequestException);
 });
 
-test('admin media preview signs a valid unpublished object after metadata validation', async () => {
-  let signedKey = '';
+test('admin image preview reuses a stable cacheable URL after metadata validation', async () => {
+  const validatedKeys: string[] = [];
   const storage = {
     maxUploadBytes: () => 1024,
-    objectMetadata: async (key: string) => ({ contentType: key.startsWith('content/image/') ? 'image/webp' : 'audio/mpeg', contentLength: 1, lastModified: new Date() }),
-    createDownloadUrl: async (key: string) => { signedKey = key; return { url: 'https://storage.invalid/preview', expiresIn: 3600 }; },
+    objectMetadata: async (key: string) => { validatedKeys.push(key); return { contentType: 'image/webp', contentLength: 1, lastModified: new Date() }; },
+    createPublicUrl: (key: string) => {
+      assert.equal(validatedKeys.at(-1), key);
+      return `https://storage.invalid/${key}`;
+    },
+    createDownloadUrl: async () => { throw new Error('Images must not receive a new signed URL'); },
   } as unknown as StorageService;
   const controller = new ContentController({} as DatabaseService, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
 
-  assert.deepEqual(await controller.mediaPreviewUrl('  content/image/draft.webp  '), { url: 'https://storage.invalid/preview', expiresIn: 3600 });
-  assert.equal(signedKey, 'content/image/draft.webp');
+  const expected = { url: 'https://storage.invalid/content/image/draft.webp', expiresIn: 3600 };
+  assert.deepEqual(await controller.mediaPreviewUrl('  content/image/draft.webp  '), expected);
+  assert.deepEqual(await controller.mediaPreviewUrl('content/image/draft.webp'), expected);
+  assert.deepEqual(validatedKeys, ['content/image/draft.webp', 'content/image/draft.webp']);
   await assert.rejects(controller.mediaPreviewUrl('content/image/../private.webp'), BadRequestException);
 });
 
-test('admin media preview refuses invalid metadata without signing the object', async () => {
-  let signed = false;
+test('admin audio and video previews keep signed URLs', async () => {
+  const signedKeys: string[] = [];
+  const storage = {
+    maxUploadBytes: () => 1024,
+    objectMetadata: async (key: string) => ({ contentType: key.startsWith('content/audio/') ? 'audio/mpeg' : 'video/mp4', contentLength: 1, lastModified: new Date() }),
+    createPublicUrl: () => { throw new Error('Private media must not receive public URLs'); },
+    createDownloadUrl: async (key: string) => { signedKeys.push(key); return { url: 'https://storage.invalid/signed-preview', expiresIn: 3600 }; },
+  } as unknown as StorageService;
+  const controller = new ContentController({} as DatabaseService, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
+  for (const key of ['content/audio/draft.mp3', 'content/video/draft.mp4']) {
+    assert.deepEqual(await controller.mediaPreviewUrl(key), { url: 'https://storage.invalid/signed-preview', expiresIn: 3600 });
+  }
+  assert.deepEqual(signedKeys, ['content/audio/draft.mp3', 'content/video/draft.mp4']);
+});
+
+test('admin media preview refuses invalid metadata without generating a URL', async () => {
+  let generated = false;
   const storage = {
     maxUploadBytes: () => 1024,
     objectMetadata: async () => ({ contentType: 'application/octet-stream', contentLength: 2048, lastModified: new Date() }),
-    createDownloadUrl: async () => { signed = true; return { url: 'https://storage.invalid/should-not-sign', expiresIn: 3600 }; },
+    createPublicUrl: () => { generated = true; return 'https://storage.invalid/should-not-publish'; },
+    createDownloadUrl: async () => { generated = true; return { url: 'https://storage.invalid/should-not-sign', expiresIn: 3600 }; },
   } as unknown as StorageService;
   const controller = new ContentController({} as DatabaseService, storage, {} as AuditService, new ConfigService({}), {} as RedisService, {} as JwtService);
 
   await assert.rejects(controller.mediaPreviewUrl('content/image/invalid.bin'), NotFoundException);
-  assert.equal(signed, false);
+  assert.equal(generated, false);
 });
 
 test('media deletion rejects directory marker object keys', async () => {
@@ -1307,7 +1350,7 @@ test('practice page description preserves line breaks and typography', async () 
   const result = await controller.updatePracticeContent(request, update);
 
   assert.equal(result.introRichText, '<strong>先回到能承接真实经验的</strong><br/>位置。');
-  assert.equal(result.intro, '先回到能承接真实经验的 位置。');
+  assert.equal(result.intro, '先回到能承接真实经验的\n位置。');
   assert.equal(result.introFontSize, 32);
   assert.equal(result.introColor, '#663124');
 });
@@ -1707,7 +1750,7 @@ test('practice page title preserves rich text, line breaks, font size, and color
   const result = await controller.updatePracticeContent(request, update);
 
   assert.equal(result.titleRichText, '<strong>日常</strong><br/>实践');
-  assert.equal(result.title, '日常 实践');
+  assert.equal(result.title, '日常\n实践');
   assert.equal(result.titleFontSize, 15);
   assert.equal(result.titleColor, '#663124');
 });
@@ -1834,20 +1877,20 @@ test('homepage introduction accepts a short sentence or an explicit empty value 
   const validate = (introduction: unknown) => (controller as unknown as {
     validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> };
   }).validateIssueDraft({ sections: [{ id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, introduction }] });
-  assert.equal(validate('  看见生活里的每一种可能  ').sections[0].introduction, '看见生活里的每一种可能');
+  assert.equal(validate('  看见生活里的每一种可能  ').sections[0].introduction, '  看见生活里的每一种可能  ');
   assert.equal(validate('').sections[0].introduction, '');
   for (const value of ['字'.repeat(121), '第一行\n第二行', '<strong>介绍</strong>', null, 123]) {
     assert.throws(() => validate(value), BadRequestException);
   }
 });
 
-test('homepage edition supports legacy data, trimming, and an explicit empty value while rejecting unsafe copy', () => {
+test('homepage edition preserves authored spacing and an explicit empty value while rejecting unsafe copy', () => {
   const { controller } = issueEditHarness(1);
   const validate = (edition: unknown) => (controller as unknown as {
     validateIssueDraft: (value: unknown) => { sections: Array<Record<string, unknown>> };
   }).validateIssueDraft({ sections: [{ id: 'issue-meta', type: 'issueMeta', order: 0, enabled: true, edition }] });
   assert.equal(validate(undefined).sections[0].edition, undefined);
-  assert.equal(validate('  A CURATED EDITION  ').sections[0].edition, 'A CURATED EDITION');
+  assert.equal(validate('  A CURATED EDITION  ').sections[0].edition, '  A CURATED EDITION  ');
   assert.equal(validate('').sections[0].edition, '');
   const maximum = '字'.repeat(40);
   assert.equal(validate(maximum).sections[0].edition, maximum);
@@ -1987,7 +2030,7 @@ test('issue unique conflicts return stable operation-specific error codes', asyn
   assert.equal((publishConflict.getResponse() as { code?: string }).code, 'content_issue_publish_conflict');
 });
 
-test('issue input normalization removes accidental whitespace and clears empty media fields', async () => {
+test('issue input preserves editorial spacing while normalizing identifiers and empty media fields', async () => {
   const { controller } = issueEditHarness(1);
   const normalized = (controller as unknown as { normalizeIssueInput: (body: unknown, required: boolean) => Record<string, unknown> }).normalizeIssueInput({
     code: ' issue-03 ', label: ' 标签 ', month: ' Oct ', theme: ' 主题 ', question: ' 问题 ',
@@ -1996,13 +2039,15 @@ test('issue input normalization removes accidental whitespace and clears empty m
     homeMetaFontSize: 24, homeMetaColor: '#AB7852',
   }, true);
   assert.equal(normalized.code, 'issue-03');
-  assert.equal(normalized.label, '标签');
+  assert.equal(normalized.label, ' 标签 ');
+  assert.equal(normalized.theme, ' 主题 ');
+  assert.equal(normalized.question, ' 问题 ');
   assert.equal(normalized.microVoiceTitle, null);
   assert.equal(normalized.microVoiceDuration, '01:12');
   assert.equal(normalized.coverObjectKey, null);
   assert.equal(normalized.microVoiceObjectKey, null);
   assert.equal(normalized.homeBackgroundObjectKey, null);
-  assert.equal(normalized.homeMetaRichText, '<strong>SEP 2026</strong>');
+  assert.equal(normalized.homeMetaRichText, ' <strong>SEP 2026</strong> ');
   assert.equal(normalized.homeMetaFontSize, 24);
   assert.equal(normalized.homeMetaColor, '#ab7852');
   assert.equal(normalized.homeCoverCaptionLeft, '人物纪实·时雨');
@@ -2670,10 +2715,13 @@ test('daily objects draft save and manage read preserve the landing-page configu
   const audit = { record: async () => undefined } as unknown as AuditService;
   const controller = new ContentController(database, {} as StorageService, audit, new ConfigService({}), {} as RedisService, {} as JwtService);
 
-  const saved = await controller.updateDailyObjects(request, dailyObjectsDto() as never);
-  assert.equal(saved.articleTitle, '在窗边坐一会儿');
+  const product = { id: ' 01 ', name: '  日常  之物  ', english: ' daily  object ', image: ' /assets/shop/shop-item-01.svg ', price: ' ¥100 ', priceLabel: ' 含税 ', description: '  第一段  说明\n　第二段  ', optionDetails: '  规格  ', dailyUseDetails: '  使用  ', deliveryDetails: '  配送  ', enabled: true };
+  const saved = await controller.updateDailyObjects(request, dailyObjectsDto({ articleTitle: '  在窗边  坐一会儿  ', products: [product] }) as never);
+  assert.equal(saved.articleTitle, '  在窗边  坐一会儿  ');
   assert.equal(saved.everydayObjectsIntro, '基于观察到的人物日常，对日常好物的思考及探索。');
   const managed = await controller.manageDailyObjects();
+  assert.equal(managed.articleTitle, saved.articleTitle);
+  assert.deepEqual(managed.products[0], { ...product, id: '01', image: '/assets/shop/shop-item-01.svg' });
   assert.equal(managed.draft, true);
   assert.equal(managed.landingTitle, '物不是答案。\n它只在日常里，\n支持一个动作发生。');
   assert.equal(managed.officialArticleUrl, 'https://mp.weixin.qq.com/s/example');

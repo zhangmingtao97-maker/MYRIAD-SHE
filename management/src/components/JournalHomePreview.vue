@@ -30,7 +30,7 @@ const moduleLabels: Record<string, string> = {
 };
 
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
-const rich = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+const rich = (value: unknown) => (typeof value === 'string' && value.trim() ? value : '');
 const textOrFallback = (value: unknown, fallback = '') => {
   const plain = text(value);
   return plain.trim() ? plain : fallback;
@@ -44,7 +44,7 @@ const orderNumber = (module: ManagedIssueModule) => String(props.modules.indexOf
 const tracksOf = (module: ManagedIssueModule) => module.tracks || [];
 const introduction = computed(() => {
   const meta = props.modules.find((module) => module.type === 'issueMeta' && module.enabled);
-  return typeof meta?.introduction === 'string' ? meta.introduction.trim() : '记录女性的真实经历，也邀请你观察自己的生活';
+  return typeof meta?.introduction === 'string' ? meta.introduction : '记录女性的真实经历，也邀请你观察自己的生活';
 });
 
 const questionActions = computed(() => props.modules.filter(
@@ -135,7 +135,7 @@ const resolvedKey = computed(() => {
 </script>
 
 <template>
-  <PhonePreview title="期刊首页" caption="MYRIAD SHE" :background-image-url="backgroundImageUrl" :active-key="resolvedKey">
+  <PhonePreview class="journal-home-preview" title="期刊首页" caption="MYRIAD SHE" :background-image-url="backgroundImageUrl" :active-key="resolvedKey">
       <p v-if="introduction" class="preview-home-introduction">{{ introduction }}</p>
       <TransitionGroup name="editorial-order" tag="div" class="preview-module-order">
       <article

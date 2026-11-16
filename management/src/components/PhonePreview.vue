@@ -109,3 +109,7 @@ defineExpose({ reveal });
     </div>
   </section>
 </template>
+
+<style scoped>
+.phone-screen { white-space: pre-wrap; }
+</style>

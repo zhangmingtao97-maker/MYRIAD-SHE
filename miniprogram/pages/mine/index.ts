@@ -5,6 +5,7 @@ import type { MinePageContent } from '../../utils/content';
 import { readLocalDiscussion, removeLocalContribution } from '../../utils/discussion-storage';
 import type { LocalContribution } from '../../utils/discussion-storage';
 import { enableShareMenu, shareCard, shareTimelineCard } from '../../utils/share';
+import { syncActiveTab } from '../../utils/tab-bar';
 
 const app = getApp<IAppOption>();
 
@@ -135,7 +136,9 @@ Page({
   nicknameCommitInFlight: false,
   avatarSelection: null as { userId: string; authGeneration: number } | null,
   onLoad() { enableShareMenu(); this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight }); },
+  onReady() { syncActiveTab(this, 2); },
   onShow() {
+    syncActiveTab(this, 2);
     this.syncLocalDiscussions();
     void this.loadMinePageContent();
     if (app.globalData.accountDeleted) {

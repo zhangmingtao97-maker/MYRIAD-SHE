@@ -298,7 +298,7 @@ onMounted(() => {
       <label class="rich-text-control rich-text-line-height">行距<select v-model="selectedLineHeight" aria-label="文字行距" :disabled="disabled" @pointerdown="rememberSelection" @change="applyLineHeight"><option v-for="lineHeight in lineHeightOptions" :key="lineHeight" :value="lineHeight">{{ lineHeight }}</option></select></label>
       <label class="rich-text-control rich-text-color">颜色<input v-model="selectedColor" type="color" aria-label="选择文字颜色" :disabled="disabled" @pointerdown="rememberSelection" @change="applyColor" /></label>
     </div>
-    <small class="rich-text-help">选中文字时只调整选区；未选中时只调整当前段落。标题、正文、按钮等文字均可分别设置字号、颜色、对齐和行距。</small>
+    <small class="rich-text-help">空格和换行会保留到前端。选中文字时只调整选区；未选中时只调整当前段落。标题、正文、按钮等文字均可分别设置字号、颜色、对齐和行距。</small>
     <div
       ref="editor"
       class="rich-text-canvas"

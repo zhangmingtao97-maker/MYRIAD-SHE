@@ -37,8 +37,8 @@
         <block wx:elif="{{item.type === 'opener'}}">
           <rich-text class="eyebrow" nodes="{{item.eyebrowHtml}}"></rich-text><rich-text class="section-title" nodes="{{item.titleHtml}}"></rich-text><rich-text class="section-copy module-body" nodes="{{item.bodyHtml}}"></rich-text>
         </block>
-        <view wx:elif="{{item.type === 'quote'}}" class="module-quote"><text class="module-quote-mark" aria-hidden="true">“</text><rich-text class="module-quote-copy" nodes="{{item.textHtml}}"></rich-text><text class="module-quote-mark" aria-hidden="true">”</text><view class="section-copy"><rich-text nodes="{{item.attributionHtml}}"></rich-text></view></view>
-        <view wx:elif="{{item.type === 'audio'}}" class="module-audio">
+        <view wx:elif="{{item.type === 'quote'}}" class="quote-content"><text class="module-quote-mark" aria-hidden="true">“</text><rich-text class="module-quote-copy" nodes="{{item.textHtml}}"></rich-text><text class="module-quote-mark" aria-hidden="true">”</text><view class="section-copy"><rich-text nodes="{{item.attributionHtml}}"></rich-text></view></view>
+        <view wx:elif="{{item.type === 'audio'}}" class="audio-content">
           <view class="audio-kicker">
             <text class="audio-number">02</text>
             <rich-text class="audio-label" nodes="{{item.displayTitleHtml}}"></rich-text>
@@ -68,7 +68,7 @@
             <view class="audio-enter audio-more-enter" role="button" tabindex="0" aria-label="更多微声音" bindtap="openAudioIndex"><text>更多微声音</text><text>→</text></view>
           </view>
         </view>
-        <view wx:elif="{{item.type === 'question'}}" class="module-question">
+        <view wx:elif="{{item.type === 'question'}}" class="question-content">
           <view class="question-kicker"><text class="question-number">03</text><text class="question-label">本期问题</text></view>
           <rich-text wx:if="{{item.eyebrowHtml}}" class="question-intro" nodes="{{item.eyebrowHtml}}"></rich-text>
           <rich-text class="question-title" nodes="{{item.titleHtml}}"></rich-text>

@@ -11,7 +11,7 @@ type OfficialArticleRuntime = typeof wx & {
 };
 
 function normalizedText(value: unknown) {
-  return typeof value === 'string' ? value.replace(/\r\n?/g, '\n').trim() : '';
+  return typeof value === 'string' && value.trim() ? value.replace(/\r\n?/g, '\n') : '';
 }
 
 function articleExcerpt(value: unknown) {

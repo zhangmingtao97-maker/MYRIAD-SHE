@@ -1,0 +1,68 @@
+<view class="address-page">
+  <view class="address-nav" style="padding-top: {{statusBarHeight}}px">
+    <view class="address-nav-row">
+      <view class="address-nav-side" style="width: {{navSideWidth}}px"><button class="address-back" bindtap="handleBack" disabled="{{saving || importing || busyId}}" aria-label="返回">‹</button></view>
+      <text class="address-nav-title">{{view === 'edit' ? (editingId ? '编辑地址' : '新增地址') : '收货地址'}}</text>
+      <view class="address-nav-side" style="width: {{navSideWidth}}px" aria-hidden="true"></view>
+    </view>
+  </view>
+  <view class="address-content">
+    <view class="address-eyebrow">ADDRESS / 地址</view>
+    <view wx:if="{{loading}}" class="address-state" role="status" aria-live="polite">正在读取你的地址…</view>
+    <block wx:else>
+      <view wx:if="{{view === 'list'}}" class="address-view">
+        <view class="address-heading">把日常，寄往生活里。</view>
+        <view class="address-description">管理你选择保存的收货信息</view>
+        <view wx:if="{{!items.length && !error}}" class="address-empty">
+          <view class="address-empty-mark" aria-hidden="true"></view>
+          <view class="address-empty-title">还没有保存地址</view>
+          <view class="address-description">可以手动填写，也可以从微信导入。</view>
+        </view>
+        <view class="address-list">
+          <view wx:for="{{items}}" wx:key="id" class="address-card">
+            <view class="address-person"><text class="address-name">{{item.userName}}</text><text wx:if="{{item.isDefault}}" class="address-badge">默认</text><text class="address-phone">{{item.maskedPhone}}</text></view>
+            <view class="address-region">{{item.regionText}}</view>
+            <view class="address-detail">{{item.detailInfo}}</view>
+            <view class="address-card-actions">
+              <button class="address-default-action" data-id="{{item.id}}" bindtap="setDefault" disabled="{{saving || importing || busyId || conflict || item.isDefault}}" aria-label="{{item.isDefault ? '当前默认地址' : '将此地址设为默认'}}">
+                <view class="address-radio {{item.isDefault ? 'address-radio-checked' : ''}}" aria-hidden="true"></view><text>{{busyId === item.id ? '正在更新…' : (item.isDefault ? '默认地址' : '设为默认')}}</text>
+              </button>
+              <view class="address-item-actions"><button data-id="{{item.id}}" bindtap="openEditor" disabled="{{saving || importing || busyId}}">编辑</button><view class="address-action-divider" aria-hidden="true"></view><button data-id="{{item.id}}" bindtap="removeAddress" disabled="{{saving || importing || busyId || conflict}}">删除</button></view>
+            </view>
+          </view>
+        </view>
+        <button wx:if="{{!error || items.length}}" class="address-button address-button-outline address-import" bindtap="importWechatAddress" disabled="{{importing || saving || busyId || items.length >= limit}}" loading="{{importing}}"><view wx:if="{{!importing}}" class="address-import-icon" aria-hidden="true"></view>{{importing ? '正在打开微信地址…' : '从微信导入地址'}}</button>
+        <view class="address-privacy"><view class="address-lock" aria-hidden="true"></view><text>仅在你确认后保存</text></view>
+      </view>
+      <view wx:elif="{{view === 'edit'}}" class="address-view">
+        <view class="address-heading address-edit-heading">一处安心收件的地方</view>
+        <view class="address-description">请确认收件信息，方便准确送达</view>
+        <view class="address-form-card">
+          <view class="address-form-row {{errorField === 'userName' ? 'address-field-invalid' : ''}}"><label for="addressRecipient">收件人</label><input id="addressRecipient" data-field="userName" value="{{form.userName}}" bindinput="onFieldInput" maxlength="40" placeholder="请填写收件人姓名" disabled="{{saving || importing}}" focus="{{focusField === 'userName'}}" adjust-position="{{true}}" cursor-spacing="100" /></view>
+          <view class="address-form-row {{errorField === 'telNumber' ? 'address-field-invalid' : ''}}"><label for="addressPhone">联系电话</label><input id="addressPhone" data-field="telNumber" type="text" value="{{form.telNumber}}" bindinput="onFieldInput" maxlength="30" placeholder="手机号或固定电话" disabled="{{saving || importing}}" focus="{{focusField === 'telNumber'}}" adjust-position="{{true}}" cursor-spacing="100" /></view>
+          <view class="address-form-row {{errorField === 'region' ? 'address-field-invalid' : ''}}"><text class="address-field-label">所在地区</text><picker mode="region" value="{{region}}" bindchange="onRegionChange" disabled="{{saving || importing}}" aria-label="选择所在省市区"><view class="address-region-picker"><text class="{{!form.provinceName ? 'address-placeholder' : ''}}">{{form.provinceName ? regionLabel : '请选择省、市、区'}}</text><text class="address-chevron" aria-hidden="true">›</text></view></picker></view>
+          <view class="address-form-row address-form-detail {{errorField === 'detailInfo' ? 'address-field-invalid' : ''}}"><label for="addressDetail">详细地址</label><textarea id="addressDetail" data-field="detailInfo" value="{{form.detailInfo}}" bindinput="onFieldInput" maxlength="200" placeholder="街道、门牌号等" disabled="{{saving || importing}}" focus="{{focusField === 'detailInfo'}}" auto-height="{{true}}" adjust-position="{{true}}" cursor-spacing="100" show-confirm-bar="{{false}}" /></view>
+        </view>
+        <view wx:if="{{fieldError}}" class="address-field-error" role="alert">{{fieldError}}</view>
+        <view class="address-default-card"><view><view class="address-setting-title">设为默认地址</view><view class="address-setting-description">{{items.length ? '下次选择时优先使用' : '首个地址将自动设为默认'}}</view></view><switch color="#663124" checked="{{isDefault}}" bindchange="onDefaultChange" disabled="{{saving || importing || !items.length}}" aria-label="设为默认地址" /></view>
+        <button class="address-inline-import" bindtap="importWechatAddress" disabled="{{saving || importing}}" loading="{{importing}}"><view wx:if="{{!importing}}" class="address-import-icon" aria-hidden="true"></view>{{importing ? '正在打开微信地址…' : '从微信导入，减少填写'}}</button>
+      </view>
+      <view wx:elif="{{view === 'success' && saved}}" class="address-view address-success">
+        <view class="address-success-mark" aria-hidden="true"><view class="address-success-ring"></view><view class="address-success-check"></view></view>
+        <view class="address-success-title" role="status" aria-live="polite">地址已保存</view>
+        <view class="address-description">下一次收件，少一点填写。</view>
+        <view class="address-card address-saved-card"><view class="address-summary-label">已保存的地址</view><view class="address-person"><text class="address-name">{{saved.userName}}</text><text class="address-phone">{{saved.maskedPhone}}</text></view><view class="address-region">{{saved.regionText}}</view><view class="address-detail">{{saved.detailInfo}}</view><view wx:if="{{saved.isDefault}}" class="address-badge address-saved-badge">默认地址</view></view>
+        <button class="address-button address-button-primary" bindtap="leavePage">完成</button>
+        <button class="address-button address-button-outline address-manage" bindtap="showList">继续管理地址</button>
+        <view class="address-privacy"><view class="address-lock" aria-hidden="true"></view><text>仅在你主动确认后使用</text></view>
+      </view>
+      <view wx:if="{{error}}" class="address-error" role="alert"><text>{{error}}</text><button class="address-retry" bindtap="loadAddresses" disabled="{{saving || importing || busyId}}">{{conflict ? '重新读取最新地址' : '重新加载地址列表'}}</button></view>
+      <view wx:if="{{importError}}" class="address-import-error" role="status" aria-live="polite">{{importError}}</view>
+    </block>
+  </view>
+  <view wx:if="{{!loading && view !== 'success'}}" class="address-footer">
+    <view wx:if="{{view === 'edit'}}" class="address-privacy"><view class="address-lock" aria-hidden="true"></view><text>你的地址仅用于你确认的收件服务</text></view>
+    <button wx:if="{{view === 'list'}}" class="address-button address-button-primary" bindtap="openEditor" disabled="{{saving || importing || busyId || !bookReady || items.length >= limit}}"><text class="address-plus" aria-hidden="true">＋</text>新增地址</button>
+    <button wx:else class="address-button address-button-primary" bindtap="saveAddress" disabled="{{saving || importing || conflict}}" loading="{{saving}}">{{saving ? '正在保存…' : '保存地址'}}</button>
+  </view>
+</view>

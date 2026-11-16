@@ -1,0 +1,86 @@
+page { background: #e9e1d4; color: #3d332c; }
+.address-page { --address-bg: #e9e1d4; --address-surface: #fbf7ef; --address-ink: #3d332c; --address-accent: #663124; --address-muted: #796657; --address-border: #dacdbf; min-height: 100vh; padding-bottom: calc(210rpx + env(safe-area-inset-bottom)); background: var(--address-bg); font-family: "MYRIAD Garamond", "MYRIAD Song", serif; box-sizing: border-box; }
+.address-nav { position: sticky; top: 0; z-index: 8; background: var(--address-bg); border-bottom: 1rpx solid rgba(92,73,60,.1); }
+.address-nav-row { display: flex; height: 44px; align-items: center; justify-content: space-between; }
+.address-nav-side { flex: 0 0 auto; }
+.address-nav-title { flex: 1; white-space: nowrap; text-align: center; font-size: 31rpx; }
+.address-back { width: 88rpx; height: 44px; margin: 0 0 0 12rpx; padding: 0; background: transparent; color: var(--address-accent); font-size: 56rpx; line-height: 40px; }
+button::after { border: 0; }
+.address-content { max-width: 900rpx; margin: 0 auto; padding: 34rpx 28rpx 0; box-sizing: border-box; }
+.address-eyebrow { margin: 0 8rpx 24rpx; color: #8b6651; font-size: 20rpx; letter-spacing: 5rpx; line-height: 1.6; }
+.address-heading { margin: 0 8rpx 14rpx; font-size: 46rpx; line-height: 1.5; letter-spacing: 1rpx; }
+.address-description { margin: 0 8rpx; color: var(--address-muted); font-size: 26rpx; line-height: 1.7; }
+.address-list { margin-top: 36rpx; }
+.address-card { margin-bottom: 22rpx; padding: 28rpx 28rpx 0; border: 1rpx solid rgba(255,255,255,.5); border-radius: 22rpx; background: var(--address-surface); box-shadow: 0 8rpx 24rpx rgba(68,38,27,.035); }
+.address-person { display: flex; flex-wrap: wrap; align-items: center; gap: 12rpx 20rpx; margin-bottom: 22rpx; }
+.address-name { max-width: 100%; color: var(--address-ink); font-size: 36rpx; overflow-wrap: anywhere; line-height: 1.4; }
+.address-badge { flex: 0 0 auto; padding: 3rpx 14rpx; border-radius: 999rpx; background: #ead7ca; color: var(--address-accent); font-size: 21rpx; line-height: 1.6; }
+.address-phone { color: var(--address-muted); font-size: 28rpx; letter-spacing: 1rpx; }
+.address-region, .address-detail { font-size: 28rpx; line-height: 1.7; overflow-wrap: anywhere; }
+.address-detail { padding-bottom: 24rpx; }
+.address-card-actions { display: flex; min-height: 88rpx; align-items: center; justify-content: space-between; border-top: 1rpx solid var(--address-border); gap: 8rpx; }
+.address-default-action { display: flex; flex: 1; min-width: 0; min-height: 88rpx; align-items: center; margin: 0; padding: 0; background: transparent; color: var(--address-accent); font-size: 25rpx; line-height: 1.6; text-align: left; gap: 12rpx; }
+.address-radio { display: flex; width: 30rpx; height: 30rpx; flex: 0 0 auto; align-items: center; justify-content: center; border: 2rpx solid #94775f; border-radius: 50%; }
+.address-radio-checked { border-color: var(--address-accent); }
+.address-radio-checked::after { width: 18rpx; height: 18rpx; border-radius: 50%; background: var(--address-accent); content: ''; }
+.address-item-actions { display: flex; align-items: center; gap: 8rpx; }
+.address-item-actions button { min-width: 82rpx; min-height: 88rpx; margin: 0; padding: 0 10rpx; background: transparent; color: var(--address-muted); font-size: 25rpx; line-height: 88rpx; }
+.address-action-divider { width: 1rpx; height: 28rpx; background: var(--address-border); }
+.address-button { display: flex; width: 100%; min-height: 88rpx; align-items: center; justify-content: center; margin: 0; padding: 20rpx 24rpx; border-radius: 999rpx; font-family: inherit; font-size: 31rpx; line-height: 1.5; box-sizing: border-box; gap: 18rpx; }
+.address-button-primary { background: var(--address-accent); color: #fffaf2; }
+.address-button-outline { border: 2rpx solid var(--address-accent); background: transparent; color: var(--address-accent); }
+.address-import { margin-top: 38rpx; }
+.address-import-icon { position: relative; width: 24rpx; height: 24rpx; flex: 0 0 auto; border: 2rpx solid currentColor; border-top: 0; border-radius: 4rpx; }
+.address-import-icon::before { position: absolute; left: 10rpx; top: -10rpx; width: 2rpx; height: 23rpx; background: currentColor; content: ''; }
+.address-import-icon::after { position: absolute; left: 5rpx; top: 4rpx; width: 10rpx; height: 10rpx; border-right: 2rpx solid currentColor; border-bottom: 2rpx solid currentColor; transform: rotate(45deg); content: ''; }
+.address-privacy { display: flex; align-items: center; justify-content: center; margin: 22rpx 0 0; color: var(--address-muted); font-size: 22rpx; line-height: 1.7; gap: 13rpx; }
+.address-lock { position: relative; width: 19rpx; height: 17rpx; flex: 0 0 auto; border: 2rpx solid currentColor; border-radius: 3rpx; box-sizing: border-box; }
+.address-lock::before { position: absolute; left: 2rpx; top: -13rpx; width: 9rpx; height: 12rpx; border: 2rpx solid currentColor; border-bottom: 0; border-radius: 8rpx 8rpx 0 0; content: ''; }
+.address-footer { position: fixed; z-index: 9; right: 0; bottom: 0; left: 0; padding: 20rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); border-top: 1rpx solid rgba(92,73,60,.12); background: var(--address-bg); box-sizing: border-box; }
+.address-footer .address-button { max-width: 844rpx; margin: 0 auto; }
+.address-footer .address-privacy { margin: 0 0 22rpx; }
+.address-plus { font-size: 36rpx; line-height: 1; }
+.address-state, .address-empty { margin-top: 32rpx; padding: 64rpx 28rpx; border-radius: 22rpx; background: var(--address-surface); text-align: center; font-size: 28rpx; line-height: 1.7; color: var(--address-muted); }
+.address-empty-title { margin: 30rpx 0 10rpx; color: var(--address-ink); font-size: 34rpx; }
+.address-empty-mark { position: relative; width: 74rpx; height: 54rpx; margin: 0 auto; border: 2rpx solid #a5846b; border-radius: 7rpx; }
+.address-empty-mark::after { position: absolute; top: 0; left: 9rpx; width: 49rpx; height: 28rpx; border-bottom: 2rpx solid #a5846b; transform: rotate(-24deg); content: ''; }
+.address-form-card { margin-top: 36rpx; padding: 0 26rpx; border-radius: 22rpx; background: var(--address-surface); }
+.address-form-row { display: flex; min-height: 108rpx; align-items: center; border-bottom: 1rpx solid var(--address-border); gap: 18rpx; }
+.address-form-row:last-child { border-bottom: 0; }
+.address-form-row label, .address-field-label { flex: 0 0 142rpx; font-size: 28rpx; line-height: 1.6; }
+.address-form-row input, .address-form-row textarea { flex: 1; min-width: 0; width: auto; padding: 22rpx 0; color: var(--address-ink); font-family: inherit; font-size: 28rpx; line-height: 1.6; }
+.address-form-detail { align-items: flex-start; padding: 10rpx 0 20rpx; }
+.address-form-detail label { padding-top: 22rpx; }
+.address-form-row textarea { min-height: 100rpx; max-height: 280rpx; }
+.address-form-row picker { flex: 1; min-width: 0; }
+.address-region-picker { display: flex; min-height: 108rpx; align-items: center; justify-content: space-between; font-size: 26rpx; line-height: 1.6; gap: 12rpx; }
+.address-placeholder { color: #938170; }
+.address-chevron { flex: 0 0 auto; color: #94775f; font-size: 38rpx; }
+.address-field-invalid { border-bottom-color: #a6503d; }
+.address-field-error { margin: 14rpx 10rpx 0; color: #8e3e2c; font-size: 24rpx; line-height: 1.6; }
+.address-default-card { display: flex; align-items: center; justify-content: space-between; margin-top: 24rpx; padding: 26rpx; border-radius: 22rpx; background: var(--address-surface); gap: 20rpx; }
+.address-setting-title { font-size: 30rpx; line-height: 1.6; }
+.address-setting-description { margin-top: 4rpx; color: var(--address-muted); font-size: 23rpx; line-height: 1.6; }
+.address-default-card switch { flex: 0 0 auto; transform: scale(.85); transform-origin: right center; }
+.address-inline-import { display: flex; min-height: 96rpx; align-items: center; justify-content: center; margin: 26rpx 0 0; padding: 16rpx 10rpx; background: transparent; color: var(--address-accent); font-family: inherit; font-size: 26rpx; line-height: 1.6; gap: 18rpx; }
+.address-error, .address-import-error { margin-top: 26rpx; padding: 22rpx; border: 1rpx solid #d7b5a2; border-radius: 16rpx; background: #f8ede3; color: #783f2c; font-size: 25rpx; line-height: 1.7; }
+.address-retry { min-height: 88rpx; margin: 8rpx 0 0; padding: 10rpx; background: transparent; color: var(--address-accent); font-size: 26rpx; line-height: 68rpx; }
+.address-success { padding-top: 30rpx; text-align: center; }
+.address-success-mark { position: relative; display: flex; width: 134rpx; height: 134rpx; align-items: center; justify-content: center; margin: 26rpx auto 40rpx; border: 2rpx solid var(--address-accent); border-radius: 50%; }
+.address-success-ring { position: absolute; inset: -20rpx; border: 1rpx solid rgba(102,49,36,.17); border-radius: 50%; animation: address-breathe 1.6s ease-out 1; }
+.address-success-check { width: 57rpx; height: 30rpx; margin-top: -14rpx; border-left: 4rpx solid var(--address-accent); border-bottom: 4rpx solid var(--address-accent); transform: rotate(-45deg); }
+.address-success-title { margin-bottom: 16rpx; font-size: 56rpx; line-height: 1.4; }
+.address-saved-card { margin: 48rpx 0 42rpx; padding-bottom: 28rpx; text-align: left; }
+.address-summary-label { margin-bottom: 24rpx; padding-bottom: 20rpx; border-bottom: 1rpx solid var(--address-border); color: var(--address-accent); font-size: 24rpx; line-height: 1.5; }
+.address-saved-card .address-detail { padding-bottom: 0; }
+.address-saved-badge { display: inline-block; margin-top: 20rpx; }
+.address-manage { margin-top: 22rpx; }
+.address-success .address-privacy { margin-top: 42rpx; }
+button { transition: opacity .18s ease, background-color .18s ease; }
+button:active { opacity: .72; }
+button[disabled] { opacity: .48; }
+.address-default-action[disabled] { color: var(--address-accent); opacity: 1; }
+.address-default-action[disabled] .address-radio-checked { opacity: 1; }
+@keyframes address-breathe { 0% { opacity: 0; transform: scale(.86); } 35% { opacity: 1; } 100% { opacity: .7; transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } .address-success-ring { animation: none; } }
+@media (max-width: 340px) { .address-heading { font-size: 40rpx; } .address-card { padding-right: 20rpx; padding-left: 20rpx; } .address-item-actions button { min-width: 80rpx; padding: 0 8rpx; } }

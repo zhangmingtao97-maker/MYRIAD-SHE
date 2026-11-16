@@ -17,7 +17,7 @@ Page({
       if (generation !== this.requestGeneration) return;
       if (!isPracticeContent(data)) throw new Error('实践内容格式无效');
       const copy = data.sharedPracticeCopy;
-      this.setData({ entries: data.entries, offlineActivitiesPublished: data.offlineActivitiesPublished, onlineActionLabel: plainTextFromHtml(copy.onlineAction.richText), copy: this.data.fromMine ? { ...copy, topbarTitle: { ...copy.topbarTitle, richText: '本期讨论' } } : copy, rules: Array.isArray(copy.rules) ? copy.rules.map((rule) => ({ number: rule.number, title: rule.title, description: rule.copy })) : [],
+      this.setData({ entries: data.entries, offlineActivitiesPublished: data.offlineActivitiesPublished, onlineActionLabel: plainTextFromHtml(copy.onlineAction.richText, true), copy: this.data.fromMine ? { ...copy, topbarTitle: { ...copy.topbarTitle, richText: '本期讨论' } } : copy, rules: Array.isArray(copy.rules) ? copy.rules.map((rule) => ({ number: rule.number, title: rule.title, description: rule.copy })) : [],
         paragraphs: Array.isArray(copy.onlineParagraphs) ? copy.onlineParagraphs : [], loading: false, error: '' });
     } catch (caught) {
       if (generation !== this.requestGeneration) return;

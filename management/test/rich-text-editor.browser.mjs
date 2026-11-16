@@ -76,11 +76,40 @@ try {
   assert.ok(styles.some((item) => item.textAlign === 'center'), `preview should preserve center alignment: ${JSON.stringify(styles)}`);
   assert.equal(await previewTitle.evaluate((element) => getComputedStyle(element).fontSize), '24px', 'default question title should stay at a restrained size');
 
+  const spacingInput = page.getByRole('textbox', { name: '空格排版样例', exact: true });
+  const sample = '  前缀  中间   尾部  ';
+  await spacingInput.fill(sample);
+  await spacingInput.blur();
+  const plainModel = page.locator('#journal-plain-text-test');
+  const spacingPreview = page.locator('#journal-preview-test .rich-text-view');
+  assert.equal(await plainModel.textContent(), sample, 'plain fallback must preserve leading, repeated, and trailing spaces');
+  assert.equal((await spacingPreview.textContent()).replace(/\u00a0/g, ' '), sample);
+  const leadingWidth = await spacingPreview.evaluate((element) => {
+    if (getComputedStyle(element).whiteSpace !== 'pre-wrap') throw new Error('preview must preserve whitespace');
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const node = walker.nextNode();
+    const range = document.createRange();
+    range.setStart(node, 0); range.setEnd(node, 2);
+    return range.getBoundingClientRect().width;
+  });
+  assert.ok(leadingWidth > 3, `leading spaces must occupy visible width (${leadingWidth}px)`);
+  await page.getByRole('button', { name: '保存并重新打开样例' }).click();
+  assert.equal((await spacingInput.textContent()).replace(/\u00a0/g, ' '), sample, 'reopening must keep the authored spacing');
+
+  await spacingInput.fill('  第一行  ');
+  await spacingInput.press('End');
+  await spacingInput.press('Enter');
+  await page.keyboard.insertText(' 第二行  ');
+  await spacingInput.blur();
+  assert.equal(await plainModel.textContent(), '  第一行  \n 第二行  ', 'native Enter and spaces must survive rich-to-plain conversion');
+  await page.getByRole('button', { name: '保存并重新打开样例' }).click();
+  assert.equal(await plainModel.textContent(), '  第一行  \n 第二行  ');
+
   const output = resolve(root, '.test-artifacts');
   await mkdir(output, { recursive: true });
   await page.screenshot({ path: resolve(output, 'rich-text-editor-controls.png'), fullPage: true, animations: 'disabled' });
   assert.deepEqual(errors, []);
-console.log('PASS: rich text size, line height, color, and alignment controls update the live preview; basic editors expose the same controls.');
+console.log('PASS: rich text controls, visible spaces, native Enter, and reopening preserve the authored typography and copy.');
 } finally {
   await browser.close();
   await server.close();

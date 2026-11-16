@@ -15,7 +15,7 @@ const bagCopy = {
   bagPreviewNote: { richText: '商店样式预览 · 商品资料与金额均为示意', fontSize: 11, color: '#5c493c' },
 };
 
-const bagActionLabel = plainTextFromHtml(bagCopy.bagAction.richText);
+const bagActionLabel = plainTextFromHtml(bagCopy.bagAction.richText, true);
 
 const tabs = ['/pages/home/index', '/pages/practice/index', '/pages/mine/index'];
 

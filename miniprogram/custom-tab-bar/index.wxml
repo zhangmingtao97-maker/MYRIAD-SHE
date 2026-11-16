@@ -1,1 +1,1 @@
-<app-tab-bar wx:if="{{!brandPopupHidden}}" />
+<app-tab-bar wx:if="{{!brandPopupHidden}}" id="main-tab-bar" active-tab="{{selected}}" />

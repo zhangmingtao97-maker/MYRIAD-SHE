@@ -439,13 +439,13 @@ export class AdminManagementController {
         }
         values[key] = objectKey;
       } else if (popupField === 'alt') {
-        if (typeof value !== 'string' || value.trim().length > 120) throw new BadRequestException(`${popupLabel}说明长度无效`);
-        values[key] = value.trim();
+        if (typeof value !== 'string' || value.length > 120) throw new BadRequestException(`${popupLabel}说明长度无效`);
+        values[key] = value.trim() ? value : '';
       } else {
         const label = key === 'maintenance_notice' ? '维护公告' : key === 'discussion_appeal_contact' ? '一起谈谈申诉联系方式' : '联系支持';
         const maximum = key === 'maintenance_notice' ? 500 : 200;
-        if (typeof value !== 'string' || value.trim().length > maximum) throw new BadRequestException(`${label}长度无效`);
-        values[key] = value.trim();
+        if (typeof value !== 'string' || value.length > maximum) throw new BadRequestException(`${label}长度无效`);
+        values[key] = value.trim() ? value : '';
       }
     }
     if (values.store_enabled !== undefined && request.user?.role !== 'super_admin') {

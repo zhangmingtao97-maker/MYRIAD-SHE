@@ -10,23 +10,33 @@ const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.Modu
 assert.equal(compiled.diagnostics?.length, 0);
 const profileCompiled = ts.transpileModule(readFileSync(resolve(__dirname, '../../../miniprogram/pages/profile/index.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
 assert.equal(profileCompiled.diagnostics?.length, 0);
+const tabBarExports = {};
+runInNewContext(ts.transpileModule(readFileSync(resolve(__dirname, '../../../miniprogram/utils/tab-bar.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: tabBarExports });
 
 function harness(pageName: 'mine' | 'profile' = 'mine') {
   let page: any;
   let nativeValue: string | null = null;
   let pendingUpload: any;
+  let pendingAddress: any;
   let requestHandler: (path: string, options?: any) => Promise<Record<string, unknown>> = async (_path, options) => ({ nickname: options?.data?.nickname ?? '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: null });
   const requests: Array<{ path: string; options: any }> = [];
   const toasts: string[] = [];
+  const modals: Array<{ title: string; content: string }> = [];
+  const warnings: unknown[][] = [];
+  const navigation: Array<{url: string}> = [];
   const app = { globalData: { userId: 'user-1', accessToken: 'test-token', authGeneration: 0, accountDeleted: false, apiBaseUrl: 'https://example.com/api', requestTimeoutMs: 8000 }, ensureLogin: async () => undefined };
   runInNewContext(pageName === 'mine' ? compiled.outputText : profileCompiled.outputText, {
     exports: {}, getApp: () => app, Page: (definition: any) => { page = definition; }, setTimeout, clearTimeout,
+    console: { warn: (...values: unknown[]) => { warnings.push(values); } },
     wx: {
       showToast: ({ title }: { title: string }) => { toasts.push(title); }, hideKeyboard: () => undefined,
+      showModal: (options: { title: string; content: string }) => { modals.push(options); },
+      chooseAddress: (options: any) => { pendingAddress = options; },
+      navigateTo: (options: {url: string}) => { navigation.push(options); },
       uploadFile: (options: any) => { pendingUpload = options; },
       createSelectorQuery: () => ({ select: () => ({ fields: (_options: unknown, callback: (value: unknown) => void) => ({ exec: () => callback(nativeValue === null ? null : { value: nativeValue }) }) }) }),
     },
-    require: (path: string) => path.endsWith('/request') ? {
+    require: (path: string) => path.endsWith('/tab-bar') ? tabBarExports : path.endsWith('/request') ? {
       request: async (url: string, options: any) => { requests.push({ path: url, options }); return requestHandler(url, options); },
       apiErrorMessage: (_error: unknown, fallback: string) => fallback,
     } : {},
@@ -44,7 +54,7 @@ function harness(pageName: 'mine' | 'profile' = 'mine') {
   page.nicknameDraft = '原昵称';
   page.setData({ isLoggedIn: true, accountProfileReady: true, nicknameEditingValue: '原昵称', accountProfile: { nickname: '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: null } });
   if (pageName === 'profile') page.setData({ loading: false, profile: { nickname: '原昵称', avatarUrl: 'https://example.com/avatar.jpg', phoneNumber: null } });
-  return { page, app, requests, toasts, native: (value: string) => { nativeValue = value; }, upload: () => pendingUpload, respond: (handler: (path: string, options?: any) => Promise<Record<string, unknown>>) => { requestHandler = handler; } };
+  return { page, app, requests, toasts, modals, warnings, navigation, address: () => pendingAddress, native: (value: string) => { nativeValue = value; }, upload: () => pendingUpload, respond: (handler: (path: string, options?: any) => Promise<Record<string, unknown>>) => { requestHandler = handler; } };
 }
 
 async function settle() { for (let i = 0; i < 5; i += 1) await new Promise(setImmediate); }
@@ -271,4 +281,14 @@ test('profile binds a WeChat phone number directly without returning to login', 
   assert.equal(h.page.data.profile.phoneNumber, '+8613800138000');
   assert.equal(h.page.data.saving, false);
   assert.equal(h.toasts.at(-1), '手机号已绑定');
+});
+
+test('profile opens address management instead of calling the WeChat address picker directly', () => {
+  const h = harness('profile');
+  h.page.openAddresses();
+  assert.equal(h.navigation[0]?.url, '/pages/addresses/index');
+  assert.equal(h.address(), undefined);
+  h.page.data.saving = true;
+  h.page.openAddresses();
+  assert.equal(h.navigation.length, 1);
 });

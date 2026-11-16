@@ -107,7 +107,7 @@ export function validateDiscussionContent(value: unknown): DiscussionContent {
         delete normalized.copyRichText![key];
         normalized.copy[key] = defaults.copy[key];
       } else {
-        normalized.copy[key] = plainText;
+        normalized.copy[key] = plainTextFromRichText(sanitized, true);
       }
     }
   }
@@ -134,9 +134,9 @@ export function validateDiscussionContent(value: unknown): DiscussionContent {
     })) : thread.replies,
   }));
   for (const thread of normalized.threads) {
-    if (thread.bodyRichText !== undefined) thread.body = plainTextFromRichText(thread.bodyRichText);
+    if (thread.bodyRichText !== undefined) thread.body = plainTextFromRichText(thread.bodyRichText, true);
     for (const reply of thread.replies) {
-      if (reply.bodyRichText !== undefined) reply.body = plainTextFromRichText(reply.bodyRichText);
+      if (reply.bodyRichText !== undefined) reply.body = plainTextFromRichText(reply.bodyRichText, true);
     }
   }
   const ids = new Set<string>();

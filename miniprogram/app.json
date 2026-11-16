@@ -19,6 +19,7 @@
     "pages/mine/index",
     "pages/my-contributions/index",
     "pages/profile/index",
+    "pages/addresses/index",
     "pages/login/index",
     "pages/observation-list/index",
     "pages/observation/index",
