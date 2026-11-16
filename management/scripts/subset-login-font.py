@@ -7,7 +7,7 @@ from pathlib import Path
 from fontTools import subset
 
 root = Path(__file__).resolve().parents[2]
-copy = '跳到主要内容账号密码登录中…或企业微信扫码正在加载二维码请使用扫一扫返回蜀ICP备号加载失败网络连接超时请重试授权暂不可用'
+copy = '欢迎回来让好的内容被慢慢看见扫码登录温柔地观察自由表达跳到主要内容账号密码登录中…或企业微信扫码正在加载二维码请使用扫一扫返回蜀ICP备号加载失败网络连接超时请重试授权暂不可用'
 options = subset.Options()
 options.flavor = 'woff2'
 font = subset.load_font(str(root / 'miniprogram/fonts/SourceHanSerifCN-Regular.woff2'), options)

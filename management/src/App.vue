@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import EditorialLoginLayout from './components/EditorialLoginLayout.vue';
 import LegalDocumentManager from './components/LegalDocumentManager.vue';
 import ModuleStateMachine from './components/ModuleStateMachine.vue';
 import EditorialWorkspace, { type WorkspaceMetric, type WorkspaceTask } from './components/EditorialWorkspace.vue';
@@ -67,6 +68,7 @@ const apiRequestTimeoutMs = positiveEnvNumber(import.meta.env.VITE_API_REQUEST_T
 const mediaUploadTimeoutMs = positiveEnvNumber(import.meta.env.VITE_MEDIA_UPLOAD_TIMEOUT_MS, 90_000, 300_000);
 const username = ref('');
 const password = ref('');
+const loginPasswordVisible = ref(false);
 const token = ref(readAdminToken());
 const sessionExpiresAt = ref(readAdminExpiry());
 const loading = ref(false);
@@ -4049,6 +4051,7 @@ async function login() {
       throw new Error('管理后台登录服务返回无效数据');
     }
     password.value = '';
+    loginPasswordVisible.value = false;
     await applyAdminLogin(result);
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : '登录失败';
@@ -7312,6 +7315,7 @@ function logout(message = '') {
   username.value = '';
   adminPermissions.value = null;
   password.value = '';
+  loginPasswordVisible.value = false;
   loading.value = false;
   sessionExpiresAt.value = 0;
   overviewUpdatedAt.value = '';
@@ -7498,38 +7502,27 @@ onBeforeUnmount(() => {
   <div class="app-frame" :class="{ 'login-frame': !loggedIn }">
     <a class="skip-link" href="#dashboard-content">跳到主要内容</a>
     <main id="dashboard-content" class="shell" :class="{ 'dashboard-shell': loggedIn, 'login-shell': !loggedIn }" :aria-busy="dashboardLoading">
-    <section v-if="!loggedIn" class="login-layout" :class="{ 'wecom-open': wecomQrVisible }">
-      <div class="login-visual" aria-hidden="true">
-        <img src="/login-ms-brand.png?v=2" alt="" draggable="false" />
-      </div>
-      <section class="login-panel" aria-labelledby="login-brand">
-        <div class="login-panel-inner">
-          <h1 id="login-brand" class="login-brand">MYRIAD SHE</h1>
-          <div v-if="wecomQrVisible" class="wecom-login">
-            <div class="wecom-qr-frame">
-              <div id="wecom-qr" class="wecom-qr"></div>
-              <p v-if="wecomLoading" class="wecom-qr-loading">正在加载二维码…</p>
-            </div>
-            <p class="wecom-hint">请使用企业微信扫一扫</p>
-            <p v-if="wecomError" class="error login-error" role="alert">{{ wecomError }}</p>
-            <button type="button" class="wecom-back" @click="closeWecomLogin">返回账号登录</button>
-          </div>
-          <template v-else>
-            <form @submit.prevent="login">
-              <label>账号<input v-model="username" autocomplete="username" required /></label>
-              <label>密码<input v-model="password" type="password" autocomplete="current-password" required /></label>
-              <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录' }}</button>
-            </form>
-            <div class="login-divider"><span>或</span></div>
-            <button type="button" class="wecom-login-button" :disabled="loading || wecomLoading" @click="openWecomLogin">
-              <span class="wecom-mark" aria-hidden="true">企</span>
-              企业微信扫码登录
-            </button>
-            <p v-if="wecomError" class="error login-error" role="alert">{{ wecomError }}</p>
-          </template>
+    <EditorialLoginLayout v-if="!loggedIn" :wecom-open="wecomQrVisible">
+      <div v-if="wecomQrVisible" class="wecom-login">
+        <div class="wecom-qr-frame">
+          <div id="wecom-qr" class="wecom-qr"></div>
+          <p v-if="wecomLoading" class="wecom-qr-loading" role="status">正在加载二维码…</p>
         </div>
-      </section>
-    </section>
+        <p class="wecom-hint">请使用企业微信扫一扫</p>
+        <p v-if="wecomError" class="error login-error" role="alert">{{ wecomError }}</p>
+        <button type="button" class="wecom-back" @click="closeWecomLogin">返回账号登录</button>
+      </div>
+      <template v-else>
+        <form @submit.prevent="login" :aria-busy="loading">
+          <label>账号<input v-model="username" autocomplete="username" placeholder="请输入账号" :disabled="loading" required /></label>
+          <label>密码<span class="editorial-password-field"><input v-model="password" :type="loginPasswordVisible ? 'text' : 'password'" autocomplete="current-password" placeholder="请输入密码" :disabled="loading" required /><button type="button" class="editorial-password-toggle" :aria-label="loginPasswordVisible ? '隐藏密码' : '显示密码'" :aria-pressed="loginPasswordVisible" @click="loginPasswordVisible = !loginPasswordVisible"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /><path v-if="loginPasswordVisible" d="m4 4 16 16" /></svg></button></span></label>
+          <button :disabled="loading" type="submit">{{ loading ? '登录中…' : '登录' }}<span class="editorial-submit-arrow" aria-hidden="true">↗</span></button>
+        </form>
+        <div class="login-divider"><span>或</span></div>
+        <button type="button" class="wecom-login-button" :disabled="loading || wecomLoading" @click="openWecomLogin"><svg class="editorial-wecom-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v10h14V10M9 20v-5h6v5M8 10h2m4 0h2" /></svg>企业微信扫码登录</button>
+        <p v-if="wecomError" class="error login-error" role="alert">{{ wecomError }}</p>
+      </template>
+    </EditorialLoginLayout>
 
     <template v-else>
       <section v-if="adminPasswordChangeRequired" class="login-panel password-rotation-panel" aria-labelledby="password-rotation-title">
